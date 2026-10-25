@@ -3,7 +3,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
   // What the player was looking at. BeamNG rebuilds the app each time the parts menu or the map
   // closes, so this is kept out here and the new app carries on where the old one was.
   var kept = {
-    tab: 'route', introShown: false, intro: { open: false, name: '' }, picked: { good: null, count: null },
+    tab: 'route', introShown: false, intro: { open: false, name: '' },
     ship: { query: '', coords: '', error: null }, last: null
   }
   return {
@@ -26,15 +26,24 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
       var alerts = {
-        route: function (d) { return !!d.resume || !!d.stranded },
-        town: function (d) { return !!d.town && (!!d.town.sellAllowed || (!!d.town.buyAllowed && !d.load)) },
-        garage: function (d) { return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!(d.shipping && d.shipping.booking) }
+        route: function (d) { return !!d.resume || !!d.stranded || !!(d.shortages && d.shortages.length) },
+        town: function (d) {
+          var t = d.town
+          if (!t) return false
+          if (t.delivery && t.delivery.allowed) return true
+          return !d.load && (t.jobs || []).some(function (j) { return j.allowed })
+        },
+        garage: function (d) {
+          return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!d.insurance ||
+            !!(d.shipping && d.shipping.booking)
+        }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
-        ['town', function (d) { return !!d.town }], ['route', alerts.route]
+        ['garage', function (d) { return !!d.insurance }],
+        ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.stranded }]
       ]
       var follow = function (previous, next) {
         // The start page opens once on a new game, until the player has been somewhere.
@@ -71,52 +80,9 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         typingNow = !!on
         call('if setCEFTyping then setCEFTyping(' + typingNow + ') end')
       }
-      // The good picked on the Town tab; its drop-offs are listed under it.
-      // count is how many slots to buy; null means as many as fit and are affordable.
-      scope.picked = kept.picked
-      scope.pickGood = function (id) { scope.picked.good = id; scope.picked.count = null }
-      scope.buyCount = function (g) {
-        if (!g || !(g.slots >= 1)) return 0
-        if (scope.picked.count === null) return g.slots
-        return Math.max(1, Math.min(g.slots, scope.picked.count))
-      }
-      scope.stepCount = function (g, delta) {
-        if (!g || !(g.slots >= 1)) return
-        scope.picked.count = Math.max(1, Math.min(g.slots, scope.buyCount(g) + delta))
-      }
-      scope.setCount = function (count) { scope.picked.count = count }
-      // The drop-off's price plus its freight pay, less what you pay here, for the chosen count.
-      // The delivery distance slider; it starts at Lua's value and sends each change back. Older
-      // AngularJS (as in BeamNG's UI) gives a range input's value as a string, so it is parsed here.
-      scope.range = { km: null }
-      scope.setRange = function () {
-        var km = typeof scope.range.km === 'number' ? scope.range.km
-          : (/^[0-9]{1,2}$/.test(String(scope.range.km)) ? parseInt(scope.range.km, 10) : NaN)
-        if (scope.data.town && Number.isInteger(km) && km >= 5 && km <= 50) core('setDeliveryRange(' + km + ')')
-      }
-      scope.stepRange = function (delta) {
-        var town = scope.data.town
-        if (!town || !town.range) return
-        var current = parseInt(scope.range.km, 10)
-        if (!isFinite(current)) current = town.range.km
-        scope.range.km = Math.max(5, Math.min(50, current + delta))
-        scope.setRange()
-      }
-      scope.profit = function (g, p) { return (p.price + (p.freight || 0) - g.price) * scope.buyCount(g) }
-      scope.pickedGood = function (d) {
-        var list = (d && d.town && d.town.goods) || []
-        for (var i = 0; i < list.length; i++) if (list[i].id === scope.picked.good) return list[i]
-        var best = d && d.bestRun && d.bestRun.goodId
-        for (var j = 0; j < list.length; j++) if (list[j].id === best) return list[j]
-        return list[0] || null
-      }
-      scope.destinationName = function (d, id) {
-        var list = (d && d.town && d.town.destinations) || []
-        for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]
-        return null
-      }
-      // Dot colours: green stocked and cheap here, red short and pays well, grey otherwise.
-      scope.dotColor = function (level) { return level === 'cheap' ? '#6fcf97' : (level === 'short' ? '#eb5757' : '#7d8b88') }
+      // Dot and pay colours: green pays above the usual, red below, gold for a shortage or a jackpot.
+      var colors = { high: '#6fcf97', low: '#eb5757', sweet: '#f2c94c' }
+      scope.dotColor = function (level) { return colors[level] || '#7d8b88' }
       scope.km = function (metres) { return typeof metres === 'number' && isFinite(metres) ? (metres / 1000).toFixed(1) : '' }
       // The one message under the header: what just happened, then what to do. One object is
       // reused, as Angular watches it by reference.
@@ -139,14 +105,14 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         return !!d && (!!d.nameUnsaved || d.unsavedBalance > 0 || d.unsavedSpending > 0 || d.unsavedDistanceKm >= 0.005)
       }
       var plainId = function (id) { return /^[a-z0-9_]+$/.test(String(id)) }
-      scope.buyLoad = function (good, destination, count) {
-        if (!scope.data.town || !scope.data.town.buyAllowed || !plainId(good) || !plainId(destination)) return
-        if (!(Number.isInteger(count) && count >= 1 && count <= 999)) return
-        core("buyLoad('" + good + "', '" + destination + "', " + count + ')')
+      scope.takeJob = function (job) {
+        if (!scope.data.town || scope.data.load || !job || !job.allowed || !plainId(job.id)) return
+        core("takeJob('" + job.id + "')")
       }
-      scope.sellLoad = function () { if (scope.data.town && scope.data.town.sellAllowed) core('sellLoad()') }
+      scope.deliverJob = function () { if (scope.data.town && scope.data.town.delivery && scope.data.town.delivery.allowed) core('deliverJob()') }
       scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }
-      scope.dumpLoad = function () { if (scope.data.dumpAllowed) core('dumpLoad()') }
+      scope.abandonJob = function () { if (scope.data.abandonAllowed) core('abandonJob()') }
+      scope.claimInsurance = function () { if (scope.data.insurance && scope.data.insurance.allowed) core('claimInsurance()') }
       scope.bookShipping = function (destination) {
         if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")
       }
@@ -209,7 +175,6 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
           // Compared with the last state any app saw, so a rebuilt app does not reopen a tab.
           follow(kept.last || {}, data)
           kept.last = data
-          if (scope.range.km === null && data.town && data.town.range) scope.range.km = data.town.range.km
           scope.data = data
         })
       })

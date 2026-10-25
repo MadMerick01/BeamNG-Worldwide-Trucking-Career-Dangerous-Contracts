@@ -60,7 +60,7 @@ do
   local d, _, b = F.controller({ punctures = q, random = function() return 0 end })
   d:tick(0.1); d:tick(0.6); d:tick(0.6)
   local stClair = placeNamed('St Clair')
-  T.check(d:buy('food', stClair.id), 'loaded')
+  T.check(d:takeJob(F.offer(d, stClair, 'food')), 'loaded')
   -- Short hops (under 2 km each) keep the load, so it can be carried close without driving.
   local away = location.distance(b.pose, stClair)
   while away > 2400 do b.pose = location.destination(b.pose, location.bearing(b.pose, stClair), 1500); d:tick(0.1); away = location.distance(b.pose, stClair) end

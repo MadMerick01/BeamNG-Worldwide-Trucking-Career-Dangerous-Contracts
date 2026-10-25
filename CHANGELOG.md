@@ -6,6 +6,15 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Deliveries are now jobs, and they pay much more.** You no longer buy cargo. Stop in a town and the Town tab lists 3 to 5 jobs, each showing one total pay. Press Take job and it fills every cargo slot your car has, so bigger cargo boxes and vehicles earn more. Deliver it to the drop-off town and you get the pay shown, in full. On the starter car a 5 km job pays about $1,700 to $2,400, and a 20 km job about six times as much.
+- Parts now take 1 slot and weigh 15 kg each, food 2 slots and 50 kg, and bricks 3 slots and 150 kg. Bricks need a cargo box: they don't fit in the boot.
+- Each job pays up to 30% more or less depending on how much the drop-off town wants that good. Green on the board pays above the usual, red below. Delivering the same thing to the same town again pays less for an hour or so. Every town always has at least one decent job.
+- Look out for gold: a town short of a good pays double until the end of the hour (shown on the Route tab with the time left), and about one job in 20 is a jackpot paying two to three times. Rough roads pay up to twice as much, and the bonuses add up.
+- Abandoning a job costs $1,000. So does teleporting without booking shipping while you have a job.
+- **Insurance after a serious crash.** The Garage tab now offers Claim insurance for $1,000: your car is fixed and put back on the nearest road, but the job and its cargo are lost. The normal repair is still there if you want to keep the job.
+- The delivery distance slider and the "how many" buttons are gone. Fuel and repair prices are the same.
+- Saves still work. If you saved while carrying cargo you bought, it is taken off when you load and the money you paid for it is given back.
+
 ## Build 18 · 25 Oct 2026
 
 - **The towns offering to pay your shipping are less remote.** The offer card in the Garage tab now picks from towns paying ×2.3 to ×3.0 (was ×2.7 to ×3.0), and only towns with at least one delivery within 7 km, so you are never sent somewhere with nothing close to drive to. Saves still work, and a refund you are already owed still pays out.

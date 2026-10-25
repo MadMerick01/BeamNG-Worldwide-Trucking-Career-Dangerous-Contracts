@@ -47,7 +47,7 @@ test('buttons only send fixed commands when Lua enabled them', () => {
     requestRepairQuote: ['repairQuoteAllowed', 'requestRepairQuote()'], repairVehicle: ['repairAllowed', 'repairVehicle()'],
     buyParts: ['buyPartsAllowed', 'buyParts()'], revertParts: ['revertPartsAllowed', 'revertParts()'],
     buyCar: ['buyCarAllowed', 'buyCar()'], revertCar: ['revertCarAllowed', 'revertCar()'],
-    newGame: ['newGameAllowed', 'newGame()'], dumpLoad: ['dumpAllowed', 'dumpLoad()']
+    newGame: ['newGameAllowed', 'newGame()'], abandonJob: ['abandonAllowed', 'abandonJob()']
   }
   for (const [name, [flag, body]] of Object.entries(buttons)) {
     const count = a.commands.length
@@ -70,64 +70,52 @@ test('paying a bill asks to confirm that total, and a new total asks again', () 
 })
 test('town buttons only send fixed commands, with plain ids, when Lua enabled them', () => {
   const a = app()
-  a.state({ state: 'READY', town: {} })
-  a.scope.buyLoad('food', 'gn1'); a.scope.sellLoad(); a.scope.refuel()
+  const job = { id: 'food_gn1', allowed: false }
+  a.state({ state: 'READY', town: { jobs: [job], delivery: { allowed: false } } })
+  a.scope.takeJob(job); a.scope.deliverJob(); a.scope.refuel()
   assert.equal(a.commands.length, 1)
-  a.state({ state: 'READY', town: { buyAllowed: true, sellAllowed: true, refuelAllowed: true } })
-  a.scope.buyLoad('food', "gn1') os.exit() --", 1); a.scope.buyLoad("x'", 'gn1', 1)
-  a.scope.buyLoad('food', 'gn1', 0); a.scope.buyLoad('food', 'gn1', 1.5); a.scope.buyLoad('food', 'gn1', '1) os.exit(')
-  assert.equal(a.commands.length, 1, 'odd ids and counts never sent')
-  a.scope.buyLoad('food', 'gn2153471', 3)
-  assert.equal(a.commands.at(-1), fixed("buyLoad('food', 'gn2153471', 3)"))
-  a.scope.sellLoad(); assert.equal(a.commands.at(-1), fixed('sellLoad()'))
+  a.state({ state: 'READY', town: { refuelAllowed: true, delivery: { allowed: true } } })
+  a.scope.takeJob({ id: "food_gn1') os.exit() --", allowed: true }); a.scope.takeJob(null)
+  assert.equal(a.commands.length, 1, 'odd ids never sent')
+  a.state({ state: 'READY', town: {}, load: { to: 'X' } })
+  a.scope.takeJob({ id: 'food_gn1', allowed: true })
+  assert.equal(a.commands.length, 1, 'not with a job on board')
+  a.state({ state: 'READY', town: { refuelAllowed: true, delivery: { allowed: true } } })
+  a.scope.takeJob({ id: 'food_gn2153471', allowed: true })
+  assert.equal(a.commands.at(-1), fixed("takeJob('food_gn2153471')"))
+  a.scope.deliverJob(); assert.equal(a.commands.at(-1), fixed('deliverJob()'))
   a.scope.refuel(); assert.equal(a.commands.at(-1), fixed('refuel()'))
 })
-test('the buy count starts at the most you can take and stays within 1 and that', () => {
+test('insurance is only claimed when Lua offers it', () => {
   const a = app()
-  const g = { id: 'parts', slots: 4, price: 100 }
-  assert.equal(a.scope.buyCount(g), 4, 'max by default')
-  a.scope.stepCount(g, -1); assert.equal(a.scope.buyCount(g), 3)
-  a.scope.setCount(1); a.scope.stepCount(g, -1); assert.equal(a.scope.buyCount(g), 1, 'never below 1')
-  a.scope.setCount(9); assert.equal(a.scope.buyCount(g), 4, 'never above what you can take')
-  assert.equal(a.scope.profit(g, { price: 130 }), 120, 'profit on that many')
-  assert.equal(a.scope.profit(g, { price: 130, freight: 20 }), 200, 'freight pay counts in the profit')
-  a.scope.setCount(2); assert.equal(a.scope.buyCount({ slots: 1 }), 1, 'shrinks when you can take fewer')
-  assert.equal(a.scope.buyCount({ slots: 0 }), 0, 'nothing when nothing fits')
-  a.scope.pickGood('food'); assert.equal(a.scope.buyCount(g), 4, 'a new good starts at max again')
+  a.state({ state: 'READY', insurance: { allowed: false } }); a.scope.claimInsurance()
+  assert.equal(a.commands.length, 1)
+  a.state({ state: 'READY', insurance: { allowed: true } }); a.scope.claimInsurance()
+  assert.equal(a.commands.at(-1), fixed('claimInsurance()'))
 })
-test('the delivery distance starts at the game\'s value and only sends whole km in range', () => {
+test('colours: green above the usual pay, red below, gold for a shortage or jackpot', () => {
   const a = app()
-  a.scope.range.km = 25; a.scope.setRange()
-  assert.equal(a.commands.length, 1, 'nothing sent outside a town')
-  a.scope.range.km = null
-  a.state({ state: 'READY', town: { range: { km: 10, min: 5, max: 50, step: 5 } } })
-  assert.equal(a.scope.range.km, 10, 'starts at the game value')
-  a.scope.range.km = 25; a.scope.setRange()
-  assert.equal(a.commands.at(-1), fixed('setDeliveryRange(25)'))
-  const sent = a.commands.length
-  for (const odd of [0, 55, 12.5, '20) os.exit(', null]) { a.scope.range.km = odd; a.scope.setRange() }
-  assert.equal(a.commands.length, sent, 'odd values never sent')
-  a.scope.range.km = '35'; a.scope.setRange()
-  assert.equal(a.commands.at(-1), fixed('setDeliveryRange(35)'), 'a string value from older AngularJS is parsed')
-  a.state({ state: 'READY', town: { range: { km: 35, min: 5, max: 50, step: 5 } } })
-  a.scope.stepRange(5); assert.equal(a.commands.at(-1), fixed('setDeliveryRange(40)'), '+ steps up')
-  a.scope.range.km = 50; a.scope.stepRange(5); assert.equal(a.commands.at(-1), fixed('setDeliveryRange(50)'), 'never past 50')
+  assert.equal(a.scope.dotColor('high'), '#6fcf97'); assert.equal(a.scope.dotColor('low'), '#eb5757')
+  assert.equal(a.scope.dotColor('sweet'), '#f2c94c'); assert.equal(a.scope.dotColor('normal'), '#7d8b88')
 })
-test('the picked good defaults to the best run, then the first good', () => {
+test('a serious crash opens the Garage tab, and a shortage marks the Route tab without opening it', () => {
   const a = app()
-  const goods = [{ id: 'parts' }, { id: 'food' }]
-  assert.equal(a.scope.pickedGood({ town: { goods }, bestRun: { goodId: 'food' } }).id, 'food')
-  assert.equal(a.scope.pickedGood({ town: { goods } }).id, 'parts')
-  a.scope.pickGood('food'); assert.equal(a.scope.pickedGood({ town: { goods } }).id, 'food')
-  assert.equal(a.scope.pickedGood({}), null)
+  a.state({ state: 'READY', arrived: true }); a.scope.setTab('tips')
+  a.state({ state: 'READY', arrived: true, shortages: [{ town: 'Katoomba' }] })
+  assert.equal(a.scope.tab, 'tips'); assert.equal(a.scope.tabAlert('route'), true)
+  a.state({ state: 'READY', arrived: true, insurance: { allowed: true } })
+  assert.equal(a.scope.tab, 'garage'); assert.equal(a.scope.tabAlert('garage'), true)
+  assert.equal(a.scope.tabAlert('town'), false)
+  a.state({ state: 'READY', arrived: true, town: { jobs: [{ id: 'x', allowed: true }] } })
+  assert.equal(a.scope.tabAlert('town'), true, 'a job to take marks the Town tab')
 })
 test('arriving in a town opens the Town tab once, and leaving goes back to Route', () => {
   const a = app()
   a.state({ state: 'READY', arrived: true })
   assert.equal(a.scope.tab, 'route')
-  a.state({ state: 'READY', arrived: true, town: { buyAllowed: true } })
+  a.state({ state: 'READY', arrived: true, town: { jobs: [] } })
   assert.equal(a.scope.tab, 'town')
-  a.scope.setTab('garage'); a.state({ state: 'READY', arrived: true, town: { buyAllowed: true } })
+  a.scope.setTab('garage'); a.state({ state: 'READY', arrived: true, town: { jobs: [] } })
   assert.equal(a.scope.tab, 'garage', 'the player can switch away')
   a.scope.setTab('town'); a.state({ state: 'READY', arrived: true })
   assert.equal(a.scope.tab, 'route')
@@ -167,7 +155,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
   }
   for (const id of ['route', 'town', 'garage', 'tips']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
   for (const action of ['cancelPay(); buyParts()', 'revertParts()', 'cancelPay(); buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
-    'newGame()', 'addTestMoney()', 'sellLoad()', 'refuel()', 'dumpLoad()', 'buyLoad(pickedGood(data).id, p.id, buyCount(pickedGood(data)))']) {
+    'newGame()', 'addTestMoney()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
   }
   assert.ok(html.includes('GeoNames'), 'GeoNames credit')

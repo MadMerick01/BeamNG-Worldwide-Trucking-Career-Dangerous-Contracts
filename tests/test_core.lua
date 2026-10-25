@@ -4,7 +4,7 @@ local P = require('earthFreight/persistence')
 local Core = require('earthFreight/core')
 local places = require('earthFreight/places')
 local goods = require('earthFreight/goods')
-local market = require('earthFreight/market')
+local jobs = require('earthFreight/jobs')
 local fuel = require('earthFreight/fuel')
 local location = require('earthFreight/location')
 local A, B = P.DIRECTORY .. 'save-a.json', P.DIRECTORY .. 'save-b.json'
@@ -58,132 +58,185 @@ do
     names = { burnside_cargo_load_box_5M_trunk = '5x Cargo Load Box M' } })
   T.eq(#starter.boxes, 5, 'five M boxes, holder not counted')
   T.eq(starter.slots, 20, 'five M boxes of slots')
-  local slots, kg = cargo.fits({ slots = 16, kg = 600 }, goods.get('bricks'))
-  T.eq(slots, 16, 'bricks fill a Cargo box L'); T.eq(kg, 400, 'their weight')
-  slots, kg = cargo.fits({ slots = 128, kg = 2500 }, goods.get('bricks'))
-  T.eq(slots, 100, 'bricks run out of weight before space in a Cargo box XL'); T.eq(kg, 2500, 'their weight')
+  local units, slots, kg = cargo.fits({ slots = 16, kg = 600 }, goods.get('bricks'))
+  T.eq(units, 4, 'bricks in a Cargo box L run out of weight first'); T.eq(slots, 12, 'in 12 slots'); T.eq(kg, 600, 'their weight')
+  units = cargo.fits({ slots = 128, kg = 2500 }, goods.get('parts'))
+  T.eq(units, 128, 'parts fill a Cargo box XL')
 end
 
--- The delivery loop: buy parcels in Penrith, the GPS goes to the drop-off, drive there, get paid.
+-- The job board: take a job in Penrith, the GPS goes to the drop-off, drive there, get paid in full.
 do
-  local c, io, a, g, w, f = F.controller()
+  local c, io, a, g, w = F.controller()
   g.fitted.box = 'pickup_cargo_load_box_m'
+  c.now = function() return 50000 end
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   local v = c:view()
   T.eq(v.here.name, 'Penrith', 'in Penrith'); T.check(v.town.stopped, 'stopped')
-  T.eq(v.region.name, 'Australia', 'the region is named'); T.near(v.region.boost, 1, 1e-9, 'flat Sydney pays 1x')
-  T.near(v.town.boost, 1, 1e-9, 'the town shows its boost')
+  T.eq(v.region.name, 'Australia', 'the region is named'); T.near(v.region.boost, 1, 1e-9, 'flat Sydney roads add nothing')
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
   T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 5000, 'distances are road estimates')
-  T.eq(v.town.destinations[1].name, 'Jordan Springs', 'Jordan Springs is the nearest drop-off')
-  T.eq(v.town.range.km, 5, 'drop-offs start around 5 km')
-  T.check(c:setDeliveryRange(23), 'distance set'); T.eq(c:view().town.range.km, 25, 'rounded to 5 km steps')
-  local far = c:view().town.destinations
-  T.check(far[1].distanceMetres > 20000 and far[#far].distanceMetres < 30000, 'drop-offs around 25 km')
-  c:setDeliveryRange(999); T.eq(c:view().town.range.km, 50, 'at most 50 km')
-  T.check(not c:setDeliveryRange('x'), 'odd values refused')
-  c:setDeliveryRange(5)
-  T.check(v.bestRun ~= nil and v.bestRun.from == 'Penrith', 'a best run is suggested')
-  T.check(v.town.buyAllowed, 'buying allowed')
-  local parts = goods.get('parts')
-  local price = market.price(penrith, parts)
-  T.check(c:buy('parts', stClair.id), 'bought a load')
-  T.eq(c.load.slots, 4, 'filled the box'); T.eq(c.load.kg, 4 * parts.kgPerSlot, 'real weight')
-  T.eq(c:view().balance, Core.STARTING_MONEY - 4 * price, 'paid for the load')
+  T.eq(#v.nearby[1].dots, 3, 'a dot per good')
+  T.check(#v.town.jobs >= 3 and #v.town.jobs <= 5, 'the board lists 3 to 5 jobs')
+  for _, j in ipairs(v.town.jobs) do
+    T.check(j.pay > 0 and j.allowed, j.id .. ' pays and can be taken')
+    T.check(j.distanceMetres <= 20000 + 1e-6, j.id .. ' within 20 km')
+  end
+  T.check(v.bestJob ~= nil and v.bestJob.from == 'Penrith', 'the best job is suggested')
+  local id = F.offer(c, stClair, 'food')
+  local job = c:board(penrith)[1]
+  local pay = jobs.quote(job, 2, c.needs, 50000).pay
+  T.eq(c:view().town.jobs[1].pay, pay, 'the board shows one total pay for the car')
+  T.eq(c:view().town.jobs[1].units, 2, 'food fills the box: 2 units of 2 slots')
+  local before = c:view().balance
+  T.check(c:takeJob(id), 'job taken')
+  T.eq(c:view().balance, before, 'nothing to pay')
+  T.eq(c.load.units, 2, 'filled the box'); T.eq(c.load.kg, 100, 'real weight'); T.eq(c.load.pay, pay, 'pay locked in')
   T.eq(a.gps[1].name, 'St Clair', 'GPS set to the drop-off'); T.near(a.gps[1].latitude, stClair.latitude, 1e-9, 'at its coordinates')
-  T.eq(w.weights[#w.weights].kg, 4 * parts.kgPerSlot, 'weight put on the car')
+  T.eq(w.weights[#w.weights].kg, 100, 'weight put on the car')
   T.eq(w.weights[#w.weights].parts[1], 'pickup_cargo_load_box_m', 'on the box')
-  T.check(not c:buy('food', stClair.id), 'one load at a time')
-  T.check(not c:sell(), 'cannot sell where it was bought')
-  T.check(c:view().town.sale.problem:find('somewhere else'), 'told why')
-  T.eq(c:view().load.to, 'St Clair', 'HUD shows the drop-off')
-  -- Moving makes trading wait until the car stops.
+  T.check(not c:takeJob(c:view().town.jobs[2].id), 'one job at a time')
+  T.check(not c:view().town.jobs[2].allowed, 'the board says so')
+  T.check(not c:deliver(), 'not delivered in Penrith'); T.check(c:view().tradeFeedback:find('St Clair'), 'told where it goes')
+  T.eq(c:view().load.to, 'St Clair', 'HUD shows the drop-off'); T.eq(c:view().load.pay, pay, 'and the pay')
+  -- A shortage there would not change the pay now.
+  c.now = function() return 50100 end
   F.drive(c, a, stClair)
   v = c:view()
   T.eq(v.here.name, 'St Clair', 'arrived at St Clair')
-  T.check(v.load.drivenKm > 9, 'distance driven with the load counted')
-  local payout = market.payout(stClair, parts, 4, penrith)
-  T.eq(v.town.sale.payout, payout, 'payout quoted'); T.check(v.town.sellAllowed, 'sell allowed')
-  T.check(c:sell(), 'delivered')
-  T.eq(c:view().balance, Core.STARTING_MONEY - 4 * price + payout, 'paid on delivery')
-  T.eq(c.load, nil, 'load gone'); T.eq(w.weights[#w.weights].kg, 0, 'weight taken off')
+  T.check(v.load.drivenKm > 9, 'distance driven with the job counted')
+  T.eq(v.town.delivery.pay, pay, 'the pay shown'); T.check(v.town.delivery.allowed, 'delivery allowed')
+  local need = jobs.need(stClair, goods.get('food'), c.needs, 50100)
+  T.check(c:deliver(), 'delivered')
+  T.eq(c:view().balance, before + pay, 'paid in full')
+  T.eq(c.load, nil, 'job done'); T.eq(w.weights[#w.weights].kg, 0, 'weight taken off')
   T.check(c:view().flash.title:find('DELIVERED'), 'delivery shown')
+  T.eq(c.profile.progression.jobsDone, 1, 'one job done')
+  T.check(jobs.need(stClair, goods.get('food'), c.needs, 50100) < need, 'St Clair wants food a little less')
   T.check(c:manualSave(), 'saved after the run')
+  T.eq(io.files[A].progression.jobsDone, 1, 'jobs done saved'); T.eq(io.files[A].needs[1].place, stClair.id, 'the delivery saved')
+  local r = F.controller({ io = io })
+  T.near(jobs.need(stClair, goods.get('food'), r.needs, 50100), jobs.need(stClair, goods.get('food'), c.needs, 50100), 1e-9, 'and loaded')
 end
 
--- Trading needs the car stopped in a place, and a delivery must be driven.
+-- Jobs need the car stopped in a town, fit the car, and must be driven.
 do
   local c, _, a = F.controller()
   c:tick(0.1)
-  T.check(not c:buy('parts', stClair.id), 'not before the car has stopped')
+  local id = F.offer(c, stClair, 'food')
+  T.check(not c:takeJob(id), 'not before the car has stopped')
   c:tick(0.6); c:tick(0.6)
-  T.check(not c:buy('parts', penrith.id), 'not to the place you are at')
-  T.check(not c:buy('grain', stClair.id), 'not bulk goods yet')
-  T.check(not c:buy('nope', stClair.id), 'not an unknown good')
-  -- Buying a chosen number of slots.
-  local food = goods.get('food')
-  T.check(not c:buy('food', stClair.id, 3), 'not more than fits in the boot')
-  T.check(c:view().tradeFeedback:find('Only room for 2'), 'told how many fit')
-  local before = c:view().balance
-  T.check(c:buy('food', stClair.id, 1), 'one parcel bought')
-  T.eq(c.load.slots, 1, 'one slot'); T.eq(c.load.kg, food.kgPerSlot, 'one slot of weight')
-  T.eq(c:view().balance, before - market.price(penrith, food), 'paid for one')
-  c.load = nil
-  c.profile.progression.balance = market.price(penrith, food)
-  T.check(not c:buy('food', stClair.id, 2), 'not more than the money covers')
-  T.check(c:view().tradeFeedback:find('Not enough money'), 'told it is the money')
-  T.eq(c:view().balance, market.price(penrith, food), 'nothing spent')
-  c.profile.progression.balance = before
-  T.check(c:buy('food', stClair.id), 'food bought for the boot')
-  -- A short hop (under 2 km) keeps the load but is not driving.
+  T.check(not c:takeJob('food_nowhere'), 'not a job that is not on the board')
+  local bricks = F.offer(c, stClair, 'bricks')
+  T.check(not c:takeJob(bricks), 'bricks do not fit the boot')
+  T.check(c:view().tradeFeedback:find('3 slots'), 'told how much room bricks need')
+  T.check(not c:view().town.jobs[1].allowed, 'the board greys it out')
+  T.check(c:takeJob(id), 'food fits the boot'); T.eq(c.load.units, 1, 'one unit of food')
+  -- A short hop (under 2 km) keeps the job but is not driving.
   a.pose = location.destination(F.PENRITH, 90, 1500); c:tick(0.1)
-  T.check(c.load ~= nil, 'short hop keeps the load'); T.eq(c.load.drivenKm, 0, 'and does not count')
+  T.check(c.load ~= nil, 'short hop keeps the job'); T.eq(c.load.drivenKm, 0, 'and does not count')
+  local balance = c:view().balance
   c.load.drivenKm = 1; a.pose = F.copy(stClair); c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  T.check(c.load == nil, 'a long teleport cancels the load')
-  T.eq(c:view().flash.kind, 'cancelled', 'player told the load was lost')
+  T.check(c.load == nil, 'a long teleport cancels the job')
+  T.eq(c:view().balance, balance - jobs.ABANDON_FEE, 'for the abandon fee')
+  T.eq(c:view().flash.kind, 'cancelled', 'player told the job was lost')
   T.check(c:view().stranded ~= nil, 'an unbooked teleport strands the player')
-  T.check(c:tradeProblem(c:here()):find('without booking shipping'), 'and stops trading')
+  T.check(c:tradeProblem(c:here()):find('without booking shipping'), 'and stops jobs')
   -- Teleporting back to where they left from frees them.
   a.pose = location.destination(F.PENRITH, 90, 1500); c:tick(0.1)
   T.eq(c.stranded, nil, 'back where they left from'); T.eq(c:view().flash.title, 'BACK ON THE ROAD', 'told so')
   a.pose = F.copy(stClair); c.stranded = nil; c.odometer:reset(); c.lastDriven = nil; c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  -- A load not driven far enough does not sell.
-  c:buy('food', penrith.id); c.load.from = penrith.id; c.load.drivenKm = 2
-  T.check(not c:sell(), 'not driven far enough'); T.check(c:view().town.sale.problem:find('Drive it here'), 'told to drive')
-  c.load.drivenKm = 9; T.check(c:sell(), 'sells once driven')
-  T.check(c:buy('food', penrith.id), 'bought again')
-  T.check(not c:dumpLoad(), 'dump asks first'); T.check(c:view().dumpArmed, 'armed')
-  T.check(c:dumpLoad(), 'dumped'); T.eq(c.load, nil, 'load gone')
+  -- A job not driven far enough does not deliver.
+  local back = F.offer(c, penrith, 'parts')
+  T.check(c:takeJob(back), 'job to Penrith'); a.pose = F.copy(F.PENRITH); c.odometer:reset(); c.lastDriven = nil
+  c:tick(0.1); c:tick(0.6); c:tick(0.6); c.load.drivenKm = 2
+  T.check(not c:deliver(), 'not driven far enough'); T.check(c:view().town.delivery.problem:find('Drive it here'), 'told to drive')
+  c.load.drivenKm = 9; T.check(c:deliver(), 'delivers once driven')
+  -- Abandoning asks first, then costs $1,000, or all the money when there is less.
+  c:takeJob(F.offer(c, stClair, 'parts'))
+  balance = c:view().balance
+  T.check(not c:abandonJob(), 'abandon asks first'); T.check(c:view().abandonArmed, 'armed')
+  T.check(c:abandonJob(), 'abandoned'); T.eq(c.load, nil, 'job gone')
+  T.eq(c:view().balance, balance - 1000, 'it cost $1,000')
+  c:takeJob(F.offer(c, stClair, 'parts')); c.profile.progression.balance = 400
+  c:abandonJob(); T.check(c:abandonJob(), 'abandoned with little money'); T.eq(c:view().balance, 0, 'took what there was')
 end
 
 -- Rough driving damages the car, never the cargo: a delivery pays in full.
 do
   local c, _, a, g = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  c:buy('parts', stClair.id)
+  c:takeJob(F.offer(c, stClair, 'parts'))
+  local pay = c.load.pay
   g.damage = 600; c:tick(0.1); g.damage = 5000; c:tick(0.1)
-  T.eq(c.load.condition, nil, 'the load has no condition')
   F.drive(c, a, stClair)
-  T.eq(c:view().town.sale.payout, market.payout(stClair, goods.get('parts'), c.load.slots, penrith), 'paid in full after damage')
-  T.check(c:sell(), 'delivered'); T.check(not c:view().flash.text:find('intact', 1, true), 'no cargo condition in the message')
+  T.eq(c:view().town.delivery.pay, pay, 'paid in full after damage')
+  T.eq(c:view().insurance, nil, 'no insurance for a dent')
+  T.check(c:deliver(), 'delivered')
 end
 
--- Saves keep the load, and an unknown good in a save is dropped.
+-- Saves keep the job; an unknown good is dropped; cargo bought before the job board is refunded.
 do
   local c, io = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  c:buy('food', stClair.id)
-  T.check(c:manualSave(), 'saved with a load'); T.eq(io.files[A].load.good, 'food', 'load saved')
+  c:takeJob(F.offer(c, stClair, 'food'))
+  T.check(c:manualSave(), 'saved with a job'); T.eq(io.files[A].load.good, 'food', 'job saved'); T.check(io.files[A].load.pay > 0, 'with its pay')
   local r = F.controller({ io = io })
-  T.eq(r.load.good, 'food', 'load restored'); T.eq(r.load.to, stClair.id, 'with its drop-off')
+  T.eq(r.load.good, 'food', 'job restored'); T.eq(r.load.to, stClair.id, 'with its drop-off'); T.eq(r.load.pay, c.load.pay, 'and its pay')
   io.files[A].load.good = 'unobtainium'
   r = F.controller({ io = io })
   T.eq(r.load, nil, 'unknown good dropped')
-  local bad = F.copy(io.files[A]); bad.load = { good = 'food', slots = 0, paid = 1, from = 'x', condition = 1 }
-  T.eq(P.validate(bad), nil, 'a load with no slots is refused')
+  local bad = F.copy(io.files[A]); bad.load = { good = 'food', slots = 0, pay = 1, from = 'x' }
+  T.eq(P.validate(bad), nil, 'a job with no slots is refused')
+  bad.load = { good = 'food', slots = 1, from = 'x' }
+  T.eq(P.validate(bad), nil, 'a job with no pay is refused')
   bad.load = { good = 'food', slots = 1, paid = 1, from = 'x', condition = 0.4 }
   T.check(P.validate(bad) ~= nil, 'an old save with a cargo condition still loads')
   T.eq(P.validate(bad).load.condition, nil, 'and the condition is dropped')
+  -- An old save with bought cargo on board: the cargo is taken off and its money given back.
+  local old = F.copy(io.files[A])
+  old.load = { good = 'food', slots = 2, kg = 16, paid = 120, from = penrith.id, to = stClair.id, drivenKm = 1 }
+  old.progression.balance = 500
+  local o = F.controller({ io = F.io({ [F.CONFIG] = F.config(), [A] = old }) })
+  T.eq(o.load, nil, 'the bought cargo is taken off')
+  T.eq(o:view().balance, 620, 'its money is refunded'); T.eq(o:view().unsavedBalance, 120, 'and Save keeps it')
+  local oa = F.adapter(F.copy(old.resume)); o.adapter = oa; o:tick(0.1)
+  T.check(o:view().flash.text:find('refunded', 1, true), 'the player is told')
+end
+
+-- Insurance after a serious crash: the car back on the road and fixed for $1,000, the job lost.
+do
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c:takeJob(F.offer(c, stClair, 'food'))
+  g.damage = 14000; c:tick(0.1)
+  T.eq(c:view().insurance, nil, 'not for a moderate crash')
+  T.check(not c:claimInsurance(), 'refused')
+  g.damage = 20000; c:tick(0.1)
+  local ins = c:view().insurance
+  T.check(ins ~= nil and ins.allowed, 'offered after a serious crash'); T.eq(ins.fee, 1000, 'for $1,000')
+  T.check(ins.loseJob, 'the job would be lost'); T.check(ins.repair > 0, 'the repair is shown to compare')
+  local balance = c:view().balance
+  T.check(not c:claimInsurance(), 'asks first'); T.check(c:view().insurance.armed, 'armed')
+  T.check(c:claimInsurance(), 'claimed'); T.eq(g.roadTrips, 1, 'the car is sent back to the road')
+  T.check(c:view().insurance.pending, 'towing'); T.eq(g.repairs, 0, 'fixed once it lands')
+  -- The move back to the road is a jump, but not a teleport.
+  a.pose = location.destination(F.PENRITH, 0, 3000); c:tick(0.5); c:tick(0.5); c:tick(0.6)
+  T.eq(g.repairs, 1, 'fixed'); T.eq(c.stranded, nil, 'not stranded')
+  T.eq(c:view().balance, balance - 1000, 'charged $1,000'); T.eq(c.load, nil, 'the job is lost')
+  T.eq(c:view().flash.title, 'INSURANCE CLAIMED', 'told so')
+  c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
+  T.eq(c:view().insurance, nil, 'no more offer once fixed')
+  -- Where the game cannot find a road the car is fixed where it is, and a short balance is all taken.
+  g.noRoad = true; g.damage = 40000; c.profile.progression.balance = 300; c:tick(0.1)
+  c:claimInsurance(); T.check(c:claimInsurance(), 'claimed again')
+  T.eq(g.repairs, 2, 'fixed straight away'); T.eq(c:view().balance, 0, 'took what there was')
+  -- The normal repair keeps the job.
+  c:vehicleSpawned(); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 50000
+  a.pose = F.copy(F.PENRITH); c.odometer:reset(); c.lastDriven = nil; c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a new job')
+  g.damage = 30000; c:tick(0.1)
+  c:requestRepairQuote(); T.check(c:repairVehicle(), 'repaired instead'); T.check(c.load ~= nil, 'the job is kept')
 end
 
 -- Fuel: read from the car, Refuel fills it in a town, charged for what went in.
@@ -237,12 +290,12 @@ do
   local a = F.adapter(); a.gpsMissing = true
   local c = F.controller({ adapter = a })
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  T.check(c:buy('food', stClair.id), 'bought without a GPS'); T.check(c:view().tradeFeedback:find('Set the GPS yourself'), 'told to set it')
+  T.check(c:takeJob(F.offer(c, stClair, 'food')), 'job taken without a GPS'); T.check(c:view().tradeFeedback:find('Set the GPS yourself'), 'told to set it')
   local cfg = F.config(); cfg.autoGps = false
   local a2 = F.adapter()
   local c2 = F.controller({ adapter = a2, io = F.io({ [F.CONFIG] = cfg }) })
   c2:tick(0.1); c2:tick(0.6); c2:tick(0.6)
-  T.check(c2:buy('food', stClair.id), 'bought with the GPS turned off'); T.eq(#a2.gps, 0, 'GPS left alone')
+  T.check(c2:takeJob(F.offer(c2, stClair, 'food')), 'job taken with the GPS turned off'); T.eq(#a2.gps, 0, 'GPS left alone')
 end
 
 -- Garage: parts bills (copied from Enduro), and a cargo box is a part like any other.
@@ -253,10 +306,11 @@ do
   local bill = c:view().partsChange
   T.eq(bill.partsCost, 600, 'box billed at its part value'); T.eq(bill.added[1].name, 'Cargo Load Box M', 'by its name')
   T.eq(c:view().space.slots, 2, 'space stays the boot until it is paid for')
-  T.check(not c:buy('food', stClair.id), 'no trading with a bill open')
+  local food = F.offer(c, stClair, 'food')
+  T.check(not c:takeJob(food), 'no jobs with a bill open')
   T.check(c:buyParts(), 'box bought'); T.eq(c:view().space.slots, 4, 'box space now usable')
   c:tick(0.6); c:tick(0.6)
-  T.check(c:buy('parts', stClair.id), 'loaded the box')
+  T.check(c:takeJob(food), 'filled the box'); T.eq(c.load.units, 2, 'two food in the box')
   g:fit('box', ''); c:vehicleSpawned(); c:tick(0.1)
   T.check(not c:view().buyPartsAllowed, 'cannot keep a change the load no longer fits')
   T.check(not c:buyParts(), 'refused'); T.check(c:view().partsFeedback:find('would not fit'), 'told why')
@@ -265,8 +319,8 @@ do
   -- A car picked in the selector is billed, but not while carrying a load.
   g.vehicleId, g.model, a.vehicle = 2, 'sport', { id = 2, model = 'sport' }; c:tick(0.1)
   T.check(c:view().carChange ~= nil, 'car billed'); T.check(c:view().carChange.oldName ~= nil, 'names the car traded in')
-  T.check(c:view().carChange.repair ~= nil, 'shows what its damage took off the trade-in'); T.check(not c:view().buyCarAllowed, 'not with a load on board')
-  T.check(not c:buyCar(), 'refused with a load')
+  T.check(c:view().carChange.repair ~= nil, 'shows what its damage took off the trade-in'); T.check(not c:view().buyCarAllowed, 'not with a job on board')
+  T.check(not c:buyCar(), 'refused with a job')
   T.eq(Core.STARTER_MODEL, 'burnside', 'starter model')
 end
 
@@ -334,8 +388,8 @@ do
   T.eq(v.shipping.destinations[1].here, true, 'Penrith is where you are')
   local fee = shipping.fee(F.PENRITH, coroico)
   T.check(fee > 100 and fee < 500, 'shipping is cheap: ' .. fee)
-  c:buy('food', stClair.id)
-  T.check(not c:bookShipping('coroico'), 'not with a load on board'); T.check(c:view().shipping.feedback:find('cargo cannot'), 'told why')
+  c:takeJob(F.offer(c, stClair, 'food'))
+  T.check(not c:bookShipping('coroico'), 'not with a job on board'); T.check(c:view().shipping.feedback:find('cargo cannot'), 'told why')
   c.load = nil
   T.check(not c:bookShipping('penrith'), 'not to where you are')
   T.check(not c:bookShipping('nowhere'), 'not to an unknown place')
@@ -351,7 +405,7 @@ do
   a.valid = true; a.pose = location.destination(coroico, 0, 1000); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.eq(c.booking, nil, 'booking used up'); T.eq(c.stranded, nil, 'not stranded')
   T.eq(c:view().flash.title, 'SHIPPED TO COROICO', 'told they arrived')
-  T.eq(c:view().region.name, 'Death Road', 'in the Death Road region'); T.check(c:view().region.boost >= 2.7, 'paying near 3x')
+  T.eq(c:view().region.name, 'Death Road', 'in the Death Road region'); T.check(c:view().region.boost >= 1.85, 'rough roads pay nearly double')
   T.check(c:view().saveAllowed, 'Save works again')
   -- Teleporting on without a booking strands you, and the coordinates to go back are shown.
   a.pose = shipping.get('bormio'); c:tick(0.1); c:tick(0.6)
@@ -404,7 +458,7 @@ do
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   local offer = c:view().shipping.offer
   T.eq(offer.name, shipping.offer(1000, hardest).name, 'the offer is on the HUD'); T.eq(offer.secondsLeft, 200, 'with its time left')
-  T.check(offer.boost >= 2.3, 'from the hardest places'); T.check(offer.allowed, 'bookable')
+  T.check(offer.boost >= 1.65, 'from the hardest places'); T.check(offer.allowed, 'bookable')
   local before = c:view().balance
   T.check(c:bookOffer(), 'offer booked'); T.eq(c:view().balance, before - offer.fee, 'the fee is paid now')
   T.check(c:view().shipping.booking.offer, 'the booking is the offer')
@@ -420,13 +474,13 @@ do
   local here = c:here()
   T.check(here ~= nil, 'arrived in ' .. offer.name)
   local nearby = places.nearest(here, 1, here.id)[1].place
-  T.check(c:buy('food', nearby.id, 1), 'a load bought')
+  T.check(c:takeJob(F.offer(c, nearby, 'food')), 'a job taken')
   c.load.from, c.load.drivenKm = here.id, 1000
   a.pose = { latitude = nearby.latitude, longitude = nearby.longitude }; c.odometer:reset(); c.lastDriven = nil
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   local balance = c:view().balance
-  local payout = c:saleQuote(c:here()).payout
-  T.check(c:sell(), 'delivered')
+  local payout = c.load.pay
+  T.check(c:deliver(), 'delivered')
   T.eq(c:view().balance, balance + payout + offer.fee, 'the shipping is paid back')
   T.check(c:view().flash.text:find('paid back'), 'told so'); T.eq(c.offer, nil, 'only once')
 end

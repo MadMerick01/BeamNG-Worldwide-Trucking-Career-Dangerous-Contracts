@@ -31,6 +31,12 @@ local edits = {
   function(s) s.load={ good='food', slots=1, paid=1, condition=1 } end,
   function(s) s.load={ good='food', slots=1, paid=1, from='gn1', to={}, condition=1 } end,
   function(s) s.load={ good='food', slots=1, kg=-5, paid=1, from='gn1', condition=1 } end,
+  function(s) s.load={ good='food', slots=1, from='gn1', to='gn2' } end,
+  function(s) s.load={ good='food', slots=1, pay=1.5, from='gn1', to='gn2' } end,
+  function(s) s.load={ good='food', slots=1, units=0, pay=100, from='gn1', to='gn2' } end,
+  function(s) s.progression.jobsDone=-1 end, function(s) s.needs='x' end,
+  function(s) s.needs={ { place='gn1', good='food', drop=0/0, at=1 } } end,
+  function(s) s.needs={ { place='gn1', drop=0.1, at=1 } } end,
 }
 for _, edit in ipairs(edits) do local s=F.save(); edit(s); T.eq(P.validate(s),nil,'invalid save rejected') end
 -- A load on board is kept with its places and distance driven.
@@ -41,6 +47,14 @@ do
   T.eq(v.load.drivenKm,3.5,'distance kept'); T.check(v.load~=s.load,'load copied')
   T.eq(P.validate(F.save()).load,nil,'no load is fine')
   s=F.save(); s.vehicle.fuelLitres=31.5; T.eq(P.validate(s).vehicle.fuelLitres,31.5,'fuel kept')
+end
+-- A job on board keeps its pay, and recent deliveries are kept.
+do
+  local s=F.save(); s.load={ good='food', units=10, slots=20, kg=500, pay=2000, from='gn1', to='gn2', drivenKm=1 }
+  s.progression.jobsDone=4; s.needs={ { place='gn2', good='food', drop=0.15, at=1761400000 } }
+  local v=P.validate(s)
+  T.eq(v.load.pay,2000,'pay kept'); T.eq(v.load.units,10,'units kept'); T.eq(v.progression.jobsDone,4,'jobs done kept')
+  T.eq(v.needs[1].place,'gn2','recent delivery kept'); T.eq(v.needs[1].drop,0.15,'with how much it took')
 end
 -- A saved car config is kept as plain data.
 do

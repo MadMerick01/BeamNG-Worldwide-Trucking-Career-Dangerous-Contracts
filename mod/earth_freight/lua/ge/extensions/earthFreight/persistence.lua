@@ -50,12 +50,14 @@ local function plainConfig(config)
 end
 M.plainConfig = plainConfig
 
--- The money and distance driven, and where the last puncture was. Returns a clean copy, or nil.
+-- The money and distance driven, where the last puncture was and how many jobs are done (the job
+-- boards are seeded from it). Returns a clean copy, or nil.
 local function progression(p)
   if type(p) ~= 'table' or not integer(p.balance, 0) or not location.finite(p.totalDistanceKm)
       or p.totalDistanceKm < 0 or p.totalDistanceKm > MAX_INTEGER then return nil end
   if not amount(p.lastPunctureKm) then return nil end
-  return { balance = p.balance, totalDistanceKm = p.totalDistanceKm, lastPunctureKm = p.lastPunctureKm }
+  if p.jobsDone ~= nil and not integer(p.jobsDone, 0) then return nil end
+  return { balance = p.balance, totalDistanceKm = p.totalDistanceKm, lastPunctureKm = p.lastPunctureKm, jobsDone = p.jobsDone }
 end
 
 -- A saved position, with the altitude and heading when present. Returns a clean copy, or nil and why.
@@ -73,16 +75,35 @@ local function pose(r)
   return out
 end
 
--- The load on board: which good, how many slots and kilograms, what was paid, the place it was
--- bought at and the place it is going to (place ids) and the distance driven with it. Saves from
--- before cargo damage was removed carry a condition, which is ignored. The controller drops a load
--- whose good or places it does not know.
+-- The job on board: which good, how many units, slots and kilograms, what it pays, the place it
+-- was taken at and the place it goes to (place ids) and the distance driven with it. Saves from
+-- before the job board carry bought cargo instead: no pay, but what was paid for it, which the
+-- controller refunds. Saves from before cargo damage was removed carry a condition, which is
+-- ignored. The controller drops a job whose good or places it does not know.
 local function load(l)
   if type(l) ~= 'table' or type(l.good) ~= 'string' or not optionalString(l.good) or not integer(l.slots, 1)
-      or not amount(l.kg) or not integer(l.paid, 0) or type(l.from) ~= 'string' or not optionalString(l.from)
+      or not amount(l.kg) or type(l.from) ~= 'string' or not optionalString(l.from)
       or not optionalString(l.to) or not amount(l.drivenKm) then return nil end
-  return { good = l.good, slots = l.slots, kg = l.kg or 0, paid = l.paid, from = l.from, to = l.to,
-    drivenKm = l.drivenKm or 0 }
+  if (l.pay ~= nil and not integer(l.pay, 0)) or (l.paid ~= nil and not integer(l.paid, 0))
+      or (l.pay == nil and l.paid == nil) or (l.units ~= nil and not integer(l.units, 1)) then return nil end
+  return { good = l.good, units = l.units, slots = l.slots, kg = l.kg or 0, pay = l.pay, paid = l.paid,
+    from = l.from, to = l.to, drivenKm = l.drivenKm or 0 }
+end
+
+-- Recent deliveries, which lower what a town pays for that good for a while: a list of
+-- { place, good, drop, at } (at in wall-clock seconds). Returns a clean copy, or nil.
+M.MAX_NEEDS = 500
+local function needs(list)
+  if type(list) ~= 'table' or #list > M.MAX_NEEDS then return nil end
+  local out = {}
+  for i = 1, #list do
+    local n = list[i]
+    if type(n) ~= 'table' or type(n.place) ~= 'string' or not optionalString(n.place) or type(n.good) ~= 'string'
+        or not optionalString(n.good) or not location.finite(n.drop) or n.drop < 0 or n.drop > 10
+        or not location.finite(n.at) then return nil end
+    out[i] = { place = n.place, good = n.good, drop = n.drop, at = n.at }
+  end
+  return out
 end
 
 function M.validate(s)
@@ -119,12 +140,17 @@ function M.validate(s)
     cargo = load(s.load)
     if not cargo then return nil, 'invalid_load' end
   end
+  local recent = nil
+  if s.needs ~= nil then
+    recent = needs(s.needs)
+    if not recent then return nil, 'invalid_needs' end
+  end
   return {
     schemaVersion = M.SCHEMA, profileId = 'default', generation = s.generation,
     base = location.copy(s.base), resume = resume, progression = p,
     vehicle = { model = s.vehicle.model, configuration = s.vehicle.configuration, config = vehicleConfig,
       damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres },
-    atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName,
+    atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent,
   }
 end
 
@@ -189,7 +215,7 @@ function M.new(io)
       generation = self.generation + 1, base = candidate.base, resume = candidate.resume,
       progression = candidate.progression, vehicle = candidate.vehicle,
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
-      playerName = candidate.playerName,
+      playerName = candidate.playerName, needs = candidate.needs,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end
