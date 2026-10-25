@@ -22,7 +22,15 @@ function app() {
   })
   definition.link(scope)
   const state = data => handlers.EarthFreightState({}, data)
-  return { scope, commands, handlers, timers, state, advance: ms => { clock += ms; for (const tick of timers.values()) tick() } }
+  const a = { scope, commands, handlers, timers, state, advance: ms => { clock += ms; for (const tick of timers.values()) tick() } }
+  // BeamNG rebuilds the app when a menu closes: the old one is destroyed and a new one linked.
+  a.remount = () => {
+    handlers.$destroy()
+    a.scope = { $on: (name, fn) => { handlers[name] = fn }, $evalAsync: fn => fn() }
+    definition.link(a.scope)
+    return a
+  }
+  return a
 }
 
 test('app mounts and resynchronizes', () => {
@@ -181,6 +189,23 @@ test('the start page opens once on a new game, and again after the next new game
   b.scope.openIntro()
   assert.equal(b.scope.intro.open, true, 'opens from the Profile button')
   assert.ok(html.includes('ng-click="openIntro()"'), 'Profile button and Tips link')
+})
+test('closing the parts menu or the map keeps the tab and does not reopen the start page', () => {
+  const a = app()
+  a.state({ state: 'READY', mode: 'start', playerName: 'Sam' })
+  a.scope.closeIntro(); a.scope.setTab('garage')
+  a.remount(); a.state({ state: 'READY', mode: 'start', playerName: 'Sam' })
+  assert.equal(a.scope.intro.open, false, 'start page stays closed')
+  assert.equal(a.scope.tab, 'garage', 'same tab as before')
+  a.state({ state: 'READY', mode: 'start', town: {} }); a.scope.setTab('tips')
+  a.remount(); a.state({ state: 'READY', mode: 'start', town: {} })
+  assert.equal(a.scope.tab, 'tips', 'a town already there does not open the Town tab again')
+  a.scope.openIntro(); a.scope.intro.name = 'Al'
+  a.remount(); a.state({ state: 'READY', mode: 'start', town: {} })
+  assert.equal(a.scope.intro.open, true, 'a start page left open stays open')
+  assert.equal(a.scope.intro.name, 'Al', 'with what was typed')
+  a.scope.closeIntro(); a.state({ state: 'READY', mode: 'resume' }); a.remount(); a.state({ state: 'READY', mode: 'start' })
+  assert.equal(a.scope.intro.open, true, 'a new game still opens it')
 })
 test('the name is cleaned, kept short and only sent when it changed', () => {
   const a = app()

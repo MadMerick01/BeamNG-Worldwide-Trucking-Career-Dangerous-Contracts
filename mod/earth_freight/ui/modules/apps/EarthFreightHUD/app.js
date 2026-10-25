@@ -1,5 +1,11 @@
 /* global angular, bngApi */
 angular.module('beamng.apps').directive('earthFreightHud', [function () {
+  // What the player was looking at. BeamNG rebuilds the app each time the parts menu or the map
+  // closes, so this is kept out here and the new app carries on where the old one was.
+  var kept = {
+    tab: 'route', introShown: false, intro: { open: false, name: '' }, picked: { good: null, count: null },
+    ship: { query: '', coords: '', error: null }, last: null
+  }
   return {
     templateUrl: '/ui/modules/apps/EarthFreightHUD/app.html',
     replace: true,
@@ -16,8 +22,8 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
         { id: 'tips', label: 'Tips' }]
-      scope.tab = 'route'
-      scope.setTab = function (id) { scope.tab = id }
+      scope.tab = kept.tab
+      scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
       var alerts = {
         route: function (d) { return !!d.resume || !!d.stranded },
@@ -32,16 +38,15 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       ]
       var follow = function (previous, next) {
         // The start page opens once on a new game, until the player has been somewhere.
-        if (next.mode === 'start' && !introShown) { introShown = true; scope.openIntro(next) }
-        if (next.mode !== 'start') introShown = false
+        if (next.mode === 'start' && !kept.introShown) { kept.introShown = true; scope.openIntro(next) }
+        if (next.mode !== 'start') kept.introShown = false
         for (var i = 0; i < autoOpen.length; i++) {
-          if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) { scope.tab = autoOpen[i][0]; return }
+          if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) { scope.setTab(autoOpen[i][0]); return }
         }
-        if (scope.tab === 'town' && !next.town) scope.tab = 'route'
+        if (scope.tab === 'town' && !next.town) scope.setTab('route')
       }
       // The start page: the player's name and how to play. It covers the rest of the HUD while open.
-      var introShown = false
-      scope.intro = { open: false, name: '' }
+      scope.intro = kept.intro
       scope.openIntro = function (d) {
         scope.intro.name = ((d || scope.data || {}).playerName) || ''
         scope.intro.open = true
@@ -68,7 +73,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       }
       // The good picked on the Town tab; its drop-offs are listed under it.
       // count is how many slots to buy; null means as many as fit and are affordable.
-      scope.picked = { good: null, count: null }
+      scope.picked = kept.picked
       scope.pickGood = function (id) { scope.picked.good = id; scope.picked.count = null }
       scope.buyCount = function (g) {
         if (!g || !(g.slots >= 1)) return 0
@@ -146,7 +151,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")
       }
       // Shipping anywhere: a town by name, or coordinates pasted from a map.
-      scope.ship = { query: '', coords: '', error: null }
+      scope.ship = kept.ship
       scope.searchShipping = function () {
         var q = String(scope.ship.query || '').replace(/[^A-Za-z0-9 .-]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)
         if (scope.data.shipping && q.length >= 2) core("searchShipping('" + q + "')")
@@ -201,7 +206,9 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         lastMessage = Date.now()
         scope.$evalAsync(function () {
           if (disposed) return
-          follow(scope.data || {}, data)
+          // Compared with the last state any app saw, so a rebuilt app does not reopen a tab.
+          follow(kept.last || {}, data)
+          kept.last = data
           if (scope.range.km === null && data.town && data.town.range) scope.range.km = data.town.range.km
           scope.data = data
         })
