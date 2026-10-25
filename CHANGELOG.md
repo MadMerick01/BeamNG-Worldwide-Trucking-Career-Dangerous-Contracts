@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 14 · 25 Oct 2026
+
 - **The Garage's "Change parts or buy a car" box is tidier.** It no longer lists keyboard keys, and the Cargo line now gives one short total, such as "Cargo: 5 boxes · 20 slots · 1,000 kg max", instead of naming every box. Saves still work.
 
 ## Build 13 · 25 Oct 2026
