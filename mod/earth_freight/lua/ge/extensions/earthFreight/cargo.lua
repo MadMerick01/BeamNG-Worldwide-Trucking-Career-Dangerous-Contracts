@@ -20,8 +20,10 @@ M.BOXES = {
 
 -- The box a fitted part is, or nil. A box's part name or display name mentions cargo and a box
 -- (internal names contain cargo_load_; the parts menu calls them "Cargo Load Box S" and so on),
--- and ends in its size.
+-- and ends in its size. A holder that seats several boxes (burnside_cargo_load_box_5M_trunk) is
+-- not a box itself: its boxes are fitted as parts of their own and counted one by one.
 function M.box(partName, displayName)
+  if tostring(partName or ''):lower():find('box_%d') then return nil end
   local text = (tostring(partName or '') .. ' ' .. tostring(displayName or '')):lower()
   if not text:find('cargo', 1, true) or not (text:find('box', 1, true) or text:find('parcel', 1, true)) then return nil end
   for _, box in ipairs(M.BOXES) do

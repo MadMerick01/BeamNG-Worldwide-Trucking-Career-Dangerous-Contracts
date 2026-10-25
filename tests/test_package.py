@@ -50,15 +50,15 @@ class PackageTest(unittest.TestCase):
     def test_starter_car_config_is_packaged(self):
         prefix = 'vehicles/burnside/'
         with ZipFile(self.output) as archive:
-            config = json.loads(archive.read(prefix + 'earthfreight_starter.pc'))
-            info = json.loads(archive.read(prefix + 'info_earthfreight_starter.json'))
-            thumbnail = archive.read(prefix + 'earthfreight_starter.jpg')
+            config = json.loads(archive.read(prefix + 'earth_freight_starter.pc'))
+            info = json.loads(archive.read(prefix + 'info_earth_freight_starter.json'))
+            thumbnail = archive.read(prefix + 'earth_freight_starter.jpg')
             workshop = archive.read('lua/ge/extensions/earthFreight/workshop.lua')
         self.assertEqual(config['model'], 'burnside')
         self.assertIsInstance(config['parts'], dict)
-        self.assertEqual(info['Configuration'], 'Earth Freight Starter')
+        self.assertEqual(info['Configuration'], 'Earth_Freight_Starter')
         self.assertEqual(thumbnail[:3], b'\xff\xd8\xff')
-        self.assertIn(b"'" + (prefix + 'earthfreight_starter.pc').encode() + b"'", workshop)
+        self.assertIn(b"'" + (prefix + 'earth_freight_starter.pc').encode() + b"'", workshop)
 
     def test_png_is_complete_with_valid_checksums(self):
         with ZipFile(self.output) as archive:

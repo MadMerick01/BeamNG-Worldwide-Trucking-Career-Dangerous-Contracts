@@ -1,0 +1,32 @@
+{
+  "Body Style":"Sedan",
+  "Config Type":"Factory",
+  "Configuration":"Earth_Freight_Starter",
+  "InsuranceClass":"dailyDriver",
+  "Population":600,
+  "Value":3500,
+  "Years":{
+    "max":1953,
+    "min":1952
+  },
+  "defaultMultiPaintSetup":{
+    "name":"earth_freight_starter Multi Paint Setup",
+    "paint1":{
+      "baseColor":[
+        1,
+        1,
+        1,
+        1.2000000476837
+      ],
+      "class":"hidden",
+      "clearcoat":0.800000012,
+      "clearcoatRoughness":0.0700000003,
+      "metallic":0.800000012,
+      "name":"earth_freight_starter Paint 1",
+      "roughness":0.649999976
+    },
+    "paint2":"Scarlet Red",
+    "paint3":"Salmon"
+  },
+  "vehicleSelectorSubGroup":"vehiclesData.bluebuck.291a_2door.vehicleSelectorSubGroup"
+}

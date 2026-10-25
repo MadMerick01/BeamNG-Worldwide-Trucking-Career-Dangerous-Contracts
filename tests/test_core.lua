@@ -50,6 +50,14 @@ do
   T.eq(cargo.box('x', 'Cargo Load Box S').slots, 1, 'matched on the display name')
   T.eq(cargo.box('pickup_bed_cargo_net'), nil, 'a part without a box is not a box')
   T.eq(cargo.box('cargo_load_fluid_tank_xl'), nil, 'tanks are not parcel boxes')
+  -- The starter Burnside: a holder in the boot seating five M boxes.
+  local starter = cargo.capacity({ parts = {
+    burnside_trunk_load = 'burnside_cargo_load_box_5M_trunk',
+    a = 'cargo_load_box_M_trunk_A_90deg', b = 'cargo_load_box_M_trunk_B_90deg', c = 'cargo_load_box_M_trunk_C_90deg',
+    d = 'cargo_load_box_M_trunk_D_90deg', e = 'cargo_load_box_M_trunk_E' },
+    names = { burnside_cargo_load_box_5M_trunk = '5x Cargo Load Box M' } })
+  T.eq(#starter.boxes, 5, 'five M boxes, holder not counted')
+  T.eq(starter.slots, 20, 'five M boxes of slots')
   local slots, kg = cargo.fits({ slots = 16, kg = 600 }, goods.get('bricks'))
   T.eq(slots, 5, 'bricks run out of weight before space'); T.eq(kg, 600, 'their weight')
   T.near(cargo.damaged(1, 1500, goods.get('parts')), 0.5, 1e-9, 'half the damage for loss halves the load')

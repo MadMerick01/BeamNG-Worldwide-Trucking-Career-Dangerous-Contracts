@@ -13,7 +13,7 @@ local M = {}
 M.UNPAID_PARTS_DRIVE_LIMIT = 25
 -- A fresh start puts the player in this car; they upgrade it from there.
 M.STARTER_MODEL = 'burnside'
-M.STARTER_CONFIG = 'vehicles/burnside/earthfreight_starter.pc'
+M.STARTER_CONFIG = 'vehicles/burnside/earth_freight_starter.pc'
 
 local dollars = pricing.dollars
 
