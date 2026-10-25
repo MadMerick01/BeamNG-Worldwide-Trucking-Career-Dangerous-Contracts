@@ -15,8 +15,7 @@ M.CHEAP, M.SHORT = 0.9, 1.1
 -- Freight pay: every delivery also pays this much per tonne carried for each estimated road km
 -- (straight line times the road factor) from where the load was bought, so every run is worth
 -- driving and heavy loads earn more for the distance (and burn more fuel getting there).
--- 45 (up from 20) roughly doubles the profit of the best run on a 25 to 60 km haul; the goods
--- margin stays the same, so buying and reselling in one place still earns nothing.
+-- 45 (up from 20), with the town pay bonus below, roughly doubles the profit of runs of any length.
 M.FREIGHT_PER_TONNE_KM = 45
 -- Longer runs pay more per km, to make the risk worth it: the rate grows by its own size every
 -- LONG_HAUL_KM, so a 50 km run pays twice the per-km rate of a very short one.
