@@ -40,7 +40,7 @@ To go far, book shipping on the **Garage** tab with an empty car (no load on boa
 
 It costs $100 plus 2 cents a km (Sydney to Bolivia is about $360). You get the coordinates with a Copy button: paste them into the BeamNG.Earth map and teleport there. Landing within 5 km uses the booking up. **Cancel** refunds it. Save waits until you have used or cancelled it.
 
-**Paid shipping offer.** A card at the top of the Garage tab names a town in one of the world's hardest regions (×2.7 to ×3.0) that will pay your shipping if you come and deliver there. A new town is offered every 5 minutes. You pay when you book, and your first delivery within 50 km of that town pays it back. The refund waits in your save, even after the card has moved on.
+**Paid shipping offer.** A card at the top of the Garage tab names a town in one of the world's hardest regions (×2.3 to ×3.0, with another town to deliver to within 7 km) that will pay your shipping if you come and deliver there. A new town is offered every 5 minutes. You pay when you book, and your first delivery within 50 km of that town pays it back. The refund waits in your save, even after the card has moved on.
 
 **Teleporting without a booking.** A teleport longer than 2 km loses any load on board and the money paid for it. Deliveries, trading and driving distance then stop until you go back to where you left from (the Route tab shows the coordinates), or book shipping and land there. A short hop under 2 km, past a cliff or river, is fine and keeps the load.
 

@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The towns offering to pay your shipping are less remote.** The offer card in the Garage tab now picks from towns paying ×2.3 to ×3.0 (was ×2.7 to ×3.0), and only towns with at least one delivery within 7 km, so you are never sent somewhere with nothing close to drive to. Saves still work, and a refund you are already owed still pays out.
+
 ## Build 17 · 25 Oct 2026
 
 - **The HUD stays where you left it after the parts menu or the map.** Closing the parts menu (Ctrl+W) or the map no longer sends the HUD back to the start page, and it stays on the tab you were on instead of jumping to Town or Garage. The start page still opens by itself on a new game, and any time from the Profile button. Saves still work.
