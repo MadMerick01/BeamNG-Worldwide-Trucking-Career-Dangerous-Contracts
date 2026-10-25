@@ -82,9 +82,32 @@ test('town buttons only send fixed commands, with plain ids, when Lua enabled th
   assert.equal(a.commands.length, 1, 'not with a job on board')
   a.state({ state: 'READY', town: { refuelAllowed: true, delivery: { allowed: true } } })
   a.scope.takeJob({ id: 'food_gn2153471', allowed: true })
-  assert.equal(a.commands.at(-1), fixed("takeJob('food_gn2153471')"))
+  assert.equal(a.commands.at(-1), fixed("takeJob('food_gn2153471', 100)"), 'a full load unless the slider moved')
+  a.scope.shares.food_gn2153471 = '50'
+  a.scope.takeJob({ id: 'food_gn2153471', allowed: true })
+  assert.equal(a.commands.at(-1), fixed("takeJob('food_gn2153471', 50)"), 'the slider share')
+  for (const odd of ['55', '0', '120', 'x); os.exit(', -10]) {
+    a.scope.shares.food_gn2153471 = odd
+    a.scope.takeJob({ id: 'food_gn2153471', allowed: true })
+    assert.equal(a.commands.at(-1), fixed("takeJob('food_gn2153471', 100)"), 'odd shares take it all: ' + odd)
+  }
   a.scope.deliverJob(); assert.equal(a.commands.at(-1), fixed('deliverJob()'))
   a.scope.refuel(); assert.equal(a.commands.at(-1), fixed('refuel()'))
+})
+test('the load slider shows a straight share of weight and pay as Lua works it out', () => {
+  const a = app()
+  const job = { id: 'bricks_gn1', units: 6, unitKg: 150, pay: 2400, allowed: true }
+  a.state({ state: 'READY', town: { jobs: [job] } })
+  assert.deepEqual({ ...a.scope.taken(job) }, { units: 6, kg: 900, pay: 2400 }, 'a full load to start')
+  a.scope.shares.bricks_gn1 = '50'
+  assert.equal(a.scope.shareOf(job), 50)
+  assert.deepEqual({ ...a.scope.taken(job) }, { units: 3, kg: 450, pay: 1200 }, 'Bricks, 50%: 450 kg, $1,200')
+  a.scope.shares.bricks_gn1 = '10'
+  assert.deepEqual({ ...a.scope.taken(job) }, { units: 1, kg: 150, pay: 400 }, 'at least one unit')
+  const three = { id: 'food_gn1', units: 3, unitKg: 50, pay: 1000 }
+  a.scope.shares.food_gn1 = 50
+  assert.deepEqual({ ...a.scope.taken(three) }, { units: 2, kg: 100, pay: 670 }, 'whole units, tens of dollars')
+  assert.ok(html.includes('type="range" min="10" max="100" step="10" ng-model="shares[j.id]"'), 'a slider on each job')
 })
 test('insurance is only claimed when Lua offers it', () => {
   const a = app()

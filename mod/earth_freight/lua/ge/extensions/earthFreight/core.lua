@@ -527,8 +527,10 @@ function M.new(deps)
     return quote
   end
 
-  -- Takes a job from the board here: the car is filled with its good, and its pay is locked in.
-  function c:takeJob(jobId)
+  -- Takes a job from the board here: the car is filled with its good, or the share of a full load
+  -- picked on the slider (a percentage, 100 when not given), and its pay is locked in.
+  function c:takeJob(jobId, share)
+    share = share or 100
     local place = self:here()
     local problem = self:tradeProblem(place)
     if not problem and self.load then problem = 'You already have a job. Deliver it or abandon it first.' end
@@ -548,6 +550,8 @@ function M.new(deps)
       return false
     end
     local destination = places.get(job.to)
+    local units, pay = jobs.share(quote.units, quote.pay, share)
+    quote.units, quote.slots, quote.kg, quote.pay = units, units * good.slots, units * good.kg, pay
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
       from = place.id, to = destination.id, drivenKm = 0 }
     self.abandonArmed = false
@@ -1141,7 +1145,11 @@ function M.buyCar() return safely(function() return ensure():buyCar() end) end
 function M.revertCar() return safely(function() return ensure():revertCar(false) end) end
 function M.newGame() return safely(function() return ensure():newGame() end) end
 -- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
-function M.takeJob(job) return safely(function() return ensure():takeJob(id(job)) end) end
+-- share is the slider's percentage of a full load: 10 to 100 in steps of 10; anything else takes it all.
+function M.takeJob(job, share)
+  local s = type(share) == 'number' and share >= jobs.SHARE_STEP and share <= 100 and share % jobs.SHARE_STEP == 0 and share or 100
+  return safely(function() return ensure():takeJob(id(job), s) end)
+end
 function M.deliverJob() return safely(function() return ensure():deliver() end) end
 function M.abandonJob() return safely(function() return ensure():abandonJob() end) end
 function M.claimInsurance() return safely(function() return ensure():claimInsurance() end) end

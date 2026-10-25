@@ -39,6 +39,8 @@ M.ROAD_SHARE, M.MAX_ROAD = 0.5, 2
 -- A job only delivers once you have driven at least this share of the straight-line distance
 -- from where it was taken, so a teleport or a lift never delivers.
 M.DRIVEN_SHARE = 0.7
+-- The load slider: a job can be taken in shares of SHARE_STEP percent, from SHARE_STEP to 100.
+M.SHARE_STEP = 10
 -- What abandoning a job costs (or all the player's money, if less).
 M.ABANDON_FEE = 1000
 
@@ -241,6 +243,15 @@ function M.board(from, seed, needs, now)
   end
   table.sort(out, function(a, b) if a.km ~= b.km then return a.km < b.km end return a.id < b.id end)
   return out
+end
+
+-- A share of a job: the whole units it comes to (at least one) and their pay, a straight share
+-- of the full load's pay in tens of dollars. share is a percentage.
+function M.share(units, pay, share)
+  if units <= 0 then return 0, 0 end
+  local taken = math.max(1, math.min(units, math.floor(units * share / 100 + 0.5)))
+  if taken == units then return units, pay end
+  return taken, math.max(10, round10(pay * taken / units))
 end
 
 -- The distance a job must have been driven before it delivers, in metres.

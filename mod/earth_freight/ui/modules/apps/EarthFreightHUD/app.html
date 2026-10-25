@@ -118,15 +118,22 @@
         <div style="margin:8px 0;">
           <div style="font-weight:bold;">Jobs from {{data.town.name}}</div>
           <div ng-if="data.load" style="font-size:12px;color:#c9d6d2;">Deliver or abandon your job to take another.</div>
-          <div ng-repeat="j in data.town.jobs" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+          <div ng-repeat="j in data.town.jobs" style="padding:5px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+           <div style="display:flex;align-items:center;gap:8px;">
             <div style="flex:1;min-width:0;">
               <div><span ng-style="{background: dotColor(j.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> <b>{{j.good}}</b> to {{j.to}} <span style="color:#7d8b88;font-size:12px;">&asymp; {{km(j.distanceMetres)}} km</span></div>
-              <div style="font-size:12px;color:#c9d6d2;"><span ng-if="j.units > 0">{{j.units}} {{j.good | lowercase}}, {{j.kg | number:0}} kg</span><span ng-if="j.units === 0" style="color:#eb5757;">Needs {{j.unitSlots}} {{j.unitSlots === 1 ? 'slot' : 'slots'}} and {{j.unitKg}} kg: fit a cargo box</span><span ng-if="j.shortage" style="color:#f2c94c;"> &middot; shortage &times;2</span><span ng-if="j.jackpot" style="color:#f2c94c;"> &middot; jackpot &times;{{j.jackpot | number:1}}</span><span ng-if="j.road"> &middot; rough road &times;{{j.road | number:1}}</span></div>
+              <div style="font-size:12px;color:#c9d6d2;"><span ng-if="j.units > 0">{{taken(j).units}} {{j.good | lowercase}}, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units === 0" style="color:#eb5757;">Needs {{j.unitSlots}} {{j.unitSlots === 1 ? 'slot' : 'slots'}} and {{j.unitKg}} kg: fit a cargo box</span><span ng-if="j.shortage" style="color:#f2c94c;"> &middot; shortage &times;2</span><span ng-if="j.jackpot" style="color:#f2c94c;"> &middot; jackpot &times;{{j.jackpot | number:1}}</span><span ng-if="j.road"> &middot; rough road &times;{{j.road | number:1}}</span></div>
             </div>
-            <div ng-style="{color: dotColor(j.level)}" style="font-weight:bold;text-align:right;" title="Usually ${{j.base | number:0}} for this load">${{j.pay | number:0}}</div>
+            <div ng-style="{color: dotColor(j.level)}" style="font-weight:bold;text-align:right;" title="Usually ${{j.base | number:0}} for a full load">${{taken(j).pay | number:0}}</div>
             <button type="button" ng-click="takeJob(j)" ng-disabled="!j.allowed" style="padding:4px 8px;">Take job</button>
+           </div>
+           <div ng-if="j.units > 1" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c9d6d2;">
+            <span style="width:62px;">Load {{shareOf(j)}}%</span>
+            <input type="range" min="10" max="100" step="10" ng-model="shares[j.id]" ng-init="shares[j.id] = shareOf(j)" ng-disabled="!j.allowed" aria-label="How much of the {{j.good | lowercase}} to take" style="flex:1;min-width:0;">
+            <span ng-if="shareOf(j) < 100">full load ${{j.pay | number:0}}</span>
+           </div>
           </div>
-          <div style="margin-top:4px;font-size:12px;color:#c9d6d2;">A job fills every slot your car has, so bigger cargo boxes pay more. The pay is fixed when you take it and paid in full on delivery. Longer jobs pay more per km: 20 km pays six times 5 km. Green pays above the usual, red below, gold is a shortage or a jackpot. Taking a job sets the GPS to the drop-off. Abandoning one costs ${{data.abandonFee | number:0}}.</div>
+          <div style="margin-top:4px;font-size:12px;color:#c9d6d2;">A job fills every slot your car has, so bigger cargo boxes pay more. Slide Load to take less: the weight and pay drop by the same share. The pay is fixed when you take it and paid in full on delivery. Longer jobs pay more per km: 20 km pays six times 5 km. Green pays above the usual, red below, gold is a shortage or a jackpot. Taking a job sets the GPS to the drop-off. Abandoning one costs ${{data.abandonFee | number:0}}.</div>
         </div>
         <div style="margin:10px 0;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
           <div style="font-weight:bold;">Fuel</div>
