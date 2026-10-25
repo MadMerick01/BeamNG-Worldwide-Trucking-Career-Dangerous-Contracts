@@ -164,3 +164,55 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
   }
   assert.ok(html.includes('GeoNames'), 'GeoNames credit')
 })
+test('the start page opens once on a new game, and again after the next new game', () => {
+  const a = app()
+  a.state({ state: 'READY', mode: 'start', playerName: 'Sam' })
+  assert.equal(a.scope.intro.open, true, 'opens on a new game')
+  assert.equal(a.scope.intro.name, 'Sam', 'with the saved name filled in')
+  a.scope.closeIntro()
+  assert.equal(a.scope.intro.open, false)
+  a.state({ state: 'READY', mode: 'start', playerName: 'Sam' })
+  assert.equal(a.scope.intro.open, false, 'stays closed')
+  a.state({ state: 'READY', mode: 'resume' }); a.state({ state: 'READY', mode: 'start' })
+  assert.equal(a.scope.intro.open, true, 'opens after another new game')
+  const b = app()
+  b.state({ state: 'READY', mode: 'resume' })
+  assert.equal(b.scope.intro.open, false, 'not shown when carrying on from a save')
+  b.scope.openIntro()
+  assert.equal(b.scope.intro.open, true, 'opens from the Profile button')
+  assert.ok(html.includes('ng-click="openIntro()"'), 'Profile button and Tips link')
+})
+test('the name is cleaned, kept short and only sent when it changed', () => {
+  const a = app()
+  a.state({ state: 'READY', mode: 'start', playerName: 'Sam' })
+  a.scope.intro.name = 'Sam'
+  let count = a.commands.length
+  a.scope.closeIntro()
+  assert.equal(a.commands.filter(c => c.includes('setPlayerName')).length, 0, 'unchanged name not sent')
+  a.scope.openIntro(); a.scope.intro.name = '  Zoë   O\'Neil "); x() '
+  a.scope.closeIntro()
+  assert.equal(a.commands.at(-1), fixed('setPlayerName("Zoë O\'Neil x")'), 'quotes and brackets taken out')
+  assert.equal(a.scope.cleanName('A'.repeat(30)).length, 20, 'at most 20 letters')
+  assert.equal(a.scope.cleanName('\\"\n\t'), '', 'no quotes, backslashes or control characters')
+  a.state({ state: 'READY', mode: 'start', playerName: 'Sam' }); a.scope.openIntro(); a.scope.intro.name = ''
+  count = a.commands.length; a.scope.closeIntro()
+  assert.equal(a.commands[count], fixed('setPlayerName("")'), 'an empty box clears the name')
+})
+test('typing in a text box turns the game keys off, so it does not drive the car', () => {
+  const a = app()
+  a.scope.typing(true)
+  assert.equal(a.commands.at(-1), 'if setCEFTyping then setCEFTyping(true) end')
+  const count = a.commands.length
+  a.scope.typing(true)
+  assert.equal(a.commands.length, count, 'sent once')
+  a.handlers.$destroy()
+  assert.ok(a.commands.includes('if setCEFTyping then setCEFTyping(false) end'), 'keys back on when the HUD closes')
+  for (const box of ['intro.name', 'ship.query', 'ship.coords']) {
+    assert.match(html, new RegExp(`ng-model="${box.replace('.', '\\.')}" [^>]*ng-focus="typing\\(true\\)" ng-blur="typing\\(false\\)"`), box)
+  }
+})
+test('a changed name lights up Save', () => {
+  const a = app()
+  assert.equal(a.scope.unsaved({ nameUnsaved: true }), true)
+  assert.equal(a.scope.unsaved({ nameUnsaved: false }), false)
+})

@@ -1,5 +1,35 @@
 <div class="bngApp" style="height:100%;width:100%;overflow:auto;box-sizing:border-box;padding:14px;background:rgba(12,19,24,.9);color:#f2f6f5;font:14px/1.4 sans-serif;border:1px solid #568d7a;border-radius:8px;">
-  <div style="font-size:16px;font-weight:bold;letter-spacing:1px;">Earth Freight Sim</div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div style="flex:1;font-size:16px;font-weight:bold;letter-spacing:1px;">Earth Freight Sim</div>
+    <button type="button" ng-if="!intro.open" ng-click="openIntro()" title="Your name and how to play" style="padding:2px 9px;border:1px solid #568d7a;border-radius:4px;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{data.playerName || 'Profile'}}</button>
+  </div>
+  <div ng-if="intro.open" style="margin-top:2px;color:#c9d6d2;">From rust bucket to rig: haul freight between real towns anywhere on Earth.</div>
+  <div ng-if="intro.open" style="padding-top:10px;">
+    <form ng-submit="closeIntro()">
+      <label style="display:block;font-weight:bold;color:#a7e5c9;" for="earthFreightName">Your name</label>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <input id="earthFreightName" type="text" ng-model="intro.name" maxlength="20" placeholder="What should we call you?" autocomplete="off" ng-focus="typing(true)" ng-blur="typing(false)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
+        <button type="submit" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{data.arrived ? 'Done' : 'Let’s go'}}</button>
+      </div>
+    </form>
+    <div style="margin-top:2px;font-size:12px;color:#7d8b88;">Kept with your game when you press Save.</div>
+    <div style="margin-top:12px;font-weight:bold;color:#a7e5c9;">How to play</div>
+    <ol style="margin:4px 0 0;padding-left:20px;">
+      <li style="margin-bottom:4px;">Go to {{data.startTown}}: copy the coordinates, paste them into the BeamNG.Earth map and teleport there. Your starter car is waiting.
+        <div ng-if="data.resume && data.mode === 'start'" style="display:flex;gap:6px;margin-top:4px;">
+          <input aria-label="Coordinates to go to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+          <button type="button" aria-label="Copy coordinates" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
+        </div>
+      </li>
+      <li style="margin-bottom:4px;">Fit a radiator first: the starter car needs one. Use the parts menu (Ctrl+W) and pay on the Garage tab.</li>
+      <li style="margin-bottom:4px;">Stop in a town. On the Town tab pick a good, set how far to drive with the slider, and press Buy next to a drop-off.</li>
+      <li style="margin-bottom:4px;">Follow the GPS to the drop-off, stop in the town and press Deliver to get paid.</li>
+      <li style="margin-bottom:4px;">Refuel on the Town tab. Repairs, parts and bigger cars are on the Garage tab.</li>
+      <li style="margin-bottom:4px;">To go far, book shipping on the Garage tab.</li>
+      <li>Press Save often. Anything since your last Save is lost when you exit.</li>
+    </ol>
+  </div>
+  <div ng-if="!intro.open">
   <div style="margin-top:2px;color:#c9d6d2;">{{data.here ? 'In ' + data.here.name : 'A world freight economy for BeamNG.Earth'}}<span ng-if="data.region" title="Region pay boost: everything here pays and costs this much more than on flat, busy ground"> &middot; {{data.region.name}} <span ng-style="{color: data.region.boost > 1.05 ? '#f2c94c' : '#c9d6d2', fontWeight: data.region.boost > 1.05 ? 'bold' : 'normal'}">&times;{{data.region.boost | number:1}}</span></span></div>
   <div ng-if="notice(data)" ng-attr-role="{{notice(data).alert ? 'alert' : 'status'}}" ng-style="{borderColor: notice(data).color, color: notice(data).color}" style="margin:10px 0;padding:8px 10px;border:2px solid;border-radius:6px;background:rgba(0,0,0,.35);">
     <div style="font-weight:bold;letter-spacing:1px;font-size:16px;">{{notice(data).title}}</div>
@@ -224,7 +254,7 @@
           </div>
           <div style="margin-top:8px;font-weight:bold;color:#a7e5c9;font-size:13px;">Anywhere else</div>
           <form ng-submit="searchShipping()" style="display:flex;gap:6px;margin-top:4px;">
-            <input aria-label="Town to ship to" type="text" ng-model="ship.query" placeholder="Town name, like Chamonix" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
+            <input aria-label="Town to ship to" type="text" ng-model="ship.query" ng-focus="typing(true)" ng-blur="typing(false)" placeholder="Town name, like Chamonix" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
             <button type="submit" style="padding:4px 8px;">Find</button>
           </form>
           <div ng-repeat="d in data.shipping.found" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
@@ -234,7 +264,7 @@
             <button type="button" ng-click="bookShipping(d.id)" ng-disabled="!d.allowed" style="padding:4px 8px;">Book</button>
           </div>
           <form ng-submit="bookCoordinates()" style="display:flex;gap:6px;margin-top:6px;">
-            <input aria-label="Coordinates to ship to (latitude, longitude)" type="text" ng-model="ship.coords" placeholder="Or coordinates: -16.19, -67.73" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
+            <input aria-label="Coordinates to ship to (latitude, longitude)" type="text" ng-model="ship.coords" ng-focus="typing(true)" ng-blur="typing(false)" placeholder="Or coordinates: -16.19, -67.73" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
             <button type="submit" ng-disabled="!!data.shipping.problem" style="padding:4px 8px;">Book</button>
           </form>
           <div ng-if="ship.error" style="color:#f2c94c;">{{ship.error}}</div>
@@ -244,6 +274,7 @@
       <p role="status" ng-repeat="text in [data.carChange ? null : data.carFeedback, data.partsChange ? null : data.partsFeedback, data.repairFeedback] track by $index" ng-if="text" style="margin:0 0 6px;">{{text}}</p>
     </div>
     <div ng-if="tab === 'tips'">
+      <button type="button" ng-click="openIntro()" style="margin-bottom:10px;padding:5px 10px;">Your name and how to play</button>
       <div style="font-weight:bold;color:#a7e5c9;">Tips</div>
       <ul style="margin:4px 0 0;padding-left:18px;">
         <li>Buy a load in one town and deliver it to another. Green dots are cheap to buy, red ones pay well. The best run line suggests one.</li>
@@ -267,5 +298,6 @@
       </div>
       <div style="margin-top:10px;font-size:12px;color:#7d8b88;">Place data &copy; GeoNames (geonames.org), CC BY 4.0. Elevation: Mapzen terrain tiles (SRTM and others).</div>
     </div>
+  </div>
   </div>
 </div>

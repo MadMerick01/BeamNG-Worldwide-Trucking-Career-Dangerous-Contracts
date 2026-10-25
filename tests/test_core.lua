@@ -396,4 +396,23 @@ do
   T.check(c:view().flash.text:find('paid back'), 'told so'); T.eq(c.offer, nil, 'only once')
 end
 
+-- The player's name: set on the start page, kept by Save and by New game, used in greetings.
+do
+  local c, io, a = F.controller()
+  a.pose = F.position(-33.9, 151.2); c:tick(0.1)
+  T.check(c:setPlayerName('  Sam   Lee '), 'name set'); T.eq(c:view().playerName, 'Sam Lee', 'spaces tidied')
+  T.check(c:view().nameUnsaved, 'not saved yet')
+  T.check(not c:setPlayerName('Sam"); os.exit() --'), 'quotes refused'); T.eq(c.playerName, 'Sam Lee', 'name unchanged')
+  T.check(not c:setPlayerName(('x'):rep(81)), 'too long refused'); T.check(not c:setPlayerName(7), 'not text refused')
+  a.pose = F.copy(F.PENRITH); c:tick(0.1)
+  T.eq(c:view().flash.title, 'WELCOME TO PENRITH, SAM LEE', 'greeted on arrival')
+  T.check(c:manualSave(), 'saved'); T.eq(c:view().saveFeedback, 'Saved, Sam Lee.', 'saved by name')
+  T.eq(io.files[A].playerName, 'Sam Lee', 'name in the save'); T.check(not c:view().nameUnsaved, 'name saved')
+  local r = F.controller({ io = io })
+  T.eq(r:view().playerName, 'Sam Lee', 'name loaded')
+  r:newGame(); T.check(r:newGame(), 'new game')
+  T.eq(r:view().playerName, 'Sam Lee', 'New game keeps the name'); T.eq(r.mode, 'start', 'at the start again')
+  T.check(r:setPlayerName(''), 'cleared'); T.eq(r:view().playerName, nil, 'no name'); T.check(r:view().nameUnsaved, 'clearing is unsaved too')
+end
+
 T.done('Earth Freight controller')
