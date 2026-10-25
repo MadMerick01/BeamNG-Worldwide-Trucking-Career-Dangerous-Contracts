@@ -15,8 +15,8 @@ M.BASE_KM, M.FLAT_KM = 5, 20
 M.DISTANCE_POWER = math.log(6) / math.log(4)
 -- Jobs go at most this far by road (the straight line times places.ROAD_FACTOR).
 M.MAX_KM = 20
--- A board shows 3 to 5 jobs, spread over these road-distance bands where the towns allow.
-M.MIN_JOBS, M.MAX_JOBS = 3, 5
+-- A board shows one job each of parts, bricks and the town's fluid, then the off-road drop. The
+-- three town jobs take these road-distance bands in turn, from a seeded start, where the towns allow.
 M.BANDS = { { 0, 8 }, { 8, 13 }, { 13, 20 } }
 -- Town need: a seeded start between NEED_LOW and NEED_HIGH, plus CHARACTER_BONUS for the good the
 -- town is known for, less what deliveries took. Always between MIN_NEED and MAX_NEED. The start
@@ -87,12 +87,12 @@ function M.roadBonus(from, to)
 end
 
 -- What a town is known for: cities want parts, and other towns are seeded as building towns
--- (bricks), farming towns (food) or neither. Returns the kind and the good, or nil.
+-- (bricks), farming towns (water) or neither. Returns the kind and the good, or nil.
 function M.character(place)
   if place.size == 'city' then return 'city', 'parts' end
   local h = hash01(place.id .. ':character')
   if h < 0.3 then return 'building', 'bricks' end
-  if h < 0.6 then return 'farming', 'food' end
+  if h < 0.6 then return 'farming', 'water' end
   return nil
 end
 
@@ -204,67 +204,48 @@ local function job(from, d, good, seed)
   return { id = good.id .. '_' .. d.place.id, good = good.id, from = from.id, to = d.place.id, km = d.km, jackpot = jackpot }
 end
 
--- The board of a town: 3 to 5 jobs, fixed for a seed (the controller's count of jobs done), so it
--- changes after every delivery or abandoned job. Every board has a job to a shortage close by,
--- when there is one, and at least one decent job: if none pays its base rate, the best one is raised to it.
+-- The fluid a town's board posts: water or fuel, fixed for the town.
+function M.fluid(place)
+  local fluids = goods.ofKind('fluid')
+  return fluids[math.floor(hash01(place.id .. ':fluid') * #fluids) + 1]
+end
+
+-- The goods a town's board posts jobs for: the parcels (parts and bricks), then its fluid.
+function M.boardGoods(place)
+  local out = goods.ofKind('parcel')
+  out[#out + 1] = M.fluid(place)
+  return out
+end
+
+-- The board of a town: one job each for its goods, then the off-road drop, fixed for a seed (the
+-- controller's count of jobs done), so it changes after every delivery or abandoned job. A good
+-- short in a town close by goes there; otherwise each job goes to a town in its distance band. At
+-- least one job is decent: if none pays its base rate, the best one is raised to it.
 function M.board(from, seed, needs, now)
   local list = M.destinations(from)
-  local carried = goods.carried()
-  if #list == 0 or #carried == 0 then return {} end
+  local wanted = M.boardGoods(from)
+  if #list == 0 or #wanted == 0 then return {} end
   seed = tostring(seed or 0)
-  local count = M.MIN_JOBS + math.floor(hash01(from.id .. ':' .. seed .. ':count') * (M.MAX_JOBS - M.MIN_JOBS + 1))
-  local out, taken = {}, {}
-  local function add(j, at)
-    if taken[j.id] then return false end
-    if at then taken[out[at].id] = nil; out[at] = j else out[#out + 1] = j end
-    taken[j.id] = true
-    return true
-  end
-  for i = 1, count * 3 do
-    if #out >= count then break end
-    local band = M.BANDS[(#out % #M.BANDS) + 1]
-    local pool = {}
-    for _, d in ipairs(list) do if d.km > band[1] and d.km <= band[2] then pool[#pool + 1] = d end end
-    if #pool == 0 then pool = list end
-    local d = pool[math.floor(hash01(from.id .. ':' .. seed .. ':' .. i .. ':to') * #pool) + 1]
-    -- The goods take turns from a seeded start, so a board mixes them.
-    local good = carried[(math.floor(hash01(from.id .. ':' .. seed .. ':good') * #carried) + i - 1) % #carried + 1]
-    add(job(from, d, good, seed))
-  end
-  local function factor(j) return M.quote(j, 1, needs, now).factor end
-  local function weakest()
-    local at, low
-    for i, j in ipairs(out) do
-      local f = factor(j)
-      if not low or f < low then at, low = i, f end
+  local start = math.floor(hash01(from.id .. ':' .. seed .. ':band') * #M.BANDS)
+  local out = {}
+  for i, good in ipairs(wanted) do
+    local d
+    for _, x in ipairs(list) do if not d and M.shortage(x.place, good, now) then d = x end end
+    if not d then
+      local band = M.BANDS[(start + i - 1) % #M.BANDS + 1]
+      local pool = {}
+      for _, x in ipairs(list) do if x.km > band[1] and x.km <= band[2] then pool[#pool + 1] = x end end
+      if #pool == 0 then pool = list end
+      d = pool[math.floor(hash01(from.id .. ':' .. seed .. ':' .. good.id .. ':to') * #pool) + 1]
     end
-    return at
+    out[#out + 1] = job(from, d, good, seed)
   end
-  -- A shortage close by gets a job, in place of the weakest one.
-  local shortages = 0
-  for _, d in ipairs(list) do
-    for _, good in ipairs(carried) do
-      if shortages < 1 and M.shortage(d.place, good, now) and not taken[good.id .. '_' .. d.place.id] then
-        if add(job(from, d, good, seed), #out >= count and weakest() or nil) then shortages = shortages + 1 end
-      end
-    end
+  local best, bestFactor
+  for _, j in ipairs(out) do
+    local f = M.quote(j, 1, needs, now).factor
+    if not bestFactor or f > bestFactor then best, bestFactor = j, f end
   end
-  local decent = false
-  for _, j in ipairs(out) do if factor(j) >= 1 then decent = true end end
-  if not decent then
-    local best, bestNeed
-    for _, d in ipairs(list) do
-      for _, good in ipairs(carried) do
-        local n = M.need(d.place, good, needs, now)
-        if not bestNeed or n > bestNeed then best, bestNeed = job(from, d, good, seed), n end
-      end
-    end
-    best.decent = true
-    if taken[best.id] then
-      for i, j in ipairs(out) do if j.id == best.id then out[i] = best end end
-    else add(best, weakest()) end
-  end
-  table.sort(out, function(a, b) if a.km ~= b.km then return a.km < b.km end return a.id < b.id end)
+  if bestFactor < 1 then best.decent = true end
   out[#out + 1] = M.dropJob(from, seed)
   return out
 end
@@ -286,10 +267,10 @@ function M.dropPoint(from, seed)
   return location.destination(from, bearing % 360, M.DROP_MIN + (M.DROP_MAX - M.DROP_MIN) * hash01(key .. ':metres'))
 end
 
--- A board's off-road drop job: any carried good, taken and paid like any job, delivered at the spot.
+-- A board's off-road drop job: parts or bricks, taken and paid like any job, delivered at the spot.
 function M.dropJob(from, seed)
   seed = tostring(seed or 0)
-  local carried = goods.carried()
+  local carried = goods.ofKind('parcel')
   local good = carried[math.floor(hash01(from.id .. ':' .. seed .. ':drop:good') * #carried) + 1]
   local drop = M.dropPoint(from, seed)
   return { id = 'drop_' .. good.id .. '_' .. from.id, good = good.id, from = from.id, to = from.id,

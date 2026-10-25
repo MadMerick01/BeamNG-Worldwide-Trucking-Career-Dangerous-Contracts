@@ -50,6 +50,16 @@ do
   T.eq(cargo.box('x', 'Cargo Load Box S').slots, 1, 'matched on the display name')
   T.eq(cargo.box('pickup_bed_cargo_net'), nil, 'a part without a box is not a box')
   T.eq(cargo.box('cargo_load_fluid_tank_xl'), nil, 'tanks are not parcel boxes')
+  T.eq(cargo.tank('pickup_cargo_load_fluid_tank_xl').litres, 800, 'a fluid tank XL holds 800 L')
+  T.eq(cargo.tank('x', 'Cargo Load Fluid Tank M').litres, 200, 'matched on the display name')
+  T.eq(cargo.tank('pickup_fueltank_xl', 'Fuel Tank XL'), nil, 'the car fuel tank is not cargo')
+  T.eq(cargo.tank('cargo_load_box_l'), nil, 'a box is not a tank')
+  local both = cargo.capacity({ parts = { a = 'pickup_cargo_load_box_m', t = 'pickup_cargo_load_fluid_tank_l' }, names = {} })
+  T.eq(both.slots, 4, 'the box gives slots'); T.eq(both.litres, 400, 'the tank gives litres')
+  T.eq(both.tankParts[1], 'pickup_cargo_load_fluid_tank_l', 'the tank part is known')
+  T.eq(cargo.partsFor(both, goods.get('water'))[1], 'pickup_cargo_load_fluid_tank_l', 'fluid weight goes in the tank')
+  T.eq(cargo.partsFor(both, goods.get('parts'))[1], 'pickup_cargo_load_box_m', 'parcels in the box')
+  T.eq(cargo.capacity({ parts = { t = 'pickup_cargo_load_fluid_tank_s' }, names = {} }).boot, true, 'a tank alone leaves parcels in the boot')
   -- The starter Burnside: a holder in the boot seating five M boxes.
   local starter = cargo.capacity({ parts = {
     burnside_trunk_load = 'burnside_cargo_load_box_5M_trunk',
@@ -75,10 +85,13 @@ do
   T.eq(v.region.name, 'Australia', 'the region is named'); T.near(v.region.boost, 1, 1e-9, 'flat Sydney roads add nothing')
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
   T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 5000, 'distances are road estimates')
-  T.eq(#v.nearby[1].dots, 3, 'a dot per good')
-  T.check(#v.town.jobs >= 3 and #v.town.jobs <= 5, 'the board lists 3 to 5 jobs')
+  T.eq(#v.nearby[1].dots, 4, 'a dot per good: parts, bricks, water and fuel')
+  T.eq(#v.town.jobs, 4, 'the board lists parts, bricks, a fluid and the off-road drop')
+  T.eq(v.town.jobs[1].goodId, 'parts', 'parts first'); T.eq(v.town.jobs[2].goodId, 'bricks', 'then bricks')
+  T.eq(v.town.jobs[3].goodId, jobs.fluid(penrith).id, 'then the town fluid'); T.check(v.town.jobs[4].drop, 'then the drop')
+  T.check(v.town.jobs[3].fluid and v.town.jobs[3].units == 0 and not v.town.jobs[3].allowed, 'a fluid needs a tank')
   for _, j in ipairs(v.town.jobs) do
-    T.check(j.pay > 0 and j.allowed, j.id .. ' pays and can be taken')
+    if not j.fluid then T.check(j.pay > 0 and j.allowed, j.id .. ' pays and can be taken') end
     T.check(j.distanceMetres <= 20000 + 1e-6, j.id .. ' within 20 km')
   end
   T.check(v.bestJob ~= nil and v.bestJob.from == 'Penrith', 'the best job is suggested')
@@ -522,6 +535,31 @@ do
   u, p = jobs.share(1, 500, 10); T.eq(u, 1, 'never less than one unit'); T.eq(p, 500, 'one unit is the whole job')
   u, p = jobs.share(3, 1000, 50); T.eq(u, 2, 'shares round to whole units'); T.eq(p, 670, 'paid for the units taken')
   u, p = jobs.share(0, 0, 50); T.eq(u, 0, 'nothing fits'); T.eq(p, 0, 'nothing paid')
+end
+
+-- Fluid jobs: a tank bought in the garage, a load in litres, its weight in the tank.
+do
+  local c, io, a, g, w = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local fluid = jobs.fluid(penrith)
+  local row = c:view().town.jobs[3]
+  T.check(row.fluid and row.units == 0, 'no tank: the fluid job cannot be filled')
+  local id = F.offer(c, stClair, fluid.id)
+  T.check(not c:takeJob(id), 'not without a tank'); T.check(c:view().tradeFeedback:find('needs a fluid tank'), 'told to fit a tank')
+  g.values.pickup_cargo_load_fluid_tank_l = 900; g.names.pickup_cargo_load_fluid_tank_l = 'Cargo Load Fluid Tank L'
+  g:fit('tank', 'pickup_cargo_load_fluid_tank_l'); c:vehicleSpawned(); c:tick(0.1)
+  T.eq(c:view().partsChange.added[1].name, 'Cargo Load Fluid Tank L', 'the tank is billed in the garage')
+  T.check(c:buyParts(), 'tank bought'); T.eq(c:view().space.litres, 400, 'the HUD shows 400 L of tank')
+  c:tick(0.6); c:tick(0.6)
+  T.eq(c:view().town.jobs[1].units, 400 / fluid.litres, 'the offered job fills the tank'); T.check(c:view().town.jobs[1].fluid, 'as a fluid')
+  T.eq(c:view().town.jobs[1].litres, 400, 'in litres')
+  T.check(c:takeJob(id, 50), 'half a tank'); T.eq(c.load.slots, 200, '200 L'); T.near(c.load.kg, 200 * fluid.kg / fluid.litres, 1e-9, 'its weight')
+  T.eq(c:view().load.litres, 200, 'the HUD shows litres')
+  T.check(c:view().tradeFeedback:find('200 L of ' .. fluid.name:lower()), 'told in litres')
+  T.eq(w.weights[#w.weights].parts[1], 'pickup_cargo_load_fluid_tank_l', 'the weight goes in the tank')
+  g:fit('tank', ''); c:vehicleSpawned(); c:tick(0.1)
+  T.check(not c:view().buyPartsAllowed, 'the tank cannot go while it holds the load')
+  T.check(c:revertParts(false), 'put back')
 end
 
 -- The off-road drop: no GPS, an arrow to a spot about 2 km out, delivered stopped within 100 m.

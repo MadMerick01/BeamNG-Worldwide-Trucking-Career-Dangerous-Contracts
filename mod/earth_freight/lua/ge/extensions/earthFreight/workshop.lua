@@ -7,6 +7,7 @@ local location = require('earthFreight/location')
 local persistence = require('earthFreight/persistence')
 local pricing = require('earthFreight/pricing')
 local cargo = require('earthFreight/cargo')
+local goods = require('earthFreight/goods')
 local M = {}
 
 -- Driving this far from where the parts were changed, without paying, puts the paid parts back.
@@ -421,6 +422,8 @@ function M.attach(c)
   function c:loadFits(snapshot)
     if not self.load then return true end
     local space = cargo.capacity(snapshot)
+    local good = goods.get(self.load.good)
+    if good and good.kind == 'fluid' then return self.load.slots <= space.litres and self.load.kg <= space.tankKg end
     return self.load.slots <= space.slots and self.load.kg <= space.kg
   end
 
