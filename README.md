@@ -1,12 +1,12 @@
-# Earth Freight: Rust to Rig
+# Earth Freight Sim
 
-A world freight economy mod for BeamNG.drive on [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth). Start in a rust-bucket sedan, end in a semi.
+A world freight economy for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive. Start in a rust-bucket sedan, end in a semi.
 
 The design is in [`docs/DESIGN.md`](docs/DESIGN.md). What is built so far: parcels between 100,000 towns worldwide, fixed prices, a region pay boost for hard places, and shipping to anywhere on Earth.
 
 ## Install
 
-Copy `earth_freight.zip` into the `mods` folder of your BeamNG user folder. Do not extract it. Every push to `main` builds a new ZIP on the [Releases](../../releases/latest) page. Turn on the **Earth Freight** UI app in the game's UI apps menu.
+Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. Do not extract it. If you have the older `earth_freight.zip` there, delete it first; your saves carry over. Every push to `main` builds a new ZIP on the [Releases](../../releases/latest) page. Turn on the **Earth Freight Sim** UI app in the game's UI apps menu.
 
 ## Play
 
@@ -56,7 +56,7 @@ It costs $100 plus 2 cents a km (Sydney to Bolivia is about $360). You get the c
 ```
 python -m pip install -r tests/requirements.txt
 python tests/run.py                    # every Lua, HUD and packaging test
-python tools/package.py                # builds dist/earth_freight.zip
+python tools/package.py                # builds dist/earth-freight-sim.zip
 python tools/make_places.py            # rebuilds the worldwide place tiles from tools/data/
 python tools/make_places.py --report   # prints the pay boost of some well-known places
 python tools/sample_terrain.py --places PLACES --cache DIR   # re-samples elevation (see its --help)

@@ -2,7 +2,7 @@ name: Release
 
 # Every push to main is tested, packaged and published as a new GitHub
 # Release. The ZIP asset always has the same name, so
-# releases/latest/download/earth_freight.zip points at the newest build.
+# releases/latest/download/earth-freight-sim.zip points at the newest build.
 on:
   push:
     branches: [main]
@@ -36,7 +36,7 @@ jobs:
         run: python tests/run.py
 
       - name: Build mod ZIP
-        run: python tools/package.py --output dist/earth_freight.zip
+        run: python tools/package.py --output dist/earth-freight-sim.zip
 
       - name: Publish release
         env:
@@ -48,11 +48,11 @@ jobs:
           {
             echo "Built from $short_sha on $(date -u +%Y-%m-%d): $subject"
             echo
-            echo 'Install Earth Freight: copy `earth_freight.zip` into the `mods` folder of your BeamNG user folder. Do not extract it.'
+            echo 'Install Earth Freight Sim: copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. Do not extract it.'
           } > notes.md
-          gh release create "$TAG" dist/earth_freight.zip \
+          gh release create "$TAG" dist/earth-freight-sim.zip \
             --target "$GITHUB_SHA" \
-            --title "Earth Freight build ${{ github.run_number }} ($short_sha)" \
+            --title "Earth Freight Sim build ${{ github.run_number }} ($short_sha)" \
             --notes-file notes.md \
             --generate-notes \
             --latest

@@ -1,4 +1,4 @@
-# Earth Freight: Rust to Rig — Design
+# Earth Freight Sim — Design
 
 Status: **layer 1 built** (fixed prices, parcels, around Sydney; see [Layer 1 as built](#layer-1-as-built)). This doc collects the decisions made so far and marks what is still open. Open questions are tagged **❓ OPEN** inline and gathered in [Open questions](#open-questions) at the end.
 

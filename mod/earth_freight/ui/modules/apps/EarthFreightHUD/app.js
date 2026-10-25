@@ -7,7 +7,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       'use strict'
       var disposed = false
       var lastMessage = Date.now()
-      scope.data = { state: 'EARTH_UNAVAILABLE', stateLabel: 'WAITING FOR EARTH FREIGHT', saveAllowed: false }
+      scope.data = { state: 'EARTH_UNAVAILABLE', stateLabel: 'WAITING FOR EARTH FREIGHT SIM', saveAllowed: false }
       var call = function (command) {
         if (typeof bngApi !== 'undefined' && bngApi.engineLua) bngApi.engineLua(command)
       }
@@ -169,8 +169,8 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
           scope.$evalAsync(function () {
             if (disposed) return
             scope.data = {
-              state: 'EARTH_UNAVAILABLE', stateLabel: 'WAITING FOR EARTH FREIGHT', saveAllowed: false,
-              sessionStatus: 'Earth Freight is not responding. Check that the mod is enabled, then reload it.'
+              state: 'EARTH_UNAVAILABLE', stateLabel: 'WAITING FOR EARTH FREIGHT SIM', saveAllowed: false,
+              sessionStatus: 'Earth Freight Sim is not responding. Check that the mod is enabled, then reload it.'
             }
           })
         }
