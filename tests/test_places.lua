@@ -48,16 +48,18 @@ for _, n in ipairs(near) do
 end
 T.check(differ, 'prices differ between places')
 T.eq(market.payout(penrith, food, 3, 0.5), math.floor(p1 * 3 * 0.5 + 0.5), 'payout cut by condition')
--- Freight pay: per slot, per estimated road km from where the load was bought.
+-- Freight pay: per tonne, per estimated road km from where the load was bought.
 do
-  local far = places.nearest(penrith, 1)[1].place
+  local far = places.nearest(penrith, 1, penrith.id)[1].place
   local km = location.distance(penrith, far) / 1000 * places.ROAD_FACTOR
-  T.near(market.freightPerSlot(penrith, far), km * market.FREIGHT_PER_SLOT_KM, 1e-9, 'freight is per road km')
-  T.eq(market.freightPerSlot(penrith, penrith), 0, 'no freight for no distance')
-  T.eq(market.freightPerSlot(nil, far), 0, 'no freight without an origin')
+  local perSlot = km * food.kgPerSlot / 1000 * market.FREIGHT_PER_TONNE_KM
+  T.near(market.freightPerSlot(penrith, far, food), perSlot, 1e-9, 'freight is per tonne per road km')
+  T.near(market.freightPerSlot(penrith, far, goods.get('bricks')), km * 0.12 * market.FREIGHT_PER_TONNE_KM, 1e-9, 'heavier goods earn more')
+  T.eq(market.freightPerSlot(penrith, penrith, food), 0, 'no freight for no distance')
+  T.eq(market.freightPerSlot(nil, far, food), 0, 'no freight without an origin')
   local price = market.price(far, food)
-  T.eq(market.payout(far, food, 4, 1, penrith), math.floor((price + km * market.FREIGHT_PER_SLOT_KM) * 4 + 0.5), 'payout adds freight')
-  T.eq(market.payout(far, food, 4, 0.5, penrith), math.floor((price + km * market.FREIGHT_PER_SLOT_KM) * 4 * 0.5 + 0.5), 'damage cuts freight too')
+  T.eq(market.payout(far, food, 4, 1, penrith), math.floor((price + perSlot) * 4 + 0.5), 'payout adds freight')
+  T.eq(market.payout(far, food, 4, 0.5, penrith), math.floor((price + perSlot) * 4 * 0.5 + 0.5), 'damage cuts freight too')
 end
 T.near(market.drivenNeeded(penrith, near[1].place), near[1].metres * 0.7, 1e-6, '70% of the straight line must be driven')
 T.done('places and market')

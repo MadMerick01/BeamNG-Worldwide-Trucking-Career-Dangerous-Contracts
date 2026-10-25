@@ -527,7 +527,7 @@ function M.new(deps)
       local quote = self:buyQuote(place, good)
       if quote.slots > 0 then
         for _, d in ipairs(destinations) do
-          local profit = math.floor(quote.slots * (market.price(d.place, good) + market.freightPerSlot(place, d.place) - quote.price) + 0.5)
+          local profit = math.floor(quote.slots * (market.price(d.place, good) + market.freightPerSlot(place, d.place, good) - quote.price) + 0.5)
           if profit > 0 and (not best or profit > best.profit) then
             best = { good = good.name, from = place.name, to = d.place.name, toId = d.place.id, goodId = good.id, profit = profit }
           end
@@ -564,7 +564,7 @@ function M.new(deps)
         local prices = {}
         for _, d in ipairs(destinations) do
           local sell = market.price(d.place, good)
-          local freight = market.freightPerSlot(place, d.place)
+          local freight = market.freightPerSlot(place, d.place, good)
           prices[#prices + 1] = { id = d.place.id, price = sell, freight = freight,
             profit = math.floor(quote.slots * (sell + freight - quote.price) + 0.5), level = market.level(d.place, good) }
         end
@@ -579,7 +579,7 @@ function M.new(deps)
       local refuel = self:refuelQuote()
       town = {
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
-        goods = goodsHere, destinations = destList, freightPerSlotKm = market.FREIGHT_PER_SLOT_KM,
+        goods = goodsHere, destinations = destList, freightPerTonneKm = market.FREIGHT_PER_TONNE_KM,
         buyAllowed = problem == nil and not self.load,
         sale = sale and { payout = sale.payout, problem = sale.problem } or nil,
         sellAllowed = problem == nil and sale ~= nil and sale.problem == nil,

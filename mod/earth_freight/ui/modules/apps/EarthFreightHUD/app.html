@@ -95,7 +95,7 @@
             <div ng-style="{color: profit(pickedGood(data), p) > 0 ? '#6fcf97' : '#eb5757'}" style="width:64px;text-align:right;">{{profit(pickedGood(data), p) >= 0 ? '+' : '&minus;'}}${{(profit(pickedGood(data), p) < 0 ? -profit(pickedGood(data), p) : profit(pickedGood(data), p)) | number:0}}</div>
             <button type="button" ng-click="buyLoad(pickedGood(data).id, p.id, buyCount(pickedGood(data)))" ng-disabled="!data.town.buyAllowed || pickedGood(data).slots < 1" style="padding:4px 8px;">Buy</button>
           </div>
-          <div style="margin-top:4px;font-size:12px;color:#c9d6d2;">Pick how many to buy (Max fills your space as far as your money goes). Buy sets the GPS to the drop-off. Pays per slot is the drop-off's price plus ${{data.town.freightPerSlotKm | number:2}} a slot for each road km. Your profit is that, minus what you pay here, for that many, before fuel.</div>
+          <div style="margin-top:4px;font-size:12px;color:#c9d6d2;">Pick how many to buy (Max fills your space as far as your money goes). Buy sets the GPS to the drop-off. Pays per slot is the drop-off's price plus freight pay: ${{data.town.freightPerTonneKm | number:0}} a tonne for each road km. Your profit is that, minus what you pay here, for that many, before fuel.</div>
         </div>
         <div style="margin:10px 0;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
           <div style="font-weight:bold;">Fuel</div>
