@@ -1,0 +1,14 @@
+{
+  "domElement": "<earth-freight-hud></earth-freight-hud>",
+  "name": "Earth Freight",
+  "types": ["ui.apps.categories.utility"],
+  "description": "Earth Freight: Rust to Rig. Buy loads in one BeamNG.Earth town, drive them to another and get paid, with real cargo weight, fuel and repairs.",
+  "css": {"width": "380px", "height": "620px", "top": "100px", "left": "20px"},
+  "author": "Earth Freight",
+  "version": "0.1.0",
+  "directive": "earthFreightHud",
+  "appName": "EarthFreightHUD",
+  "category": "Earth Freight",
+  "isAuxiliary": false,
+  "interactive": "yes"
+}

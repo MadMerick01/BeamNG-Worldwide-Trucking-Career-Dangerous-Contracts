@@ -1,0 +1,28 @@
+{
+  "_note": "Hand-edited. include: places that must be in the list (a new game starts in Penrith). exclude: GeoNames entries that duplicate a city they sit in. Names or GeoNames ids.",
+  "include": [
+    "Penrith",
+    "Springwood",
+    "Katoomba",
+    "Blackheath",
+    "Lithgow",
+    "Oberon",
+    "Richmond",
+    "Blacktown",
+    "Parramatta",
+    "Liverpool",
+    "Camden",
+    "Campbelltown",
+    "Picton",
+    "Bowral",
+    "Hornsby",
+    "Sydney",
+    "Wollongong",
+    "Kiama",
+    "Gosford"
+  ],
+  "exclude": [
+    "Sydney Central Business District",
+    "Wollongong city centre"
+  ]
+}

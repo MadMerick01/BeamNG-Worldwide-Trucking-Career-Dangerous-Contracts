@@ -1,0 +1,58 @@
+name: Release
+
+# Every push to main is tested, packaged and published as a new GitHub
+# Release. The ZIP asset always has the same name, so
+# releases/latest/download/earth_freight.zip points at the newest build.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install test dependencies
+        run: python -m pip install -r tests/requirements.txt
+
+      - name: Run tests
+        run: python tests/run.py
+
+      - name: Build mod ZIP
+        run: python tools/package.py --output dist/earth_freight.zip
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: build-${{ github.run_number }}
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          subject="$(git log -1 --format=%s)"
+          {
+            echo "Built from $short_sha on $(date -u +%Y-%m-%d): $subject"
+            echo
+            echo 'Install Earth Freight: copy `earth_freight.zip` into the `mods` folder of your BeamNG user folder. Do not extract it.'
+          } > notes.md
+          gh release create "$TAG" dist/earth_freight.zip \
+            --target "$GITHUB_SHA" \
+            --title "Earth Freight build ${{ github.run_number }} ($short_sha)" \
+            --notes-file notes.md \
+            --generate-notes \
+            --latest
