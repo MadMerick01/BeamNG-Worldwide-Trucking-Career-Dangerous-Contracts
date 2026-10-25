@@ -60,12 +60,6 @@ function M.fits(space, good)
   return slots, slots * good.kgPerSlot
 end
 
--- The load's condition after the car took this much more damage: 1 is perfect, 0 is ruined.
-function M.damaged(condition, damageIncrease, good)
-  if type(damageIncrease) ~= 'number' or damageIncrease ~= damageIncrease or damageIncrease <= 0 then return condition end
-  return math.max(0, condition - damageIncrease / good.damageForLoss)
-end
-
 local function defaults()
   return { player = function() return getPlayerVehicle(0) end }
 end

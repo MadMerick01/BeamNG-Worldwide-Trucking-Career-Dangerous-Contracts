@@ -22,16 +22,15 @@ local edits = {
   function(s) s.load={ good='food', slots=1.5, paid=1, from='gn1', condition=1 } end,
   function(s) s.load={ good='food', slots=1, paid=-1, from='gn1', condition=1 } end,
   function(s) s.load={ good='food', slots=1, paid=1, condition=1 } end,
-  function(s) s.load={ good='food', slots=1, paid=1, from='gn1', condition=-0.1 } end,
   function(s) s.load={ good='food', slots=1, paid=1, from='gn1', to={}, condition=1 } end,
   function(s) s.load={ good='food', slots=1, kg=-5, paid=1, from='gn1', condition=1 } end,
 }
 for _, edit in ipairs(edits) do local s=F.save(); edit(s); T.eq(P.validate(s),nil,'invalid save rejected') end
--- A load on board is kept with its places, distance driven and condition.
+-- A load on board is kept with its places and distance driven.
 do
   local s=F.save(); s.load={ good='food', slots=2, kg=50, paid=120, from='gn1', to='gn2', drivenKm=3.5, condition=0.75 }
   local v=P.validate(s)
-  T.eq(v.load.good,'food','good kept'); T.eq(v.load.to,'gn2','drop-off kept'); T.eq(v.load.condition,0.75,'condition kept')
+  T.eq(v.load.good,'food','good kept'); T.eq(v.load.to,'gn2','drop-off kept'); T.eq(v.load.condition,nil,'an old cargo condition is dropped')
   T.eq(v.load.drivenKm,3.5,'distance kept'); T.check(v.load~=s.load,'load copied')
   T.eq(P.validate(F.save()).load,nil,'no load is fine')
   s=F.save(); s.vehicle.fuelLitres=31.5; T.eq(P.validate(s).vehicle.fuelLitres,31.5,'fuel kept')

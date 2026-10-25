@@ -122,7 +122,7 @@ function M.new(deps)
     self.shippingSearch = nil
     -- A puncture not yet repaired; a reload respawns the car, so its tyre repair is owed instead.
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
-    self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.cargoDamage = nil, nil, nil, nil, nil
+    self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight = nil, nil, nil, nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
@@ -223,26 +223,12 @@ function M.new(deps)
     local vehicleId = self.lastSample and self.lastSample.valid and self.lastSample.vehicle and self.lastSample.vehicle.id
     if vehicleId ~= nil and vehicleId ~= self.ownedParts.id then return end
     self.respawned = false
-    self.cargoDamage = nil
     if self.fuel and self.fuel.restore and self.fuelTank then
       self.fuel.restore = nil
       local ok, why = self.fuelTank:set(self.fuel.litres, 0)
       if not ok then self.diag:event('fuel_restore_failed', tostring(why), 'W') end
     end
     self:applyWeight(true)
-  end
-
-  -- Cargo damage: the load loses condition as the car takes damage while carrying it.
-  function c:watchCargo()
-    if not self.load or not self.garage then self.cargoDamage = nil; return end
-    local inspected = self.garage:inspect()
-    if not inspected then return end
-    local last = self.cargoDamage
-    if last and last.id == inspected.id and inspected.damage > last.damage then
-      local good = goods.get(self.load.good)
-      self.load.condition = cargo.damaged(self.load.condition, inspected.damage - last.damage, good)
-    end
-    self.cargoDamage = { id = inspected.id, damage = inspected.damage }
   end
 
   -- Driving. Distance counts only once the player has arrived. A teleport-sized jump never counts;
@@ -519,11 +505,8 @@ function M.new(deps)
       return false
     end
     self.load = { good = good.id, slots = quote.slots, kg = quote.kg, paid = quote.cost, from = place.id, to = destination.id,
-      drivenKm = 0, condition = 1 }
+      drivenKm = 0 }
     self.dumpArmed = false
-    -- Cargo damage counts from the car's damage now.
-    local inspected = self.garage and self.garage:inspect()
-    self.cargoDamage = inspected and { id = inspected.id, damage = inspected.damage } or nil
     self:applyWeight()
     local gps = ''
     if self.configuration.autoGps and self.adapter.setDestination then
@@ -541,7 +524,7 @@ function M.new(deps)
   function c:saleQuote(place)
     if not self.load or not place then return nil end
     local good, from = goods.get(self.load.good), places.get(self.load.from)
-    local quote = { payout = market.payout(place, good, self.load.slots, self.load.condition, from) }
+    local quote = { payout = market.payout(place, good, self.load.slots, from) }
     if place.id == from.id then quote.problem = 'You bought this load here. Deliver it somewhere else.'
     else
       local needed = market.drivenNeeded(from, place)
@@ -565,7 +548,7 @@ function M.new(deps)
     end
     local load, good = self.load, goods.get(self.load.good)
     self:addMoney(quote.payout)
-    self.load, self.dumpArmed, self.cargoDamage = nil, false, nil
+    self.load, self.dumpArmed = nil, false
     self:applyWeight()
     local refund = ''
     if self.offer and shipping.offerPays(place, self.offer) then
@@ -576,7 +559,6 @@ function M.new(deps)
     end
     local profit = quote.payout - load.paid
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(quote.payout), load.slots .. ' ' .. good.name:lower() .. ' to ' .. place.name
-      .. (load.condition < 0.995 and (', ' .. math.floor(load.condition * 100 + 0.5) .. '% intact') or '')
       .. '. ' .. (profit >= 0 and ('Profit ' .. dollars(profit)) or ('Loss ' .. dollars(-profit))) .. ' on the ' .. dollars(load.paid) .. ' load.' .. refund .. ' Save to keep it.')
     self.tradeFeedback = nil
     self.diag:event('load_delivered', string.format('%s x%d -> %s for %d', good.id, load.slots, place.id, quote.payout))
@@ -674,7 +656,6 @@ function M.new(deps)
     self:provideVehicle()
     self:watchParts()
     self:afterRespawn()
-    self:watchCargo()
     self:watchFuel()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
@@ -771,11 +752,11 @@ function M.new(deps)
       local good, to, from = goods.get(self.load.good), self.load.to and places.get(self.load.to), places.get(self.load.from)
       loadView = {
         good = good.name, goodId = good.id, slots = self.load.slots, kg = self.load.kg, paid = self.load.paid,
-        condition = self.load.condition, drivenKm = self.load.drivenKm,
+        drivenKm = self.load.drivenKm,
         from = from.name, to = to and to.name or nil, destination = to and location.copy(to) or nil,
         distanceMetres = to and current and places.roadEstimate(current, to) or nil,
         direction = to and current and location.compassPoint(location.bearing(current, to)) or nil,
-        payout = to and market.payout(to, good, self.load.slots, self.load.condition, from) or nil,
+        payout = to and market.payout(to, good, self.load.slots, from) or nil,
       }
     end
     local destinations = anchor and self:destinationsFrom(anchor) or {}

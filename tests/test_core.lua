@@ -60,8 +60,6 @@ do
   T.eq(starter.slots, 20, 'five M boxes of slots')
   local slots, kg = cargo.fits({ slots = 16, kg = 600 }, goods.get('bricks'))
   T.eq(slots, 5, 'bricks run out of weight before space'); T.eq(kg, 600, 'their weight')
-  T.near(cargo.damaged(1, 1500, goods.get('parts')), 0.5, 1e-9, 'half the damage for loss halves the load')
-  T.eq(cargo.damaged(0.1, 1e9, goods.get('parts')), 0, 'never below ruined')
 end
 
 -- The delivery loop: buy parcels in Penrith, the GPS goes to the drop-off, drive there, get paid.
@@ -102,7 +100,7 @@ do
   v = c:view()
   T.eq(v.here.name, 'St Clair', 'arrived at St Clair')
   T.check(v.load.drivenKm > 9, 'distance driven with the load counted')
-  local payout = market.payout(stClair, parts, 4, 1, penrith)
+  local payout = market.payout(stClair, parts, 4, penrith)
   T.eq(v.town.sale.payout, payout, 'payout quoted'); T.check(v.town.sellAllowed, 'sell allowed')
   T.check(c:sell(), 'delivered')
   T.eq(c:view().balance, Core.STARTING_MONEY - 4 * price + payout, 'paid on delivery')
@@ -156,18 +154,16 @@ do
   T.check(c:dumpLoad(), 'dumped'); T.eq(c.load, nil, 'load gone')
 end
 
--- Rough driving damages the cargo and cuts the payout.
+-- Rough driving damages the car, never the cargo: a delivery pays in full.
 do
   local c, _, a, g = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   c:buy('parts', stClair.id)
-  g.damage = 600; c:tick(0.1); g.damage = 1500; c:tick(0.1)
-  T.near(c.load.condition, 1 - 1500 / goods.get('parts').damageForLoss, 1e-9, 'damage taken counts against the load')
-  g.damage = 0; c:vehicleSpawned(); c:tick(0.1); g.damage = 100; c:tick(0.1)
-  T.near(c.load.condition, 1 - 1600 / goods.get('parts').damageForLoss, 1e-9, 'a repair resets the reading, not the load')
-  local condition = c.load.condition
+  g.damage = 600; c:tick(0.1); g.damage = 5000; c:tick(0.1)
+  T.eq(c.load.condition, nil, 'the load has no condition')
   F.drive(c, a, stClair)
-  T.eq(c:view().town.sale.payout, market.payout(stClair, goods.get('parts'), c.load.slots, condition, penrith), 'payout cut by damage')
+  T.eq(c:view().town.sale.payout, market.payout(stClair, goods.get('parts'), c.load.slots, penrith), 'paid in full after damage')
+  T.check(c:sell(), 'delivered'); T.check(not c:view().flash.text:find('intact', 1, true), 'no cargo condition in the message')
 end
 
 -- Saves keep the load, and an unknown good in a save is dropped.
@@ -183,8 +179,9 @@ do
   T.eq(r.load, nil, 'unknown good dropped')
   local bad = F.copy(io.files[A]); bad.load = { good = 'food', slots = 0, paid = 1, from = 'x', condition = 1 }
   T.eq(P.validate(bad), nil, 'a load with no slots is refused')
-  bad.load = { good = 'food', slots = 1, paid = 1, from = 'x', condition = 2 }
-  T.eq(P.validate(bad), nil, 'a condition over 1 is refused')
+  bad.load = { good = 'food', slots = 1, paid = 1, from = 'x', condition = 0.4 }
+  T.check(P.validate(bad) ~= nil, 'an old save with a cargo condition still loads')
+  T.eq(P.validate(bad).load.condition, nil, 'and the condition is dropped')
 end
 
 -- Fuel: read from the car, Refuel fills it in a town, charged for what went in.

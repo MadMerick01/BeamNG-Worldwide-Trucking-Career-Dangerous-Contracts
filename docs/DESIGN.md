@@ -13,8 +13,8 @@ It sits alongside Earth Enduro (rally stages, CarKov) as a separate mod. It reus
 1. **Look.** The HUD shows the nearest 5–6 places, each with its goods as coloured dots and the road distance to it.
 2. **Choose.** Pick a good that is cheap here (green) and short somewhere close (red) that your vehicle can carry.
 3. **Load.** Buy it at the place you are at, up to your vehicle's capacity.
-4. **Drive.** Usually 10–15 km by road. Rough driving damages the cargo and your car.
-5. **Deliver.** Sell at the destination. Payout is the destination's price, reduced by any cargo damage.
+4. **Drive.** Usually 10–15 km by road. Rough driving damages your car.
+5. **Deliver.** Sell at the destination. Payout is the destination's price plus freight pay, in full.
 6. **Spend.** Repairs, parts, and saving towards a bigger vehicle or a ticket to a better-paying region.
 
 A run takes roughly 10–20 minutes of driving, which is the engagement target Rowan set.
@@ -150,7 +150,7 @@ Pay is a multiplier on that score. Norway's fjords, the Andes, the Australian ou
 
 ### Cargo damage
 
-Rough driving damages the cargo and cuts the payout. Damage costs more the more the load is worth, so careful driving pays. Fuel and parts are the most sensitive. A cheap pickup on a dirt road is a real trade-off.
+**Decided (Rowan, 25 Oct): no cargo damage.** It was built in layer 1 and removed: losing pay on top of the repair bill was too harsh and disheartening. A delivery always pays in full; rough driving costs the car's repair and punctures.
 
 ### Living world (later)
 
@@ -189,7 +189,7 @@ Every delivery still has to be driven: teleport-sized jumps never count as drivi
 
 A UI app in the same shell as Enduro's (one state payload at ≤4 Hz, tabs, an always-visible header).
 
-**While driving (always in view):** money, the current load and its destination, distance to it, and cargo condition.
+**While driving (always in view):** money, the current load and its destination, and distance to it.
 
 **Nearby list:** the nearest 5–6 places with:
 
@@ -257,7 +257,7 @@ Copy from [`earth-enduro---rust-to-race-car`](https://github.com/MadMerick01/ear
 | `places.lua` | generated data plus lookup: nearest N places to a point (needs a spatial index, e.g. a lat/lon grid of cells, to stay fast over ~150k+ entries) |
 | `goods.lua` | the goods, sizes, base prices and type → supply/demand tables |
 | `market.lua` | base price, decaying offsets, buy/sell, green/red classification |
-| `cargo.lua` | current load, capacity per vehicle, damage while driving, payout |
+| `cargo.lua` | current load, capacity per vehicle, payout |
 | `shipping.lua` | teleport quotes, charging, cargo cancel |
 | `core.lua` | the controller tying it together, much smaller than Enduro's |
 
@@ -286,7 +286,7 @@ The first playable loop, in `mod/earth_freight/`:
 - **Fuel (Q15a):** the car's fuel tanks are read and set through its `energyStorage` (litres from each tank's `remainingVolume` and `capacity`), every 2 s and on Refuel. A repair or part change respawns the car full, so the tank is put back to what it had; the save keeps it too.
 - **Buying a load** fills the space as far as the money goes and sets the drop-off. Earth's GPS is set to it (Q13), with `autoGps: false` in config.json to turn that off.
 - **Anti-cheat:** a load sells only after 70% of the straight-line distance has been driven with it, never where it was bought; a teleport over 2 km cancels it, a shorter hop keeps it.
-- **Cargo damage:** the load loses condition as the car's damage reading rises, by each good's `damageForLoss` (parts 3,000, food 6,000, bricks 20,000).
+- **Cargo damage:** built, then removed at Rowan's request. A delivery pays in full; the car's repair is the cost of rough driving.
 
 Needs checking in game: whether the vanilla Cargo Load part names match (and which fit the starter Burnside), `obj:setNodeMass` and `partOrigin` on vehicle nodes, the fuel tanks' `remainingVolume`/`setRemainingRatio`, and Earth's `gps.setDestination`.
 

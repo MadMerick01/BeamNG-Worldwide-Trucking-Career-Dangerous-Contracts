@@ -47,7 +47,6 @@ for _, n in ipairs(near) do
   if market.price(n.place, food) ~= p1 then differ = true end
 end
 T.check(differ, 'prices differ between places')
-T.eq(market.payout(penrith, food, 3, 0.5), math.floor(p1 * 3 * 0.5 + 0.5), 'payout cut by condition')
 -- Freight pay: per tonne, per estimated road km from where the load was bought.
 do
   local far = places.nearest(penrith, 1, penrith.id)[1].place
@@ -61,8 +60,7 @@ do
   T.near(market.freightRate(market.LONG_HAUL_KM), 2 * market.FREIGHT_PER_TONNE_KM, 1e-9, 'a long haul pays twice the rate per km')
   T.eq(market.freightPerSlot(nil, far, food), 0, 'no freight without an origin')
   local price = market.price(far, food)
-  T.eq(market.payout(far, food, 4, 1, penrith), math.floor((price + perSlot) * 4 + 0.5), 'payout adds freight')
-  T.eq(market.payout(far, food, 4, 0.5, penrith), math.floor((price + perSlot) * 4 * 0.5 + 0.5), 'damage cuts freight too')
+  T.eq(market.payout(far, food, 4, penrith), math.floor((price + perSlot) * 4 + 0.5), 'payout adds freight')
 end
 T.near(market.drivenNeeded(penrith, near[1].place), near[1].metres * 0.7, 1e-6, '70% of the straight line must be driven')
 T.done('places and market')

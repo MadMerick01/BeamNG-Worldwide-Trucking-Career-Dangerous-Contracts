@@ -83,7 +83,6 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       // Dot colours: green stocked and cheap here, red short and pays well, grey otherwise.
       scope.dotColor = function (level) { return level === 'cheap' ? '#6fcf97' : (level === 'short' ? '#eb5757' : '#7d8b88') }
       scope.km = function (metres) { return typeof metres === 'number' && isFinite(metres) ? (metres / 1000).toFixed(1) : '' }
-      scope.percent = function (share) { return typeof share === 'number' ? Math.round(share * 100) : '' }
       // The one message under the header: what just happened, then what to do. One object is
       // reused, as Angular watches it by reference.
       var notice = { title: '', text: '', color: '#a7e5c9', alert: false }
