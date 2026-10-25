@@ -98,6 +98,8 @@ A green bulk dot you can't carry yet is meant to be visible early on; it is what
 - Every load also has a **weight**, and weight is a big part of the game: each vehicle has a payload limit, and a heavy load should make the vehicle slower, brake later and handle worse, so overloading a rust bucket is a real risk. Gravel and ore fill a vehicle's weight limit long before its space; parcels and parts fill space first.
 - The load itself is still a number in the save, not objects in the tray, so it never falls through Earth's ground.
 
+**What BeamNG has built in.** Since 0.31, vanilla vehicles can carry `cargoStorage` parts for career deliveries, sold in the parts menu as "Cargo Load …" (internal names contain `cargo_load_`). The `cargoStorage` jbeam section also says how stored cargo adds weight to the vehicle's nodes. Cargo types are `parcel`, `fluid`, `dryBulk` and `passenger`. Parcel capacity is counted in slots: Cargo Load Box S holds 1, M holds 4, L holds 16, XL holds 128, and 20 ft and 40 ft containers hold far more. Fluid and dry bulk are counted in litres (e.g. Fluid Tank XL and Aggregate Box XL, 800). From BeamNG's [Cargo Storage docs](https://documentation.beamng.com/modding/vehicle/sections/cargostorage/), via search; not yet checked against the 0.39 game files. Livestock and timber have no built-in type, so they would need our own mapping (e.g. livestock as passenger-like or parcel slots, timber as a flatbed load).
+
 **❓ OPEN — Q5a:** How the load's weight reaches the physics. Options: change the vehicle's mass through a weight-adjusting part or jbeam variable, the way BeamNG's own career cargo does, or apply it as a game-side mass change. Needs a look at how career cargo adds mass, alongside Q4.
 
 **❓ OPEN — Q5b:** Which parts count as cargo boxes and how much each holds. If BeamNG's career cargo slots (Q4) can be read, they answer this. Otherwise we keep our own table of box parts with their space and weight limit.
@@ -282,8 +284,8 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 | Q3 | Good × size table | to fill in |
 | Q4 | Can we read career-mode cargo slots in Earth Freeroam? | capacity per vehicle class, set by us |
 | Q5 | Physical or abstract cargo | **Decided:** a number; space from the cargo boxes fitted, weight matters |
-| Q5a | How the load's weight reaches the physics | look at how career cargo adds mass |
-| Q5b | Which parts are cargo boxes and what each holds | career cargo slots if readable, else our own table |
+| Q5a | How the load's weight reaches the physics | use the `cargoStorage` weight from the Cargo Load parts, if it works outside career |
+| Q5b | Which parts are cargo boxes and what each holds | the vanilla Cargo Load parts (Box S/M/L/XL, tanks, aggregate boxes) |
 | Q6 | Offset size and decay rate | **Decided:** halves every 2 in-game hours; offset scales with load size |
 | Q7 | Pay multiplier cap | **Decided:** 3× |
 | Q7a | Elevation source for ruggedness | SRTM or Copernicus DEM |
