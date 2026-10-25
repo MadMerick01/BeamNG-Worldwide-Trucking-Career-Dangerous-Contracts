@@ -42,7 +42,7 @@ GeoNames is CC BY 4.0, so the mod needs a credit line (README and the HUD's Tips
 
 ### Rural pickup points
 
-Out in the country towns alone are too far apart (Goulburn's nearest town is 27 km away). The gaps are filled with **rural pickup points**: farms, mines, quarries, sawmills, grain silos and roadhouses, taken from GeoNames feature classes and OpenStreetMap. A rural point sells or buys only one or two goods and has no full board. It means there is a 10–15 km job from almost anywhere, and it feels right for the genre: grain from a farm to the town silo, gravel from a quarry to a building site.
+Out in the country towns alone are too far apart (Goulburn's nearest town is 27 km away). The gaps are filled with **rural pickup points**: farms, mines, quarries, brickworks, dams, grain silos and roadhouses, taken from GeoNames feature classes and OpenStreetMap. A rural point sells or buys only one or two goods and has no full board. It means there is a 10–15 km job from almost anywhere, and it feels right for the genre: grain from a farm to the town silo, gravel from a quarry to a building site.
 
 ### What each place makes and needs
 
@@ -50,7 +50,7 @@ There is no worldwide database of what towns produce, so the generator **guesses
 
 | Signal | Source | Tag |
 |---|---|---|
-| Land cover around it: cropland, forest, grassland, desert | ESA WorldCover | farm, timber, livestock |
+| Land cover around it: cropland, grassland, desert | ESA WorldCover | farm (cropland, grassland); dry (desert: needs water) |
 | A mine, quarry or oil field within a few km | GeoNames / OSM | mining, quarry, fuel |
 | A harbour, or on the coast | GeoNames / OSM, coastline | port |
 | Big city | importance rank | city: makes parts and fuel, needs food and raw goods |
@@ -68,27 +68,26 @@ There is no hand-built region. Your region is simply the places around you, so i
 
 ## Goods and cargo sizes
 
-Only about six goods, so the dots stay readable. Each one is spread across the cargo sizes so the same good shows up at every stage of progress.
+Only six goods, so the dots stay readable. Each maps onto one of BeamNG's built-in cargo types (see below), so the vanilla Cargo Load parts carry them. Livestock and timber were dropped because BeamNG has no cargo type for them; water and bricks replace them (decided, Q3).
 
-| Good | Feel | Typical flow |
-|---|---|---|
-| **Grain / food** | heavy, bulky | farms → towns and cities |
-| **Livestock** | pays well, rough driving costs you | farms → cities |
-| **Timber** | long load | forests and sawmills → towns |
-| **Gravel / ore** | very heavy | quarries and mines → cities |
-| **Fuel** | dangerous, pays well | cities → remote places |
-| **Parts / machinery** | light, valuable | cities → farms and mines |
+| Good | BeamNG type | Feel | Typical flow |
+|---|---|---|---|
+| **Parts / machinery** | parcel | light, valuable | cities → farms and mines |
+| **Food** | parcel | everyday, always wanted | farms → towns and cities |
+| **Bricks** | parcel | very heavy per slot, so weight runs out before space | brickworks and quarries → towns and building sites |
+| **Grain** | dry bulk | bulky | farms and silos → towns, cities and ports |
+| **Gravel / ore** | dry bulk | very heavy | quarries and mines → cities |
+| **Water** | fluid | heavy, sloshes | towns and dams → remote places, mines, dry farms |
+| **Fuel** | fluid | dangerous, pays well | cities → remote places |
 
 | Size | Carried by | Notes |
 |---|---|---|
-| **Parcels** | any car; a rust-bucket sedan takes 3–4 | low pay, always available (parts, mail, food boxes) |
-| **Pallets** | ute or pickup takes 1–2 | where fuel drums and machinery start |
-| **Bulk** | tray truck or bigger | grain, gravel, timber, livestock; where the money is |
-| **Trailers** | semi | long, high-paying runs into dangerous regions |
+| **Parcels** | any car with a box; Cargo Load Box S/M holds 1–4 slots | low pay, always available (parts, food, a few bricks) |
+| **Pallets** | ute or pickup with an L box (16 slots) or a small tank | where fuel and water start |
+| **Bulk** | tray truck or bigger with an XL box (128 slots), aggregate box or fluid tank | grain, gravel, bricks by the pallet; where the money is |
+| **Trailers** | semi | containers and tankers on the long, high-paying runs into dangerous regions |
 
 A green bulk dot you can't carry yet is meant to be visible early on; it is what keeps you saving.
-
-**❓ OPEN — Q3:** Exactly which goods exist at which sizes (e.g. is there a "livestock parcel"? probably not). A good × size table needs filling in.
 
 **❓ OPEN — Q4:** Vehicle capacity. BeamNG's own career mode puts cargo slots on vehicles for its delivery jobs. If we can read those outside career mode (Earth Freeroam does not load career modules, which is why Enduro's garage uses base-game calls only), each vehicle's capacity comes free and stays right when the car is modded. Otherwise we set capacity per vehicle class ourselves. Needs a check against the API dump (`docs/beamng-api/` in the Enduro repo) and in game.
 
@@ -151,7 +150,7 @@ Pay is a multiplier on that score. Norway's fjords, the Andes, the Australian ou
 
 ### Cargo damage
 
-Rough driving damages the cargo and cuts the payout. Damage costs more the more the load is worth, so careful driving pays. Livestock and fuel are the most sensitive. A cheap pickup on a dirt road is a real trade-off.
+Rough driving damages the cargo and cuts the payout. Damage costs more the more the load is worth, so careful driving pays. Fuel and parts are the most sensitive. A cheap pickup on a dirt road is a real trade-off.
 
 ### Living world (later)
 
@@ -281,7 +280,7 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 |---|---|---|
 | Q1 | Land-cover source the generator can actually sample | try a coarser set than ESA WorldCover first |
 | Q2 | Where a new game starts | **Decided:** Penrith, NSW |
-| Q3 | Good × size table | to fill in |
+| Q3 | Which goods, at which sizes | **Decided:** parts, food, bricks (parcel); grain, gravel/ore (dry bulk); water, fuel (fluid) |
 | Q4 | Can we read career-mode cargo slots in Earth Freeroam? | capacity per vehicle class, set by us |
 | Q5 | Physical or abstract cargo | **Decided:** a number; space from the cargo boxes fitted, weight matters |
 | Q5a | How the load's weight reaches the physics | use the `cargoStorage` weight from the Cargo Load parts, if it works outside career |
