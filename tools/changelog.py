@@ -3,7 +3,8 @@
 
 The release workflow runs this after a push to main. It takes the entries that
 were in "Coming next" in the released commit and are still there on main,
-writes them as the release notes, and moves them under "## Build N · date".
+writes them as the release notes, followed by every earlier build in a
+collapsed "Earlier builds" block, and moves them under "## Build N · date".
 Entries merged after the released commit stay in "Coming next" for the next
 build.
 """
@@ -61,7 +62,16 @@ def release(released, current, build, date):
         section += '\n'.join(left) + '\n\n'
     label = f'{date.day} {date:%b %Y}'
     section += f'## Build {build} · {label}\n\n' + '\n'.join(shipped) + '\n\n'
-    return '\n'.join(shipped) + '\n', section + tail
+    return '\n'.join(shipped) + '\n' + earlier(tail), section + tail
+
+
+def earlier(tail):
+    """Fold the earlier builds into a collapsed block, one heading level down."""
+    history = ''.join('#' + line if line.startswith('## ') else line
+                      for line in tail.strip().splitlines(keepends=True))
+    if not history:
+        return ''
+    return f'\n<details>\n<summary>Earlier builds</summary>\n\n{history.rstrip()}\n\n</details>\n'
 
 
 def main(argv=None):
