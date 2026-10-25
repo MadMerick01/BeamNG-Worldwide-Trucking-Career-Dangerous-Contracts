@@ -16,6 +16,7 @@ def build(output: Path) -> Path:
             entries[path.relative_to(source).as_posix()] = path.read_bytes()
     entries['docs/DESIGN.md'] = (root / 'docs' / 'DESIGN.md').read_bytes()
     entries['README.md'] = (root / 'README.md').read_bytes()
+    entries['CHANGELOG.md'] = (root / 'CHANGELOG.md').read_bytes()
     output = output.resolve()
     if output.is_relative_to(source):
         raise ValueError('Write the archive outside the mod source folder.')
