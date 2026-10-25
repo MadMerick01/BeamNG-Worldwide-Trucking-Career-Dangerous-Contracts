@@ -106,6 +106,24 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.bookShipping = function (destination) {
         if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")
       }
+      // Shipping anywhere: a town by name, or coordinates pasted from a map.
+      scope.ship = { query: '', coords: '', error: null }
+      scope.searchShipping = function () {
+        var q = String(scope.ship.query || '').replace(/[^A-Za-z0-9 .-]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)
+        if (scope.data.shipping && q.length >= 2) core("searchShipping('" + q + "')")
+      }
+      scope.parseCoordinates = function (text) {
+        var m = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(String(text || ''))
+        if (!m) return null
+        var lat = parseFloat(m[1]), lon = parseFloat(m[2])
+        if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) return null
+        return { latitude: lat, longitude: lon }
+      }
+      scope.bookCoordinates = function () {
+        var p = scope.parseCoordinates(scope.ship.coords)
+        scope.ship.error = p ? null : 'Paste latitude, longitude, like -16.19, -67.73.'
+        if (p && scope.data.shipping && !scope.data.shipping.booking) core('bookShippingTo(' + p.latitude + ', ' + p.longitude + ')')
+      }
       scope.cancelShipping = function () { if (scope.data.shipping && scope.data.shipping.booking) core('cancelShipping()') }
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       scope.addTestMoney = function () { if (scope.data.testMoneyAllowed) core('addTestMoney()') }

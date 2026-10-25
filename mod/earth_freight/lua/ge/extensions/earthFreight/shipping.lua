@@ -16,6 +16,8 @@ M.DESTINATIONS = {
   { id = 'gilgit', name = 'Gilgit', region = 'Karakoram Highway, Pakistan', latitude = 35.9187, longitude = 74.3124 },
   { id = 'leh', name = 'Leh', region = 'Ladakh, India', latitude = 34.165, longitude = 77.584 },
 }
+-- How many towns a search by name shows.
+M.SEARCH_RESULTS = 6
 -- The fee: a flat amount plus a little per km. Tune after testing in game.
 M.BASE_FEE, M.FEE_PER_KM = 100, 0.02
 -- A teleport that lands this close to the booked destination uses up the booking.

@@ -21,6 +21,7 @@ import gzip
 import json
 import math
 import sys
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -212,6 +213,13 @@ def tile_key(lat, lon):
     return f"{'s' if south < 0 else 'n'}{abs(south)}{'w' if west < 0 else 'e'}{abs(west)}"
 
 
+def search_key(name):
+    """A name as the shipping search matches it: lower case, accents and punctuation dropped,
+    so typing zurich finds Zürich."""
+    plain = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii').lower()
+    return ' '.join(''.join(ch if ch.isalnum() else ' ' for ch in plain).split())
+
+
 def lua_text(s):
     return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
 
@@ -239,6 +247,16 @@ def render(kept, terrain, people, areas, countries, source):
                                      + 'return {\n  regions = { ' + ', '.join(lua_text(r) for r in regions) + ' },\n'
                                      + '  places = [==[\n' + '\n'.join(lines) + '\n]==],\n}\n')
     counts = ', '.join(f'{k} = {len(v)}' for k, v in sorted(tiles.items()))
+    # The search list for shipping: every place's folded name (see search_key), id and tile, sorted
+    # by name and then size, so a name's matches sit together with the biggest place first.
+    keys = sorted(tiles)
+    rank = {'city': 0, 'town': 1, 'village': 2}
+    entries = sorted((search_key(p['name']), rank[size(p)], p['geonameid'], i + 1)
+                     for i, key in enumerate(keys) for p, _, _ in tiles[key])
+    files['placesNames.lua'] = (header
+        + '-- One place a line, sorted: folded name, GeoNames id, tile (a number into tiles).\n'
+        + 'return {\n  tiles = { ' + ', '.join(lua_text(k) for k in keys) + ' },\n'
+        + '  names = [==[\n' + '\n'.join(f'{k}\t{gid}\t{t}' for k, _, gid, t in entries if k) + '\n]==],\n}\n')
     files['placesIndex.lua'] = (header
         + 'return {\n'
         + f'  source = {lua_text(source)}, spacingKm = {SPACING_KM}, tileDegrees = {TILE_DEGREES}, maxBoost = {MAX_BOOST},\n'
@@ -304,7 +322,7 @@ def main():
         if stale:
             print(f'{len(stale)} place files are out of date, such as {stale[0]}. Run: python tools/make_places.py', file=sys.stderr)
             return 1
-        print(f'Place tiles are up to date ({len(kept)} places in {len(files) - 1} tiles).')
+        print(f'Place tiles are up to date ({len(kept)} places in {len(files) - 2} tiles).')
         return 0
     (args.output / 'tiles').mkdir(parents=True, exist_ok=True)
     for name in old_tiles - set(files):
@@ -312,7 +330,7 @@ def main():
     for name, text in files.items():
         (args.output / name).write_text(text, encoding='utf-8', newline='\n')
     total = sum(len(t.encode('utf-8')) for t in files.values())
-    print(f'Wrote {len(kept)} places in {len(files) - 1} tiles ({total / 1e6:.1f} MB) to {args.output}')
+    print(f'Wrote {len(kept)} places in {len(files) - 2} tiles ({total / 1e6:.1f} MB) to {args.output}')
     return 0
 
 

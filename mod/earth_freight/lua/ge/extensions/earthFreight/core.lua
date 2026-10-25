@@ -117,6 +117,7 @@ function M.new(deps)
     -- Shipping booked and not yet used, and where an unbooked teleport left from. Neither is saved:
     -- Save waits until both are settled.
     self.booking, self.stranded, self.shippingFeedback, self.lastDriven = nil, nil, nil, nil
+    self.shippingSearch = nil
     -- A puncture not yet repaired; a reload respawns the car, so its tyre repair is owed instead.
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.cargoDamage = nil, nil, nil, nil, nil
@@ -314,9 +315,42 @@ function M.new(deps)
     return nil
   end
 
-  -- Books shipping to a destination: pay the fee, then teleport there with the coordinates.
+  -- A place as a shipping destination.
+  local function placeDestination(place)
+    return place and { id = place.id, name = place.name, region = place.region,
+      latitude = place.latitude, longitude = place.longitude } or nil
+  end
+
+  -- Books shipping to one of the listed regions or any place by its id.
   function c:bookShipping(destinationId)
-    local destination = shipping.get(destinationId)
+    return self:book(shipping.get(destinationId) or placeDestination(places.get(destinationId)))
+  end
+
+  -- Books shipping to any coordinates; the region is the nearest place's.
+  function c:bookShippingTo(latitude, longitude)
+    local point = { latitude = latitude, longitude = longitude }
+    if not location.valid(point) then
+      self.shippingFeedback = 'Those are not coordinates. Use latitude, longitude, like -16.19, -67.73.'
+      return false
+    end
+    places.ensure(point)
+    local near = places.nearest(point, 1)[1]
+    return self:book({ id = 'coordinates', name = string.format('%.5f, %.5f', latitude, longitude),
+      region = near and (near.metres < 50000 and ('near ' .. near.place.name .. ', ' .. near.place.region) or near.place.region) or 'somewhere remote',
+      latitude = latitude, longitude = longitude })
+  end
+
+  -- Finds places by name to ship to.
+  function c:searchShipping(query)
+    local found = places.search(query, shipping.SEARCH_RESULTS)
+    self.shippingSearch = { query = query, results = {} }
+    for _, place in ipairs(found) do self.shippingSearch.results[#self.shippingSearch.results + 1] = placeDestination(place) end
+    self.shippingFeedback = #found == 0 and ('No town called ' .. tostring(query) .. '. Try the start of its name, or paste coordinates.') or nil
+    return #found > 0
+  end
+
+  -- Books shipping to a destination: pay the fee, then teleport there with the coordinates.
+  function c:book(destination)
     local here = self.lastSample
     local problem = self:shippingProblem()
     if not problem and not destination then problem = 'Pick a destination.' end
@@ -728,9 +762,16 @@ function M.new(deps)
       list[#list + 1] = { id = d.id, name = d.name, region = d.region, fee = fee, here = here,
         allowed = problem == nil and not here and self:canAfford(fee) }
     end
+    local found = {}
+    for _, d in ipairs(self.shippingSearch and self.shippingSearch.results or {}) do
+      local here, fee = shipping.arrived(current, d), shipping.fee(current, d)
+      found[#found + 1] = { id = d.id, name = d.name, region = d.region, fee = fee, here = here,
+        allowed = problem == nil and not here and self:canAfford(fee) }
+    end
     local b = self.booking
     return {
-      destinations = list, problem = problem, feedback = self.shippingFeedback,
+      destinations = list, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
+      problem = problem, feedback = self.shippingFeedback,
       booking = b and { id = b.id, name = b.name, region = b.region, fee = b.fee, latitude = b.latitude, longitude = b.longitude,
         distanceMetres = location.distance(current, b) } or nil,
     }
@@ -1003,6 +1044,15 @@ function M.sellLoad() return safely(function() return ensure():sell() end) end
 function M.dumpLoad() return safely(function() return ensure():dumpLoad() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
+-- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.
+function M.bookShippingTo(latitude, longitude)
+  if type(latitude) ~= 'number' or type(longitude) ~= 'number' then return false end
+  return safely(function() return ensure():bookShippingTo(latitude, longitude) end)
+end
+function M.searchShipping(query)
+  if type(query) ~= 'string' or #query > 60 or query:find('[^%w %.%-]') then return false end
+  return safely(function() return ensure():searchShipping(query) end)
+end
 function M.cancelShipping() return safely(function() return ensure():cancelShipping() end) end
 function M.setDeliveryRange(km) return safely(function() return ensure():setDeliveryRange(km) end) end
 -- The player car's answers to fuel.lua's commands.

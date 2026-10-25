@@ -76,6 +76,23 @@ local km = location.distance(coroico, yolosaRun) / 1000 * places.ROAD_FACTOR
 T.near(market.freightPerSlot(coroico, yolosaRun, food),
   km * food.kgPerSlot / 1000 * market.freightRate(km) * market.runBoost(coroico, yolosaRun), 1e-9, 'freight carries the run boost')
 
+-- Searching by name loads the places found, biggest first, and folds accents and case.
+do
+  local found = places.search('La Paz', 6)
+  T.eq(#found, 6, 'six La Pazes'); T.eq(found[1].name, 'La Paz', 'exact names first')
+  T.eq(found[1].size, 'city', 'the biggest first')
+  local zurich = places.search('zurich', 3)
+  T.check(#zurich > 0 and zurich[1].name:find('rich') ~= nil, 'zurich finds Zürich: ' .. tostring(zurich[1] and zurich[1].name))
+  T.eq(places.search('CHAMONIX', 1)[1].region, 'France', 'any case, with the region')
+  local prefix = places.search('Coroi', 6)
+  T.check(#prefix >= 1 and prefix[1].name == 'Coroico', 'the start of a name is enough')
+  T.eq(#places.search('x', 6), 0, 'one letter is too short')
+  T.eq(#places.search('qqqqzzzz', 6), 0, 'nothing for a made-up name')
+  T.eq(places.searchKey('  Saint-Jean, du Gard '), 'saint jean du gard', 'queries fold like the list')
+  local first = places.search('1 decembrie', 1)
+  T.eq(#first, 1, 'the first line of the list is found too')
+end
+
 -- A tile with nothing in it (the sea) loads nothing.
 T.eq(places.ensure({ latitude = -40, longitude = -130 }), 0, 'the open sea has no places')
 T.done('worldwide places')

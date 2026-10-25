@@ -330,6 +330,19 @@ do
   T.check(c:bookShipping('leh'), 'shipping can be booked while stranded')
   a.pose = shipping.get('leh'); c:tick(0.1); c:tick(0.6)
   T.eq(c.stranded, nil, 'shipped on, no longer stranded')
+  -- Any town by name, or any coordinates.
+  T.check(c:searchShipping('chamonix'), 'a town found by name')
+  local found = c:view().shipping.found
+  T.check(#found >= 1 and found[1].name:find('Chamonix') ~= nil, 'listed with its fee'); T.check(found[1].fee > 100, 'priced')
+  T.check(not c:searchShipping('qqqqzzzz'), 'nothing found'); T.check(c:view().shipping.feedback:find('No town called'), 'told so')
+  c:searchShipping('chamonix')
+  T.check(c:bookShipping(found[1].id), 'booked to a found town'); T.eq(c.booking.name, found[1].name, 'by its name')
+  c:cancelShipping()
+  T.check(not c:bookShippingTo(95, 0), 'not past the pole')
+  T.check(c:bookShippingTo(-16.3, -67.82), 'booked to coordinates')
+  T.check(c.booking.region:find('Death Road') ~= nil, 'named after the nearest place: ' .. c.booking.region)
+  a.pose = { latitude = -16.3, longitude = -67.82 }; c:tick(0.1); c:tick(0.6)
+  T.eq(c.booking, nil, 'arrived at the coordinates')
 end
 
 T.done('Earth Freight controller')

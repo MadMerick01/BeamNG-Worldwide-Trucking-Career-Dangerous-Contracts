@@ -186,6 +186,56 @@ function M.roadEstimate(a, b)
   return d and d * M.ROAD_FACTOR or nil
 end
 
+-- Searching by name, for shipping: placesNames.lua (read the first time) lists every place's
+-- folded name with its id and tile, sorted by name and then size. The query is folded the same way
+-- for plain letters and digits; the tiles of the places found are loaded so they can be shown.
+local names
+M.readNames = function()
+  local ok, list = pcall(require, 'earthFreight/placesNames')
+  package.loaded['earthFreight/placesNames'] = nil
+  return ok and list or nil
+end
+
+function M.searchKey(text)
+  if type(text) ~= 'string' then return '' end
+  local words = {}
+  for word in text:lower():gmatch('[a-z0-9]+') do words[#words + 1] = word end
+  return table.concat(words, ' ')
+end
+
+-- Up to n places whose name starts with the query, exact names first, then bigger places first.
+function M.search(query, n)
+  local key = M.searchKey(query)
+  if #key < 2 then return {} end
+  if not names then
+    names = M.readNames() or { tiles = {}, names = '' }
+    names.names = '\n' .. names.names -- every line starts after a newline, the first one too
+  end
+  local text, out = names.names, {}
+  local exact, prefix = {}, {}
+  local at = text:find('\n' .. key, 1, true)
+  while at do
+    local stop = text:find('\n', at + 1, true) or (#text + 1)
+    local line = text:sub(at + 1, stop - 1)
+    local name, id, tile = line:match('^([^\t]+)\t(%d+)\t(%d+)$')
+    if not name or name:sub(1, #key) ~= key then break end
+    local list = name == key and exact or prefix
+    if #list < n then list[#list + 1] = { id = 'gn' .. id, tile = names.tiles[tonumber(tile)] } end
+    -- Exact names sort before longer ones, so once the list is full of longer ones it is done.
+    if #exact >= n or #prefix >= n then break end
+    at = stop <= #text and stop or nil
+  end
+  for _, list in ipairs({ exact, prefix }) do
+    for _, hit in ipairs(list) do
+      if #out >= n then break end
+      if hit.tile then M.loadTile(hit.tile) end
+      local place = byId[hit.id]
+      if place then out[#out + 1] = place end
+    end
+  end
+  return out
+end
+
 -- A new game starts at the start town, so its tiles are always there.
 M.ensure(config.START)
 
