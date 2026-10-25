@@ -119,6 +119,8 @@ function M.new(deps)
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
+    -- The saved load's places are near where the player left off.
+    if self.profile then places.ensure(self.profile.resume) end
     self.diag:event('save_loaded_or_rejected', self.loadStatus, self.profile and 'I' or 'W')
     self.feedback = loadMessages[self.loadStatus] or ''
     if not self.profile and not loadMessages[self.loadStatus] then self.error = self.loadStatus end
@@ -293,6 +295,8 @@ function M.new(deps)
     if not sample.valid or not location.valid(sample) then
       self:interrupt(sample.reason or 'position_invalid'); return
     end
+    -- The places around the player, wherever in the world they are.
+    places.ensure(sample)
     -- Any valid vehicle position starts the session: saving and driving work wherever the vehicle is.
     if not self.profile then
       self.profile = persistence.newProfile(self.creationBase, sample, sample.vehicle, STARTING_MONEY)
@@ -589,12 +593,14 @@ function M.new(deps)
       end
       local destList = {}
       for _, d in ipairs(destinations) do
-        destList[#destList + 1] = { id = d.place.id, name = d.place.name, size = d.place.size, distanceMetres = d.metres * places.ROAD_FACTOR }
+        destList[#destList + 1] = { id = d.place.id, name = d.place.name, size = d.place.size, distanceMetres = d.metres * places.ROAD_FACTOR,
+          boost = places.boost(d.place) }
       end
       local sale = self:saleQuote(place)
       local refuel = self:refuelQuote()
       town = {
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
+        region = place.region, boost = places.boost(place),
         goods = goodsHere, destinations = destList, freightPerTonneKm = market.FREIGHT_PER_TONNE_KM,
         range = { km = self.rangeKm or RANGE.default, min = RANGE.min, max = RANGE.max, step = RANGE.step },
         buyAllowed = problem == nil and not self.load,
@@ -620,6 +626,8 @@ function M.new(deps)
     local destinations = anchor and self:destinationsFrom(anchor) or {}
     return {
       here = place and { id = place.id, name = place.name, size = place.size } or nil,
+      -- The region you are in, from the nearest place, and its pay boost.
+      region = anchor and { name = anchor.region, boost = places.boost(anchor) } or nil,
       nearby = nearby, town = town, load = loadView,
       bestRun = not self.load and anchor and self:bestRun(anchor, destinations) or nil,
       dumpAllowed = self.load ~= nil, dumpArmed = self.dumpArmed,
@@ -672,7 +680,7 @@ function M.new(deps)
       -- Cargo space from the boxes on the car, the fuel in the tank, and trading.
       space = { slots = space.slots, kg = space.kg, boxes = space.boxes, boot = space.boot },
       fuel = self.fuel and { litres = self.fuel.litres, capacity = self.fuel.capacity, pricePerLitre = fuel.PRICE_PER_LITRE } or nil,
-      here = trade.here, nearby = trade.nearby, town = trade.town, load = trade.load, bestRun = trade.bestRun,
+      here = trade.here, region = trade.region, nearby = trade.nearby, town = trade.town, load = trade.load, bestRun = trade.bestRun,
       dumpAllowed = trade.dumpAllowed, dumpArmed = trade.dumpArmed,
       tradeFeedback = self.tradeFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,

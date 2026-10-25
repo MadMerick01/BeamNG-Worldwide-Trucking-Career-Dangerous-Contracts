@@ -1,6 +1,7 @@
 -- Prices. For now every price is fixed: a place's price for a good is the good's base price times
--- a factor from a seeded hash of the place and the good, and the place's size. Nothing is stored
--- and nothing changes as you trade; supply and demand come later. No game globals.
+-- a factor from a seeded hash of the place and the good, the place's size, and its region pay
+-- boost. Nothing is stored and nothing changes as you trade; supply and demand come later. No game
+-- globals.
 local location = require('earthFreight/location')
 local places = require('earthFreight/places')
 local M = {}
@@ -18,6 +19,10 @@ M.FREIGHT_PER_TONNE_KM = 20
 -- Longer runs pay more per km, to make the risk worth it: the rate grows by its own size every
 -- LONG_HAUL_KM, so a 50 km run pays twice the per-km rate of a very short one.
 M.LONG_HAUL_KM = 50
+-- The region pay boost (1x on flat, busy ground up to 3x in steep, remote, high places, scored by
+-- tools/make_places.py) multiplies everything a place pays and charges, and the freight pay of a
+-- run at the average of its two ends: runs within a steep region pay that much more, and a run
+-- up into one pays more than the run back down.
 -- A load only sells at a place once you have driven at least this share of the straight-line
 -- distance from where it was bought, so a teleport or a lift never delivers.
 M.DRIVEN_SHARE = 0.7
@@ -38,7 +43,12 @@ end
 -- Whole dollars for one slot of a good at a place; what you pay to buy it there and what you are
 -- paid to deliver it there.
 function M.price(place, good)
-  return math.max(1, math.floor(good.basePrice * M.factor(place, good) + 0.5))
+  return math.max(1, math.floor(good.basePrice * M.factor(place, good) * places.boost(place) + 0.5))
+end
+
+-- The pay boost of a run from one place to another: the average of its two ends.
+function M.runBoost(from, to)
+  return (places.boost(from) + places.boost(to)) / 2
 end
 
 -- 'cheap', 'short' or 'normal', for the HUD's dots.
@@ -65,7 +75,7 @@ function M.freightPerSlot(from, to, good)
   local d = from and to and good and location.distance(from, to)
   if not d then return 0 end
   local km = d / 1000 * places.ROAD_FACTOR
-  return km * good.kgPerSlot / 1000 * M.freightRate(km)
+  return km * good.kgPerSlot / 1000 * M.freightRate(km) * M.runBoost(from, to)
 end
 
 -- What a load bought at from pays on delivery at a place: its slots at the place's price plus the

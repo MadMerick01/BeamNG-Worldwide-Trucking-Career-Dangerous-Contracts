@@ -71,6 +71,8 @@ do
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   local v = c:view()
   T.eq(v.here.name, 'Penrith', 'in Penrith'); T.check(v.town.stopped, 'stopped')
+  T.eq(v.region.name, 'Australia', 'the region is named'); T.near(v.region.boost, 1, 1e-9, 'flat Sydney pays 1x')
+  T.near(v.town.boost, 1, 1e-9, 'the town shows its boost')
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
   T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 5000, 'distances are road estimates')
   T.eq(v.town.destinations[1].name, 'Jordan Springs', 'Jordan Springs is the nearest drop-off')
