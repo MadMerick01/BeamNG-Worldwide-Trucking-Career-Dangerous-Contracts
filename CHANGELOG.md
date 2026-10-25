@@ -10,6 +10,10 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - Freight pay is now $45 a tonne for each road km, up from $20, rising to $90 on a 50 km run. The best load in a full Cargo box L on a 25 to 40 km run now makes about $1,730 profit instead of $780.
 - The Town tab's "Pays per slot" and profit figures, and the best run suggestion, include the new bonus. Your saves still work.
 
+## Build 14 · 25 Oct 2026
+
+- **The Garage's "Change parts or buy a car" box is tidier.** It no longer lists keyboard keys, and the Cargo line now gives one short total, such as "Cargo: 5 boxes · 20 slots · 1,000 kg max", instead of naming every box. Saves still work.
+
 ## Build 13 · 25 Oct 2026
 
 - **A new start page welcomes you to Earth Freight Sim.** It opens when you start a new game, with a box for your name and seven short steps on how to play: going to Penrith (with the coordinates and a Copy button), fitting a radiator, buying a load, the delivery distance slider, delivering, refuelling, the Garage and shipping. Press **Let's go** to close it.
