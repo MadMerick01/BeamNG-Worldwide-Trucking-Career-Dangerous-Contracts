@@ -134,7 +134,7 @@ function M.new(deps)
     self.shippingSearch = nil
     -- A puncture not yet repaired; a reload respawns the car, so its tyre repair is owed instead.
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
-    self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight = nil, nil, nil, nil
+    self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
@@ -234,26 +234,49 @@ function M.new(deps)
     return true
   end
 
-  -- The cargo space of the car the player owns, from its paid-for parts.
+  -- The cargo space of the car the player owns, from its paid-for parts. Once the car has said how
+  -- many litres its fluid tanks really hold, that replaces the size guessed from the part names.
   function c:space()
-    return cargo.capacity(self.ownedParts)
+    local space = cargo.capacity(self.ownedParts)
+    local reading = self.tankReading
+    if reading and reading.litres and #space.tanks > 0 and self.ownedParts and reading.vehicleId == self.ownedParts.id then
+      space.litres, space.tankKg = reading.litres, reading.litres
+    end
+    return space
   end
 
-  -- Puts the load's weight on the car, when it changed or the car respawned.
+  -- Puts the load's weight on the car, when it changed or the car respawned. A fluid load pours
+  -- into the tank, so it sloshes.
   function c:applyWeight(force)
     if not self.cargo then return end
     local kg = self.load and self.load.kg or 0
-    if not force and self.appliedWeight == kg then return end
-    local ok, why, detail = self.cargo:setWeight(kg, cargo.partsFor(self:space(), self.load and goods.get(self.load.good)))
-    if ok then self.appliedWeight = kg
+    local good = self.load and goods.get(self.load.good)
+    local key = tostring(kg) .. ':' .. tostring(good and good.id)
+    if not force and self.appliedWeight == key then return end
+    local space = self:space()
+    local fluid = { litres = 0, density = 1, tanks = space.tankParts }
+    if good and good.kind == 'fluid' then
+      fluid.litres = self.load.units * good.litres
+      fluid.density = good.kg / good.litres
+    end
+    local ok, why, detail = self.cargo:setWeight(kg, cargo.partsFor(space, good), fluid)
+    if ok then self.appliedWeight = key
     else self.diag:event('weight_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W') end
+  end
+
+  -- The car's answer: how many litres its fluid containers hold. None (0) keeps the guess.
+  function c:tanksRead(vehicleId, litres)
+    if not location.finite(litres) or litres < 0 then return end
+    local current = self.lastSample and self.lastSample.vehicle and self.lastSample.vehicle.id
+    if current ~= nil and vehicleId ~= current then return end
+    self.tankReading = { vehicleId = vehicleId, litres = litres > 0 and math.floor(litres + 0.5) or nil }
   end
 
   -- A respawn (repair, part change or reverted car) fills the tank and drops the load's weight;
   -- the fuel the car had is put back once it has spawned, and so is the weight.
   function c:beforeRespawn()
     if self.fuel and self.ownedParts and self.fuel.vehicleId == self.ownedParts.id then self.fuel.restore = true end
-    self.appliedWeight = nil
+    self.appliedWeight, self.tankReading = nil, nil
   end
 
   -- The respawn did not happen, so the car keeps its fuel and weight.
@@ -715,6 +738,9 @@ function M.new(deps)
     self.fuelReadAt = self.clock
     local ok, why = self.fuelTank:read()
     if not ok then self.diag:event('fuel_read_failed', tostring(why), 'W') end
+    -- The fluid tanks' real size, once per car.
+    local space = cargo.capacity(self.ownedParts)
+    if self.cargo and self.cargo.readTanks and #space.tanks > 0 and not self.tankReading then self.cargo:readTanks(space.tankParts) end
   end
 
   function c:fuelReading(vehicleId, litres, capacity)
@@ -1263,6 +1289,9 @@ function M.fuelReading(vehicleId, litres, capacity)
 end
 function M.fuelSet(vehicleId, serial, before, after, capacity)
   return safely(function() if active then active:fuelSet(vehicleId, serial, before, after, capacity) end end)
+end
+function M.tanksRead(vehicleId, litres)
+  return safely(function() if active then active:tanksRead(vehicleId, litres) end end)
 end
 function M.onVehicleSpawned() return safely(function() if active then active:vehicleSpawned() end end) end
 function M.reload() return safely(function() ensure():reload() end) end

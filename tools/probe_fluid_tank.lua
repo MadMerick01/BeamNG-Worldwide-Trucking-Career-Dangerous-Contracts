@@ -1,6 +1,6 @@
--- Probe: how does BeamNG fill its own fluid tanks? Earth Freight Sim only adds a load's weight to
--- the tank part today. If the game's cargo code can fill the tank instead, fluid loads would get
--- BeamNG's own sloshing. This finds out which calls and data the car has.
+-- Probe: what does BeamNG's fluid tank carry? Earth Freight Sim pours a fluid load into the tank's
+-- own cargo container so it sloshes. This prints the car's containers, their nodes and beam
+-- expressions, so a tank that does not slosh can be looked into.
 --
 -- How to run it (once, in BeamNG.drive):
 --   1. Fit a Cargo Load fluid tank to your car in the parts menu (Ctrl+W).
@@ -59,5 +59,13 @@ for _, node in pairs(v.data.nodes or {}) do
   if type(node) == 'table' and (node.cargoGroup or node.cargoGroups) then n = n + 1 end
 end
 say('nodes in a cargo group: ' .. n)
+local functions = {}
+for _, beam in pairs(v.data.beams or {}) do
+  if type(beam) == 'table' and beam.cargoGroup then
+    for k, value in pairs(beam) do if tostring(k):find('Function', 1, true) then functions[#functions + 1] = tostring(k) .. '=' .. tostring(value) end end
+  end
+end
+say('cargo beam expressions: ' .. table.concat(functions, ' '):sub(1, 3000))
+say('expression parser: ' .. tostring(pcall(require, 'jbeam/expressionParser')))
 say('done')
 ]])

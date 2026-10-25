@@ -557,6 +557,16 @@ do
   T.eq(c:view().load.litres, 200, 'the HUD shows litres')
   T.check(c:view().tradeFeedback:find('200 L of ' .. fluid.name:lower()), 'told in litres')
   T.eq(w.weights[#w.weights].parts[1], 'pickup_cargo_load_fluid_tank_l', 'the weight goes in the tank')
+  T.eq(w.weights[#w.weights].fluid.litres, 200, 'poured in as 200 L'); T.near(w.weights[#w.weights].fluid.density, fluid.kg / fluid.litres, 1e-9, 'at its density')
+  T.eq(w.weights[#w.weights].fluid.tanks[1], 'pickup_cargo_load_fluid_tank_l', 'into the fitted tank')
+  -- The car says how big its tank really is, which replaces the guess.
+  T.check(w.tankReads > 0, 'the car is asked how big its tank is')
+  local car = c.ownedParts.id
+  c:tanksRead(car + 1, 300); T.eq(c:space().litres, 400, 'another car\'s answer is ignored')
+  c:tanksRead(car, 0); T.eq(c:space().litres, 400, 'no fluid container: the guess stays')
+  c:tanksRead(car, 299.6); T.eq(c:space().litres, 300, 'the real size'); T.eq(c:space().tankKg, 300, 'and its weight limit')
+  local reads = w.tankReads; c:tick(fuel.READ_EVERY_SECONDS + 1); T.eq(w.tankReads, reads, 'asked once per car')
+  c:beforeRespawn(); T.eq(c:space().litres, 400, 'a respawn asks again')
   g:fit('tank', ''); c:vehicleSpawned(); c:tick(0.1)
   T.check(not c:view().buyPartsAllowed, 'the tank cannot go while it holds the load')
   T.check(c:revertParts(false), 'put back')
