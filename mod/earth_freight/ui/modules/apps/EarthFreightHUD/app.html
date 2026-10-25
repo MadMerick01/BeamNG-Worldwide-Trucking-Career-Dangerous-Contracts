@@ -207,11 +207,11 @@
       <div ng-if="!data.carChange && !data.partsChange" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
         <div style="font-weight:bold;color:#a7e5c9;">Change parts or buy a car</div>
         <ol style="margin:4px 0 0;padding-left:20px;">
-          <li>Change parts in the game's parts menu (Ctrl+W), or pick a car in the vehicle selector (Ctrl+E). Nothing is paid yet.</li>
+          <li>Change parts in the parts selector, or pick a car. Nothing is paid yet.</li>
           <li>The bill shows up here, less what you trade in.</li>
           <li>Pay to keep it, or undo it.</li>
         </ol>
-        <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Cargo: {{data.space.slots}} parcel slots, up to {{data.space.kg | number:0}} kg<span ng-if="data.space.boot"> in the boot</span><span ng-if="!data.space.boot">: {{data.space.boxes.join(', ')}}</span>. A Cargo Load box adds room.</div>
+        <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Cargo: <span ng-if="data.space.boot">boot only</span><span ng-if="!data.space.boot">{{data.space.boxes.length}} {{data.space.boxes.length === 1 ? 'box' : 'boxes'}}</span> &middot; {{data.space.slots}} slots &middot; {{data.space.kg | number:0}} kg max<span ng-if="data.space.boot">. A Cargo Load box adds room.</span></div>
       </div>
       <div ng-if="(!data.carChange && !data.partsChange) || data.repairOwed > 0 || data.puncture" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
         <div style="font-weight:bold;color:#a7e5c9;">Repair</div>
