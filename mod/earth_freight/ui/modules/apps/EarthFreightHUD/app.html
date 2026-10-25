@@ -1,6 +1,6 @@
 <div class="bngApp" style="height:100%;width:100%;overflow:auto;box-sizing:border-box;padding:14px;background:rgba(12,19,24,.9);color:#f2f6f5;font:14px/1.4 sans-serif;border:1px solid #568d7a;border-radius:8px;">
-  <div style="font-size:16px;font-weight:bold;letter-spacing:1px;">Earth Freight</div>
-  <div style="margin-top:2px;color:#c9d6d2;">{{data.here ? 'In ' + data.here.name : 'Rust to Rig'}}<span ng-if="data.region" title="Region pay boost: everything here pays and costs this much more than on flat, busy ground"> &middot; {{data.region.name}} <span ng-style="{color: data.region.boost > 1.05 ? '#f2c94c' : '#c9d6d2', fontWeight: data.region.boost > 1.05 ? 'bold' : 'normal'}">&times;{{data.region.boost | number:1}}</span></span></div>
+  <div style="font-size:16px;font-weight:bold;letter-spacing:1px;">Earth Freight Sim</div>
+  <div style="margin-top:2px;color:#c9d6d2;">{{data.here ? 'In ' + data.here.name : 'A world freight economy for BeamNG.Earth'}}<span ng-if="data.region" title="Region pay boost: everything here pays and costs this much more than on flat, busy ground"> &middot; {{data.region.name}} <span ng-style="{color: data.region.boost > 1.05 ? '#f2c94c' : '#c9d6d2', fontWeight: data.region.boost > 1.05 ? 'bold' : 'normal'}">&times;{{data.region.boost | number:1}}</span></span></div>
   <div ng-if="notice(data)" ng-attr-role="{{notice(data).alert ? 'alert' : 'status'}}" ng-style="{borderColor: notice(data).color, color: notice(data).color}" style="margin:10px 0;padding:8px 10px;border:2px solid;border-radius:6px;background:rgba(0,0,0,.35);">
     <div style="font-weight:bold;letter-spacing:1px;font-size:16px;">{{notice(data).title}}</div>
     <div ng-if="notice(data).text" style="color:#f2f6f5;">{{notice(data).text}}</div>

@@ -57,9 +57,9 @@ local messages = {
 }
 -- What the player sees for each problem that pauses Earth Freight.
 local errorMessages = {
-  newer_version = 'Your save was made by a newer version of Earth Freight. Update the mod to keep playing.',
-  storage_unavailable = 'Earth Freight could not open its save folder. Load the level again to try again.',
-  internal_error = 'Earth Freight hit a problem and paused. Load the level again to carry on from your last save.',
+  newer_version = 'Your save was made by a newer version of Earth Freight Sim. Update the mod to keep playing.',
+  storage_unavailable = 'Earth Freight Sim could not open its save folder. Load the level again to try again.',
+  internal_error = 'Earth Freight Sim hit a problem and paused. Load the level again to carry on from your last save.',
 }
 local loadMessages = {
   loaded = 'Loaded your last save.',
@@ -833,7 +833,7 @@ function M.new(deps)
     local vehicleId = self.lastSample and self.lastSample.valid and self.lastSample.vehicle and self.lastSample.vehicle.id
     if quote and (self.error or vehicleId ~= quote.vehicleId) then quote = nil end
     if self.state == 'CONFIG_REQUIRED' then
-      status = 'Set valid base coordinates in the Earth Freight configuration, then load the level again.'
+      status = 'Set valid base coordinates in the Earth Freight Sim configuration, then load the level again.'
     elseif self.state == 'ERROR' then
       status = errorMessages[self.error] or errorMessages.internal_error
     elseif self.state == 'READY' and not self.arrived then
