@@ -111,6 +111,20 @@ do
   T.check(not c:buy('parts', penrith.id), 'not to the place you are at')
   T.check(not c:buy('grain', stClair.id), 'not bulk goods yet')
   T.check(not c:buy('nope', stClair.id), 'not an unknown good')
+  -- Buying a chosen number of slots.
+  local food = goods.get('food')
+  T.check(not c:buy('food', stClair.id, 3), 'not more than fits in the boot')
+  T.check(c:view().tradeFeedback:find('Only room for 2'), 'told how many fit')
+  local before = c:view().balance
+  T.check(c:buy('food', stClair.id, 1), 'one parcel bought')
+  T.eq(c.load.slots, 1, 'one slot'); T.eq(c.load.kg, food.kgPerSlot, 'one slot of weight')
+  T.eq(c:view().balance, before - market.price(penrith, food), 'paid for one')
+  c.load = nil
+  c.profile.progression.balance = market.price(penrith, food)
+  T.check(not c:buy('food', stClair.id, 2), 'not more than the money covers')
+  T.check(c:view().tradeFeedback:find('Not enough money'), 'told it is the money')
+  T.eq(c:view().balance, market.price(penrith, food), 'nothing spent')
+  c.profile.progression.balance = before
   T.check(c:buy('food', stClair.id), 'food bought for the boot')
   -- A short hop (under 2 km) keeps the load but is not driving.
   a.pose = location.destination(F.PENRITH, 90, 1500); c:tick(0.1)

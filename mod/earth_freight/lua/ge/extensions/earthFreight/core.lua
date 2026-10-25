@@ -336,7 +336,8 @@ function M.new(deps)
     return { slots = n, fits = slots, price = price, cost = n * price, kg = n * good.kgPerSlot }
   end
 
-  function c:buy(goodId, destinationId)
+  -- Buys count slots of a good for a drop-off; with no count it fills the space as far as the money goes.
+  function c:buy(goodId, destinationId, count)
     local place = self:here()
     local problem = self:tradeProblem(place)
     local good, destination = goods.get(goodId), places.get(destinationId)
@@ -352,6 +353,11 @@ function M.new(deps)
       self.tradeFeedback = 'Not enough cargo space or payload for ' .. good.name:lower() .. '. Fit a cargo box in the parts menu.'
       return false
     end
+    if count and count > quote.fits then
+      self.tradeFeedback = 'Only room for ' .. quote.fits .. ' ' .. good.name:lower() .. (quote.fits == 1 and ' parcel.' or ' parcels.')
+      return false
+    end
+    if count then quote.slots, quote.cost, quote.kg = count, count * quote.price, count * good.kgPerSlot end
     if quote.slots == 0 or not self:spend(quote.cost, 'load') then
       self.tradeFeedback = 'Not enough money. One slot of ' .. good.name:lower() .. ' costs ' .. dollars(quote.price) .. '.'
       return false
@@ -848,7 +854,11 @@ function M.revertParts() return safely(function() return ensure():revertParts(fa
 function M.buyCar() return safely(function() return ensure():buyCar() end) end
 function M.revertCar() return safely(function() return ensure():revertCar(false) end) end
 function M.newGame() return safely(function() return ensure():newGame() end) end
-function M.buyLoad(good, destination) return safely(function() return ensure():buy(id(good), id(destination)) end) end
+-- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
+function M.buyLoad(good, destination, count)
+  local n = type(count) == 'number' and count == math.floor(count) and count >= 1 and count <= 999 and count or nil
+  return safely(function() return ensure():buy(id(good), id(destination), n) end)
+end
 function M.sellLoad() return safely(function() return ensure():sell() end) end
 function M.dumpLoad() return safely(function() return ensure():dumpLoad() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end
