@@ -64,7 +64,7 @@ Each tag maps to goods it **supplies** and goods it **demands**. That gives trad
 
 There is no hand-built region. Your region is simply the places around you, so it moves with you: drive far enough and you are among new towns. The HUD covers the nearest 5–6, and the planning map covers about 50 km.
 
-**❓ OPEN — Q2:** Where does a new game start? Options: a fixed starter town (e.g. somewhere in the Sydney region, which is the most researched), a short list to pick from, or anywhere the player chooses. A fixed start makes early balance testable.
+**Decided (Q2): a new game starts in Penrith, NSW.** It sits on the edge of Sydney, so the first runs mix city and country driving, and the Blue Mountains next door give better-paying, more interesting hill deliveries early on. Penrith is one of the towns GeoNames thins out, so it goes on the generator's hand-edited "always include" list. A choice of start towns can come later.
 
 ## Goods and cargo sizes
 
@@ -92,7 +92,15 @@ A green bulk dot you can't carry yet is meant to be visible early on; it is what
 
 **❓ OPEN — Q4:** Vehicle capacity. BeamNG's own career mode puts cargo slots on vehicles for its delivery jobs. If we can read those outside career mode (Earth Freeroam does not load career modules, which is why Enduro's garage uses base-game calls only), each vehicle's capacity comes free and stays right when the car is modded. Otherwise we set capacity per vehicle class ourselves. Needs a check against the API dump (`docs/beamng-api/` in the Enduro repo) and in game.
 
-**❓ OPEN — Q5:** Is cargo physical (props spawned in the bed, which can fall out) or abstract (a number, with damage taken from the vehicle's damage and g-forces)? Abstract is far simpler and safer on Earth's streamed terrain. The working assumption is **abstract cargo, with damage derived from impacts and harsh driving**.
+**Decided (Q5): cargo is a number, but space comes from the cargo boxes on the vehicle, and weight matters.**
+
+- A vehicle's cargo space is the number and size of the cargo boxes (or trays, racks, tanks) fitted to it. Fit more or bigger boxes in the garage and you can carry more. A bare car with no boxes still takes a couple of parcels in the boot.
+- Every load also has a **weight**, and weight is a big part of the game: each vehicle has a payload limit, and a heavy load should make the vehicle slower, brake later and handle worse, so overloading a rust bucket is a real risk. Gravel and ore fill a vehicle's weight limit long before its space; parcels and parts fill space first.
+- The load itself is still a number in the save, not objects in the tray, so it never falls through Earth's ground.
+
+**❓ OPEN — Q5a:** How the load's weight reaches the physics. Options: change the vehicle's mass through a weight-adjusting part or jbeam variable, the way BeamNG's own career cargo does, or apply it as a game-side mass change. Needs a look at how career cargo adds mass, alongside Q4.
+
+**❓ OPEN — Q5b:** Which parts count as cargo boxes and how much each holds. If BeamNG's career cargo slots (Q4) can be read, they answer this. Otherwise we keep our own table of box parts with their space and weight limit.
 
 ## Economy
 
@@ -150,23 +158,23 @@ The same arc as Rust to Race Car, ending in a truck.
 
 Vehicles are bought through the garage as in Enduro: a car's game Value sets its price, the old car is traded in, and repair prices scale with the car's Value.
 
-**❓ OPEN — Q8:** Which BeamNG vehicles and configs for each tier (the Enduro starter is a Burnside; the ute/pickup could be a D-Series or Roamer config; trucks a Gavril T-Series). Is the semi tier usable on BeamNG.Earth's streamed roads at all, given tight terrain streaming around the car?
+**❓ OPEN — Q8:** Which vanilla vehicles fit each tier best, for tips and balance (the Enduro starter is a Burnside; the ute/pickup could be a D-Series or Roamer config; trucks a Gavril T-Series). Is the semi tier usable on BeamNG.Earth's streamed roads at all, given tight terrain streaming around the car?
 
-**❓ OPEN — Q9:** Is the player limited to a tier ladder (must own a ute before a truck), or can they buy anything they can afford?
+**Decided (Q9): there is no forced ladder.** The player can buy any vanilla BeamNG vehicle they can afford. The sedan → ute → truck → semi tiers above describe the usual path, not a rule; money does the gating.
 
-## Teleporting
+## Teleporting: book shipping (decided, Q10 and Q11)
 
-Teleporting is how you reach a far-off, better-paying region, and it is an investment, not a shortcut:
+The point of the game is to take your vehicle all over the world, so moving it should be **cheap**. What you cannot do is teleport with goods.
 
-- It **costs money**, like shipping your truck overseas. Price scales with distance (and maybe vehicle size).
-- **Any cargo on board is cancelled** when you teleport. The money paid for it is lost.
-- Every delivery still has to be driven: teleport-sized jumps never count as driving.
+1. **Book shipping.** A small, minimal screen: pick a destination (a place from the list, or coordinates), see the price, pay. The price is low, scaling a little with distance and vehicle size. You can only book with an **empty** vehicle; sell or drop your load first.
+2. **Teleport.** Once paid, the HUD gives the destination coordinates with a Copy button, to paste into the BeamNG.Earth map, as Enduro does. The mod never teleports the player itself.
+3. **Arrive.** A jump that lands near the booked destination is accepted and the booking is used up.
 
-As in Enduro, the mod never teleports the player itself. It shows coordinates; the player uses BeamNG.Earth's map. The mod detects the jump (Enduro treats movement faster than 150 m/s between two readings as a teleport) and charges and cancels then.
+**A teleport without a booking.** The mod detects the jump (Enduro treats movement faster than 150 m/s between two readings as a teleport). Any cargo on board is cancelled and the money paid for it is lost. A message tells the player where they left from, with the coordinates to return to, and no driving pay or deliveries count until they are back there (or book shipping from where they are).
 
-**❓ OPEN — Q10:** How does the player pay for a teleport the mod doesn't perform? Options: (a) a "Book shipping" button that quotes the price, takes the money and then accepts the next jump to near that destination; an unbooked jump is charged a penalty or blocks pay until they drive back. (b) Charge after the fact by the jump distance. (a) gives a clear price up front.
+**Short hops** under about 2 km, to get past a cliff or river, are free, need no booking and keep the cargo.
 
-**❓ OPEN — Q11:** Is a short hop (say under 2 km, to get past a cliff or river, like CarKov's 500 m drop zone) free and cargo-safe?
+Every delivery still has to be driven: teleport-sized jumps never count as driving.
 
 ## HUD
 
@@ -262,16 +270,18 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 | # | Question | Working assumption |
 |---|---|---|
 | Q1 | Land-cover source the generator can actually sample | try a coarser set than ESA WorldCover first |
-| Q2 | Where a new game starts | fixed start in the Sydney region |
+| Q2 | Where a new game starts | **Decided:** Penrith, NSW |
 | Q3 | Good × size table | to fill in |
 | Q4 | Can we read career-mode cargo slots in Earth Freeroam? | capacity per vehicle class, set by us |
-| Q5 | Physical or abstract cargo | abstract |
+| Q5 | Physical or abstract cargo | **Decided:** a number; space from the cargo boxes fitted, weight matters |
+| Q5a | How the load's weight reaches the physics | look at how career cargo adds mass |
+| Q5b | Which parts are cargo boxes and what each holds | career cargo slots if readable, else our own table |
 | Q6 | Offset size and decay rate | exponential decay; offset scales with load size |
 | Q7 | Elevation source and multiplier cap | to decide |
 | Q8 | Vehicles per tier; is a semi usable on Earth's streaming? | to test in game |
-| Q9 | Strict tier ladder or buy anything affordable | buy anything affordable |
-| Q10 | How a teleport the mod doesn't perform gets paid for | "Book shipping" up front |
-| Q11 | Free short hops | yes, under ~2 km and cargo-safe |
+| Q9 | Strict tier ladder or buy anything affordable | **Decided:** any vanilla vehicle you can afford |
+| Q10 | How a teleport gets paid for | **Decided:** cheap "Book shipping" with an empty vehicle, then coordinates to paste |
+| Q11 | Free short hops | **Decided:** yes, under ~2 km and cargo-safe |
 | Q12 | Road distance on Earth's partial road graph | straight-line × factor, labelled as an estimate |
 | Q13 | ~~Set Earth's GPS destination when a load is bought?~~ | **Decided: yes**, guarded, with a setting to turn it off |
 | Q14 | Place-data format and size | per-cell files if a single table is too big |
