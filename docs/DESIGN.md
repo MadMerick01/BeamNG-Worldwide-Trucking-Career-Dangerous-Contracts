@@ -188,9 +188,17 @@ One helper line suggests the best run for a new player, e.g. *"Best run: grain, 
 
 **Arrival:** a place's "you've arrived" circle is sized from its importance (a city depot is bigger than a village store). Trading only works inside it and when stopped.
 
-**❓ OPEN — Q12:** Road distance. Straight-line is trivial; road distance needs BeamNG's road graph (`map.findClosestRoad` / the navgraph), which on Earth only exists for streamed tiles near the car. Options: show straight-line ×1.3 as an estimate, compute road distance only for loaded tiles, or precompute in the generator. Enduro's puncture code already notes that how complete Earth's road map is remains unproven.
+**❓ OPEN — Q12:** Road distance. Straight-line is trivial; road distance needs BeamNG's road graph (`map.findClosestRoad` / the navgraph), which on Earth only exists for streamed tiles near the car. Options: show straight-line ×1.3 as an estimate, compute road distance only for loaded tiles, or precompute in the generator. Enduro's puncture code already notes that how complete Earth's road map is remains unproven. Earth's GPS can plan a true road route through its companion server (see the planning map section), but only one destination at a time and only online, so it fits the current delivery, not a list of six places.
 
-**❓ OPEN — Q13:** Is the planning map a HUD panel we draw ourselves (simplest, self-contained) or an overlay on BeamNG.Earth's own map (nicer, but means touching Earth's UI, which Enduro's adapter rule forbids)?
+### Planning map: our own screen, not Earth's (decided)
+
+The planning map is **separate from BeamNG.Earth's map**: a panel in our own HUD app. Checked against BeamNG.Earth `main` (c6032e2, 2026-10-24):
+
+- **BeamNG's big map is not available.** In Earth's level, Earth replaces it: the M key and the pause menu's Map open Earth's own world map instead (`settings.lua` `redirectBigMap` swaps out `freeroam_bigMapMode.toggleBigMap` / `enterBigMap`). The stock big map is a 3D overhead view of a stock level and would show nothing useful on Earth anyway.
+- **Earth's map has no way for another mod to add markers.** `EarthMap.vue` draws only its own lists: the player's saved places (from `/settings/beamngEarth_places.json`), other BeamMP players, the GPS destination and the player. There is no marker or layer API. The only way in would be writing our towns into the player's saved places file, which would clutter their bookmarks and break the rule that we never write Earth's state. Patching Earth's Vue file is ruled out for the same reason and would break on every Earth update.
+- **Earth's GPS is reachable, though.** `require('beamngEarth/gps').setDestination(lat, lon, name)` is a plain Lua function. It plans a road route on Earth's companion server (OSRM on OpenStreetMap), draws it on Earth's map, and puts the game's own route arrows on the road. So the player plans on our map, and once a load is bought we could set the delivery place as Earth's GPS destination, giving turn-by-turn arrows and a route on Earth's map for free.
+
+**Decided (Q13, Rowan 2026-10-25): yes.** When a load is bought, the mod sets Earth's GPS destination to the delivery place, so the route and road arrows appear without the player doing anything. It is the one place we write to Earth, so the call is guarded like the adapter's reads: if `beamngEarth/gps` or `setDestination` is missing or changed, it is skipped quietly and the delivery still works from our HUD. It only fires on buying a load, never while driving, so a GPS destination the player sets afterwards is left alone. A setting can turn it off.
 
 ## Anti-cheat
 
@@ -265,7 +273,7 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 | Q10 | How a teleport the mod doesn't perform gets paid for | "Book shipping" up front |
 | Q11 | Free short hops | yes, under ~2 km and cargo-safe |
 | Q12 | Road distance on Earth's partial road graph | straight-line × factor, labelled as an estimate |
-| Q13 | Own planning map or Earth's map | our own HUD panel |
+| Q13 | ~~Set Earth's GPS destination when a load is bought?~~ | **Decided: yes**, guarded, with a setting to turn it off |
 | Q14 | Place-data format and size | per-cell files if a single table is too big |
 | Q15 | Fuel as a running cost? BeamNG simulates fuel; Enduro ignores it | to decide |
 | Q16 | Does CarKov or any Enduro side mode carry over? | no, at least not in layers 1–3 |
