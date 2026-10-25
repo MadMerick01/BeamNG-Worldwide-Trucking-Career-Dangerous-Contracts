@@ -78,4 +78,45 @@ do
   local none = Adapter.new({ core = function() return nil end, module = function() return gps end, vehicle = function() return vehicle end })
   T.eq(select(2, none:setDestination({ latitude = 1, longitude = 1 })), 'earth_missing', 'no Earth, no GPS')
 end
+-- Which way the car points, and the ground at an off-road drop spot.
+do
+  local k = 111195.0802
+  local flat = { enuToGeodetic = function(_, x, y, z) return y / k, x / k, z end,
+    geodeticToEnu = function(_, lat, lon) return lon * k, lat * k, 0 end }
+  local car = { getPosition = function() return { x = 0, y = 0, z = 5 } end, getID = function() return 1 end,
+    getDirectionVector = function() return { x = 1, y = 0, z = 0 } end }
+  local height = function(x) return x * 0.5 end
+  local reach, waters = 1000, {}
+  local e = { core = function() return { _state = function() return { anchor = flat } end } end, module = function() end,
+    vehicle = function() return car end,
+    ray = function(x, y, z, length)
+      if math.abs(x) > reach or math.abs(y) > reach then return nil end
+      local d = z - height(x, y)
+      if d < length then return d end
+    end,
+    waters = function() return waters end }
+  local g = Adapter.new(e)
+  T.near(g:sample().heading, 90, 1e-9, 'pointing east is 90 degrees')
+  car.getDirectionVector = function() return { x = 0, y = -1, z = 0 } end
+  T.near(g:sample().heading, 180, 1e-9, 'south is 180')
+  car.getDirectionVector = function() error('changed') end
+  T.check(g:sample().valid and g:sample().heading == nil, 'no heading without the call, and the sample still stands')
+  local spot = { latitude = 0, longitude = 100 / k }
+  local ground = g:ground(spot)
+  T.near(ground.slope, math.deg(math.atan(0.5)), 1e-6, 'the slope from the heights around the spot')
+  T.eq(ground.water, false, 'dry')
+  T.eq(g:ground({ latitude = 0, longitude = 2000 / k }), nil, 'ground that has not loaded reads nothing')
+  height = function() return 0 end
+  waters = { { x = 100, y = 0, z = 1, width = 50, depth = 50 } }
+  T.eq(g:ground(spot).water, true, 'under a sea or lake tile is water')
+  T.eq(g:ground({ latitude = 0, longitude = 200 / k }).water, false, 'beside it is not')
+  waters = { { x = 100, y = 0, z = 0.1, width = 50, depth = 50 } }
+  T.eq(g:ground(spot).water, false, 'a tile below the ground is not water')
+  waters = { { x = 0, y = 0, z = 3 } }
+  T.eq(g:ground(spot).water, true, 'a water plane covers everything below it')
+  T.eq(g:ground({ latitude = 0 / 0, longitude = 0 }), nil, 'not a position')
+  e.ray = function() error('changed') end
+  T.eq(g:ground(spot), nil, 'a changed ray call reads nothing')
+  T.eq(Adapter.new({ core = function() return nil end, vehicle = function() return car end, ray = e.ray }):ground(spot), nil, 'no Earth, no ground')
+end
 T.done('Earth adapter (mocked engine)')

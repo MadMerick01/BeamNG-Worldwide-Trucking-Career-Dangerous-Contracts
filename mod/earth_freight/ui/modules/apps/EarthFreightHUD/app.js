@@ -26,7 +26,10 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
       var alerts = {
-        route: function (d) { return !!d.resume || !!d.stranded || !!(d.shortages && d.shortages.length) },
+        route: function (d) {
+          return !!d.resume || !!d.stranded || !!(d.shortages && d.shortages.length) ||
+            !!(d.load && d.load.drop && d.load.drop.delivery && d.load.drop.delivery.allowed)
+        },
         town: function (d) {
           var t = d.town
           if (!t) return false
@@ -127,7 +130,19 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         if (!scope.data.town || scope.data.load || !job || !job.allowed || !plainId(job.id)) return
         core("takeJob('" + job.id + "', " + scope.shareOf(job) + ')')
       }
-      scope.deliverJob = function () { if (scope.data.town && scope.data.town.delivery && scope.data.town.delivery.allowed) core('deliverJob()') }
+      scope.deliverJob = function () {
+        var d = scope.data
+        var town = d.town && d.town.delivery && d.town.delivery.allowed
+        var drop = d.load && d.load.drop && d.load.drop.delivery && d.load.drop.delivery.allowed
+        if (town || drop) core('deliverJob()')
+      }
+      // The off-road drop's arrow, turned by how far the spot is off the way the car points.
+      var arrow = {}
+      scope.arrowStyle = function (drop) {
+        var turn = drop && typeof drop.arrow === 'number' && isFinite(drop.arrow) ? Math.round(drop.arrow) : 0
+        arrow.transform = 'rotate(' + turn + 'deg)'
+        return arrow
+      }
       scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }
       scope.abandonJob = function () { if (scope.data.abandonAllowed) core('abandonJob()') }
       scope.claimInsurance = function () { if (scope.data.insurance && scope.data.insurance.allowed) core('claimInsurance()') }

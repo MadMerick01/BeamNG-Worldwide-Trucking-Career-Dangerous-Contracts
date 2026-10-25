@@ -372,6 +372,17 @@ The total is capped at 3×. With these settings: Sydney, Parramatta and Penrith 
 - **Without a booking:** any load on board is lost, as before, and the player is stranded. Deliveries, trading and driving distance stop, and the Route tab shows the coordinates to go back to. Coming back within 1 km of them, or booking shipping from where they are and landing there, frees them.
 - **Save** waits while a booking is open or the player is stranded. Neither is kept in the save, so the save format is unchanged.
 
+## Off-road drop as built
+
+Decided by Rowan on 25 Oct: one job on every board goes to a spot off the roads instead of a town.
+
+- **The spot:** 1.8 to 2.2 km from the town, heading for a random place within 15 km, give or take 30°, so it leans inland rather than out to sea. It is fixed for a board and changes after every job. It is not snapped to a road.
+- **Pay:** like a 5 km job (`goods.lua` pay a unit), times the steep-ground bonus: the whole region boost, at most 2×, where town jobs get half of it. There is no town need or shortage; the odd jackpot still turns up. Any of the three goods, bricks included. The Load slider works as usual.
+- **Finding it:** no GPS. The Route tab shows the distance, the compass direction and an arrow turned by the spot's bearing less the way the car points (`getDirectionVector`; the way it last moved when that is missing).
+- **Delivering:** stopped within 100 m of the spot, from the Route tab, once 70% of the straight line from town has been driven. Teleports, insurance and abandoning work as on any job.
+- **Water and cliffs:** BeamNG only has ground about a kilometre around the car (Earth moves a 2 km block of it with the car), so the spot cannot be checked when the job is posted. Once the car is within 400 m, the adapter casts rays down at the spot (`castRayStatic`) for its height and slope over ±8 m, and looks for Earth's sea and lake tiles (WaterBlocks) or a WaterPlane above the ground there. A spot in water or steeper than 30° moves to the nearest that will do, in rings out to 320 m and then back toward town, and the player is told. Ground that has not loaded yet is skipped until it has.
+- **Needs checking in game:** that `castRayStatic` hits Earth's terrain block and road meshes at the spot, that Earth's sea tiles are WaterBlocks in the scene tree with their surface at their position (only with Earth's sea on), and that the arrow turns the right way. Rivers are River objects and are not checked: a spot on a river stays put, and the 100 m zone usually reaches a bank.
+
 ## Open questions
 
 | # | Question | Working assumption |

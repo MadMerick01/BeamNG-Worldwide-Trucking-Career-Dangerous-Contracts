@@ -104,8 +104,13 @@ do
   for _, n in ipairs(places.nearest(penrith, 20)) do
     for seed = 0, 9 do
       local board = jobs.board(n.place, seed, {}, 5000)
+      local drop = table.remove(board)
+      T.check(drop.drop ~= nil and drop.to == n.place.id and drop.id:match('^drop_%l+_[%w_]+$') ~= nil, n.place.name .. ' ends its board with an off-road drop')
+      local metres = location.distance(n.place, drop.drop)
+      T.check(metres >= jobs.DROP_MIN - 1 and metres <= jobs.DROP_MAX + 1, 'the drop spot is about 2 km out: ' .. math.floor(metres))
+      T.near(drop.km, metres / 1000, 1e-9, 'its distance is the straight line')
       T.check(#board >= 3 and #board <= 5, n.place.name .. ' posts 3 to 5 jobs')
-      local ids, decent = {}, false
+      local ids, decent = { [drop.id] = true }, false
       for _, j in ipairs(board) do
         T.check(not ids[j.id], 'each job once'); ids[j.id] = true
         T.check(j.km <= jobs.MAX_KM + 1e-9 and j.to ~= n.place.id, 'jobs go to another town within 20 km')
@@ -134,6 +139,40 @@ do
   T.eq(jobs.quote(j, 0, {}, 5000).pay, 0, 'nothing for an empty car')
   local bigger = jobs.quote(j, 20, {}, 5000).pay
   T.check(bigger > q.pay * 1.9, 'a bigger car earns more')
+end
+-- The off-road drop: any good, fixed for a seed, paying like a 5 km job times the steep-ground bonus.
+do
+  local seen, bearings = {}, {}
+  for seed = 0, 59 do
+    local d = jobs.dropJob(penrith, seed)
+    seen[d.good] = true
+    bearings[math.floor(location.bearing(penrith, d.drop) / 90)] = true
+    T.check(goods.get(d.good).kind == 'parcel', 'a good that can be carried')
+  end
+  T.check(seen.parts and seen.food and seen.bricks, 'parts, food and bricks all come up')
+  T.check(bearings[0] and bearings[1] and bearings[2] and bearings[3], 'the spot can be any way out of town')
+  local a, b = jobs.dropJob(penrith, 7), jobs.dropJob(penrith, 7)
+  T.eq(a.drop.latitude, b.drop.latitude, 'the same spot for the same board'); T.eq(a.id, b.id, 'and the same job')
+  T.check(jobs.dropJob(penrith, 8).drop.latitude ~= a.drop.latitude, 'a new spot after a job')
+  local good = goods.get(a.good)
+  local q = jobs.quote(a, 6, {}, 5000)
+  T.near(q.pay, jobs.basePay(good, 6, 5) * (a.jackpot or 1) * jobs.steepBonus(penrith), 5, 'pays like a 5 km job')
+  T.eq(q.shortage, false, 'no shortages off road'); T.eq(q.need, 1, 'and no town need')
+  T.eq(jobs.steepBonus({ id = 'x', boost = 1 }), 1, 'flat ground pays the base')
+  T.eq(jobs.steepBonus({ id = 'x', boost = 1.5 }), 1.5, 'steep ground pays the whole region boost')
+  T.eq(jobs.steepBonus({ id = 'x', boost = 3 }), 2, 'at most twice')
+  -- Better ground: nearest first, out to 320 m around the spot, then back toward town.
+  local list = jobs.dropCandidates(a.drop, penrith)
+  local last = 0
+  for i = 1, 64 do
+    local m = location.distance(a.drop, list[i])
+    T.check(m >= last - 1e-6 and m <= 320.5, 'rings of candidates, nearest first'); last = m
+  end
+  T.check(location.distance(list[#list], penrith) < location.distance(a.drop, penrith) - 900, 'the last ones lead back toward town')
+  T.check(jobs.dropGround({ water = false, slope = 12 }), 'dry ground that is not too steep will do')
+  T.check(not jobs.dropGround({ water = true, slope = 0 }), 'not water')
+  T.check(not jobs.dropGround({ water = false, slope = 40 }), 'not a cliff')
+  T.check(not jobs.dropGround(nil), 'not ground that has not loaded')
 end
 T.near(jobs.drivenNeeded(penrith, near[1].place), near[1].metres * 0.7, 1e-6, '70% of the straight line must be driven')
 T.done('places and jobs')

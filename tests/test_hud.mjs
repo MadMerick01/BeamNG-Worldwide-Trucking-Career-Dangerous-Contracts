@@ -109,6 +109,20 @@ test('the load slider shows a straight share of weight and pay as Lua works it o
   assert.deepEqual({ ...a.scope.taken(three) }, { units: 2, kg: 100, pay: 670 }, 'whole units, tens of dollars')
   assert.ok(html.includes('type="range" min="10" max="100" step="10" ng-model="shares[j.id]"'), 'a slider on each job')
 })
+test('the off-road drop delivers from the Route tab only when Lua allows it, with its arrow turned', () => {
+  const a = app()
+  const drop = { distanceMetres: 1500, arrow: 90, inZone: false, radiusMetres: 100, delivery: { allowed: false, problem: 'Drive to the drop spot' } }
+  a.state({ state: 'READY', load: { to: 'off-road drop', pay: 1700, drop } })
+  a.scope.deliverJob(); assert.equal(a.commands.length, 1, 'not out of the zone')
+  assert.equal(a.scope.tabAlert('route'), false)
+  drop.inZone = true; drop.delivery = { allowed: true }
+  a.scope.deliverJob(); assert.equal(a.commands.at(-1), fixed('deliverJob()'), 'delivered in the zone')
+  assert.equal(a.scope.tabAlert('route'), true, 'the Route tab asks for attention')
+  assert.equal(a.scope.arrowStyle(drop).transform, 'rotate(90deg)', 'the arrow turns right for a spot to the right')
+  assert.equal(a.scope.arrowStyle({}).transform, 'rotate(0deg)', 'and points ahead without a heading')
+  assert.ok(html.includes('ng-if="data.load.drop"') && html.includes('ng-style="arrowStyle(data.load.drop)"'), 'the Route tab shows the arrow')
+  assert.ok(html.includes('off-road drop'), 'the board names the drop')
+})
 test('insurance is only claimed when Lua offers it', () => {
   const a = app()
   a.state({ state: 'READY', insurance: { allowed: false } }); a.scope.claimInsurance()

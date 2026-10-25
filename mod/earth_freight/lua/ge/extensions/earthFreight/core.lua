@@ -97,9 +97,11 @@ function M.new(deps)
     self.diag:event('state', nextState .. ':' .. tostring(reason or ''))
   end
 
-  -- A saved job is kept only when its good and both its towns are known to this version.
+  -- A saved job is kept only when its good and both its towns are known to this version, and an
+  -- off-road drop's spot is a real position.
   local function knownLoad(l)
     if type(l) ~= 'table' or not l.pay or not goods.get(l.good) or not places.get(l.from) or not places.get(l.to) then return nil end
+    if l.drop ~= nil and not location.valid(l.drop) then return nil end
     local out = copy(l)
     out.paid = nil
     return out
@@ -277,6 +279,8 @@ function M.new(deps)
     local before = location.copy(self.odometer.last or self.lastDriven)
     local metres, jump = self.odometer:step(sample, dt)
     self.lastDriven = location.copy(sample)
+    -- Which way the car is going, for the drop arrow when Earth does not say which way it points.
+    if before and not jump and (location.distance(before, sample) or 0) > 0.5 then self.heading = location.bearing(before, sample) end
     if fresh and before then
       local gap = location.distance(before, sample)
       if gap and gap > odometer.SHORT_HOP_METRES then jump = gap end
@@ -553,9 +557,19 @@ function M.new(deps)
     local units, pay = jobs.share(quote.units, quote.pay, share)
     quote.units, quote.slots, quote.kg, quote.pay = units, units * good.slots, units * good.kg, pay
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
-      from = place.id, to = destination.id, drivenKm = 0 }
+      from = place.id, to = destination.id, drivenKm = 0, drop = location.copy(job.drop) }
     self.abandonArmed = false
     self:applyWeight()
+    if job.drop then
+      -- No GPS: an off-road drop is found by the arrow on the Route tab.
+      self.dropCheckedAt = nil
+      self.tradeFeedback = 'Loaded ' .. quote.units .. ' ' .. good.name:lower() .. ' (' .. quote.kg .. ' kg) for an off-road drop '
+        .. string.format('%.1f', job.km) .. ' km to the ' .. location.compassPoint(location.bearing(place, job.drop))
+        .. '. Follow the arrow on the Route tab and stop within ' .. jobs.DROP_RADIUS .. ' m of the spot. It pays ' .. dollars(quote.pay) .. '.'
+      self.diag:event('job_taken', string.format('%s x%d %s -> drop %.5f,%.5f for %d', good.id, quote.units, place.id,
+        job.drop.latitude, job.drop.longitude, quote.pay))
+      return true
+    end
     local gps = ''
     if self.configuration.autoGps and self.adapter.setDestination then
       local ok, why = self.adapter:setDestination(destination, destination.name)
@@ -580,8 +594,85 @@ function M.new(deps)
     return nil
   end
 
+  -- Why an off-road drop cannot be delivered where the car is now (nil when it can).
+  function c:dropProblem()
+    local sample, load = self.lastSample, self.load
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then
+      return 'Deliveries are unavailable right now.'
+    end
+    local away = location.distance(sample, load.drop)
+    if not away or away > jobs.DROP_RADIUS then
+      return 'Drive to the drop spot and stop within ' .. jobs.DROP_RADIUS .. ' m of it.'
+    end
+    if self.stranded then return 'You teleported without booking shipping. Go back to where you left from, or book shipping on the Garage tab.' end
+    if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    local needed = jobs.drivenNeeded(places.get(load.from), load.drop)
+    if load.drivenKm * 1000 < needed then
+      return 'Drive it here: you have driven ' .. string.format('%.1f', load.drivenKm) .. ' km of the '
+        .. string.format('%.1f', needed / 1000) .. ' km this job needs.'
+    end
+    if not self.odometer:stopped() then return 'Stop the car to deliver.' end
+    return nil
+  end
+
+  -- Delivers an off-road drop at its spot, paid in full. No town's need changes.
+  function c:deliverDrop()
+    local problem = self:dropProblem()
+    if problem then
+      self.tradeFeedback = problem
+      return false
+    end
+    local load, good = self.load, goods.get(self.load.good)
+    self:addMoney(load.pay)
+    self:finishJob()
+    local refund = ''
+    if self.offer and shipping.offerPays(load.drop, self.offer) then
+      self:addMoney(self.offer.fee)
+      refund = ' ' .. self.offer.name .. ' paid back your ' .. dollars(self.offer.fee) .. ' shipping.'
+      self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
+      self.offer = nil
+    end
+    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), load.units .. ' ' .. good.name:lower() .. ' dropped off road. '
+      .. self:named('Nice driving') .. '.' .. refund .. ' Save to keep it.')
+    self.tradeFeedback = nil
+    self.diag:event('job_delivered', string.format('%s x%d -> drop for %d', good.id, load.units, load.pay))
+    return true
+  end
+
+  -- Looks at the ground at an off-road drop's spot once the car is close enough for it to have
+  -- loaded. A spot in water or too steep moves to the nearest ground that will do. Until the
+  -- ground there has loaded it waits; when none of it will do, the spot stays.
+  function c:checkDrop()
+    local load, sample = self.load, self.lastSample
+    if not load or not load.drop or load.drop.checked or not self.adapter.ground then return end
+    if self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then return end
+    local away = location.distance(sample, load.drop)
+    if not away or away > jobs.DROP_CHECK_METRES then return end
+    if self.dropCheckedAt and self.clock - self.dropCheckedAt < 1 then return end
+    self.dropCheckedAt = self.clock
+    local function ground(p)
+      local ok, g = pcall(self.adapter.ground, self.adapter, p)
+      return ok and g or nil
+    end
+    local spot = ground(load.drop)
+    if spot == nil then return end
+    if jobs.dropGround(spot) then load.drop.checked = true; return end
+    for _, p in ipairs(jobs.dropCandidates(load.drop, places.get(load.from))) do
+      if jobs.dropGround(ground(p)) then
+        local moved = location.distance(load.drop, p)
+        load.drop = { latitude = p.latitude, longitude = p.longitude, checked = true, moved = true }
+        self:showFlash('delivered', 'DROP SPOT MOVED', 'The spot was ' .. (spot.water and 'under water' or 'too steep to stop on')
+          .. ', so it moved ' .. math.floor(moved + 0.5) .. ' m to firmer ground. Follow the arrow.')
+        self.diag:event('drop_moved', string.format('%s %.0f m', spot.water and 'water' or string.format('slope %.0f', spot.slope), moved))
+        return
+      end
+    end
+    if away <= jobs.DROP_RADIUS then load.drop.checked = true end
+  end
+
   -- Delivers the job at its drop-off: paid in full, and the town needs that good a little less.
   function c:deliver()
+    if self.load and self.load.drop then return self:deliverDrop() end
     local place = self:here()
     local problem = self:tradeProblem(place)
     if not problem and not self.load then problem = 'You have no job to deliver.' end
@@ -717,6 +808,7 @@ function M.new(deps)
     self:afterRespawn()
     self:watchFuel()
     self:watchInsurance()
+    self:checkDrop()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
       self.refuelPending, self.tradeFeedback = nil, 'Refuelling did not go through. You have not been charged.'
@@ -759,7 +851,9 @@ function M.new(deps)
     local out = {}
     for _, job in ipairs(self:board(place)) do
       local q, good, to = self:jobQuote(job), goods.get(job.good), places.get(job.to)
-      out[#out + 1] = { id = job.id, good = good.name, goodId = good.id, to = to.name, toId = to.id, size = to.size,
+      out[#out + 1] = { id = job.id, good = good.name, goodId = good.id, to = job.drop and 'Off-road drop' or to.name, toId = to.id,
+        size = not job.drop and to.size or nil, drop = job.drop ~= nil or nil,
+        direction = job.drop and location.compassPoint(location.bearing(place, job.drop)) or nil,
         distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
         units = q.units, kg = q.kg, unitSlots = good.slots, unitKg = good.kg,
         shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road > 1.005 and q.road or nil,
@@ -786,7 +880,7 @@ function M.new(deps)
       for _, n in ipairs(places.nearest(current, NEARBY_COUNT, place and place.id)) do
         nearby[#nearby + 1] = { id = n.place.id, name = n.place.name, size = n.place.size,
           distanceMetres = n.metres * places.ROAD_FACTOR, dots = self:dots(n.place, now),
-          destination = self.load ~= nil and self.load.to == n.place.id }
+          destination = self.load ~= nil and not self.load.drop and self.load.to == n.place.id }
       end
     end
     local town
@@ -794,7 +888,7 @@ function M.new(deps)
       local problem = self:tradeProblem(place)
       local kind = jobs.character(place)
       local delivery
-      if self.load and self.load.to == place.id then
+      if self.load and not self.load.drop and self.load.to == place.id then
         local why = self:deliveryProblem(place)
         delivery = { pay = self.load.pay, problem = why, allowed = problem == nil and why == nil }
       end
@@ -810,7 +904,25 @@ function M.new(deps)
       }
     end
     local loadView
-    if self.load then
+    if self.load and self.load.drop then
+      local good, from, drop = goods.get(self.load.good), places.get(self.load.from), self.load.drop
+      local bearing = current and location.bearing(current, drop)
+      local heading = self.lastSample and location.finite(self.lastSample.heading) and self.lastSample.heading or self.heading
+      local away = current and location.distance(current, drop)
+      local problem = self:dropProblem()
+      loadView = {
+        good = good.name, goodId = good.id, units = self.load.units or self.load.slots, slots = self.load.slots,
+        kg = self.load.kg, pay = self.load.pay, drivenKm = self.load.drivenKm, from = from.name, to = 'off-road drop',
+        distanceMetres = away, direction = bearing and location.compassPoint(bearing) or nil,
+        drop = {
+          distanceMetres = away, bearing = bearing,
+          -- Which way to turn: the spot's bearing from the way the car points (or last went), 0 is straight ahead.
+          arrow = bearing and heading and (bearing - heading) % 360 or nil,
+          inZone = away ~= nil and away <= jobs.DROP_RADIUS, radiusMetres = jobs.DROP_RADIUS, moved = drop.moved == true,
+          delivery = { allowed = problem == nil, problem = problem },
+        },
+      }
+    elseif self.load then
       local good, to, from = goods.get(self.load.good), places.get(self.load.to), places.get(self.load.from)
       loadView = {
         good = good.name, goodId = good.id, units = self.load.units or self.load.slots, slots = self.load.slots,
