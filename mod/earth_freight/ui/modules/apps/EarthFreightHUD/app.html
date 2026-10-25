@@ -50,7 +50,7 @@
         <button type="button" aria-label="Copy coordinates" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
       </div>
     </label>
-    <div ng-if="data.resumeDistanceMetres != null" style="margin-top:4px;">You are {{km(data.resumeDistanceMetres)}} km away.</div>
+    <div ng-if="data.resumeDistanceMetres != null" style="margin-top:4px;">You are {{km(data.resumeDistanceMetres)}} km away.<span ng-if="data.resumeDistanceMetres < 5000"> Close by? You can drive there instead: the spot counts once you are within {{data.resumeRadiusMetres}} m of it.</span></div>
   </div>
   <div ng-if="data.load" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
     <div style="font-weight:bold;color:#f2c94c;">{{data.load.slots}} &times; {{data.load.good}} &middot; {{data.load.kg | number:0}} kg<span ng-if="data.load.to"> &rarr; {{data.load.to}}</span></div>

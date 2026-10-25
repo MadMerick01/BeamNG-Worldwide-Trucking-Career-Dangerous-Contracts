@@ -6,6 +6,9 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New game now always gives you a fresh starter car.** Before, if you were still driving the starter Burnside when you pressed New game, it kept every part you had paid for, such as a radiator, cargo boxes or a turbo, and the next Save kept them too. Now the Burnside is swapped for a stock one when you reach Penrith, even if you are already standing there. Your saves still work.
+- When you are close to Penrith or your last save, the Go to card now says you can simply drive there instead of teleporting, and how close you need to get.
+
 ## Build 14 · 25 Oct 2026
 
 - **The Garage's "Change parts or buy a car" box is tidier.** It no longer lists keyboard keys, and the Cargo line now gives one short total, such as "Cargo: 5 boxes · 20 slots · 1,000 kg max", instead of naming every box. Saves still work.

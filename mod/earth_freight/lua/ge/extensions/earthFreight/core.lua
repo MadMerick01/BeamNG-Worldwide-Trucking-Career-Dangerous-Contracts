@@ -863,6 +863,7 @@ function M.new(deps)
       base = base,
       resume = resume,
       resumeDistanceMetres = current and resume and location.distance(current, resume) or nil,
+      resumeRadiusMetres = self.configuration and self.configuration.resumeRadiusMetres or nil,
       startTown = config.START_TOWN,
       playerName = self.playerName,
       nameUnsaved = self.playerName ~= self.savedName,

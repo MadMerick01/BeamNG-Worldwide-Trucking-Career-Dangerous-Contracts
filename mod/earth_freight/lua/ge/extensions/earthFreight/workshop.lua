@@ -406,8 +406,7 @@ function M.attach(c)
       self.diag:event(label .. '_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
       return
     end
-    if why == 'already_fitted' then self.arrivingModel = nil end
-    self.diag:event(label, why or 'spawned')
+    self.diag:event(label, 'spawned')
   end
 
   -- The car Save keeps: the paid-for parts, with the paint and tuning fitted now. Only the fields
