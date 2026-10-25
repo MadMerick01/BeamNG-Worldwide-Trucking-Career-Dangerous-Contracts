@@ -79,10 +79,9 @@ function M.freightPerSlot(from, to, good)
 end
 
 -- What a load bought at from pays on delivery at a place: its slots at the place's price plus the
--- freight pay, all cut by cargo damage.
-function M.payout(place, good, slots, condition, from)
-  local c = type(condition) == 'number' and math.max(0, math.min(1, condition)) or 1
-  return math.floor((M.price(place, good) + M.freightPerSlot(from, place, good)) * slots * c + 0.5)
+-- freight pay. It pays in full however the car was driven: repairing the car is cost enough.
+function M.payout(place, good, slots, from)
+  return math.floor((M.price(place, good) + M.freightPerSlot(from, place, good)) * slots + 0.5)
 end
 
 return M

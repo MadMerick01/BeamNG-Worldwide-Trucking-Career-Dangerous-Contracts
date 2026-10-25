@@ -14,7 +14,7 @@ Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. 
 2. Stop inside a town. The **Town** tab lists the goods you can buy (parts, food, bricks). Green dots are cheap to buy, red ones pay well. The **Best run** line on the Route tab suggests a good first load.
 3. Pick a good, then set **how far** you want to drive with the slider (5 to 50 km). The drop-offs closest to that distance are listed with what each pays and your profit.
 4. Pick **how many** to buy with − / + (or 1, or Max to fill your space as far as your money goes), then press **Buy** next to a drop-off. BeamNG.Earth's GPS is set to it, so the route and road arrows appear on their own.
-5. Drive there. The load's weight is added to the car, so it is slower and burns more fuel. Rough driving damages the cargo and cuts the pay, and tyres can puncture (more often off road).
+5. Drive there. The load's weight is added to the car, so it is slower and burns more fuel. Rough driving damages the car, which costs money to repair, and tyres can puncture (more often off road). The cargo itself always pays in full.
 6. Stop inside the drop-off town and press **Deliver** to get paid. **Refuel** is on the Town tab too, at $2.10 a litre.
 7. **Save** keeps your money, car, load and fuel. Anything since your last Save is lost when you exit.
 

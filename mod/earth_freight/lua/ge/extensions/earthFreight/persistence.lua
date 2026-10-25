@@ -67,15 +67,15 @@ local function pose(r)
 end
 
 -- The load on board: which good, how many slots and kilograms, what was paid, the place it was
--- bought at and the place it is going to (place ids), the distance driven with it and its
--- condition (1 is perfect). The controller drops a load whose good or places it does not know.
+-- bought at and the place it is going to (place ids) and the distance driven with it. Saves from
+-- before cargo damage was removed carry a condition, which is ignored. The controller drops a load
+-- whose good or places it does not know.
 local function load(l)
   if type(l) ~= 'table' or type(l.good) ~= 'string' or not optionalString(l.good) or not integer(l.slots, 1)
       or not amount(l.kg) or not integer(l.paid, 0) or type(l.from) ~= 'string' or not optionalString(l.from)
-      or not optionalString(l.to) or not amount(l.drivenKm) or not location.finite(l.condition)
-      or l.condition < 0 or l.condition > 1 then return nil end
+      or not optionalString(l.to) or not amount(l.drivenKm) then return nil end
   return { good = l.good, slots = l.slots, kg = l.kg or 0, paid = l.paid, from = l.from, to = l.to,
-    drivenKm = l.drivenKm or 0, condition = l.condition }
+    drivenKm = l.drivenKm or 0 }
 end
 
 function M.validate(s)

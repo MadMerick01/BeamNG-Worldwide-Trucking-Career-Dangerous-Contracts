@@ -26,8 +26,6 @@
     <div style="font-weight:bold;color:#f2c94c;">{{data.load.slots}} &times; {{data.load.good}} &middot; {{data.load.kg | number:0}} kg<span ng-if="data.load.to"> &rarr; {{data.load.to}}</span></div>
     <div ng-if="data.load.distanceMetres != null" style="margin-top:2px;font-weight:bold;">&asymp; {{km(data.load.distanceMetres)}} km<span ng-if="data.load.direction"> to the {{data.load.direction}}</span></div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;">
-      <span>Cargo {{percent(data.load.condition)}}%</span>
-      <div style="flex:1;height:6px;border-radius:3px;background:rgba(242,201,76,.2);overflow:hidden;"><div ng-style="{width: (data.load.condition * 100) + '%', background: data.load.condition < 0.5 ? '#eb5757' : '#f2c94c'}" style="height:100%;"></div></div>
       <span ng-if="data.load.payout != null">pays ${{data.load.payout | number:0}}</span>
     </div>
     <div style="margin-top:2px;font-size:12px;color:#c9d6d2;">Bought in {{data.load.from}} for ${{data.load.paid | number:0}} &middot; driven {{data.load.drivenKm | number:1}} km</div>
