@@ -125,10 +125,12 @@ function F.punctures()
   function p:offRoad() self.checks = self.checks + 1; return self.off end
   return p
 end
--- Stand-in for the cargo weight: records each weight set.
+-- Stand-in for the cargo weight: records each weight set and each ask for the tanks' size. Tests
+-- answer through the controller's tanksRead, as the car would.
 function F.cargo()
-  local c = { weights = {} }
-  function c:setWeight(kg, parts) self.weights[#self.weights + 1] = { kg = kg, parts = F.copy(parts) }; return true end
+  local c = { weights = {}, tankReads = 0 }
+  function c:setWeight(kg, parts, fluid) self.weights[#self.weights + 1] = { kg = kg, parts = F.copy(parts), fluid = F.copy(fluid) }; return true end
+  function c:readTanks() self.tankReads = self.tankReads + 1; return true end
   return c
 end
 -- Stand-in for the fuel tank: records reads and sets. Tests answer through the controller's

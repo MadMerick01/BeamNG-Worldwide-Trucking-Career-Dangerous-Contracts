@@ -48,6 +48,72 @@ do
   run(vehicle.commands[5], { v = {}, obj = {} }) -- a car without nodes: nothing happens, no error
 end
 
+-- Fluid: the tank's own container is filled through its jbeam expressions, so it sloshes.
+do
+  -- A stand-in for BeamNG's expression parser: "$=" then Lua arithmetic in $names.
+  local parser = { compileSafe = function(text)
+    local vars = {}
+    local body = text:gsub('^%$=', ''):gsub('%$(%w+)', function(name) return 'V["$' .. name .. '"]' end)
+    local f = assert(loadstring('local V = ...; return ' .. body))
+    return function() return f(vars) end, vars
+  end }
+  local vehicle = car(9)
+  local w = cargo.new({ player = function() return vehicle end })
+  local masses, limits, bounds = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }, {}, {}
+  local tank = 'pickup_cargo_load_fluid_tank_l'
+  local function world()
+    return {
+      require = function(name) if name == 'jbeam/expressionParser' then return parser end error('no ' .. name) end,
+      v = { data = {
+        cargoStorage = { { groupId = 'tank', partPath = '/bed/tank/', cargoTypes = { 'fluid' }, capacity = 500 },
+          { groupId = 'box', partPath = '/bed/box/', cargoTypes = { 'parcel' }, capacity = 4 } },
+        nodes = {
+          [0] = { cid = 0, cargoGroup = 'tank', partPath = '/bed/tank/', nodeWeightFunction = '=10+$volume*$density', partOrigin = tank },
+          [1] = { cid = 1, partOrigin = tank },
+          [2] = { cid = 2, partOrigin = 'pickup_body' },
+          [3] = { cid = 3, cargoGroup = 'box', partPath = '/bed/box/', nodeWeightFunction = '=4+$load', partOrigin = 'box' } },
+        beams = { [5] = { cid = 5, cargoGroup = 'tank', partPath = '/bed/tank/', beamLimitSpringFunction = '=100+$load', beamLimitDamp = 7,
+          beamShortBoundFunction = '=0.5-$volume/1000' } } } },
+      obj = { setNodeMass = function(_, cid, m) masses[cid] = m end, getNodeMass = function(_, cid) return masses[cid] end,
+        setBoundedBeamSpringDampLimits = function(_, cid, s, d) limits[cid] = { s, d } end,
+        setBoundedBeamShortBound = function(_, cid, b) bounds[cid] = b end },
+    }
+  end
+  local here = world()
+  T.check(w:setWeight(150, { tank }, { litres = 200, density = 0.75, tanks = { tank } }), 'fluid sent')
+  local replies = run(vehicle.commands[1], here)
+  T.eq(masses[0], 10 + 200 * 0.75, 'the fluid weighs on the container node'); T.eq(masses[1], 10, 'not spread over the tank as well')
+  T.eq(limits[5][1], 100 + 150, 'the slosh beam follows the load'); T.eq(limits[5][2], 7, 'its own damping kept')
+  T.near(bounds[5], 0.3, 1e-9, 'and its bound'); T.eq(masses[3], 4, 'the parcel container left alone')
+  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.tanksRead(9, 500.000) end', 'reports the real tank size')
+  -- More than fits: the container is full and the rest goes over the tank's nodes.
+  w:setWeight(600, { tank }, { litres = 600, density = 1, tanks = { tank } }); run(vehicle.commands[2], here)
+  T.eq(masses[0], 10 + 500 + 50, 'full, plus a share of the rest'); T.eq(masses[1], 10 + 50, 'the rest over the tank')
+  -- A box load empties the tank.
+  w:setWeight(40, { 'box' }, { litres = 0, tanks = { tank } }); run(vehicle.commands[3], here)
+  T.eq(masses[0], 10, 'tank emptied'); T.eq(masses[1], 10, 'its spread taken off'); T.eq(limits[5][1], 100, 'the slosh beam back to empty')
+  T.eq(masses[3], 44, 'the box load on the box')
+  -- No expression parser: the fluid still weighs, spread over the tank.
+  local plain = world(); plain.require = function() error('no parser') end
+  masses = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }
+  w:setWeight(100, { tank }, { litres = 100, density = 1, tanks = { tank } }); run(vehicle.commands[4], plain)
+  T.eq(masses[0] + masses[1], 120, 'weight still on the tank')
+  -- A legacy container lists its weight nodes; they share the fluid.
+  local legacy = world()
+  legacy.v.data.cargoStorage = { { groupId = 'old', partOrigin = tank, cargoTypes = {}, capacity = 300, ['weightNodes:'] = { 0, 1 } } }
+  legacy.v.data.nodes[0].nodeWeight, legacy.v.data.nodes[1].nodeWeight = 10, 10
+  masses = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }
+  w:setWeight(100, { tank }, { litres = 100, density = 1, tanks = { tank } }); replies = run(vehicle.commands[5], legacy)
+  T.eq(masses[0], 60, 'half on each weight node'); T.eq(masses[1], 60, 'both')
+  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.tanksRead(9, 300.000) end', 'found by its part')
+  -- Asking only: reports the size, changes nothing.
+  masses = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }
+  T.check(w:readTanks({ tank }), 'read sent'); replies = run(vehicle.commands[6], world())
+  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.tanksRead(9, 500.000) end', 'tank size read'); T.eq(masses[0], 10, 'nothing changed')
+  replies = run(vehicle.commands[6], { v = {}, obj = {} })
+  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.tanksRead(9, 0.000) end', 'a car with no tank reads 0')
+end
+
 -- Fuel: read adds up the fuel tanks, leaving out batteries; set fills them and reports.
 do
   local vehicle = car(7)
