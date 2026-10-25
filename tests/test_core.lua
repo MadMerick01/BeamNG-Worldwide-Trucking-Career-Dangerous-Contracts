@@ -71,6 +71,8 @@ do
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   local v = c:view()
   T.eq(v.here.name, 'Penrith', 'in Penrith'); T.check(v.town.stopped, 'stopped')
+  T.eq(v.region.name, 'Australia', 'the region is named'); T.near(v.region.boost, 1, 1e-9, 'flat Sydney pays 1x')
+  T.near(v.town.boost, 1, 1e-9, 'the town shows its boost')
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
   T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 5000, 'distances are road estimates')
   T.eq(v.town.destinations[1].name, 'Jordan Springs', 'Jordan Springs is the nearest drop-off')
@@ -139,6 +141,12 @@ do
   c.load.drivenKm = 1; a.pose = F.copy(stClair); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.check(c.load == nil, 'a long teleport cancels the load')
   T.eq(c:view().flash.kind, 'cancelled', 'player told the load was lost')
+  T.check(c:view().stranded ~= nil, 'an unbooked teleport strands the player')
+  T.check(c:tradeProblem(c:here()):find('without booking shipping'), 'and stops trading')
+  -- Teleporting back to where they left from frees them.
+  a.pose = location.destination(F.PENRITH, 90, 1500); c:tick(0.1)
+  T.eq(c.stranded, nil, 'back where they left from'); T.eq(c:view().flash.title, 'BACK ON THE ROAD', 'told so')
+  a.pose = F.copy(stClair); c.stranded = nil; c.odometer:reset(); c.lastDriven = nil; c:tick(0.1); c:tick(0.6); c:tick(0.6)
   -- A load not driven far enough does not sell.
   c:buy('food', penrith.id); c.load.from = penrith.id; c.load.drivenKm = 2
   T.check(not c:sell(), 'not driven far enough'); T.check(c:view().town.sale.problem:find('Drive it here'), 'told to drive')
@@ -200,7 +208,7 @@ do
   c.profile.progression.balance = 21; c:fuelReading(1, 10, 50)
   T.near(c:view().town.refuel.litres, 10, 1e-9, 'only what the money buys')
   -- Away from a town there is no Refuel.
-  a.pose = location.destination(F.PENRITH, 0, 3000); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  a.pose = location.destination(F.PENRITH, 0, 1900); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.eq(c:view().town, nil, 'no town panel out of town'); T.check(not c:refuel(), 'no refuel out of town')
   -- A repair respawns the car with a full tank; the fuel it had is put back, free.
   c.profile.progression.balance = 10000; g.damage = 2000; c:tick(0.1)
@@ -277,6 +285,109 @@ do
   T.check(not c:newGame(), 'asks first'); T.check(c:newGame(), 'confirmed')
   T.eq(c:view().balance, Core.STARTING_MONEY, 'starting money'); T.eq(c.mode, 'start', 'back to the start')
   T.eq(io.files[B].atStart, true, 'saved at the start')
+end
+
+-- Shipping: book with an empty car, teleport to the coordinates, arrive with the booking used up.
+do
+  local shipping = require('earthFreight/shipping')
+  local c, io, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local v = c:view()
+  T.eq(#v.shipping.destinations, #shipping.DESTINATIONS, 'destinations listed')
+  local coroico = shipping.get('coroico')
+  T.eq(v.shipping.destinations[1].here, true, 'Penrith is where you are')
+  local fee = shipping.fee(F.PENRITH, coroico)
+  T.check(fee > 100 and fee < 500, 'shipping is cheap: ' .. fee)
+  c:buy('food', stClair.id)
+  T.check(not c:bookShipping('coroico'), 'not with a load on board'); T.check(c:view().shipping.feedback:find('cargo cannot'), 'told why')
+  c.load = nil
+  T.check(not c:bookShipping('penrith'), 'not to where you are')
+  T.check(not c:bookShipping('nowhere'), 'not to an unknown place')
+  local before = c:view().balance
+  T.check(c:bookShipping('coroico'), 'booked'); T.eq(c:view().balance, before - fee, 'fee paid')
+  T.check(not c:bookShipping('bormio'), 'one booking at a time')
+  T.check(not c:view().saveAllowed, 'no Save while a booking is open'); T.check(not c:manualSave(), 'save refused')
+  T.check(c:cancelShipping(), 'cancelled'); T.eq(c:view().balance, before, 'refunded')
+  T.check(c:bookShipping('coroico'), 'booked again')
+  T.eq(c:view().shipping.booking.latitude, coroico.latitude, 'coordinates to paste')
+  -- Earth pauses while it teleports; the jump still counts as one.
+  a.valid = false; c:tick(0.1)
+  a.valid = true; a.pose = location.destination(coroico, 0, 1000); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(c.booking, nil, 'booking used up'); T.eq(c.stranded, nil, 'not stranded')
+  T.eq(c:view().flash.title, 'SHIPPED TO COROICO', 'told they arrived')
+  T.eq(c:view().region.name, 'Death Road', 'in the Death Road region'); T.check(c:view().region.boost >= 2.7, 'paying near 3x')
+  T.check(c:view().saveAllowed, 'Save works again')
+  -- Teleporting on without a booking strands you, and the coordinates to go back are shown.
+  a.pose = shipping.get('bormio'); c:tick(0.1); c:tick(0.6)
+  local stranded = c:view().stranded
+  T.check(stranded ~= nil and location.distance(stranded, coroico) < 1500, 'go back to where you left')
+  T.eq(c:view().flash.title, 'SHIPPING NOT BOOKED', 'told why')
+  local km = c:view().totalDistanceKm
+  a.pose = location.destination(shipping.get('bormio'), 0, 200); c:tick(1)
+  T.eq(c:view().totalDistanceKm, km, 'driving does not count while stranded')
+  T.check(not c:manualSave(), 'and nothing saves')
+  -- Booking shipping from where you are frees you once you land.
+  T.check(c:bookShipping('leh'), 'shipping can be booked while stranded')
+  a.pose = shipping.get('leh'); c:tick(0.1); c:tick(0.6)
+  T.eq(c.stranded, nil, 'shipped on, no longer stranded')
+  -- Any town by name, or any coordinates.
+  T.check(c:searchShipping('chamonix'), 'a town found by name')
+  local found = c:view().shipping.found
+  T.check(#found >= 1 and found[1].name:find('Chamonix') ~= nil, 'listed with its fee'); T.check(found[1].fee > 100, 'priced')
+  T.check(not c:searchShipping('qqqqzzzz'), 'nothing found'); T.check(c:view().shipping.feedback:find('No town called'), 'told so')
+  c:searchShipping('chamonix')
+  T.check(c:bookShipping(found[1].id), 'booked to a found town'); T.eq(c.booking.name, found[1].name, 'by its name')
+  c:cancelShipping()
+  T.check(not c:bookShippingTo(95, 0), 'not past the pole')
+  T.check(c:bookShippingTo(-16.3, -67.82), 'booked to coordinates')
+  T.check(c.booking.region:find('Death Road') ~= nil, 'named after the nearest place: ' .. c.booking.region)
+  a.pose = { latitude = -16.3, longitude = -67.82 }; c:tick(0.1); c:tick(0.6)
+  T.eq(c.booking, nil, 'arrived at the coordinates')
+end
+
+-- The paid-shipping offer: a town in one of the hardest regions, a new one every 5 minutes; its
+-- shipping fee comes back with the first delivery near it, and a Save keeps that.
+do
+  local shipping = require('earthFreight/shipping')
+  local hardest = places.hardest()
+  T.check(#hardest > 100, 'hundreds of hard places: ' .. #hardest)
+  for _, p in ipairs(hardest) do T.check(p.boost >= 2.7 and p.boost <= 3, p.name .. ' pays 2.7x to 3x') end
+  T.eq(shipping.offer(1000, hardest), shipping.offer(1199, hardest), 'the same offer within 5 minutes')
+  local changed = false
+  for w = 1, 5 do if shipping.offer(w * 300, hardest) ~= shipping.offer(0, hardest) then changed = true end end
+  T.check(changed, 'and a new one after')
+  local _, left = shipping.offer(1000, hardest); T.eq(left, 200, 'seconds until the next')
+  local c, io, a, g = F.controller()
+  g.fitted.box = 'pickup_cargo_load_box_m'
+  c.now = function() return 1000 end
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local offer = c:view().shipping.offer
+  T.eq(offer.name, shipping.offer(1000, hardest).name, 'the offer is on the HUD'); T.eq(offer.secondsLeft, 200, 'with its time left')
+  T.check(offer.boost >= 2.7, 'from the hardest places'); T.check(offer.allowed, 'bookable')
+  local before = c:view().balance
+  T.check(c:bookOffer(), 'offer booked'); T.eq(c:view().balance, before - offer.fee, 'the fee is paid now')
+  T.check(c:view().shipping.booking.offer, 'the booking is the offer')
+  c.now = function() return 5000 end -- the offer moves on; the booking still counts
+  local target = places.hardest()[1]
+  for _, p in ipairs(places.hardest()) do if p.name == offer.name then target = p end end
+  a.pose = { latitude = target.latitude, longitude = target.longitude }; c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(c.booking, nil, 'shipped'); T.eq(c.offer.fee, offer.fee, 'the refund is waiting')
+  T.check(c:view().flash.text:find('pays back'), 'told how to get it back')
+  T.check(c:manualSave(), 'saved'); T.eq(io.files[A].offer.fee, offer.fee, 'the save keeps it')
+  local r = F.controller({ io = io }); T.eq(r.offer.name, offer.name, 'and a reload has it back')
+  -- A delivery near the town pays it back.
+  local here = c:here()
+  T.check(here ~= nil, 'arrived in ' .. offer.name)
+  local nearby = places.nearest(here, 1, here.id)[1].place
+  T.check(c:buy('food', nearby.id, 1), 'a load bought')
+  c.load.from, c.load.drivenKm = here.id, 1000
+  a.pose = { latitude = nearby.latitude, longitude = nearby.longitude }; c.odometer:reset(); c.lastDriven = nil
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local balance = c:view().balance
+  local payout = c:saleQuote(c:here()).payout
+  T.check(c:sell(), 'delivered')
+  T.eq(c:view().balance, balance + payout + offer.fee, 'the shipping is paid back')
+  T.check(c:view().flash.text:find('paid back'), 'told so'); T.eq(c.offer, nil, 'only once')
 end
 
 T.done('Earth Freight controller')

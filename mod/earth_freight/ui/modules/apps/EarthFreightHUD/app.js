@@ -20,9 +20,9 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.setTab = function (id) { scope.tab = id }
       // Marks a tab that has something waiting for the player.
       var alerts = {
-        route: function (d) { return !!d.resume },
+        route: function (d) { return !!d.resume || !!d.stranded },
         town: function (d) { return !!d.town && (!!d.town.sellAllowed || (!!d.town.buyAllowed && !d.load)) },
-        garage: function (d) { return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture }
+        garage: function (d) { return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!(d.shipping && d.shipping.booking) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
@@ -103,6 +103,34 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.sellLoad = function () { if (scope.data.town && scope.data.town.sellAllowed) core('sellLoad()') }
       scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }
       scope.dumpLoad = function () { if (scope.data.dumpAllowed) core('dumpLoad()') }
+      scope.bookShipping = function (destination) {
+        if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")
+      }
+      // Shipping anywhere: a town by name, or coordinates pasted from a map.
+      scope.ship = { query: '', coords: '', error: null }
+      scope.searchShipping = function () {
+        var q = String(scope.ship.query || '').replace(/[^A-Za-z0-9 .-]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)
+        if (scope.data.shipping && q.length >= 2) core("searchShipping('" + q + "')")
+      }
+      scope.parseCoordinates = function (text) {
+        var m = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(String(text || ''))
+        if (!m) return null
+        var lat = parseFloat(m[1]), lon = parseFloat(m[2])
+        if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) return null
+        return { latitude: lat, longitude: lon }
+      }
+      scope.bookCoordinates = function () {
+        var p = scope.parseCoordinates(scope.ship.coords)
+        scope.ship.error = p ? null : 'Paste latitude, longitude, like -16.19, -67.73.'
+        if (p && scope.data.shipping && !scope.data.shipping.booking) core('bookShippingTo(' + p.latitude + ', ' + p.longitude + ')')
+      }
+      scope.bookOffer = function () { if (scope.data.shipping && scope.data.shipping.offer && scope.data.shipping.offer.allowed) core('bookOffer()') }
+      scope.clock = function (seconds) {
+        if (typeof seconds !== 'number' || !isFinite(seconds)) return ''
+        var s = Math.max(0, Math.ceil(seconds))
+        return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2)
+      }
+      scope.cancelShipping = function () { if (scope.data.shipping && scope.data.shipping.booking) core('cancelShipping()') }
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       scope.addTestMoney = function () { if (scope.data.testMoneyAllowed) core('addTestMoney()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }

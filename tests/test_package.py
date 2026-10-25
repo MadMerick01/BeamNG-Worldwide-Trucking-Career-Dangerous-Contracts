@@ -27,7 +27,8 @@ class PackageTest(unittest.TestCase):
         with ZipFile(self.output) as archive:
             names = set(archive.namelist())
             for name in ('scripts/earthFreight/modScript.lua', 'lua/ge/extensions/earthFreight/core.lua',
-                         'lua/ge/extensions/earthFreight/placesData.lua', 'ui/modules/apps/EarthFreightHUD/app.json',
+                         'lua/ge/extensions/earthFreight/placesIndex.lua', 'lua/ge/extensions/earthFreight/tiles/s35e150.lua',
+                         'ui/modules/apps/EarthFreightHUD/app.json',
                          'README.md', 'docs/DESIGN.md', 'config.example.json'):
                 self.assertIn(name, names)
             self.assertFalse(any(n.startswith(('settings/', 'tests/', 'tools/', 'earth_freight/', 'docs/beamng-api/')) for n in names))

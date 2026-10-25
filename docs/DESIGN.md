@@ -146,7 +146,7 @@ Pay is a multiplier on that score. Norway's fjords, the Andes, the Australian ou
 
 **Decided (Q7): the multiplier is capped at 3×.** Flat highways pay 1×, the Blue Mountains around 1.5×, the Andes or Himalayas near 3×. Any higher and nobody would deliver anywhere else.
 
-**❓ OPEN — Q7a:** Which elevation source the generator samples for ruggedness (SRTM or Copernicus DEM per place).
+**Decided (Q7a):** the free Mapzen terrain tiles on AWS (SRTM, with other sources where SRTM has none), at about 600 m a pixel. See [Region pay boost as built](#region-pay-boost-as-built).
 
 ### Cargo damage
 
@@ -279,7 +279,7 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 The first playable loop, in `mod/earth_freight/`:
 
 - **Copied from Enduro** under the `earthFreight` namespace: `earthAdapter.lua` (plus a guarded `setDestination` for Earth's GPS), `location.lua`, `config.lua`, `diagnostics.lua`, `hud.lua`, `garage.lua`, `punctures.lua`, and `persistence.lua` with the new schema (money, distance, car with its damage and fuel, the load). From `core.lua`: repair and parts pricing into `pricing.lua`, the 150 m/s teleport rule into `odometer.lua`, and the garage bills (repair, parts, buying cars, the car on arrival) into `workshop.lua`.
-- **Places:** `tools/make_places.py` thins a GeoNames extract (`tools/data/geonames_sydney.tsv`, cut from `cities1000`) to places 4 km apart within 150 km of Penrith, with a hand-edited override list (`tools/data/place_overrides.json`) that keeps Penrith, Katoomba, Lithgow and other well-known towns in. That gives 223 places in `placesData.lua` (it was 8 km and 104 places; Rowan asked for runs as short as 5 km). GeoNames has no importance rank, so suburbs (`PPLX`) are weighted down instead; Wikipedia/OSM ranking can come with the worldwide list.
+- **Places:** `tools/make_places.py` thins a GeoNames extract (`tools/data/geonames_sydney.tsv`, cut from `cities1000`) to places 4 km apart within 150 km of Penrith, with a hand-edited override list (`tools/data/place_overrides.json`) that keeps Penrith, Katoomba, Lithgow and other well-known towns in. That gave 223 places in `placesData.lua`, now part of the worldwide tiles (see below) (it was 8 km and 104 places; Rowan asked for runs as short as 5 km). GeoNames has no importance rank, so suburbs (`PPLX`) are weighted down instead; Wikipedia/OSM ranking can come with the worldwide list.
 - **Goods and prices:** all seven goods are defined, but only parcels (parts, food, bricks) can be carried. Prices are fixed: base price × a seeded factor (0.7–1.3) per place and good × a size factor (city 0.9, village 1.1).
 - **Cargo space:** our own table of box parts (Q5b), matched on the part name or its parts-menu name: Cargo Load Box S/M/L/XL give 1/4/16/128 slots and 50/200/600/2,500 kg. No box means 2 parcels and 60 kg in the boot.
 - **Weight (Q5a):** a game-side mass change. The load's kg are spread over the nodes of the box parts (each jbeam node's `partOrigin`), or over the whole car with no box, through the car's `obj:setNodeMass`. It is put back after every respawn.
@@ -290,7 +290,34 @@ The first playable loop, in `mod/earth_freight/`:
 
 Needs checking in game: whether the vanilla Cargo Load part names match (and which fit the starter Burnside), `obj:setNodeMass` and `partOrigin` on vehicle nodes, the fuel tanks' `remainingVolume`/`setRemainingRatio`, and Earth's `gps.setDestination`.
 
-Not in layer 1: supply and demand, shipping, rural pickup points, the planning map, roadside events, pay multipliers.
+Not in layer 1: supply and demand, rural pickup points, the planning map, roadside events.
+
+## Worldwide places as built
+
+- **The list:** `tools/make_places.py` merges GeoNames' `cities1000` (`tools/data/geonames_world.tsv.gz`, 135,000 places) with the Sydney extract, which replaces it within 150 km of Penrith. The overrides apply only there, so Liverpool and Richmond in England are not forced in. Places are thinned to 4 km apart worldwide (suburbs weighted down as before), which keeps **100,125 places**. All but one of the 223 Sydney places are unchanged (St. Georges Basin, on the edge, gives way to a place just outside the old circle).
+- **Tiles:** the places are split into 5° tiles (841 of them, 4.5 MB in all, 2.3 MB in the mod zip), one compact text line per place in `tiles/<tile>.lua`, with `placesIndex.lua` listing which tiles have places. `places.lua` loads the tile the player is in and the eight around it as they drive, plus the tiles around the start and around the last save. Lookups go through a 0.25° grid, so only the places close by are looked at.
+- **Ids** stay GeoNames ids (`gn…`), so saves keep working.
+
+## Region pay boost as built
+
+Each place gets a boost from 1× to 3× when the list is built; nothing is worked out in game.
+
+- **Steepness** (the biggest part, up to +1.6): `tools/sample_terrain.py` reads the terrain tiles around each place and takes the relief within 10 km (the 95th percentile of the ground height less the 5th; the sea counts as 0 m). From 200 m of relief (nothing) to 2,000 m (full).
+- **Remoteness** (up to +0.4): the people living within 50 km, from the whole GeoNames list, on a log scale from a million (nothing) to 5,000 (full).
+- **Altitude** (up to +0.3): from 2,000 m to 4,500 m.
+- **Famous roads** (hand-made, `tools/data/regions.json`): Death Road +0.6, the Stelvio Pass +0.6, the Karakoram Highway +0.5, for places within 12–15 km of the road. The same file names a few areas (Blue Mountains, Yungas) without a bonus; every other place is named after its country.
+
+The total is capped at 3×. With these settings: Sydney, Parramatta and Penrith 1.0×, Springwood 1.2×, Katoomba 1.5×, Lithgow 1.4×, La Paz 1.9×, Zermatt 2.5×, Leh 2.7×, and Coroico (Death Road), Bormio (Stelvio) and Gilgit (Karakoram) 3.0×. Worldwide the median is 1.13×, and 138 places are at the cap. `python tools/make_places.py --report` prints the breakdown.
+
+**In game:** the boost multiplies every price at a place (what you pay to buy and what a delivery pays) and a run's freight pay at the average of its two ends. A run within a steep region pays that much more, a run up into one pays more again, and a run back down to the flat loses money. The HUD shows the region and its boost next to the town name, like "Death Road ×3.0", and each drop-off's boost on the Town tab.
+## Shipping as built
+
+- **Book shipping** on the Garage tab: a list of eight destinations in `shipping.lua` (Penrith, Katoomba, La Paz at the top of Death Road, Coroico at the bottom, Bormio for the Stelvio, Zermatt, Gilgit on the Karakoram Highway, Leh). The fee is $100 plus 2 cents a km, so Sydney to Bolivia is about $360. You can only book with no load on board and no garage bill open. Booking shows the coordinates with a Copy button, and Cancel refunds the fee.
+- **Anywhere:** below the list, a search box finds any of the 100,125 towns by the start of its name (case and accents ignored, so "zurich" finds Zürich; exact names and bigger towns first), and a coordinates box books any latitude, longitude. The search reads `placesNames.lua` (2.2 MB, one folded name, id and tile a line, sorted) the first time, and loads the tiles of the towns it shows.
+- **Paid-shipping offer:** a card above the list reads "The town of Coroico (Death Road, pays ×3.0) will pay your shipping if you come and deliver in its difficult region", with a Book button and the time left. Every 5 minutes (wall clock, a hash of the 5-minute window) it picks another of the 573 places paying 2.7× or more, which `make_places.py` lists in `placesIndex.lua`. The fee is paid when booking, as usual; arriving on that booking sets up the refund, and the first delivery within 50 km of the town pays it back. The pending refund is kept in the save (an optional `offer` field), and it still counts after the card has moved on.
+- **Arriving:** a teleport (a jump over 2 km) that lands within 5 km of the booked destination uses the booking up. The mod also catches a teleport made while Earth paused (the last place driven to is kept across the pause).
+- **Without a booking:** any load on board is lost, as before, and the player is stranded. Deliveries, trading and driving distance stop, and the Route tab shows the coordinates to go back to. Coming back within 1 km of them, or booking shipping from where they are and landing there, frees them.
+- **Save** waits while a booking is open or the player is stranded. Neither is kept in the save, so the save format is unchanged.
 
 ## Open questions
 
@@ -305,7 +332,7 @@ Not in layer 1: supply and demand, shipping, rural pickup points, the planning m
 | Q5b | Which parts are cargo boxes and what each holds | the vanilla Cargo Load parts (Box S/M/L/XL, tanks, aggregate boxes) |
 | Q6 | Offset size and decay rate | **Decided:** halves every 2 in-game hours; offset scales with load size |
 | Q7 | Pay multiplier cap | **Decided:** 3× |
-| Q7a | Elevation source for ruggedness | SRTM or Copernicus DEM |
+| Q7a | Elevation source for ruggedness | **Decided:** Mapzen terrain tiles (SRTM and others), sampled offline per place |
 | Q8 | Is a semi usable on Earth's streaming? | **Decided:** yes, Earth's road reaches at least 150 m, plenty for a trailer |
 | Q9 | Strict tier ladder or buy anything affordable | **Decided:** any vanilla vehicle you can afford |
 | Q10 | How a teleport gets paid for | **Decided:** cheap "Book shipping" with an empty vehicle, then coordinates to paste |
@@ -319,4 +346,4 @@ Not in layer 1: supply and demand, shipping, rural pickup points, the planning m
 
 ## Credits
 
-Place data © [GeoNames](https://www.geonames.org/), CC BY 4.0. Further sources (OpenStreetMap ODbL, ESA WorldCover CC BY 4.0, elevation data) to be credited as they are added.
+Place data © [GeoNames](https://www.geonames.org/), CC BY 4.0. Elevation: Mapzen terrain tiles (SRTM, GMTED and others; see the [AWS terrain tiles attribution](https://github.com/tilezen/joerd/blob/master/docs/attribution.md)). Further sources (OpenStreetMap ODbL, ESA WorldCover CC BY 4.0) to be credited as they are added.

@@ -34,7 +34,8 @@ Deliveries must be driven: a load only sells once you have driven 70% of the str
 python -m pip install -r tests/requirements.txt
 python tests/run.py                    # every Lua, HUD and packaging test
 python tools/package.py                # builds dist/earth_freight.zip
-python tools/make_places.py            # rebuilds the place list from tools/data/
+python tools/make_places.py            # rebuilds the worldwide place tiles from tools/data/
+python tools/make_places.py --report   # prints the pay boost of some well-known places
 python tools/check_earth_versions.py C:\path\to\BeamNG.Earth   # checks the adapter against Earth releases
 ```
 
@@ -42,4 +43,4 @@ The mod's Lua is in `mod/earth_freight/lua/ge/extensions/earthFreight/`. `core.l
 
 ## Credits
 
-Place data © [GeoNames](https://www.geonames.org/), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The Sydney extract in `tools/data/geonames_sydney.tsv` is cut from GeoNames' `cities1000`.
+Place data © [GeoNames](https://www.geonames.org/), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). `tools/data/geonames_world.tsv.gz` is GeoNames' `cities1000` (every place over 1,000 people, from the June 2022 copy in the `all-the-cities` npm package); the Sydney extract in `tools/data/geonames_sydney.tsv` is cut from a newer `cities1000`. Elevation for the region pay boost: [Mapzen terrain tiles](https://registry.opendata.aws/terrain-tiles/) on AWS (SRTM, GMTED and other sources), sampled into `tools/data/terrain.tsv.gz` by `tools/sample_terrain.py`.

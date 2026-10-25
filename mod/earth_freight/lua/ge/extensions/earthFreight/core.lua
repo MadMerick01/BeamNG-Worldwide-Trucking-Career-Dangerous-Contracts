@@ -16,6 +16,7 @@ local market = require('earthFreight/market')
 local cargo = require('earthFreight/cargo')
 local fuel = require('earthFreight/fuel')
 local workshop = require('earthFreight/workshop')
+local shipping = require('earthFreight/shipping')
 local M = {}
 -- Money a new game starts with, and the amount the HUD test button adds.
 local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and a first load
@@ -82,6 +83,8 @@ function M.new(deps)
     feedback = 'Not saved this session.', garage = deps.garage,
     paused = deps.paused or function() return false end,
     random = deps.random or math.random,
+    -- Wall-clock seconds, which the paid-shipping offers rotate by.
+    now = deps.now or os.time,
     -- Bursts tyres and tells whether the car is off road; without it there are no punctures.
     punctures = deps.punctures,
     -- Adds the load's weight to the car, and reads and sets its fuel; without them the load has no
@@ -113,12 +116,20 @@ function M.new(deps)
     self.partsFeedback, self.carFeedback, self.tradeFeedback = nil, nil, nil
     self.vehicleProvided, self.arrivingModel, self.arrivingValue, self.arrived = false, nil, nil, false
     self.newGameArmed, self.dumpArmed, self.flash = false, false, nil
+    -- Shipping booked and not yet used, and where an unbooked teleport left from. Neither is saved:
+    -- Save waits until both are settled.
+    self.booking, self.stranded, self.shippingFeedback, self.lastDriven = nil, nil, nil, nil
+    self.shippingSearch = nil
     -- A puncture not yet repaired; a reload respawns the car, so its tyre repair is owed instead.
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.cargoDamage = nil, nil, nil, nil, nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
+    -- A paid-shipping offer the player shipped in on, paid back by their first delivery near it.
+    self.offer = self.profile and copy(self.profile.offer) or nil
+    -- The saved load's places are near where the player left off.
+    if self.profile then places.ensure(self.profile.resume) end
     self.diag:event('save_loaded_or_rejected', self.loadStatus, self.profile and 'I' or 'W')
     self.feedback = loadMessages[self.loadStatus] or ''
     if not self.profile and not loadMessages[self.loadStatus] then self.error = self.loadStatus end
@@ -234,12 +245,25 @@ function M.new(deps)
     self.cargoDamage = { id = inspected.id, damage = inspected.damage }
   end
 
-  -- Driving. Distance counts only once the player has arrived. A teleport-sized jump never counts,
-  -- and one longer than a short hop cancels the load: the money paid for it is lost.
+  -- Driving. Distance counts only once the player has arrived. A teleport-sized jump never counts;
+  -- one longer than a short hop goes through teleported. While stranded nothing counts.
   function c:drive(sample, dt)
+    -- Earth can pause while it teleports, which resets the odometer, so the last place driven to
+    -- is kept as well.
+    local fresh = self.odometer.last == nil
+    local before = location.copy(self.odometer.last or self.lastDriven)
     local metres, jump = self.odometer:step(sample, dt)
+    self.lastDriven = location.copy(sample)
+    if fresh and before then
+      local gap = location.distance(before, sample)
+      if gap and gap > odometer.SHORT_HOP_METRES then jump = gap end
+    end
     if jump then
-      if self.load and jump > odometer.SHORT_HOP_METRES then self:cancelLoad('teleport') end
+      if jump > odometer.SHORT_HOP_METRES then self:teleported(before, sample) end
+      return
+    end
+    if self.stranded then
+      if shipping.returned(sample, self.stranded) then self:unstrand() end
       return
     end
     if metres <= 0 then return end
@@ -249,13 +273,138 @@ function M.new(deps)
     self:roadPuncture(sample, metres, dt)
   end
 
-  function c:cancelLoad(reason)
-    local good = goods.get(self.load.good)
-    self.diag:event('load_cancelled', tostring(reason) .. ':' .. self.load.good)
-    self:showFlash('cancelled', 'LOAD LOST', 'You teleported with ' .. good.name:lower() .. ' on board, so the load is gone and the '
-      .. dollars(self.load.paid) .. ' you paid for it is lost. Book shipping with an empty vehicle (coming soon), or drive.')
-    self.load, self.dumpArmed = nil, false
-    self:applyWeight()
+  local function coordinates(p) return string.format('%.5f, %.5f', p.latitude, p.longitude) end
+
+  function c:unstrand()
+    self.stranded = nil
+    self:showFlash('delivered', 'BACK ON THE ROAD', 'You are back where you teleported from. Deliveries and driving count again.')
+    self.diag:event('unstranded', '')
+  end
+
+  -- A long teleport. Any load on board is lost, with the money paid for it. A booked one that lands
+  -- at the destination is shipping; a jump back to where an unbooked one left from undoes it;
+  -- anything else strands the player until they go back or book shipping.
+  function c:teleported(from, to)
+    local lost = ''
+    if self.load then
+      local good = goods.get(self.load.good)
+      lost = ' The ' .. good.name:lower() .. ' on board is gone, and the ' .. dollars(self.load.paid) .. ' you paid for it is lost.'
+      self.diag:event('load_cancelled', 'teleport:' .. self.load.good)
+      self.load, self.dumpArmed = nil, false
+      self:applyWeight()
+    end
+    if self.booking and shipping.arrived(to, self.booking) then
+      local b = self.booking
+      self.booking, self.stranded = nil, nil
+      local paid = ''
+      if b.offer then
+        self.offer = { latitude = b.latitude, longitude = b.longitude, name = b.name, fee = b.fee }
+        paid = ' ' .. b.name .. ' pays back your ' .. dollars(b.fee) .. ' shipping when you deliver within '
+          .. math.floor(shipping.OFFER_RADIUS_METRES / 1000) .. ' km of it.'
+      end
+      self:showFlash(lost ~= '' and 'cancelled' or 'delivered', 'SHIPPED TO ' .. b.name:upper(),
+        'Welcome to ' .. b.region .. '. Find a load in town.' .. paid .. lost)
+      self.diag:event('shipped', b.id)
+    elseif self.stranded and shipping.returned(to, self.stranded) then
+      self:unstrand()
+      if lost ~= '' then self:showFlash('cancelled', 'LOAD LOST', 'You are back where you teleported from.' .. lost) end
+    else
+      self.stranded = self.stranded or from
+      self:showFlash('cancelled', 'SHIPPING NOT BOOKED', 'Deliveries and driving do not count until you go back to '
+        .. coordinates(self.stranded) .. ' (copy them on the Route tab), or book shipping on the Garage tab.' .. lost)
+      self.diag:event('stranded', coordinates(self.stranded), 'W')
+    end
+  end
+
+  -- Why booking shipping is not possible now, or nil when it is.
+  function c:shippingProblem()
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Shipping is unavailable right now.' end
+    if self.load then return 'Deliver or dump your load first: cargo cannot be shipped.' end
+    if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if self.booking then return 'You already have shipping booked to ' .. self.booking.name .. '.' end
+    return nil
+  end
+
+  -- A place as a shipping destination.
+  local function placeDestination(place)
+    return place and { id = place.id, name = place.name, region = place.region,
+      latitude = place.latitude, longitude = place.longitude } or nil
+  end
+
+  -- Books shipping to one of the listed regions or any place by its id.
+  function c:bookShipping(destinationId)
+    return self:book(shipping.get(destinationId) or placeDestination(places.get(destinationId)))
+  end
+
+  -- Books shipping to any coordinates; the region is the nearest place's.
+  function c:bookShippingTo(latitude, longitude)
+    local point = { latitude = latitude, longitude = longitude }
+    if not location.valid(point) then
+      self.shippingFeedback = 'Those are not coordinates. Use latitude, longitude, like -16.19, -67.73.'
+      return false
+    end
+    places.ensure(point)
+    local near = places.nearest(point, 1)[1]
+    return self:book({ id = 'coordinates', name = string.format('%.5f, %.5f', latitude, longitude),
+      region = near and (near.metres < 50000 and ('near ' .. near.place.name .. ', ' .. near.place.region) or near.place.region) or 'somewhere remote',
+      latitude = latitude, longitude = longitude })
+  end
+
+  -- The paid-shipping offer showing now, and the seconds until the next one.
+  function c:currentOffer()
+    return shipping.offer(self.now(), places.hardest())
+  end
+
+  -- Books the offer showing now. The fee is paid as usual and paid back by a delivery there.
+  function c:bookOffer()
+    local offer = self:currentOffer()
+    if not offer then
+      self.shippingFeedback = 'No offer right now.'
+      return false
+    end
+    if not self:book({ id = offer.id, name = offer.name, region = offer.region,
+      latitude = offer.latitude, longitude = offer.longitude }) then return false end
+    self.booking.offer = true
+    self.shippingFeedback = self.shippingFeedback .. ' ' .. offer.name .. ' pays it back when you deliver there.'
+    return true
+  end
+
+  -- Finds places by name to ship to.
+  function c:searchShipping(query)
+    local found = places.search(query, shipping.SEARCH_RESULTS)
+    self.shippingSearch = { query = query, results = {} }
+    for _, place in ipairs(found) do self.shippingSearch.results[#self.shippingSearch.results + 1] = placeDestination(place) end
+    self.shippingFeedback = #found == 0 and ('No town called ' .. tostring(query) .. '. Try the start of its name, or paste coordinates.') or nil
+    return #found > 0
+  end
+
+  -- Books shipping to a destination: pay the fee, then teleport there with the coordinates.
+  function c:book(destination)
+    local here = self.lastSample
+    local problem = self:shippingProblem()
+    if not problem and not destination then problem = 'Pick a destination.' end
+    if not problem and shipping.arrived(here, destination) then problem = 'You are already in ' .. destination.name .. '.' end
+    local fee = not problem and shipping.fee(here, destination) or nil
+    if not problem and not self:spend(fee, 'shipping') then problem = 'Not enough money. Shipping to ' .. destination.name .. ' costs ' .. dollars(fee) .. '.' end
+    if problem then
+      self.shippingFeedback = problem
+      return false
+    end
+    self.booking = { id = destination.id, name = destination.name, region = destination.region, fee = fee,
+      latitude = destination.latitude, longitude = destination.longitude }
+    self.shippingFeedback = 'Booked to ' .. destination.name .. ' for ' .. dollars(fee) .. '. Copy the coordinates, paste them into the BeamNG.Earth map and teleport there.'
+    self.diag:event('shipping_booked', destination.id .. ':' .. fee)
+    return true
+  end
+
+  -- Cancels a booking not yet used and refunds its fee.
+  function c:cancelShipping()
+    if not self.booking or not self.profile or self.error then return false end
+    self:addMoney(self.booking.fee)
+    self.shippingFeedback = 'Booking cancelled. ' .. dollars(self.booking.fee) .. ' refunded.'
+    self.diag:event('shipping_cancelled', self.booking.id)
+    self.booking = nil
+    return true
   end
 
   -- Road punctures. Each stretch driven has a small chance of bursting a tyre (see punctures.lua):
@@ -293,6 +442,8 @@ function M.new(deps)
     if not sample.valid or not location.valid(sample) then
       self:interrupt(sample.reason or 'position_invalid'); return
     end
+    -- The places around the player, wherever in the world they are.
+    places.ensure(sample)
     -- Any valid vehicle position starts the session: saving and driving work wherever the vehicle is.
     if not self.profile then
       self.profile = persistence.newProfile(self.creationBase, sample, sample.vehicle, STARTING_MONEY)
@@ -328,6 +479,7 @@ function M.new(deps)
     if not place then return 'Drive into a town to trade.' end
     if not self.odometer:stopped() then return 'Stop the car to trade.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if self.stranded then return 'You teleported without booking shipping. Go back to where you left from, or book shipping on the Garage tab.' end
     return nil
   end
 
@@ -415,10 +567,17 @@ function M.new(deps)
     self:addMoney(quote.payout)
     self.load, self.dumpArmed, self.cargoDamage = nil, false, nil
     self:applyWeight()
+    local refund = ''
+    if self.offer and shipping.offerPays(place, self.offer) then
+      self:addMoney(self.offer.fee)
+      refund = ' ' .. self.offer.name .. ' paid back your ' .. dollars(self.offer.fee) .. ' shipping.'
+      self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
+      self.offer = nil
+    end
     local profit = quote.payout - load.paid
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(quote.payout), load.slots .. ' ' .. good.name:lower() .. ' to ' .. place.name
       .. (load.condition < 0.995 and (', ' .. math.floor(load.condition * 100 + 0.5) .. '% intact') or '')
-      .. '. ' .. (profit >= 0 and ('Profit ' .. dollars(profit)) or ('Loss ' .. dollars(-profit))) .. ' on the ' .. dollars(load.paid) .. ' load. Save to keep it.')
+      .. '. ' .. (profit >= 0 and ('Profit ' .. dollars(profit)) or ('Loss ' .. dollars(-profit))) .. ' on the ' .. dollars(load.paid) .. ' load.' .. refund .. ' Save to keep it.')
     self.tradeFeedback = nil
     self.diag:event('load_delivered', string.format('%s x%d -> %s for %d', good.id, load.slots, place.id, quote.payout))
     return true
@@ -589,12 +748,14 @@ function M.new(deps)
       end
       local destList = {}
       for _, d in ipairs(destinations) do
-        destList[#destList + 1] = { id = d.place.id, name = d.place.name, size = d.place.size, distanceMetres = d.metres * places.ROAD_FACTOR }
+        destList[#destList + 1] = { id = d.place.id, name = d.place.name, size = d.place.size, distanceMetres = d.metres * places.ROAD_FACTOR,
+          boost = places.boost(d.place) }
       end
       local sale = self:saleQuote(place)
       local refuel = self:refuelQuote()
       town = {
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
+        region = place.region, boost = places.boost(place),
         goods = goodsHere, destinations = destList, freightPerTonneKm = market.FREIGHT_PER_TONNE_KM,
         range = { km = self.rangeKm or RANGE.default, min = RANGE.min, max = RANGE.max, step = RANGE.step },
         buyAllowed = problem == nil and not self.load,
@@ -620,9 +781,44 @@ function M.new(deps)
     local destinations = anchor and self:destinationsFrom(anchor) or {}
     return {
       here = place and { id = place.id, name = place.name, size = place.size } or nil,
+      -- The region you are in, from the nearest place, and its pay boost.
+      region = anchor and { name = anchor.region, boost = places.boost(anchor) } or nil,
       nearby = nearby, town = town, load = loadView,
       bestRun = not self.load and anchor and self:bestRun(anchor, destinations) or nil,
       dumpAllowed = self.load ~= nil, dumpArmed = self.dumpArmed,
+    }
+  end
+
+  function c:shippingView(current)
+    if not current or self.state ~= 'READY' or not self.arrived then return nil end
+    local problem = self:shippingProblem()
+    local list = {}
+    for _, d in ipairs(shipping.DESTINATIONS) do
+      local here, fee = shipping.arrived(current, d), shipping.fee(current, d)
+      list[#list + 1] = { id = d.id, name = d.name, region = d.region, fee = fee, here = here,
+        allowed = problem == nil and not here and self:canAfford(fee) }
+    end
+    local found = {}
+    for _, d in ipairs(self.shippingSearch and self.shippingSearch.results or {}) do
+      local here, fee = shipping.arrived(current, d), shipping.fee(current, d)
+      found[#found + 1] = { id = d.id, name = d.name, region = d.region, fee = fee, here = here,
+        allowed = problem == nil and not here and self:canAfford(fee) }
+    end
+    local offer, left = self:currentOffer()
+    local offerView
+    if offer then
+      local here, fee = shipping.arrived(current, offer), shipping.fee(current, offer)
+      offerView = { id = offer.id, name = offer.name, region = offer.region, boost = offer.boost, fee = fee,
+        secondsLeft = left, here = here, allowed = problem == nil and not here and self:canAfford(fee) }
+    end
+    local b = self.booking
+    return {
+      offer = offerView, destinations = list, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
+      problem = problem, feedback = self.shippingFeedback,
+      pending = self.offer and { name = self.offer.name, fee = self.offer.fee, radiusKm = shipping.OFFER_RADIUS_METRES / 1000,
+        distanceMetres = location.distance(current, self.offer) } or nil,
+      booking = b and { id = b.id, name = b.name, region = b.region, fee = b.fee, offer = b.offer == true, latitude = b.latitude, longitude = b.longitude,
+        distanceMetres = location.distance(current, b) } or nil,
     }
   end
 
@@ -672,7 +868,7 @@ function M.new(deps)
       -- Cargo space from the boxes on the car, the fuel in the tank, and trading.
       space = { slots = space.slots, kg = space.kg, boxes = space.boxes, boot = space.boot },
       fuel = self.fuel and { litres = self.fuel.litres, capacity = self.fuel.capacity, pricePerLitre = fuel.PRICE_PER_LITRE } or nil,
-      here = trade.here, nearby = trade.nearby, town = trade.town, load = trade.load, bestRun = trade.bestRun,
+      here = trade.here, region = trade.region, nearby = trade.nearby, town = trade.town, load = trade.load, bestRun = trade.bestRun,
       dumpAllowed = trade.dumpAllowed, dumpArmed = trade.dumpArmed,
       tradeFeedback = self.tradeFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
@@ -696,7 +892,12 @@ function M.new(deps)
       buyCarAllowed = self:buyCarAllowed(),
       revertCarAllowed = self.pendingCar ~= nil,
       carFeedback = self.carFeedback,
-      saveAllowed = self.state == 'READY' and self.arrived,
+      saveAllowed = self.state == 'READY' and self.arrived and not self.stranded and not self.booking,
+      shipping = self:shippingView(current),
+      stranded = self.stranded and current and {
+        latitude = self.stranded.latitude, longitude = self.stranded.longitude,
+        distanceMetres = location.distance(current, self.stranded),
+      } or nil,
       saveFeedback = self.feedback,
       puncture = self.punctureDamage > 0 and {
         tyreCost = math.floor(self.punctureDamage / PUNCTURE_DAMAGE + 0.5)
@@ -724,6 +925,12 @@ function M.new(deps)
     end
     -- Until the player reaches the resume point they are not in their own car, so a Save would
     -- replace the saved car and location with the stand-in vehicle and wherever it is.
+    if self.stranded or self.booking then
+      self.feedback = self.stranded and 'Go back to where you teleported from, or book shipping, before saving.'
+        or 'Teleport to your shipping booking, or cancel it, before saving.'
+      self.diag:event('manual_save_rejected', self.stranded and 'stranded' or 'booking', 'W')
+      return false
+    end
     if not self.arrived then
       self.feedback = 'Go to the coordinates above before saving.'
       self.diag:event('manual_save_rejected', 'not_arrived', 'W')
@@ -745,7 +952,7 @@ function M.new(deps)
       progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres },
-      load = copy(self.load),
+      load = copy(self.load), offer = copy(self.offer),
     })
     if not saved then
       -- Nothing is lost: the last save is untouched and the session carries on, so Save can be tried again.
@@ -881,6 +1088,18 @@ end
 function M.sellLoad() return safely(function() return ensure():sell() end) end
 function M.dumpLoad() return safely(function() return ensure():dumpLoad() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end
+function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
+-- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.
+function M.bookShippingTo(latitude, longitude)
+  if type(latitude) ~= 'number' or type(longitude) ~= 'number' then return false end
+  return safely(function() return ensure():bookShippingTo(latitude, longitude) end)
+end
+function M.searchShipping(query)
+  if type(query) ~= 'string' or #query > 60 or query:find('[^%w %.%-]') then return false end
+  return safely(function() return ensure():searchShipping(query) end)
+end
+function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
+function M.cancelShipping() return safely(function() return ensure():cancelShipping() end) end
 function M.setDeliveryRange(km) return safely(function() return ensure():setDeliveryRange(km) end) end
 -- The player car's answers to fuel.lua's commands.
 function M.fuelReading(vehicleId, litres, capacity)
