@@ -140,6 +140,9 @@ function M.new(deps)
     self.savedBalance = self.profile and self.profile.progression.balance or STARTING_MONEY
     -- A restored car looks new, but the repair it needed when saved is still owed.
     self.owedDamage = self.profile and self.profile.vehicle and self.profile.vehicle.damage or 0
+    -- The name typed on the start page; like money, a changed name is kept by Save.
+    self.playerName = self.profile and self.profile.playerName or nil
+    self.savedName = self.playerName
     self.mode = (self.profile and not self.profile.atStart) and 'resume' or 'start'
     self.creationBase = location.copy(self.profile and self.profile.base or self.unsavedBase
       or (self.configuration and self.configuration.base))
@@ -187,6 +190,25 @@ function M.new(deps)
 
   function c:showFlash(kind, title, text)
     self.flash = { kind = kind, title = title, text = text, at = self.clock }
+  end
+
+  -- Adds the player's name to a greeting: "Welcome back" becomes "Welcome back, Sam".
+  function c:named(greeting)
+    return self.playerName and (greeting .. ', ' .. self.playerName) or greeting
+  end
+
+  -- Sets the player's name. Spaces are tidied, and an empty name clears it. Returns false when the
+  -- name is too long or has characters a save cannot hold.
+  function c:setPlayerName(name)
+    if type(name) ~= 'string' then return false end
+    name = name:gsub('%s+', ' '):match('^ ?(.-) ?$')
+    if name == '' then self.playerName = nil; return true end
+    if not persistence.validName(name) then
+      self.diag:event('name_rejected', tostring(#name), 'W')
+      return false
+    end
+    self.playerName = name
+    return true
   end
 
   -- The cargo space of the car the player owns, from its paid-for parts.
@@ -445,6 +467,12 @@ function M.new(deps)
       if away and away <= self.configuration.resumeRadiusMetres then
         self.arrived = true
         self.odometer:reset()
+        if self.mode == 'start' then
+          self:showFlash('delivered', self:named('Welcome to ' .. config.START_TOWN):upper(),
+            'Your starter car needs a radiator: fit one in the parts menu (Ctrl+W), then pay on the Garage tab.')
+        else
+          self:showFlash('delivered', self:named('Welcome back'):upper(), 'You are where you last saved.')
+        end
         self.diag:event('arrived', string.format('%.1f m', away))
       end
     end
@@ -559,7 +587,7 @@ function M.new(deps)
     end
     local profit = quote.payout - load.paid
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(quote.payout), load.slots .. ' ' .. good.name:lower() .. ' to ' .. place.name
-      .. '. ' .. (profit >= 0 and ('Profit ' .. dollars(profit)) or ('Loss ' .. dollars(-profit))) .. ' on the ' .. dollars(load.paid) .. ' load.' .. refund .. ' Save to keep it.')
+      .. '. ' .. (profit >= 0 and (self:named('Nice driving') .. '. Profit ' .. dollars(profit)) or ('Loss ' .. dollars(-profit))) .. ' on the ' .. dollars(load.paid) .. ' load.' .. refund .. ' Save to keep it.')
     self.tradeFeedback = nil
     self.diag:event('load_delivered', string.format('%s x%d -> %s for %d', good.id, load.slots, place.id, quote.payout))
     return true
@@ -836,6 +864,8 @@ function M.new(deps)
       resume = resume,
       resumeDistanceMetres = current and resume and location.distance(current, resume) or nil,
       startTown = config.START_TOWN,
+      playerName = self.playerName,
+      nameUnsaved = self.playerName ~= self.savedName,
       newGameAllowed = self:newGameAllowed(),
       newGameArmed = self.newGameArmed,
       vehicle = current and self.lastSample.vehicle and {
@@ -894,6 +924,7 @@ function M.new(deps)
     local saved, why = self.store:save(candidate)
     if not saved then return nil, why end
     self.profile, self.unsavedBase = saved, nil
+    self.savedName = saved.playerName
     self.savedDistanceKm = saved.progression.totalDistanceKm
     self.savedBalance = saved.progression.balance
     return saved
@@ -934,7 +965,7 @@ function M.new(deps)
       progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres },
-      load = copy(self.load), offer = copy(self.offer),
+      load = copy(self.load), offer = copy(self.offer), playerName = self.playerName,
     })
     if not saved then
       -- Nothing is lost: the last save is untouched and the session carries on, so Save can be tried again.
@@ -944,7 +975,7 @@ function M.new(deps)
     end
     self.lastSample = fresh
     self.mode = 'resume'
-    self.feedback = 'Saved successfully.'
+    self.feedback = self:named('Saved') .. '.'
     self.diag:clear('manual_save_succeeded'); self.diag:event('manual_save_succeeded', 'generation ' .. saved.generation)
     return true
   end
@@ -966,7 +997,8 @@ function M.new(deps)
     end
     local start = location.copy(self.configuration.base)
     local saved, why = self:record({ base = start, resume = start,
-      progression = { balance = STARTING_MONEY, totalDistanceKm = 0 }, vehicle = {}, atStart = true })
+      progression = { balance = STARTING_MONEY, totalDistanceKm = 0 }, vehicle = {}, atStart = true,
+      playerName = self.playerName })
     if not saved then
       self.newGameArmed = false
       self.feedback = 'Could not start a new game just now. Your save is unchanged. Press New game to try again.'
@@ -1083,6 +1115,7 @@ function M.searchShipping(query)
 end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 function M.cancelShipping() return safely(function() return ensure():cancelShipping() end) end
+function M.setPlayerName(name) return safely(function() return ensure():setPlayerName(name) end) end
 function M.setDeliveryRange(km) return safely(function() return ensure():setDeliveryRange(km) end) end
 -- The player car's answers to fuel.lua's commands.
 function M.fuelReading(vehicleId, litres, capacity)

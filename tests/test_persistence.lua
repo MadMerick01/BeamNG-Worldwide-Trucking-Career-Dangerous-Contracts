@@ -3,6 +3,11 @@ local P = require('earthFreight/persistence')
 local F = require('fixtures')
 local A, B = P.DIRECTORY .. 'save-a.json', P.DIRECTORY .. 'save-b.json'
 T.check(P.validate(F.save()) ~= nil,'valid save accepted')
+do
+  local named = F.save(); named.playerName = "Zoë O'Neil"
+  T.eq(P.validate(named).playerName, "Zoë O'Neil", 'the player name is kept')
+  T.eq(P.validate(F.save()).playerName, nil, 'a save without a name still loads')
+end
 local edits = {
   function(s) s.schemaVersion=2 end, function(s) s.profileId='../bad' end,
   function(s) s.generation=0 end, function(s) s.generation=1.5 end,
@@ -18,6 +23,8 @@ local edits = {
   function(s) s.vehicle.config={ model = 'pickup', [true] = 1 } end,
   function(s) s.atStart=false end, function(s) s.vehicle.fuelLitres=-1 end, function(s) s.vehicle.fuelLitres=0/0 end,
   function(s) s.progression.lastPunctureKm=-1 end,
+  function(s) s.playerName='' end, function(s) s.playerName=' Sam' end, function(s) s.playerName=('x'):rep(81) end,
+  function(s) s.playerName='Sam"' end, function(s) s.playerName='Sam\n' end, function(s) s.playerName=7 end,
   function(s) s.load='food' end, function(s) s.load={ slots=1, paid=1, from='gn1', condition=1 } end,
   function(s) s.load={ good='food', slots=1.5, paid=1, from='gn1', condition=1 } end,
   function(s) s.load={ good='food', slots=1, paid=-1, from='gn1', condition=1 } end,

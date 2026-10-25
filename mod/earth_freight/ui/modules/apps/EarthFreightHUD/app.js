@@ -31,10 +31,40 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         ['town', function (d) { return !!d.town }], ['route', alerts.route]
       ]
       var follow = function (previous, next) {
+        // The start page opens once on a new game, until the player has been somewhere.
+        if (next.mode === 'start' && !introShown) { introShown = true; scope.openIntro(next) }
+        if (next.mode !== 'start') introShown = false
         for (var i = 0; i < autoOpen.length; i++) {
           if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) { scope.tab = autoOpen[i][0]; return }
         }
         if (scope.tab === 'town' && !next.town) scope.tab = 'route'
+      }
+      // The start page: the player's name and how to play. It covers the rest of the HUD while open.
+      var introShown = false
+      scope.intro = { open: false, name: '' }
+      scope.openIntro = function (d) {
+        scope.intro.name = ((d || scope.data || {}).playerName) || ''
+        scope.intro.open = true
+      }
+      // Letters in any alphabet, digits, spaces, dots, apostrophes and hyphens; at most 20 of them.
+      var notInName
+      try { notInName = new RegExp("[^\\p{L}\\p{M}\\p{N} .'-]", 'gu') } catch (e) { notInName = /[^A-Za-z0-9\u00C0-\u024F .'-]/g }
+      scope.cleanName = function (text) {
+        var name = String(text == null ? '' : text).replace(notInName, '').replace(/\s+/g, ' ').trim()
+        return Array.from(name).slice(0, 20).join('').trim()
+      }
+      scope.closeIntro = function () {
+        var name = scope.cleanName(scope.intro.name)
+        if (name !== ((scope.data && scope.data.playerName) || '')) core('setPlayerName("' + name + '")')
+        scope.typing(false)
+        scope.intro.open = false
+      }
+      // While a text box has focus the game's keys are off, so typing does not drive the car.
+      var typingNow = false
+      scope.typing = function (on) {
+        if (typingNow === !!on) return
+        typingNow = !!on
+        call('if setCEFTyping then setCEFTyping(' + typingNow + ') end')
       }
       // The good picked on the Town tab; its drop-offs are listed under it.
       // count is how many slots to buy; null means as many as fit and are affordable.
@@ -101,7 +131,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       }
       // True when there is money, spending or mileage that a Save would keep.
       scope.unsaved = function (d) {
-        return !!d && (d.unsavedBalance > 0 || d.unsavedSpending > 0 || d.unsavedDistanceKm >= 0.005)
+        return !!d && (!!d.nameUnsaved || d.unsavedBalance > 0 || d.unsavedSpending > 0 || d.unsavedDistanceKm >= 0.005)
       }
       var plainId = function (id) { return /^[a-z0-9_]+$/.test(String(id)) }
       scope.buyLoad = function (good, destination, count) {
@@ -192,6 +222,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       }, 3000)
       scope.$on('$destroy', function () {
         disposed = true
+        scope.typing(false)
         clearInterval(heartbeat)
         mount(false)
       })
