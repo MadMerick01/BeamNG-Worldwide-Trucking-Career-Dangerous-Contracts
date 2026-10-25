@@ -198,7 +198,7 @@ The planning map is **separate from BeamNG.Earth's map**: a panel in our own HUD
 - **Earth's map has no way for another mod to add markers.** `EarthMap.vue` draws only its own lists: the player's saved places (from `/settings/beamngEarth_places.json`), other BeamMP players, the GPS destination and the player. There is no marker or layer API. The only way in would be writing our towns into the player's saved places file, which would clutter their bookmarks and break the rule that we never write Earth's state. Patching Earth's Vue file is ruled out for the same reason and would break on every Earth update.
 - **Earth's GPS is reachable, though.** `require('beamngEarth/gps').setDestination(lat, lon, name)` is a plain Lua function. It plans a road route on Earth's companion server (OSRM on OpenStreetMap), draws it on Earth's map, and puts the game's own route arrows on the road. So the player plans on our map, and once a load is bought we could set the delivery place as Earth's GPS destination, giving turn-by-turn arrows and a route on Earth's map for free.
 
-**❓ OPEN — Q13:** Should the mod set Earth's GPS destination when you load cargo? It is the one place we would write to Earth, so it should be guarded like the adapter's reads (skipped quietly if the function is missing or changed) and probably a setting the player can turn off. It also overwrites any GPS destination the player set themselves. Working assumption: **yes, on by default, only when a load is bought, guarded.**
+**Decided (Q13, Rowan 2026-10-25): yes.** When a load is bought, the mod sets Earth's GPS destination to the delivery place, so the route and road arrows appear without the player doing anything. It is the one place we write to Earth, so the call is guarded like the adapter's reads: if `beamngEarth/gps` or `setDestination` is missing or changed, it is skipped quietly and the delivery still works from our HUD. It only fires on buying a load, never while driving, so a GPS destination the player sets afterwards is left alone. A setting can turn it off.
 
 ## Anti-cheat
 
@@ -273,7 +273,7 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 | Q10 | How a teleport the mod doesn't perform gets paid for | "Book shipping" up front |
 | Q11 | Free short hops | yes, under ~2 km and cargo-safe |
 | Q12 | Road distance on Earth's partial road graph | straight-line × factor, labelled as an estimate |
-| Q13 | Set Earth's GPS destination when a load is bought? (Planning map itself is decided: our own panel) | yes, guarded, with a setting to turn it off |
+| Q13 | ~~Set Earth's GPS destination when a load is bought?~~ | **Decided: yes**, guarded, with a setting to turn it off |
 | Q14 | Place-data format and size | per-cell files if a single table is too big |
 | Q15 | Fuel as a running cost? BeamNG simulates fuel; Enduro ignores it | to decide |
 | Q16 | Does CarKov or any Enduro side mode carry over? | no, at least not in layers 1–3 |
