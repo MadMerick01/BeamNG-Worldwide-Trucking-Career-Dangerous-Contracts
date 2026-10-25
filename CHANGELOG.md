@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 19 · 25 Oct 2026
+
 - **Deliveries are now jobs, and they pay much more.** You no longer buy cargo. Stop in a town and the Town tab lists 3 to 5 jobs, each showing one total pay. Press Take job and it fills every cargo slot your car has, so bigger cargo boxes and vehicles earn more. Deliver it to the drop-off town and you get the pay shown, in full. On the starter car a 5 km job pays about $1,700 to $2,400, and a 20 km job about six times as much.
 - Parts now take 1 slot and weigh 15 kg each, food 2 slots and 50 kg, and bricks 3 slots and 150 kg. Bricks need a cargo box: they don't fit in the boot.
 - Each job pays up to 30% more or less depending on how much the drop-off town wants that good. Green on the board pays above the usual, red below. Delivering the same thing to the same town again pays less for an hour or so. Every town always has at least one decent job.
