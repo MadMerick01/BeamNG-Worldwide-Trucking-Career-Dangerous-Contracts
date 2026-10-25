@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 11 · 25 Oct 2026
+
 - The download page for each build now lists what changed, in plain English, and this list of changes comes inside the mod's ZIP too.
 
 ## Build 10 · 25 Oct 2026
