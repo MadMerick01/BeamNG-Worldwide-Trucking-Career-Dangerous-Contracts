@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Deliveries pay about twice as much.** Freight pay is now $45 a tonne for each road km, up from $20, rising to $90 on a 50 km run. A full Cargo box L of the best load on a 25 to 40 km run now makes about $1,580 profit instead of $780. Shop prices for the goods themselves are unchanged. Your saves still work.
+
 ## Build 12 · 25 Oct 2026
 
 - Each build's download page now lists every earlier build's changes too, under "Earlier builds", so you can see everything that has been added so far.
