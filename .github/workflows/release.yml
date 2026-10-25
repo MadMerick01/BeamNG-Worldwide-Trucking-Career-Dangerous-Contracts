@@ -3,8 +3,9 @@ name: Release
 # Every push to main is tested, packaged and published as a new GitHub
 # Release. The ZIP asset always has the same name, so
 # releases/latest/download/earth-freight-sim.zip points at the newest build.
-# The release notes are the "Coming next" entries from CHANGELOG.md, which
-# are then moved under "## Build N" and pushed back to main.
+# The release notes are the "Coming next" entries from CHANGELOG.md, then every
+# earlier build under "Earlier builds". The entries are then moved under
+# "## Build N" and pushed back to main.
 on:
   push:
     branches: [main]

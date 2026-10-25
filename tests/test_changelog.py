@@ -36,7 +36,10 @@ class ChangelogTest(unittest.TestCase):
     def test_release_moves_entries_into_a_numbered_build(self):
         text = make('- **Bigger trucks.**', '- Nested:\n  - detail')
         notes, updated = changelog.release(text, text, 11, DATE)
-        self.assertEqual(notes, '- **Bigger trucks.**\n- Nested:\n  - detail\n')
+        latest, history = notes.split('\n<details>\n', 1)
+        self.assertEqual(latest, '- **Bigger trucks.**\n- Nested:\n  - detail\n')
+        self.assertEqual(history, '<summary>Earlier builds</summary>\n\n### Build 10 · 25 Oct 2026\n\n'
+                                  '- Old change.\n\n</details>\n')
         self.assertEqual(changelog.entries(updated), [])
         self.assertIn('## Coming next\n\nWaiting for a build.\n\n## Build 11 · 25 Oct 2026\n\n'
                       '- **Bigger trucks.**\n- Nested:\n  - detail\n\n## Build 10', updated)
@@ -45,7 +48,7 @@ class ChangelogTest(unittest.TestCase):
         released = make('- A')
         current = make('- A', '- B')
         notes, updated = changelog.release(released, current, 11, DATE)
-        self.assertEqual(notes, '- A\n')
+        self.assertTrue(notes.startswith('- A\n\n<details>'))
         self.assertEqual(changelog.entries(updated), ['- B'])
         self.assertIn('## Build 11 · 25 Oct 2026\n\n- A\n', updated)
 
@@ -53,7 +56,7 @@ class ChangelogTest(unittest.TestCase):
         released = make('- A', '- B')
         current = make('- B')
         notes, updated = changelog.release(released, current, 12, DATE)
-        self.assertEqual(notes, '- B\n')
+        self.assertTrue(notes.startswith('- B\n\n<details>'))
         self.assertNotIn('\n- A\n', updated.split('## Build 10')[0])
 
     def test_nothing_listed_leaves_the_changelog_alone(self):
