@@ -14,6 +14,8 @@ local function defaults()
     jbeam = function() return require('jbeam/io') end,
     objectById = function(id) return getObjectByID(id) end,
     enter = function(vehicle) be:enterVehicle(0, vehicle) end,
+    -- BeamNG's spawn module, whose teleportToLastRoad is the recovery menu's "teleport to last road".
+    spawn = function() return rawget(_G, 'spawn') or (package.loaded and package.loaded.spawn) end,
   }
 end
 
@@ -143,6 +145,18 @@ function M.new(environment)
     if type(model) ~= 'string' or model == '' then return false, 'config_unavailable' end
     local ok, why = pcall(vehicles.replaceVehicle, model, { config = config, keepOtherVehRotation = true }, vehicle)
     if not ok then return false, 'repair_failed', tostring(why) end
+    return true
+  end
+
+  -- Puts the player vehicle back on the road it was last on, as the game's recovery menu does.
+  -- Returns true once the game was asked; the move happens a moment later.
+  function g:toRoad()
+    local vehicle = current()
+    if not vehicle then return false, 'vehicle_required' end
+    local ok, spawn = pcall(env.spawn)
+    if not ok or type(spawn) ~= 'table' or type(spawn.teleportToLastRoad) ~= 'function' then return false, 'road_unavailable' end
+    local moved, why = pcall(spawn.teleportToLastRoad, vehicle)
+    if not moved then return false, 'road_failed', tostring(why) end
     return true
   end
 

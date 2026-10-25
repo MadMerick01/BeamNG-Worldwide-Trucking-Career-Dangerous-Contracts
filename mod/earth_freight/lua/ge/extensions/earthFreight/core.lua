@@ -1,5 +1,5 @@
 -- The Earth Freight controller: ties the Earth position, the save, the garage, the places and the
--- market together, and builds the HUD's state. The garage side lives in workshop.lua.
+-- job boards together, and builds the HUD's state. The garage side lives in workshop.lua.
 local location = require('earthFreight/location')
 local config = require('earthFreight/config')
 local persistence = require('earthFreight/persistence')
@@ -12,25 +12,21 @@ local pricing = require('earthFreight/pricing')
 local odometer = require('earthFreight/odometer')
 local places = require('earthFreight/places')
 local goods = require('earthFreight/goods')
-local market = require('earthFreight/market')
+local jobs = require('earthFreight/jobs')
 local cargo = require('earthFreight/cargo')
 local fuel = require('earthFreight/fuel')
 local workshop = require('earthFreight/workshop')
 local shipping = require('earthFreight/shipping')
 local M = {}
 -- Money a new game starts with, and the amount the HUD test button adds.
-local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and a first load
+local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and some fuel
 local TEST_MONEY = 10000
 local MAX_BALANCE = 9007199254740991
 M.STARTING_MONEY = STARTING_MONEY
 M.STARTER_MODEL, M.STARTER_CONFIG = workshop.STARTER_MODEL, workshop.STARTER_CONFIG
--- How many places the nearby list and a town's delivery list show.
+-- How many places the nearby list shows.
 local NEARBY_COUNT = 6
--- The delivery distance the player picks on the Town tab, in road km: drop-offs are the places
--- closest to it.
-local RANGE = { min = 5, max = 50, step = 5, default = 5 }
-M.RANGE = RANGE
--- How long the HUD shows a delivery, a cancelled load or a puncture.
+-- How long the HUD shows a delivery, a cancelled job or a puncture.
 local FLASH_SECONDS = 8
 -- A puncture's tyre repair, as damage points, so every repair quote and bill includes it. Like
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
@@ -101,11 +97,19 @@ function M.new(deps)
     self.diag:event('state', nextState .. ':' .. tostring(reason or ''))
   end
 
-  -- A saved load is kept only when its good and the place it came from are known to this version.
+  -- A saved job is kept only when its good and both its towns are known to this version.
   local function knownLoad(l)
-    if type(l) ~= 'table' or not goods.get(l.good) or not places.get(l.from) then return nil end
-    if l.to ~= nil and not places.get(l.to) then l.to = nil end
-    return copy(l)
+    if type(l) ~= 'table' or not l.pay or not goods.get(l.good) or not places.get(l.from) or not places.get(l.to) then return nil end
+    local out = copy(l)
+    out.paid = nil
+    return out
+  end
+
+  -- The recent deliveries from a save, as jobs.lua keeps them: { ['place:good'] = { drop, at } }.
+  local function needsFrom(list)
+    local out = {}
+    for _, n in ipairs(list or {}) do out[n.place .. ':' .. n.good] = { drop = n.drop, at = n.at } end
+    return out
   end
 
   function c:reload()
@@ -115,7 +119,7 @@ function M.new(deps)
     self.quote, self.repairFeedback = nil, nil
     self.partsFeedback, self.carFeedback, self.tradeFeedback = nil, nil, nil
     self.vehicleProvided, self.arrivingModel, self.arrivingValue, self.arrived = false, nil, nil, false
-    self.newGameArmed, self.dumpArmed, self.flash = false, false, nil
+    self.newGameArmed, self.flash, self.refunded = false, nil, nil
     -- Shipping booked and not yet used, and where an unbooked teleport left from. Neither is saved:
     -- Save waits until both are settled.
     self.booking, self.stranded, self.shippingFeedback, self.lastDriven = nil, nil, nil, nil
@@ -134,10 +138,21 @@ function M.new(deps)
     self.feedback = loadMessages[self.loadStatus] or ''
     if not self.profile and not loadMessages[self.loadStatus] then self.error = self.loadStatus end
     self.load = self.profile and knownLoad(self.profile.load) or nil
-    if self.profile and self.profile.load and not self.load then self.diag:event('load_dropped', tostring(self.profile.load.good), 'W') end
+    self.needs = needsFrom(self.profile and self.profile.needs)
+    self.abandonArmed, self.insuranceArmed, self.insurancePending, self.insuredUntil = false, false, nil, nil
+    local oldLoad = self.profile and self.profile.load
+    if oldLoad and not self.load then
+      self.diag:event('load_dropped', tostring(oldLoad.good), 'W')
+      -- Cargo bought before the job board: it is taken off and its money given back.
+      if not oldLoad.pay and oldLoad.paid then
+        self.profile.progression.balance = math.min(MAX_BALANCE, self.profile.progression.balance + oldLoad.paid)
+        self.refunded = oldLoad.paid
+      end
+    end
     self.savedDistanceKm = self.profile and self.profile.progression.totalDistanceKm or 0
     -- Before the first save the starting money counts as saved, since it was not earned.
     self.savedBalance = self.profile and self.profile.progression.balance or STARTING_MONEY
+    if self.refunded then self.savedBalance = self.savedBalance - self.refunded end
     -- A restored car looks new, but the repair it needed when saved is still owed.
     self.owedDamage = self.profile and self.profile.vehicle and self.profile.vehicle.damage or 0
     -- The name typed on the start page; like money, a changed name is kept by Save.
@@ -267,7 +282,9 @@ function M.new(deps)
       if gap and gap > odometer.SHORT_HOP_METRES then jump = gap end
     end
     if jump then
-      if jump > odometer.SHORT_HOP_METRES then self:teleported(before, sample) end
+      -- The insurance claim's move back to the road is not a teleport.
+      local insured = self.insuredUntil and self.clock <= self.insuredUntil
+      if jump > odometer.SHORT_HOP_METRES and not insured then self:teleported(before, sample) end
       return
     end
     if self.stranded then
@@ -295,11 +312,8 @@ function M.new(deps)
   function c:teleported(from, to)
     local lost = ''
     if self.load then
-      local good = goods.get(self.load.good)
-      lost = ' The ' .. good.name:lower() .. ' on board is gone, and the ' .. dollars(self.load.paid) .. ' you paid for it is lost.'
-      self.diag:event('load_cancelled', 'teleport:' .. self.load.good)
-      self.load, self.dumpArmed = nil, false
-      self:applyWeight()
+      local fee = self:dropJob('teleport')
+      lost = ' Your job is cancelled' .. (fee > 0 and (', which cost ' .. dollars(fee)) or '') .. '.'
     end
     if self.booking and shipping.arrived(to, self.booking) then
       local b = self.booking
@@ -327,7 +341,7 @@ function M.new(deps)
   -- Why booking shipping is not possible now, or nil when it is.
   function c:shippingProblem()
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Shipping is unavailable right now.' end
-    if self.load then return 'Deliver or dump your load first: cargo cannot be shipped.' end
+    if self.load then return 'Deliver or abandon your job first: cargo cannot be shipped.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     if self.booking then return 'You already have shipping booked to ' .. self.booking.name .. '.' end
     return nil
@@ -471,7 +485,9 @@ function M.new(deps)
           self:showFlash('delivered', self:named('Welcome to ' .. config.START_TOWN):upper(),
             'Your starter car needs a radiator: fit one in the parts menu (Ctrl+W), then pay on the Garage tab.')
         else
-          self:showFlash('delivered', self:named('Welcome back'):upper(), 'You are where you last saved.')
+          self:showFlash('delivered', self:named('Welcome back'):upper(), 'You are where you last saved.'
+            .. (self.refunded and (' Buying cargo has been replaced by job boards, so the cargo you bought was taken off and its '
+              .. dollars(self.refunded) .. ' refunded. Find a job on the Town tab.') or ''))
         end
         self.diag:event('arrived', string.format('%.1f m', away))
       end
@@ -480,61 +496,61 @@ function M.new(deps)
     self:transition('READY', 'verified')
   end
 
-  -- Where the player is trading: the place whose arrival circle they are in, once arrived.
+  -- Where the player is: the place whose arrival circle they are in, once arrived.
   function c:here()
     local sample = self.lastSample
     if self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then return nil end
     return places.at(sample)
   end
 
-  -- Why trading at this place is not possible now, or nil when it is.
+  -- Why taking or delivering a job at this place is not possible now, or nil when it is.
   function c:tradeProblem(place)
-    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Trading is unavailable right now.' end
-    if not place then return 'Drive into a town to trade.' end
-    if not self.odometer:stopped() then return 'Stop the car to trade.' end
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Jobs are unavailable right now.' end
+    if not place then return 'Drive into a town to find a job.' end
+    if not self.odometer:stopped() then return 'Stop the car to take or deliver a job.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     if self.stranded then return 'You teleported without booking shipping. Go back to where you left from, or book shipping on the Garage tab.' end
     return nil
   end
 
-  -- How many slots of a good the player can buy here: what fits, and what they can pay for.
-  function c:buyQuote(place, good)
-    local slots = cargo.fits(self:space(), good)
-    local price = market.price(place, good)
-    local affordable = self.profile and math.floor(self.profile.progression.balance / price) or 0
-    local n = math.max(0, math.min(slots, affordable))
-    return { slots = n, fits = slots, price = price, cost = n * price, kg = n * good.kgPerSlot }
+  -- The job board of a place: its jobs, seeded by how many jobs the player has done.
+  function c:board(place)
+    return jobs.board(place, self.profile and self.profile.progression.jobsDone or 0, self.needs, self.now())
   end
 
-  -- Buys count slots of a good for a drop-off; with no count it fills the space as far as the money goes.
-  function c:buy(goodId, destinationId, count)
+  -- What a job on the board pays the player's car now: how many units of its good fit, and the pay.
+  function c:jobQuote(job)
+    local good = goods.get(job.good)
+    local units, slots, kg = cargo.fits(self:space(), good)
+    local quote = jobs.quote(job, units, self.needs, self.now())
+    quote.units, quote.slots, quote.kg = units, slots, kg
+    return quote
+  end
+
+  -- Takes a job from the board here: the car is filled with its good, and its pay is locked in.
+  function c:takeJob(jobId)
     local place = self:here()
     local problem = self:tradeProblem(place)
-    local good, destination = goods.get(goodId), places.get(destinationId)
-    if not problem and self.load then problem = 'You already have a load on board. Deliver it or dump it first.' end
-    if not problem and (not good or not goods.CARRIED[good.kind]) then problem = 'Your vehicle cannot carry that yet.' end
-    if not problem and (not destination or destination.id == place.id) then problem = 'Pick somewhere else to deliver it.' end
+    if not problem and self.load then problem = 'You already have a job. Deliver it or abandon it first.' end
+    local job
+    if not problem then
+      for _, j in ipairs(self:board(place)) do if not job and j.id == jobId then job = j end end
+      if not job then problem = 'That job is no longer on the board.' end
+    end
+    local quote = job and not problem and self:jobQuote(job) or nil
+    local good = job and goods.get(job.good)
+    if quote and quote.units == 0 then
+      problem = 'Not enough cargo space or payload for ' .. good.name:lower() .. ': one unit takes ' .. good.slots
+        .. (good.slots == 1 and ' slot' or ' slots') .. ' and ' .. good.kg .. ' kg. Fit a cargo box in the parts menu.'
+    end
     if problem then
       self.tradeFeedback = problem
       return false
     end
-    local quote = self:buyQuote(place, good)
-    if quote.fits == 0 then
-      self.tradeFeedback = 'Not enough cargo space or payload for ' .. good.name:lower() .. '. Fit a cargo box in the parts menu.'
-      return false
-    end
-    if count and count > quote.fits then
-      self.tradeFeedback = 'Only room for ' .. quote.fits .. ' ' .. good.name:lower() .. (quote.fits == 1 and ' parcel.' or ' parcels.')
-      return false
-    end
-    if count then quote.slots, quote.cost, quote.kg = count, count * quote.price, count * good.kgPerSlot end
-    if quote.slots == 0 or not self:spend(quote.cost, 'load') then
-      self.tradeFeedback = 'Not enough money. One slot of ' .. good.name:lower() .. ' costs ' .. dollars(quote.price) .. '.'
-      return false
-    end
-    self.load = { good = good.id, slots = quote.slots, kg = quote.kg, paid = quote.cost, from = place.id, to = destination.id,
-      drivenKm = 0 }
-    self.dumpArmed = false
+    local destination = places.get(job.to)
+    self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
+      from = place.id, to = destination.id, drivenKm = 0 }
+    self.abandonArmed = false
     self:applyWeight()
     local gps = ''
     if self.configuration.autoGps and self.adapter.setDestination then
@@ -542,42 +558,39 @@ function M.new(deps)
       gps = ok and ' The GPS is set to ' .. destination.name .. '.' or ' Set the GPS yourself: copy the drop-off coordinates on the Route tab.'
       self.diag:event('gps', ok and destination.id or tostring(why), ok and 'I' or 'W')
     end
-    self.tradeFeedback = 'Loaded ' .. quote.slots .. ' ' .. good.name:lower() .. (quote.slots == 1 and ' parcel' or ' parcels') .. ' ('
-      .. quote.kg .. ' kg) for ' .. dollars(quote.cost) .. '.' .. gps
-    self.diag:event('load_bought', string.format('%s x%d %s -> %s for %d', good.id, quote.slots, place.id, destination.id, quote.cost))
+    self.tradeFeedback = 'Loaded ' .. quote.units .. ' ' .. good.name:lower() .. ' (' .. quote.kg .. ' kg) for ' .. destination.name
+      .. '. It pays ' .. dollars(quote.pay) .. ' on delivery.' .. gps
+    self.diag:event('job_taken', string.format('%s x%d %s -> %s for %d', good.id, quote.units, place.id, destination.id, quote.pay))
     return true
   end
 
-  -- What delivering the load here would pay, and why it cannot be sold here yet (nil when it can).
-  function c:saleQuote(place)
-    if not self.load or not place then return nil end
-    local good, from = goods.get(self.load.good), places.get(self.load.from)
-    local quote = { payout = market.payout(place, good, self.load.slots, from) }
-    if place.id == from.id then quote.problem = 'You bought this load here. Deliver it somewhere else.'
-    else
-      local needed = market.drivenNeeded(from, place)
-      if self.load.drivenKm * 1000 < needed then
-        quote.problem = 'Drive it here: you have driven ' .. string.format('%.1f', self.load.drivenKm) .. ' km of the '
-          .. string.format('%.1f', needed / 1000) .. ' km this delivery needs.'
-      end
+  -- Why the job cannot be delivered here (nil when it can).
+  function c:deliveryProblem(place)
+    if not self.load or not place then return 'You have no job to deliver.' end
+    if place.id ~= self.load.to then return nil end
+    local needed = jobs.drivenNeeded(places.get(self.load.from), place)
+    if self.load.drivenKm * 1000 < needed then
+      return 'Drive it here: you have driven ' .. string.format('%.1f', self.load.drivenKm) .. ' km of the '
+        .. string.format('%.1f', needed / 1000) .. ' km this job needs.'
     end
-    return quote
+    return nil
   end
 
-  function c:sell()
+  -- Delivers the job at its drop-off: paid in full, and the town needs that good a little less.
+  function c:deliver()
     local place = self:here()
     local problem = self:tradeProblem(place)
-    if not problem and not self.load then problem = 'You have nothing to deliver.' end
-    local quote = not problem and self:saleQuote(place) or nil
-    if quote and quote.problem then problem = quote.problem end
+    if not problem and not self.load then problem = 'You have no job to deliver.' end
+    if not problem and place.id ~= self.load.to then problem = 'This job goes to ' .. places.get(self.load.to).name .. '.' end
+    if not problem then problem = self:deliveryProblem(place) end
     if problem then
       self.tradeFeedback = problem
       return false
     end
     local load, good = self.load, goods.get(self.load.good)
-    self:addMoney(quote.payout)
-    self.load, self.dumpArmed = nil, false
-    self:applyWeight()
+    self:addMoney(load.pay)
+    jobs.delivered(self.needs, place, good, self.now())
+    self:finishJob()
     local refund = ''
     if self.offer and shipping.offerPays(place, self.offer) then
       self:addMoney(self.offer.fee)
@@ -585,26 +598,40 @@ function M.new(deps)
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
-    local profit = quote.payout - load.paid
-    self:showFlash('delivered', 'DELIVERED: +' .. dollars(quote.payout), load.slots .. ' ' .. good.name:lower() .. ' to ' .. place.name
-      .. '. ' .. (profit >= 0 and (self:named('Nice driving') .. '. Profit ' .. dollars(profit)) or ('Loss ' .. dollars(-profit))) .. ' on the ' .. dollars(load.paid) .. ' load.' .. refund .. ' Save to keep it.')
+    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), load.units .. ' ' .. good.name:lower() .. ' to ' .. place.name
+      .. '. ' .. self:named('Nice driving') .. '.' .. refund .. ' Save to keep it.')
     self.tradeFeedback = nil
-    self.diag:event('load_delivered', string.format('%s x%d -> %s for %d', good.id, load.slots, place.id, quote.payout))
+    self.diag:event('job_delivered', string.format('%s x%d -> %s for %d', good.id, load.units, place.id, load.pay))
     return true
   end
 
-  -- Throws the load away, to free the car; the money paid for it is lost. Asks once first.
-  function c:dumpLoad()
+  -- Clears the job and its weight; the boards reshuffle.
+  function c:finishJob()
+    local progression = self.profile.progression
+    progression.jobsDone = (progression.jobsDone or 0) + 1
+    self.load, self.abandonArmed = nil, false
+    self:applyWeight()
+  end
+
+  -- Cancels the job: the abandon fee is charged, or all the money if there is less. Returns the fee.
+  function c:dropJob(why)
+    local fee = math.min(jobs.ABANDON_FEE, self.profile.progression.balance)
+    if fee > 0 then self:spend(fee, 'abandon') end
+    self.diag:event('job_abandoned', tostring(why) .. ':' .. self.load.good .. ':' .. fee)
+    self:finishJob()
+    return fee
+  end
+
+  -- Abandons the job anywhere, for the abandon fee. Asks once first.
+  function c:abandonJob()
     if not self.load or not self.profile or self.error then return false end
-    if not self.dumpArmed then
-      self.dumpArmed = true
-      self.tradeFeedback = 'Press Confirm dump to throw the load away. The ' .. dollars(self.load.paid) .. ' you paid for it is lost.'
+    if not self.abandonArmed then
+      self.abandonArmed = true
+      self.tradeFeedback = 'Press Confirm abandon to give up this job. It costs ' .. dollars(jobs.ABANDON_FEE) .. '.'
       return false
     end
-    self.diag:event('load_dumped', self.load.good)
-    self.load, self.dumpArmed = nil, false
-    self:applyWeight()
-    self.tradeFeedback = 'Load dumped.'
+    local fee = self:dropJob('abandoned')
+    self.tradeFeedback = 'Job abandoned' .. (fee > 0 and (' for ' .. dollars(fee)) or '') .. '.'
     return true
   end
 
@@ -685,6 +712,7 @@ function M.new(deps)
     self:watchParts()
     self:afterRespawn()
     self:watchFuel()
+    self:watchInsurance()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
       self.refuelPending, self.tradeFeedback = nil, 'Refuelling did not go through. You have not been charged.'
@@ -692,84 +720,86 @@ function M.new(deps)
     self.ui:publish(self:view(), self.clock)
   end
 
-  -- The best run from a place for a new player: the good and nearby drop-off that make the most.
-  function c:bestRun(place, destinations)
-    local best
-    for _, good in ipairs(goods.carried()) do
-      local quote = self:buyQuote(place, good)
-      if quote.slots > 0 then
-        for _, d in ipairs(destinations) do
-          local profit = math.floor(quote.slots * (market.price(d.place, good) + market.freightPerSlot(place, d.place, good) - quote.price) + 0.5)
-          if profit > 0 and (not best or profit > best.profit) then
-            best = { good = good.name, from = place.name, to = d.place.name, toId = d.place.id, goodId = good.id, profit = profit }
-          end
-        end
-      end
-    end
-    return best
-  end
+  -- What a town is known for, as the Town tab says it.
+  local characterText = { city = 'City: wants parts', building = 'Building town: wants bricks', farming = 'Farming town: wants food' }
 
-  local function dots(place)
+  -- A place's dots, one per good: how much it pays to deliver that good there now.
+  function c:dots(place, now)
     local out = {}
-    for _, good in ipairs(goods.carried()) do out[#out + 1] = { id = good.id, name = good.name, level = market.level(place, good) } end
+    for _, good in ipairs(goods.carried()) do
+      local short = jobs.shortage(place, good, now)
+      out[#out + 1] = { id = good.id, name = good.name,
+        level = short and 'sweet' or jobs.level(jobs.need(place, good, self.needs, now)) }
+    end
     return out
   end
 
-  -- Sets the delivery distance the Town tab's drop-offs are picked around, in road km.
-  function c:setDeliveryRange(km)
-    if type(km) ~= 'number' or km ~= km then return false end
-    self.rangeKm = math.max(RANGE.min, math.min(RANGE.max, math.floor(km / RANGE.step + 0.5) * RANGE.step))
-    return true
+  -- The shortages within a job's reach of a place, nearest first: at most three.
+  function c:shortagesNear(anchor, now)
+    local out = {}
+    local list = { { place = anchor, km = 0 } }
+    for _, d in ipairs(jobs.destinations(anchor)) do list[#list + 1] = d end
+    for _, d in ipairs(list) do
+      for _, good in ipairs(goods.carried()) do
+        local short, left = jobs.shortage(d.place, good, now)
+        if short and #out < 3 then
+          out[#out + 1] = { town = d.place.name, good = good.name, distanceMetres = d.km * 1000, secondsLeft = left, pays = jobs.SHORTAGE_PAY }
+        end
+      end
+    end
+    return out
   end
 
-  -- The drop-offs offered from a place: the places nearest the picked delivery distance.
-  function c:destinationsFrom(place)
-    return places.around(place, (self.rangeKm or RANGE.default) * 1000, NEARBY_COUNT, place.id)
+  -- A board's jobs as the HUD shows them, with what each pays the player's car.
+  function c:boardView(place, allowed)
+    local out = {}
+    for _, job in ipairs(self:board(place)) do
+      local q, good, to = self:jobQuote(job), goods.get(job.good), places.get(job.to)
+      out[#out + 1] = { id = job.id, good = good.name, goodId = good.id, to = to.name, toId = to.id, size = to.size,
+        distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
+        units = q.units, kg = q.kg, unitSlots = good.slots, unitKg = good.kg,
+        shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road > 1.005 and q.road or nil,
+        allowed = allowed and q.units > 0 }
+    end
+    return out
+  end
+
+  -- The best-paying job on a board for the player's car, for the Route tab.
+  function c:bestJob(place)
+    local best
+    for _, j in ipairs(self:boardView(place, true)) do
+      if j.units > 0 and (not best or j.pay > best.pay) then best = j end
+    end
+    return best and { good = best.good, from = place.name, to = best.to, pay = best.pay, distanceMetres = best.distanceMetres } or nil
   end
 
   function c:tradeView(current)
+    local now = self.now()
     local place = current and self:here()
     local anchor = place or (current and (places.nearest(current, 1)[1] or {}).place)
     local nearby = {}
     if current then
       for _, n in ipairs(places.nearest(current, NEARBY_COUNT, place and place.id)) do
         nearby[#nearby + 1] = { id = n.place.id, name = n.place.name, size = n.place.size,
-          distanceMetres = n.metres * places.ROAD_FACTOR, dots = dots(n.place),
+          distanceMetres = n.metres * places.ROAD_FACTOR, dots = self:dots(n.place, now),
           destination = self.load ~= nil and self.load.to == n.place.id }
       end
     end
     local town
     if place then
       local problem = self:tradeProblem(place)
-      local destinations = self:destinationsFrom(place)
-      local goodsHere = {}
-      for _, good in ipairs(goods.carried()) do
-        local quote = self:buyQuote(place, good)
-        local prices = {}
-        for _, d in ipairs(destinations) do
-          local sell = market.price(d.place, good)
-          local freight = market.freightPerSlot(place, d.place, good)
-          prices[#prices + 1] = { id = d.place.id, price = sell, freight = freight,
-            profit = math.floor(quote.slots * (sell + freight - quote.price) + 0.5), level = market.level(d.place, good) }
-        end
-        goodsHere[#goodsHere + 1] = { id = good.id, name = good.name, price = quote.price, level = market.level(place, good),
-          kgPerSlot = good.kgPerSlot, slots = quote.slots, fits = quote.fits, cost = quote.cost, prices = prices }
+      local kind = jobs.character(place)
+      local delivery
+      if self.load and self.load.to == place.id then
+        local why = self:deliveryProblem(place)
+        delivery = { pay = self.load.pay, problem = why, allowed = problem == nil and why == nil }
       end
-      local destList = {}
-      for _, d in ipairs(destinations) do
-        destList[#destList + 1] = { id = d.place.id, name = d.place.name, size = d.place.size, distanceMetres = d.metres * places.ROAD_FACTOR,
-          boost = places.boost(d.place) }
-      end
-      local sale = self:saleQuote(place)
       local refuel = self:refuelQuote()
       town = {
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
-        region = place.region, boost = places.boost(place),
-        goods = goodsHere, destinations = destList, freightPerTonneKm = market.FREIGHT_PER_TONNE_KM,
-        range = { km = self.rangeKm or RANGE.default, min = RANGE.min, max = RANGE.max, step = RANGE.step },
-        buyAllowed = problem == nil and not self.load,
-        sale = sale and { payout = sale.payout, problem = sale.problem } or nil,
-        sellAllowed = problem == nil and sale ~= nil and sale.problem == nil,
+        region = place.region, boost = jobs.roadBonusFor(places.boost(place)), character = characterText[kind],
+        jobs = self:boardView(place, problem == nil and not self.load),
+        delivery = delivery,
         refuel = refuel and { litres = refuel.litres, cost = refuel.cost, full = refuel.full } or nil,
         refuelAllowed = problem == nil and self.fuelTank ~= nil and refuel ~= nil and not refuel.full and refuel.litres > 0
           and not self.refuelPending,
@@ -777,24 +807,23 @@ function M.new(deps)
     end
     local loadView
     if self.load then
-      local good, to, from = goods.get(self.load.good), self.load.to and places.get(self.load.to), places.get(self.load.from)
+      local good, to, from = goods.get(self.load.good), places.get(self.load.to), places.get(self.load.from)
       loadView = {
-        good = good.name, goodId = good.id, slots = self.load.slots, kg = self.load.kg, paid = self.load.paid,
-        drivenKm = self.load.drivenKm,
-        from = from.name, to = to and to.name or nil, destination = to and location.copy(to) or nil,
-        distanceMetres = to and current and places.roadEstimate(current, to) or nil,
-        direction = to and current and location.compassPoint(location.bearing(current, to)) or nil,
-        payout = to and market.payout(to, good, self.load.slots, from) or nil,
+        good = good.name, goodId = good.id, units = self.load.units or self.load.slots, slots = self.load.slots,
+        kg = self.load.kg, pay = self.load.pay, drivenKm = self.load.drivenKm,
+        from = from.name, to = to.name, destination = location.copy(to),
+        distanceMetres = current and places.roadEstimate(current, to) or nil,
+        direction = current and location.compassPoint(location.bearing(current, to)) or nil,
       }
     end
-    local destinations = anchor and self:destinationsFrom(anchor) or {}
     return {
       here = place and { id = place.id, name = place.name, size = place.size } or nil,
-      -- The region you are in, from the nearest place, and its pay boost.
-      region = anchor and { name = anchor.region, boost = places.boost(anchor) } or nil,
+      -- The region you are in, from the nearest place, and what its roads add to a job's pay.
+      region = anchor and { name = anchor.region, boost = jobs.roadBonusFor(places.boost(anchor)) } or nil,
       nearby = nearby, town = town, load = loadView,
-      bestRun = not self.load and anchor and self:bestRun(anchor, destinations) or nil,
-      dumpAllowed = self.load ~= nil, dumpArmed = self.dumpArmed,
+      bestJob = not self.load and anchor and self:bestJob(anchor) or nil,
+      shortages = anchor and self:shortagesNear(anchor, now) or {},
+      abandonAllowed = self.load ~= nil, abandonArmed = self.abandonArmed, abandonFee = jobs.ABANDON_FEE,
     }
   end
 
@@ -817,7 +846,7 @@ function M.new(deps)
     local offerView
     if offer then
       local here, fee = shipping.arrived(current, offer), shipping.fee(current, offer)
-      offerView = { id = offer.id, name = offer.name, region = offer.region, boost = offer.boost, fee = fee,
+      offerView = { id = offer.id, name = offer.name, region = offer.region, boost = jobs.roadBonusFor(offer.boost), fee = fee,
         secondsLeft = left, here = here, allowed = problem == nil and not here and self:canAfford(fee) }
     end
     local b = self.booking
@@ -880,8 +909,9 @@ function M.new(deps)
       -- Cargo space from the boxes on the car, the fuel in the tank, and trading.
       space = { slots = space.slots, kg = space.kg, boxes = space.boxes, boot = space.boot },
       fuel = self.fuel and { litres = self.fuel.litres, capacity = self.fuel.capacity, pricePerLitre = fuel.PRICE_PER_LITRE } or nil,
-      here = trade.here, region = trade.region, nearby = trade.nearby, town = trade.town, load = trade.load, bestRun = trade.bestRun,
-      dumpAllowed = trade.dumpAllowed, dumpArmed = trade.dumpArmed,
+      here = trade.here, region = trade.region, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
+      shortages = trade.shortages,
+      abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee,
       tradeFeedback = self.tradeFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
       testMoneyAllowed = active,
@@ -890,6 +920,7 @@ function M.new(deps)
       repairOwed = self.owedDamage > 0 and pricing.repairCost(self.owedDamage, self:carValueOf(self.ownedParts and self.ownedParts.id)) or nil,
       repairAllowed = quote ~= nil and not self.pendingParts and not self.pendingCar,
       repairFeedback = self.repairFeedback,
+      insurance = self:insuranceView(),
       partsChange = self.pendingParts and {
         added = self.pendingParts.added, removed = self.pendingParts.removed,
         partsCost = self.pendingParts.partsCost, repair = self.pendingParts.repair, cost = self.pendingParts.cost,
@@ -917,6 +948,18 @@ function M.new(deps)
           * math.floor(PUNCTURE_DAMAGE * pricing.repairRate(self:carValueOf(self.ownedParts and self.ownedParts.id)) + 0.5),
       } or nil,
     }
+  end
+
+  -- The recent deliveries Save keeps, as a list; nil when there are none.
+  function c:savedNeeds()
+    local list = {}
+    for key, entry in pairs(self.needs or {}) do
+      local place, good = key:match('^(.+):([^:]+)$')
+      if place then list[#list + 1] = { place = place, good = good, drop = entry.drop, at = entry.at } end
+    end
+    table.sort(list, function(a, b) return a.at > b.at end)
+    for i = #list, persistence.MAX_NEEDS + 1, -1 do list[i] = nil end
+    return #list > 0 and list or nil
   end
 
   -- Writes a save of this profile and makes it the loaded one. Returns it, or nil and why.
@@ -963,10 +1006,11 @@ function M.new(deps)
     local progression = self.profile.progression
     local saved, why = self:record({
       base = self.profile.base, resume = location.copy(fresh),
-      progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm },
+      progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm,
+        jobsDone = progression.jobsDone },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres },
-      load = copy(self.load), offer = copy(self.offer), playerName = self.playerName,
+      load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
     })
     if not saved then
       -- Nothing is lost: the last save is untouched and the session carries on, so Save can be tried again.
@@ -993,7 +1037,7 @@ function M.new(deps)
     if not self.newGameArmed then
       self.newGameArmed = true
       self.feedback = 'Press Confirm new game to start over in ' .. config.START_TOWN .. ' in the starter car with '
-        .. dollars(STARTING_MONEY) .. '. Your car, load and every dollar you have now are lost.'
+        .. dollars(STARTING_MONEY) .. '. Your car, job and every dollar you have now are lost.'
       return false
     end
     local start = location.copy(self.configuration.base)
@@ -1097,12 +1141,10 @@ function M.buyCar() return safely(function() return ensure():buyCar() end) end
 function M.revertCar() return safely(function() return ensure():revertCar(false) end) end
 function M.newGame() return safely(function() return ensure():newGame() end) end
 -- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
-function M.buyLoad(good, destination, count)
-  local n = type(count) == 'number' and count == math.floor(count) and count >= 1 and count <= 999 and count or nil
-  return safely(function() return ensure():buy(id(good), id(destination), n) end)
-end
-function M.sellLoad() return safely(function() return ensure():sell() end) end
-function M.dumpLoad() return safely(function() return ensure():dumpLoad() end) end
+function M.takeJob(job) return safely(function() return ensure():takeJob(id(job)) end) end
+function M.deliverJob() return safely(function() return ensure():deliver() end) end
+function M.abandonJob() return safely(function() return ensure():abandonJob() end) end
+function M.claimInsurance() return safely(function() return ensure():claimInsurance() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
 -- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.
@@ -1117,7 +1159,6 @@ end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 function M.cancelShipping() return safely(function() return ensure():cancelShipping() end) end
 function M.setPlayerName(name) return safely(function() return ensure():setPlayerName(name) end) end
-function M.setDeliveryRange(km) return safely(function() return ensure():setDeliveryRange(km) end) end
 -- The player car's answers to fuel.lua's commands.
 function M.fuelReading(vehicleId, litres, capacity)
   return safely(function() if active then active:fuelReading(vehicleId, litres, capacity) end end)

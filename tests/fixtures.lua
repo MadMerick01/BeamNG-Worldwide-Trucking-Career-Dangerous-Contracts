@@ -99,6 +99,13 @@ function F.garage()
     end
     return true
   end
+  -- The recovery menu's teleport to the last road: moves the car back to the road it was on.
+  g.roadTrips = 0
+  function g:toRoad()
+    if self.noRoad then return false, 'road_unavailable' end
+    self.roadTrips = self.roadTrips + 1
+    return true
+  end
   function g:repair(config)
     if not self.accepts then return false, 'repair_failed', 'rejected' end
     self.repairs, self.damage = self.repairs + 1, 0
@@ -146,6 +153,19 @@ function F.controller(options)
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
   return c, io, adapter, garage, cargo, fuel, logs
+end
+-- Puts a job on every board, first: a good from wherever the board is to the place given. Returns its id.
+function F.offer(c, to, good)
+  local jobs = require('earthFreight/jobs')
+  local board = c.board
+  c.board = function(self, place)
+    local list = board(self, place)
+    if place.id ~= to.id then
+      table.insert(list, 1, { id = good .. '_' .. to.id, good = good, from = place.id, to = to.id, km = jobs.roadKm(place, to) })
+    end
+    return list
+  end
+  return good .. '_' .. to.id
 end
 function F.advance(c, seconds)
   for _ = 1, math.ceil(seconds * 10) do c:tick(0.1) end

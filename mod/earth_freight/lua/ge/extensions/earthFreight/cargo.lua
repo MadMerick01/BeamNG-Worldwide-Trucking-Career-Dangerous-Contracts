@@ -53,11 +53,10 @@ function M.capacity(snapshot)
   return { slots = slots, kg = kg, boxes = boxes, parts = parts, boot = false }
 end
 
--- How many slots of a good fit in this space, and what they weigh.
+-- How many units of a good fit in this space, by slots and by weight, and the slots and kg they take.
 function M.fits(space, good)
-  local byWeight = math.floor(space.kg / good.kgPerSlot)
-  local slots = math.max(0, math.min(space.slots, byWeight))
-  return slots, slots * good.kgPerSlot
+  local units = math.max(0, math.min(math.floor(space.slots / good.slots), math.floor(space.kg / good.kg)))
+  return units, units * good.slots, units * good.kg
 end
 
 local function defaults()

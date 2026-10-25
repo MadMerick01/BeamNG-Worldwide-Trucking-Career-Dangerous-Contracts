@@ -1,6 +1,6 @@
 local T = dofile((arg[0]:match('^(.*)[/\\]') or '.') .. '/testlib.lua')
 local places = require('earthFreight/places')
-local market = require('earthFreight/market')
+local jobs = require('earthFreight/jobs')
 local goods = require('earthFreight/goods')
 local config = require('earthFreight/config')
 local location = require('earthFreight/location')
@@ -66,15 +66,13 @@ for _, point in ipairs({ coroicoPoint, config.START, { latitude = -20.5, longitu
   end
 end
 
--- The boost multiplies what a place pays, and a run's freight at the average of its two ends.
-local food = goods.get('food')
+-- The boost becomes a road bonus on a job's pay, at the average of its two ends.
 local yolosaRun = places.nearest(coroico, 1, coroico.id)[1].place
-T.eq(market.price(coroico, food), math.max(1, math.floor(food.basePrice * market.factor(coroico, food) * coroico.boost + 0.5)),
-  'prices carry the boost')
-T.near(market.runBoost(coroico, laPaz), (coroico.boost + laPaz.boost) / 2, 1e-9, 'run boost is the average')
-local km = location.distance(coroico, yolosaRun) / 1000 * places.ROAD_FACTOR
-T.near(market.freightPerSlot(coroico, yolosaRun, food),
-  km * food.kgPerSlot / 1000 * market.freightRate(km) * market.runBoost(coroico, yolosaRun), 1e-9, 'freight carries the run boost')
+T.near(jobs.roadBonus(coroico, laPaz), math.min(2, 1 + ((coroico.boost + laPaz.boost) / 2 - 1) / 2), 1e-9, 'the road bonus is from the average boost')
+local run = { id = 'food_' .. yolosaRun.id, good = 'food', from = coroico.id, to = yolosaRun.id, km = jobs.roadKm(coroico, yolosaRun) }
+local q = jobs.quote(run, 10, {}, 0)
+T.check(q.road > 1.8, 'Death Road jobs pay nearly double: ' .. q.road)
+T.near(q.pay, jobs.basePay(goods.get('food'), 10, run.km) * q.factor * q.road, 5, 'the road bonus is in the pay')
 
 -- Searching by name loads the places found, biggest first, and folds accents and case.
 do

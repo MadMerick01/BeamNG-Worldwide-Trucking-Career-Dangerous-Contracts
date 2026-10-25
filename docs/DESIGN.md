@@ -1,6 +1,6 @@
 # Earth Freight Sim — Design
 
-Status: **layer 1 built** (fixed prices, parcels, around Sydney; see [Layer 1 as built](#layer-1-as-built)). This doc collects the decisions made so far and marks what is still open. Open questions are tagged **❓ OPEN** inline and gathered in [Open questions](#open-questions) at the end.
+Status: **layer 1 built**, with the trading replaced by a **job board** on 25 Oct 2026 (see [Job board](#job-board-decided-25-oct) and [Layer 1 as built](#layer-1-as-built)). This doc collects the decisions made so far and marks what is still open. Open questions are tagged **❓ OPEN** inline and gathered in [Open questions](#open-questions) at the end.
 
 ## The pitch
 
@@ -10,14 +10,58 @@ It sits alongside Earth Enduro (rally stages, CarKov) as a separate mod. It reus
 
 ## Core loop
 
-1. **Look.** The HUD shows the nearest 5–6 places, each with its goods as coloured dots and the road distance to it.
-2. **Choose.** Pick a good that is cheap here (green) and short somewhere close (red) that your vehicle can carry.
-3. **Load.** Buy it at the place you are at, up to your vehicle's capacity.
-4. **Drive.** Usually 10–15 km by road. Rough driving damages your car.
-5. **Deliver.** Sell at the destination. Payout is the destination's price plus freight pay, in full.
-6. **Spend.** Repairs, parts, and saving towards a bigger vehicle or a ticket to a better-paying region.
+Decided by Rowan on 25 Oct 2026: buying and selling cargo is replaced by a **job board**. See [Job board](#job-board-decided-25-oct).
+
+1. **Look.** Stop in a town. Its Town tab lists 3 to 5 jobs, each with one total pay.
+2. **Take a job.** It fills every slot your vehicle has with that good, so bigger vehicles earn more.
+3. **Drive.** 5 to 20 km by road. Rough driving damages your car.
+4. **Deliver.** Stop in the drop-off town and get the pay shown on the board, in full.
+5. **Spend.** Fuel, repairs, parts, and saving towards a bigger vehicle or a ticket to a better-paying region.
 
 A run takes roughly 10–20 minutes of driving, which is the engagement target Rowan set.
+
+## Job board (decided 25 Oct)
+
+Rowan's call after playing layer 1: the per-tonne-km freight pay never showed in the profit, profits were very low, and many towns had nothing worth carrying (all red dots). The trading model (buy goods, sell them elsewhere) is replaced by a simple job board that is appealing to drive and pays well. The old [Economy](#economy) sections below describe the system it replaces.
+
+**The board.** Each town posts 3 to 5 jobs. A job names a good, a drop-off town and **one total pay**. There is nothing to buy and no timer. The board is reshuffled after every delivery or abandoned job, so a town you come back to has new work.
+
+- Every board has **at least one decent job** (paying at or above the base rate), so any drop-off town has a useful onward job.
+- Jobs go at most **20 km** by road (the usual estimate, straight line × 1.3). Driving further between towns is too far and boring, so remote places get no extra bonus. A town with nothing within 20 km offers its nearest towns, paid on the flattened curve.
+- Boards mix distances: a short job (up to about 8 km), a middle one (8–13 km) and a long one (13–20 km) where the towns allow.
+
+**Goods.** Three parcel goods, and **every job fills all the slots the vehicle has**, so a bigger vehicle earns more:
+
+| Good | Slots per unit | kg per unit | Full load on the starter Burnside (20 slots, 1,000 kg) | Base pay for that load over 5 km |
+|---|---|---|---|---|
+| Parts | 1 | 15 | 20 units, 300 kg | about $1,700 |
+| Food | 2 | 50 | 10 units, 500 kg | about $2,000 |
+| Bricks | 3 | 150 | 6 units, 900 kg (weight runs out first) | about $2,400 |
+
+That is $85 a unit for parts, $200 for food and $400 for bricks over 5 km. The vehicle's weight limit counts too: on big boxes bricks hit the weight limit long before the space. A car with no box (2 slots, 60 kg in the boot) takes 2 parts or 1 food and no bricks.
+
+**Distance.** Pay grows faster than distance, to reward the longer drive: pay is the 5 km pay × (km / 5)^1.29, so 10 km pays 2.4×, 15 km 4.1× and **20 km 6×** (a full load of food on the starter car: $2,000 at 5 km, $12,000 at 20 km). Past 20 km the curve flattens: it only grows with the square root of the distance.
+
+**Town need (±30%).** Each job's pay varies around the base by the drop-off town's need for that good, from ×0.7 to ×1.3:
+
+- A fixed starting need per town and good (a seeded hash, ×0.85 to ×1.25, leaning a little above the base so red is rare until you have delivered somewhere), plus a small character bonus (+0.1): cities want parts, and other towns are seeded as building towns (bricks), farming towns (food) or neither.
+- Each delivery lowers that town's need for that good by 0.15, so the second run of the same job pays noticeably less and the third clearly worse. The drop recovers by half every hour (real time, so it also recovers while the game is off). Only towns that have been delivered to are kept in the save.
+- The board colours each job against its base: green above, grey around it, red below.
+
+**Treacherous roads.** The region pay boost (1× to 3×, see [Region pay boost as built](#region-pay-boost-as-built)) becomes a road bonus of 1 + (boost − 1) / 2 at the average of the two towns, so it tops out at **2×**. Flat Sydney pays ×1, the Blue Mountains about ×1.25, Death Road ×2.
+
+**Sweet jobs.** Some jobs pay far more, and the bonuses stack:
+
+- **Shortages:** now and then a town runs short of a good and pays **2×** for it until the end of the clock hour. It is a gold dot on the Nearby list and an alert on the Route tab with the time left, and boards within 20 km offer a job to it (one shortage job per board). Each town and good has a 1% chance of a shortage in each clock hour; with about 30 towns within 20 km, a little over half the boards carry one.
+- **Jackpot jobs:** about 1 job in 20 pays **2× to 3×**, marked on the board.
+
+**Pay is locked when you take the job.** A delivery pays what the board showed, in full, however rough the drive. Deliveries still have to be driven (70% of the straight-line distance) and only count at the job's drop-off.
+
+**Abandoning a job costs $1,000** (or all your money, if you have less). So does a teleport without a shipping booking while on a job.
+
+**Insurance.** A serious crash (BeamNG damage of 15,000 or more, half of what BeamNG calls major) offers **Claim insurance** on the Garage tab next to the normal repair. A claim costs $1,000 (or all your money, if you have less): the car is put back on the nearest road (BeamNG's own "teleport to last road", guarded, and skipped where Earth has no road graph) and fixed, but the job and its cargo are lost. The normal paid repair stays as it was and keeps the job. Fuel and repair prices are unchanged.
+
+**Old saves.** A save made while carrying bought cargo loads fine: the cargo is taken off and the money paid for it is refunded, with a message.
 
 ## World: places
 
@@ -104,6 +148,8 @@ A green bulk dot you can't carry yet is meant to be visible early on; it is what
 **❓ OPEN — Q5b:** Which parts count as cargo boxes and how much each holds. If BeamNG's career cargo slots (Q4) can be read, they answer this. Otherwise we keep our own table of box parts with their space and weight limit.
 
 ## Economy
+
+_Replaced by the [Job board](#job-board-decided-25-oct) on 25 Oct 2026. Kept for the record: fuel and the region boost still apply, and the decaying offset lives on as the town need._
 
 ### Prices are always visible
 
@@ -284,13 +330,20 @@ The first playable loop, in `mod/earth_freight/`:
 - **Cargo space:** our own table of box parts (Q5b), matched on the part name or its parts-menu name: Cargo Load Box S/M/L/XL give 1/4/16/128 slots and 50/200/600/2,500 kg. No box means 2 parcels and 60 kg in the boot.
 - **Weight (Q5a):** a game-side mass change. The load's kg are spread over the nodes of the box parts (each jbeam node's `partOrigin`), or over the whole car with no box, through the car's `obj:setNodeMass`. It is put back after every respawn.
 - **Fuel (Q15a):** the car's fuel tanks are read and set through its `energyStorage` (litres from each tank's `remainingVolume` and `capacity`), every 2 s and on Refuel. A repair or part change respawns the car full, so the tank is put back to what it had; the save keeps it too.
-- **Buying a load** fills the space as far as the money goes and sets the drop-off. Earth's GPS is set to it (Q13), with `autoGps: false` in config.json to turn that off.
+- **Buying a load** (replaced by the [job board](#job-board-decided-25-oct) on 25 Oct) filled the space as far as the money went and set the drop-off. Earth's GPS is set to it (Q13), with `autoGps: false` in config.json to turn that off.
 - **Anti-cheat:** a load sells only after 70% of the straight-line distance has been driven with it, never where it was bought; a teleport over 2 km cancels it, a shorter hop keeps it.
 - **Cargo damage:** built, then removed at Rowan's request. A delivery pays in full; the car's repair is the cost of rough driving.
 
 Needs checking in game: whether the vanilla Cargo Load part names match (and which fit the starter Burnside), `obj:setNodeMass` and `partOrigin` on vehicle nodes, the fuel tanks' `remainingVolume`/`setRemainingRatio`, and Earth's `gps.setDestination`.
 
 Not in layer 1: supply and demand, rural pickup points, the planning map, roadside events.
+
+## Job board as built
+
+- `jobs.lua` holds the maths of the [job board](#job-board-decided-25-oct): pay, town need, shortages, jackpots, the road bonus and each town's board. It replaces `market.lua`. `goods.lua` gives each good its slots, kg and pay per unit; `cargo.fits` counts whole units by slots and by weight.
+- Boards are seeded by the place and the player's count of jobs done (`progression.jobsDone` in the save), so a board stays put while you look at it and is new after each delivery or abandoned job. Shortages and need recovery run on the wall clock (`os.time`), like the paid-shipping offers.
+- The save keeps the job (`load` with `pay` and `units`), the jobs done and the recent deliveries (`needs`: place, good, drop and time). All are optional fields, so the save format (schema 1) is unchanged and old saves load. An old save's bought cargo is refunded on load.
+- Insurance: `garage.toRoad` calls `spawn.teleportToLastRoad` (in the 0.39 dump), guarded. The car is fixed 1.5 s later where it lands, through the same respawn as a repair. Jumps in the 10 s after a claim are not treated as teleports. Needs checking in game: whether Earth's roads give BeamNG a road to go back to; without one the car is fixed where it stands.
 
 ## Worldwide places as built
 

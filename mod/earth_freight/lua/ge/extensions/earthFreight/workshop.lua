@@ -14,6 +14,13 @@ M.UNPAID_PARTS_DRIVE_LIMIT = 25
 -- A fresh start puts the player in this car; they upgrade it from there.
 M.STARTER_MODEL = 'burnside'
 M.STARTER_CONFIG = 'vehicles/burnside/earth_freight_starter.pc'
+-- Insurance: from this much damage (half of what BeamNG calls major) a crash is serious, and the
+-- player can claim instead of paying for the repair. A claim costs INSURANCE_FEE, or all the
+-- player's money if less. The car is first sent back to the road, then fixed ROAD_SECONDS later
+-- where it landed; jumps in the GRACE_SECONDS after a claim are not teleports.
+M.SERIOUS_DAMAGE = 15000
+M.INSURANCE_FEE = 1000
+M.ROAD_SECONDS, M.GRACE_SECONDS = 1.5, 10
 
 local dollars = pricing.dollars
 
@@ -113,6 +120,92 @@ function M.attach(c)
     self.quote, self.owedDamage, self.punctureDamage = nil, 0, 0
     self.repairFeedback = 'Repaired for ' .. dollars(cost) .. '. Save to keep the new balance.'
     return true
+  end
+
+  -- Insurance. After a serious crash the player can claim instead of paying for the repair: the car
+  -- is put back on the nearest road and fixed for a flat fee, but the job and its cargo are lost.
+  -- The normal repair stays on offer and keeps the job.
+  function c:seriousCrash()
+    local d, owned = self.lastDamage, self.ownedParts
+    return d ~= nil and owned ~= nil and d.id == owned.id and d.damage >= M.SERIOUS_DAMAGE
+  end
+
+  function c:insuranceFee()
+    return math.min(M.INSURANCE_FEE, self.profile and self.profile.progression.balance or 0)
+  end
+
+  function c:insuranceAllowed()
+    return self.profile ~= nil and not self.error and self.garage ~= nil and self.arrived and self:seriousCrash()
+      and not self.pendingParts and not self.pendingCar and not self.insurancePending
+  end
+
+  -- Claims: the first press asks to confirm. The car goes back to the road (BeamNG's own "teleport
+  -- to last road", where the game has one), then is fixed where it lands; without it, in place.
+  function c:claimInsurance()
+    if not self:insuranceAllowed() then
+      self.insuranceArmed = false
+      self.repairFeedback = self.insurancePending and 'Your claim is going through.' or 'Insurance is only for a serious crash.'
+      return false
+    end
+    if not self.insuranceArmed then
+      self.insuranceArmed = true
+      self.repairFeedback = 'Press Confirm claim: your car is fixed and put back on the road for ' .. dollars(self:insuranceFee())
+        .. (self.load and ', but your job and its cargo are lost.' or '.')
+      return false
+    end
+    self.insuranceArmed = false
+    self.insuredUntil = self.clock + M.GRACE_SECONDS
+    local moved, why = false, 'road_unavailable'
+    if self.garage.toRoad then moved, why = self.garage:toRoad() end
+    if moved then
+      self.insurancePending = { at = self.clock }
+      self.repairFeedback = 'Towing your car back to the road...'
+      self.diag:event('insurance_claimed', 'to road')
+      return true
+    end
+    self.diag:event('insurance_road', tostring(why), 'W')
+    return self:finishInsurance()
+  end
+
+  -- Fixes the car after a claim and charges for it; the job is lost.
+  function c:finishInsurance()
+    self.insurancePending = nil
+    self:beforeRespawn()
+    local ok, why, detail = self.garage:repair()
+    if not ok then
+      self:respawnFailed()
+      self.repairFeedback = 'The insurance repair did not go through. You have not been charged.'
+      self.diag:event('insurance_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
+      return false
+    end
+    local fee = self:insuranceFee()
+    if fee > 0 then self:spend(fee, 'insurance') end
+    local lost = ''
+    if self.load then
+      lost = ' Your job and its cargo are lost.'
+      self.diag:event('job_lost', 'insurance:' .. self.load.good)
+      self:finishJob()
+    end
+    self.quote, self.owedDamage, self.punctureDamage, self.lastDamage = nil, 0, 0, nil
+    self.insuredUntil = self.clock + M.GRACE_SECONDS
+    self.repairFeedback = nil
+    self:showFlash('delivered', 'INSURANCE CLAIMED', 'Your car is fixed and back on the road for ' .. dollars(fee) .. '.' .. lost .. ' Save to keep it.')
+    return true
+  end
+
+  -- Called every tick: fixes the car once the move to the road has had time to happen.
+  function c:watchInsurance()
+    if self.insurancePending and self.clock - self.insurancePending.at >= M.ROAD_SECONDS then self:finishInsurance() end
+    if self.insuranceArmed and not self:insuranceAllowed() then self.insuranceArmed = false end
+  end
+
+  -- The insurance card on the HUD, after a serious crash.
+  function c:insuranceView()
+    if not self.insurancePending and not (self.garage and self.arrived and self:seriousCrash()) then return nil end
+    local d = self.lastDamage
+    return { fee = self:insuranceFee(), armed = self.insuranceArmed, pending = self.insurancePending ~= nil,
+      allowed = self:insuranceAllowed(), loseJob = self.load ~= nil,
+      repair = d and pricing.repairCost(d.damage, self:carValueOf(d.id)) or nil }
   end
 
   -- Parts. The parts menu is BeamNG's own and changes parts for free; every change respawns the
@@ -218,7 +311,7 @@ function M.attach(c)
       return false
     end
     if self.load then
-      self.carFeedback = 'Deliver or dump your load before changing cars.'
+      self.carFeedback = 'Deliver or abandon your job before changing cars.'
       return false
     end
     if not self:checkParts() then
@@ -344,7 +437,7 @@ function M.attach(c)
     local pending = currentBill(self)
     if not pending then return false end
     if not self:loadFits(self.fittedParts) then
-      self.partsFeedback = 'Your load would not fit with these parts. Deliver it first, or undo the changes.'
+      self.partsFeedback = 'Your job would not fit with these parts. Deliver it first, or undo the changes.'
       return false
     end
     if not self:spend(pending.cost, 'parts') then

@@ -37,6 +37,14 @@ ok, why = G.new(env({ manager = function() return { getVehicleData = function() 
 T.eq(why, 'config_unavailable', 'no config, no repair')
 ok, why = G.new(env({ vehicles = function() return { replaceVehicle = function() error('boom') end } end })):repair()
 T.check(not ok, 'respawn error contained'); T.eq(why, 'repair_failed', 'respawn error reported')
+-- Insurance: the recovery menu's teleport to the last road, guarded.
+do
+  local sent
+  local roads = G.new(env({ spawn = function() return { teleportToLastRoad = function(veh) sent = veh:getID() end } end }))
+  T.check(roads:toRoad(), 'sent back to the road'); T.eq(sent, 7, 'the player vehicle')
+  T.eq(select(2, G.new(env()):toRoad()), 'road_unavailable', 'no spawn module, no move')
+  T.eq(select(2, G.new(env({ spawn = function() return { teleportToLastRoad = function() error('x') end } end })):toRoad()), 'road_failed', 'errors contained')
+end
 -- Parts: flattens the 0.39 partsTree and prices parts from their jbeam information.value.
 local tree = { chosenPartName = 'pickup', path = '/', children = {
   pickup_engine = { chosenPartName = 'pickup_engine_v8', path = '/pickup_engine/', children = {
