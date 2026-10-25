@@ -5,7 +5,7 @@ local goods = require('earthFreight/goods')
 local config = require('earthFreight/config')
 local location = require('earthFreight/location')
 
--- The generated list: the Sydney region around Penrith, about 8 km apart.
+-- The generated list: the Sydney region around Penrith, about 4 km apart.
 T.check(#places.list > 30, 'a useful number of places'); T.eq(places.list[1].id:sub(1, 2), 'gn', 'GeoNames ids')
 local seen, names = {}, {}
 for _, p in ipairs(places.list) do
@@ -20,7 +20,7 @@ local closest = math.huge
 for i, a in ipairs(places.list) do
   for j = i + 1, #places.list do closest = math.min(closest, location.distance(a, places.list[j])) end
 end
-T.check(closest >= 8000, 'places are at least 8 km apart')
+T.check(closest >= 4000, 'places are at least 4 km apart')
 
 -- The start is Penrith.
 local penrith = places.get(config.START_PLACE)

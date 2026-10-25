@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the mod's place list from a GeoNames extract: thin it to well-known towns about 8 km
+"""Build the mod's place list from a GeoNames extract: thin it to well-known towns about 4 km
 apart around a centre, and write a Lua table the mod loads. Built offline, never in game.
 
     python tools/make_places.py                  # rebuild placesData.lua from the bundled extract
@@ -99,7 +99,7 @@ def main():
     parser.add_argument('--output', type=Path, default=OUTPUT)
     parser.add_argument('--centre', type=float, nargs=2, default=PENRITH, metavar=('LAT', 'LON'))
     parser.add_argument('--radius-km', type=float, default=150)
-    parser.add_argument('--spacing-km', type=float, default=8)
+    parser.add_argument('--spacing-km', type=float, default=4)
     parser.add_argument('--check', action='store_true', help='fail if the output is out of date')
     args = parser.parse_args()
     overrides = json.loads(args.overrides.read_text(encoding='utf-8')) if args.overrides.exists() else {}

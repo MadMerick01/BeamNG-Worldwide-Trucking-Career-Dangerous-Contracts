@@ -31,7 +31,7 @@ Towns come from an **offline GeoNames list** (every place over 1,000 people, abo
 
 Earth's status bar name can still be shown on the HUD as flavour when it is available.
 
-**Thinning.** Raw GeoNames is mostly suburbs (899 places within 150 km of Sydney). The generator keeps the best-known places and spaces them about **8 km apart**, which gives road runs of 10–15 km. Around Sydney that is ~36 stops in a 150 km circle, most with a neighbour in range.
+**Thinning.** Raw GeoNames is mostly suburbs (899 places within 150 km of Sydney). The generator keeps the best-known places and spaces them about **4 km apart**, which gives road runs from about 5 km. Around Penrith that is 223 places in a 150 km circle.
 
 Known data problems to handle in the generator:
 
@@ -279,7 +279,7 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 The first playable loop, in `mod/earth_freight/`:
 
 - **Copied from Enduro** under the `earthFreight` namespace: `earthAdapter.lua` (plus a guarded `setDestination` for Earth's GPS), `location.lua`, `config.lua`, `diagnostics.lua`, `hud.lua`, `garage.lua`, `punctures.lua`, and `persistence.lua` with the new schema (money, distance, car with its damage and fuel, the load). From `core.lua`: repair and parts pricing into `pricing.lua`, the 150 m/s teleport rule into `odometer.lua`, and the garage bills (repair, parts, buying cars, the car on arrival) into `workshop.lua`.
-- **Places:** `tools/make_places.py` thins a GeoNames extract (`tools/data/geonames_sydney.tsv`, cut from `cities1000`) to places 8 km apart within 150 km of Penrith, with a hand-edited override list (`tools/data/place_overrides.json`) that keeps Penrith, Katoomba, Lithgow and other well-known towns in. That gives 104 places in `placesData.lua`. GeoNames has no importance rank, so suburbs (`PPLX`) are weighted down instead; Wikipedia/OSM ranking can come with the worldwide list.
+- **Places:** `tools/make_places.py` thins a GeoNames extract (`tools/data/geonames_sydney.tsv`, cut from `cities1000`) to places 4 km apart within 150 km of Penrith, with a hand-edited override list (`tools/data/place_overrides.json`) that keeps Penrith, Katoomba, Lithgow and other well-known towns in. That gives 223 places in `placesData.lua` (it was 8 km and 104 places; Rowan asked for runs as short as 5 km). GeoNames has no importance rank, so suburbs (`PPLX`) are weighted down instead; Wikipedia/OSM ranking can come with the worldwide list.
 - **Goods and prices:** all seven goods are defined, but only parcels (parts, food, bricks) can be carried. Prices are fixed: base price × a seeded factor (0.7–1.3) per place and good × a size factor (city 0.9, village 1.1).
 - **Cargo space:** our own table of box parts (Q5b), matched on the part name or its parts-menu name: Cargo Load Box S/M/L/XL give 1/4/16/128 slots and 50/200/600/2,500 kg. No box means 2 parcels and 60 kg in the boot.
 - **Weight (Q5a):** a game-side mass change. The load's kg are spread over the nodes of the box parts (each jbeam node's `partOrigin`), or over the whole car with no box, through the car's `obj:setNodeMass`. It is put back after every respawn.
