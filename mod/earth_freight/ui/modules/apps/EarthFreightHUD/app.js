@@ -37,8 +37,21 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         if (scope.tab === 'town' && !next.town) scope.tab = 'route'
       }
       // The good picked on the Town tab; its drop-offs are listed under it.
-      scope.picked = { good: null }
-      scope.pickGood = function (id) { scope.picked.good = id }
+      // count is how many slots to buy; null means as many as fit and are affordable.
+      scope.picked = { good: null, count: null }
+      scope.pickGood = function (id) { scope.picked.good = id; scope.picked.count = null }
+      scope.buyCount = function (g) {
+        if (!g || !(g.slots >= 1)) return 0
+        if (scope.picked.count === null) return g.slots
+        return Math.max(1, Math.min(g.slots, scope.picked.count))
+      }
+      scope.stepCount = function (g, delta) {
+        if (!g || !(g.slots >= 1)) return
+        scope.picked.count = Math.max(1, Math.min(g.slots, scope.buyCount(g) + delta))
+      }
+      scope.setCount = function (count) { scope.picked.count = count }
+      // The drop-off's price plus its freight pay, less what you pay here, for the chosen count.
+      scope.profit = function (g, p) { return (p.price + (p.freight || 0) - g.price) * scope.buyCount(g) }
       scope.pickedGood = function (d) {
         var list = (d && d.town && d.town.goods) || []
         for (var i = 0; i < list.length; i++) if (list[i].id === scope.picked.good) return list[i]
@@ -76,9 +89,10 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         return !!d && (d.unsavedBalance > 0 || d.unsavedSpending > 0 || d.unsavedDistanceKm >= 0.005)
       }
       var plainId = function (id) { return /^[a-z0-9_]+$/.test(String(id)) }
-      scope.buyLoad = function (good, destination) {
+      scope.buyLoad = function (good, destination, count) {
         if (!scope.data.town || !scope.data.town.buyAllowed || !plainId(good) || !plainId(destination)) return
-        core("buyLoad('" + good + "', '" + destination + "')")
+        if (!(Number.isInteger(count) && count >= 1 && count <= 999)) return
+        core("buyLoad('" + good + "', '" + destination + "', " + count + ')')
       }
       scope.sellLoad = function () { if (scope.data.town && scope.data.town.sellAllowed) core('sellLoad()') }
       scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }

@@ -336,7 +336,8 @@ function M.new(deps)
     return { slots = n, fits = slots, price = price, cost = n * price, kg = n * good.kgPerSlot }
   end
 
-  function c:buy(goodId, destinationId)
+  -- Buys count slots of a good for a drop-off; with no count it fills the space as far as the money goes.
+  function c:buy(goodId, destinationId, count)
     local place = self:here()
     local problem = self:tradeProblem(place)
     local good, destination = goods.get(goodId), places.get(destinationId)
@@ -352,6 +353,11 @@ function M.new(deps)
       self.tradeFeedback = 'Not enough cargo space or payload for ' .. good.name:lower() .. '. Fit a cargo box in the parts menu.'
       return false
     end
+    if count and count > quote.fits then
+      self.tradeFeedback = 'Only room for ' .. quote.fits .. ' ' .. good.name:lower() .. (quote.fits == 1 and ' parcel.' or ' parcels.')
+      return false
+    end
+    if count then quote.slots, quote.cost, quote.kg = count, count * quote.price, count * good.kgPerSlot end
     if quote.slots == 0 or not self:spend(quote.cost, 'load') then
       self.tradeFeedback = 'Not enough money. One slot of ' .. good.name:lower() .. ' costs ' .. dollars(quote.price) .. '.'
       return false
@@ -379,7 +385,7 @@ function M.new(deps)
   function c:saleQuote(place)
     if not self.load or not place then return nil end
     local good, from = goods.get(self.load.good), places.get(self.load.from)
-    local quote = { payout = market.payout(place, good, self.load.slots, self.load.condition) }
+    local quote = { payout = market.payout(place, good, self.load.slots, self.load.condition, from) }
     if place.id == from.id then quote.problem = 'You bought this load here. Deliver it somewhere else.'
     else
       local needed = market.drivenNeeded(from, place)
@@ -521,7 +527,7 @@ function M.new(deps)
       local quote = self:buyQuote(place, good)
       if quote.slots > 0 then
         for _, d in ipairs(destinations) do
-          local profit = quote.slots * (market.price(d.place, good) - quote.price)
+          local profit = math.floor(quote.slots * (market.price(d.place, good) + market.freightPerSlot(place, d.place, good) - quote.price) + 0.5)
           if profit > 0 and (not best or profit > best.profit) then
             best = { good = good.name, from = place.name, to = d.place.name, toId = d.place.id, goodId = good.id, profit = profit }
           end
@@ -558,7 +564,9 @@ function M.new(deps)
         local prices = {}
         for _, d in ipairs(destinations) do
           local sell = market.price(d.place, good)
-          prices[#prices + 1] = { id = d.place.id, price = sell, profit = quote.slots * (sell - quote.price), level = market.level(d.place, good) }
+          local freight = market.freightPerSlot(place, d.place, good)
+          prices[#prices + 1] = { id = d.place.id, price = sell, freight = freight,
+            profit = math.floor(quote.slots * (sell + freight - quote.price) + 0.5), level = market.level(d.place, good) }
         end
         goodsHere[#goodsHere + 1] = { id = good.id, name = good.name, price = quote.price, level = market.level(place, good),
           kgPerSlot = good.kgPerSlot, slots = quote.slots, fits = quote.fits, cost = quote.cost, prices = prices }
@@ -571,7 +579,7 @@ function M.new(deps)
       local refuel = self:refuelQuote()
       town = {
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
-        goods = goodsHere, destinations = destList,
+        goods = goodsHere, destinations = destList, freightPerTonneKm = market.FREIGHT_PER_TONNE_KM,
         buyAllowed = problem == nil and not self.load,
         sale = sale and { payout = sale.payout, problem = sale.problem } or nil,
         sellAllowed = problem == nil and sale ~= nil and sale.problem == nil,
@@ -589,7 +597,7 @@ function M.new(deps)
         from = from.name, to = to and to.name or nil, destination = to and location.copy(to) or nil,
         distanceMetres = to and current and places.roadEstimate(current, to) or nil,
         direction = to and current and location.compassPoint(location.bearing(current, to)) or nil,
-        payout = to and market.payout(to, good, self.load.slots, self.load.condition) or nil,
+        payout = to and market.payout(to, good, self.load.slots, self.load.condition, from) or nil,
       }
     end
     local destinations = anchor and places.nearest(anchor, NEARBY_COUNT, anchor.id) or {}
@@ -848,7 +856,11 @@ function M.revertParts() return safely(function() return ensure():revertParts(fa
 function M.buyCar() return safely(function() return ensure():buyCar() end) end
 function M.revertCar() return safely(function() return ensure():revertCar(false) end) end
 function M.newGame() return safely(function() return ensure():newGame() end) end
-function M.buyLoad(good, destination) return safely(function() return ensure():buy(id(good), id(destination)) end) end
+-- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
+function M.buyLoad(good, destination, count)
+  local n = type(count) == 'number' and count == math.floor(count) and count >= 1 and count <= 999 and count or nil
+  return safely(function() return ensure():buy(id(good), id(destination), n) end)
+end
 function M.sellLoad() return safely(function() return ensure():sell() end) end
 function M.dumpLoad() return safely(function() return ensure():dumpLoad() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end

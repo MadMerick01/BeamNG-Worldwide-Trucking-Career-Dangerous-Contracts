@@ -73,14 +73,29 @@
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
             <button type="button" ng-repeat="g in data.town.goods" ng-click="pickGood(g.id)" ng-style="pickedGood(data).id === g.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="padding:5px 8px;border:1px solid #568d7a;border-radius:4px;"><span ng-style="{background: dotColor(g.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> {{g.name}} ${{g.price | number:0}}</button>
           </div>
-          <div ng-if="pickedGood(data)" style="margin-top:6px;font-size:13px;color:#c9d6d2;">{{pickedGood(data).name}}: ${{pickedGood(data).price | number:0}} a slot, {{pickedGood(data).kgPerSlot}} kg each. You can take {{pickedGood(data).slots}}<span ng-if="pickedGood(data).fits > pickedGood(data).slots"> (room for {{pickedGood(data).fits}})</span> for ${{pickedGood(data).cost | number:0}}.</div>
+          <div ng-if="pickedGood(data)" style="margin-top:6px;font-size:13px;color:#c9d6d2;">{{pickedGood(data).name}}: ${{pickedGood(data).price | number:0}} a slot, {{pickedGood(data).kgPerSlot}} kg each. You can take up to {{pickedGood(data).slots}}<span ng-if="pickedGood(data).fits > pickedGood(data).slots"> (room for {{pickedGood(data).fits}})</span>.</div>
+          <div ng-if="pickedGood(data).slots >= 1" style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+            <span>How many:</span>
+            <button type="button" ng-click="stepCount(pickedGood(data), -1)" ng-disabled="buyCount(pickedGood(data)) <= 1" style="padding:2px 9px;">&minus;</button>
+            <span style="min-width:28px;text-align:center;font-weight:bold;">{{buyCount(pickedGood(data))}}</span>
+            <button type="button" ng-click="stepCount(pickedGood(data), 1)" ng-disabled="buyCount(pickedGood(data)) >= pickedGood(data).slots" style="padding:2px 9px;">+</button>
+            <button type="button" ng-click="setCount(1)" style="padding:2px 8px;">1</button>
+            <button type="button" ng-click="setCount(null)" style="padding:2px 8px;">Max</button>
+            <span style="color:#c9d6d2;">${{buyCount(pickedGood(data)) * pickedGood(data).price | number:0}}, {{buyCount(pickedGood(data)) * pickedGood(data).kgPerSlot}} kg</span>
+          </div>
+          <div ng-if="pickedGood(data).prices.length" style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:#7d8b88;">
+            <div style="flex:1;">Drop-off</div>
+            <div>Pays per slot</div>
+            <div style="width:64px;text-align:right;">Your profit</div>
+            <span aria-hidden="true" style="visibility:hidden;padding:0 8px;">Buy</span>
+          </div>
           <div ng-repeat="p in pickedGood(data).prices" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
             <div style="flex:1;min-width:0;">{{destinationName(data, p.id).name}} <span style="color:#7d8b88;font-size:12px;">&asymp; {{km(destinationName(data, p.id).distanceMetres)}} km</span></div>
-            <div ng-style="{color: dotColor(p.level)}">${{p.price | number:0}}</div>
-            <div ng-style="{color: p.profit > 0 ? '#6fcf97' : '#eb5757'}" style="width:64px;text-align:right;">{{p.profit >= 0 ? '+' : '&minus;'}}${{(p.profit < 0 ? -p.profit : p.profit) | number:0}}</div>
-            <button type="button" ng-click="buyLoad(pickedGood(data).id, p.id)" ng-disabled="!data.town.buyAllowed || pickedGood(data).slots < 1" style="padding:4px 8px;">Buy</button>
+            <div ng-style="{color: dotColor(p.level)}">${{p.price + (p.freight || 0) | number:0}}</div>
+            <div ng-style="{color: profit(pickedGood(data), p) > 0 ? '#6fcf97' : '#eb5757'}" style="width:64px;text-align:right;">{{profit(pickedGood(data), p) >= 0 ? '+' : '&minus;'}}${{(profit(pickedGood(data), p) < 0 ? -profit(pickedGood(data), p) : profit(pickedGood(data), p)) | number:0}}</div>
+            <button type="button" ng-click="buyLoad(pickedGood(data).id, p.id, buyCount(pickedGood(data)))" ng-disabled="!data.town.buyAllowed || pickedGood(data).slots < 1" style="padding:4px 8px;">Buy</button>
           </div>
-          <div style="margin-top:4px;font-size:12px;color:#c9d6d2;">Buy fills your cargo space as far as your money goes, and sets the GPS to the drop-off. The +/&minus; is the profit on a full load.</div>
+          <div style="margin-top:4px;font-size:12px;color:#c9d6d2;">Pick how many to buy (Max fills your space as far as your money goes). Buy sets the GPS to the drop-off. Pays per slot is the drop-off's price plus freight pay: ${{data.town.freightPerTonneKm | number:0}} a tonne for each road km. Your profit is that, minus what you pay here, for that many, before fuel.</div>
         </div>
         <div style="margin:10px 0;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
           <div style="font-weight:bold;">Fuel</div>

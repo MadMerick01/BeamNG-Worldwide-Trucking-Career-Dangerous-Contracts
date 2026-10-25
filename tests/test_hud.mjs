@@ -55,12 +55,26 @@ test('town buttons only send fixed commands, with plain ids, when Lua enabled th
   a.scope.buyLoad('food', 'gn1'); a.scope.sellLoad(); a.scope.refuel()
   assert.equal(a.commands.length, 1)
   a.state({ state: 'READY', town: { buyAllowed: true, sellAllowed: true, refuelAllowed: true } })
-  a.scope.buyLoad('food', "gn1') os.exit() --"); a.scope.buyLoad("x'", 'gn1')
-  assert.equal(a.commands.length, 1, 'odd ids never sent')
-  a.scope.buyLoad('food', 'gn2153471')
-  assert.equal(a.commands.at(-1), fixed("buyLoad('food', 'gn2153471')"))
+  a.scope.buyLoad('food', "gn1') os.exit() --", 1); a.scope.buyLoad("x'", 'gn1', 1)
+  a.scope.buyLoad('food', 'gn1', 0); a.scope.buyLoad('food', 'gn1', 1.5); a.scope.buyLoad('food', 'gn1', '1) os.exit(')
+  assert.equal(a.commands.length, 1, 'odd ids and counts never sent')
+  a.scope.buyLoad('food', 'gn2153471', 3)
+  assert.equal(a.commands.at(-1), fixed("buyLoad('food', 'gn2153471', 3)"))
   a.scope.sellLoad(); assert.equal(a.commands.at(-1), fixed('sellLoad()'))
   a.scope.refuel(); assert.equal(a.commands.at(-1), fixed('refuel()'))
+})
+test('the buy count starts at the most you can take and stays within 1 and that', () => {
+  const a = app()
+  const g = { id: 'parts', slots: 4, price: 100 }
+  assert.equal(a.scope.buyCount(g), 4, 'max by default')
+  a.scope.stepCount(g, -1); assert.equal(a.scope.buyCount(g), 3)
+  a.scope.setCount(1); a.scope.stepCount(g, -1); assert.equal(a.scope.buyCount(g), 1, 'never below 1')
+  a.scope.setCount(9); assert.equal(a.scope.buyCount(g), 4, 'never above what you can take')
+  assert.equal(a.scope.profit(g, { price: 130 }), 120, 'profit on that many')
+  assert.equal(a.scope.profit(g, { price: 130, freight: 20 }), 200, 'freight pay counts in the profit')
+  a.scope.setCount(2); assert.equal(a.scope.buyCount({ slots: 1 }), 1, 'shrinks when you can take fewer')
+  assert.equal(a.scope.buyCount({ slots: 0 }), 0, 'nothing when nothing fits')
+  a.scope.pickGood('food'); assert.equal(a.scope.buyCount(g), 4, 'a new good starts at max again')
 })
 test('the picked good defaults to the best run, then the first good', () => {
   const a = app()
@@ -116,7 +130,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
   }
   for (const id of ['route', 'town', 'garage', 'tips']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
   for (const action of ['buyParts()', 'revertParts()', 'buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
-    'newGame()', 'addTestMoney()', 'sellLoad()', 'refuel()', 'dumpLoad()', 'buyLoad(pickedGood(data).id, p.id)']) {
+    'newGame()', 'addTestMoney()', 'sellLoad()', 'refuel()', 'dumpLoad()', 'buyLoad(pickedGood(data).id, p.id, buyCount(pickedGood(data)))']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
   }
   assert.ok(html.includes('GeoNames'), 'GeoNames credit')
