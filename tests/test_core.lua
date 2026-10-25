@@ -387,7 +387,12 @@ do
   local shipping = require('earthFreight/shipping')
   local hardest = places.hardest()
   T.check(#hardest > 100, 'hundreds of hard places: ' .. #hardest)
-  for _, p in ipairs(hardest) do T.check(p.boost >= 2.7 and p.boost <= 3, p.name .. ' pays 2.7x to 3x') end
+  for _, p in ipairs(hardest) do
+    T.check(p.boost >= 2.3 and p.boost <= 3, p.name .. ' pays 2.3x to 3x')
+    places.ensure(p)
+    local near = places.nearest(p, 1, p.id)[1]
+    T.check(near and near.metres * places.ROAD_FACTOR <= 7000, p.name .. ' has a delivery within 7 km')
+  end
   T.eq(shipping.offer(1000, hardest), shipping.offer(1199, hardest), 'the same offer within 5 minutes')
   local changed = false
   for w = 1, 5 do if shipping.offer(w * 300, hardest) ~= shipping.offer(0, hardest) then changed = true end end
@@ -399,7 +404,7 @@ do
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   local offer = c:view().shipping.offer
   T.eq(offer.name, shipping.offer(1000, hardest).name, 'the offer is on the HUD'); T.eq(offer.secondsLeft, 200, 'with its time left')
-  T.check(offer.boost >= 2.7, 'from the hardest places'); T.check(offer.allowed, 'bookable')
+  T.check(offer.boost >= 2.3, 'from the hardest places'); T.check(offer.allowed, 'bookable')
   local before = c:view().balance
   T.check(c:bookOffer(), 'offer booked'); T.eq(c:view().balance, before - offer.fee, 'the fee is paid now')
   T.check(c:view().shipping.booking.offer, 'the booking is the offer')
