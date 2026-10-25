@@ -55,7 +55,10 @@ function M.partsDiff(owned, fitted)
     local before, after = owned.parts[slot] or '', fitted.parts[slot] or ''
     if before == after then return end
     if after ~= '' then added[#added + 1] = { name = name(fitted, after), price = price(fitted, after) } end
-    if before ~= '' then removed[#removed + 1] = { name = name(owned, before), price = price(owned, before) } end
+    if before ~= '' then
+      local paid = price(owned, before)
+      removed[#removed + 1] = { name = name(owned, before), price = paid, refund = math.floor(paid * M.PART_TRADE_IN_SHARE + 0.5) }
+    end
   end
   for slot in pairs(owned.parts) do compare(slot) end
   for slot in pairs(fitted.parts) do compare(slot) end
@@ -64,8 +67,9 @@ function M.partsDiff(owned, fitted)
   table.sort(added, byName); table.sort(removed, byName)
   local total = 0
   for _, part in ipairs(added) do total = total + part.price end
-  for _, part in ipairs(removed) do total = total - part.price * M.PART_TRADE_IN_SHARE end
-  return { added = added, removed = removed, cost = math.max(0, math.floor(total + 0.5)) }
+  -- Each refund is rounded on its own, so the bill's lines add up to its total.
+  for _, part in ipairs(removed) do total = total - part.refund end
+  return { added = added, removed = removed, cost = math.max(0, total) }
 end
 
 -- Whole dollars with thousands separators, such as $12,500.

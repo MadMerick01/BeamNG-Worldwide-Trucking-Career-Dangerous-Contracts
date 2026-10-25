@@ -69,11 +69,11 @@ function M.attach(c)
   -- and the player is only charged once the game has accepted the repair.
   function c:repairVehicle()
     if self.pendingCar then
-      self.repairFeedback = 'Buy or revert the new car first.'
+      self.repairFeedback = 'Pay for the new car or get your own back first.'
       return false
     end
     if self.pendingParts then
-      self.repairFeedback = 'Buy or revert your part changes first. Their bill includes the repair.'
+      self.repairFeedback = 'Pay for your part changes or undo them first. Their bill includes the repair.'
       return false
     end
     if not self.quote then
@@ -117,7 +117,7 @@ function M.attach(c)
 
   -- Parts. The parts menu is BeamNG's own and changes parts for free; every change respawns the
   -- vehicle, so the HUD compares the fitted parts with the ones paid for after each spawn. The
-  -- difference is billed on Buy, or the paid parts are put back on Revert. The respawn also mends
+  -- difference is billed on Pay, or the paid parts are put back on Undo. The respawn also mends
   -- all damage, so the bill includes the repair the car needed just before its first change.
   function c:vehicleSpawned()
     self.partsCheckDue, self.respawned = true, true
@@ -168,9 +168,8 @@ function M.attach(c)
       repair = repair, damage = damage, cost = diff.cost + repair, position = position,
     }
     self.quote = nil
-    self.partsFeedback = self:canAfford(self.pendingParts.cost) and 'Press Buy to keep these parts, or Revert.'
-      or ('Not enough money. You need ' .. dollars(self.pendingParts.cost - self.profile.progression.balance)
-        .. ' more. Revert, or the parts go back when you drive off.')
+    -- The bill on the HUD shows the total, what the player is short and what to press.
+    self.partsFeedback = nil
     self.diag:event('parts_quote', string.format('%d parts, %d repair', diff.cost, repair))
     return true
   end
@@ -198,15 +197,9 @@ function M.attach(c)
       position = previous and previous.position
         or (self.lastSample and self.lastSample.valid and location.copy(self.lastSample)) or nil,
     }
-    local cost = self.pendingCar.cost
-    if self.load then
-      self.carFeedback = 'Deliver or dump your load before changing cars. Revert, or your car comes back when you drive off.'
-    else
-      self.carFeedback = self:canAfford(cost) and 'Press Buy car to keep it, or Revert to get your car back.'
-        or ('Not enough money. You need ' .. dollars(cost - self.profile.progression.balance)
-          .. ' more. Revert, or your car comes back when you drive off.')
-    end
-    self.diag:event('car_quote', string.format('%s %d, trade-in %d', tostring(snapshot.model), cost, tradeIn))
+    -- The bill on the HUD shows the total, what the player is short and any load in the way.
+    self.carFeedback = nil
+    self.diag:event('car_quote', string.format('%s %d, trade-in %d', tostring(snapshot.model), self.pendingCar.cost, tradeIn))
     return true
   end
 
@@ -234,7 +227,7 @@ function M.attach(c)
     end
     if not self.pendingCar then return false end
     if self.pendingCar.cost ~= pending.cost or self.pendingCar.id ~= pending.id then
-      self.carFeedback = 'The car changed, so the bill was updated. Press Buy car again to accept it.'
+      self.carFeedback = 'The car changed, so the bill was updated. Check it and buy again.'
       return false
     end
     if not self:spend(pending.cost, 'car') then
@@ -325,7 +318,7 @@ function M.attach(c)
     end
     if not self.pendingParts then return nil end
     if self.pendingParts.cost ~= before then
-      self.partsFeedback = 'The parts changed, so the bill was updated. Press Buy again to accept it.'
+      self.partsFeedback = 'The parts changed, so the bill was updated. Check it and pay again.'
       return nil
     end
     return self.pendingParts
@@ -351,7 +344,7 @@ function M.attach(c)
     local pending = currentBill(self)
     if not pending then return false end
     if not self:loadFits(self.fittedParts) then
-      self.partsFeedback = 'Your load would not fit with these parts. Deliver it first, or Revert.'
+      self.partsFeedback = 'Your load would not fit with these parts. Deliver it first, or undo the changes.'
       return false
     end
     if not self:spend(pending.cost, 'parts') then
@@ -383,7 +376,7 @@ function M.attach(c)
     -- The bill's damage already includes what was owed before the change.
     self.pendingParts, self.owedDamage, self.punctureDamage = nil, pending.damage or 0, 0
     self.partsFeedback = (droveOff and 'You drove off without paying, so the paid parts were put back.'
-      or 'The paid parts were put back.') .. (pending.repair > 0 and ' Its repair is still owed.' or '')
+      or 'Changes undone: your paid parts are back.') .. (pending.repair > 0 and ' Its repair is still owed.' or '')
     return true
   end
 

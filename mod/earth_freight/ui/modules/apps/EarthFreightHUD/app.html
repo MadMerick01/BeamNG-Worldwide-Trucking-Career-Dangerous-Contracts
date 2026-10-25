@@ -131,10 +131,66 @@
       <p role="status" ng-if="data.tradeFeedback" style="margin:6px 0;">{{data.tradeFeedback}}</p>
     </div>
     <div ng-if="tab === 'garage'">
-      <div style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
-        <div style="font-weight:bold;color:#a7e5c9;">Cargo space</div>
-        <div>{{data.space.slots}} parcel slots, up to {{data.space.kg | number:0}} kg<span ng-if="data.space.boot"> in the boot</span><span ng-if="!data.space.boot">: {{data.space.boxes.join(', ')}}</span>.</div>
-        <div style="font-size:13px;color:#c9d6d2;">Fit a Cargo Load box in the game's parts menu for more room. It is billed below like any part.</div>
+      <div ng-if="data.carChange" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
+        <div style="font-weight:bold;color:#f2c94c;">New car bill &middot; not paid yet</div>
+        <div style="display:flex;gap:8px;margin-top:4px;"><span style="flex:1;min-width:0;">{{data.carChange.name}}</span><span>${{data.carChange.price | number:0}}</span></div>
+        <div ng-if="data.carChange.extras > 0" style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">Parts changed on it</span><span>${{data.carChange.extras | number:0}}</span></div>
+        <div style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">Trade-in<span ng-if="data.carChange.oldName">: {{data.carChange.oldName}}</span><span ng-if="data.carChange.repair > 0" style="color:#c9d6d2;font-size:12px;"> (less ${{data.carChange.repair | number:0}} for its damage)</span></span><span>&minus;${{data.carChange.tradeIn | number:0}}</span></div>
+        <div style="display:flex;gap:8px;margin-top:4px;padding-top:4px;border-top:1px solid rgba(242,201,76,.5);font-weight:bold;"><span style="flex:1;">Total</span><span>${{data.carChange.cost | number:0}}</span></div>
+        <div ng-if="data.balance >= data.carChange.cost" style="font-size:13px;color:#c9d6d2;">You have ${{data.balance | number:0}}, leaving ${{data.balance - data.carChange.cost | number:0}}.</div>
+        <div ng-if="data.balance < data.carChange.cost" style="font-size:13px;color:#eb5757;">You have ${{data.balance | number:0}}: ${{data.carChange.cost - data.balance | number:0}} short.</div>
+        <div ng-if="data.load" style="font-size:13px;color:#eb5757;">Deliver or dump your load before you change cars.</div>
+        <div ng-if="!isConfirming('car', data.carChange.cost)" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+          <button type="button" ng-click="askToPay('car', data.carChange.cost)" ng-disabled="!data.buyCarAllowed" ng-style="data.buyCarAllowed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Buy for ${{data.carChange.cost | number:0}}</button>
+          <button type="button" ng-click="revertCar()" ng-disabled="!data.revertCarAllowed" style="padding:7px 12px;">Get my car back</button>
+        </div>
+        <div ng-if="isConfirming('car', data.carChange.cost)" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;">
+          <span style="font-weight:bold;">Pay ${{data.carChange.cost | number:0}}?</span>
+          <button type="button" ng-click="cancelPay(); buyCar()" ng-disabled="!data.buyCarAllowed" style="padding:7px 12px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">Yes, buy it</button>
+          <button type="button" ng-click="cancelPay()" style="padding:7px 12px;">Cancel</button>
+        </div>
+        <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Drive off without paying and your own car comes back.</div>
+        <div ng-if="data.carFeedback" role="status" style="margin-top:4px;">{{data.carFeedback}}</div>
+      </div>
+      <div ng-if="!data.carChange && data.partsChange" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
+        <div style="font-weight:bold;color:#f2c94c;">Parts bill &middot; not paid yet</div>
+        <div ng-repeat="part in data.partsChange.added" style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">+ {{part.name}}</span><span>${{part.price | number:0}}</span></div>
+        <div ng-repeat="part in data.partsChange.removed" style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">&minus; {{part.name}} <span style="color:#c9d6d2;font-size:12px;">(sold back)</span></span><span ng-if="part.refund != null">&minus;${{part.refund | number:0}}</span></div>
+        <div ng-if="data.partsChange.repair > 0" style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">Repair <span style="color:#c9d6d2;font-size:12px;">(damage before the change)</span></span><span>${{data.partsChange.repair | number:0}}</span></div>
+        <div style="display:flex;gap:8px;margin-top:4px;padding-top:4px;border-top:1px solid rgba(242,201,76,.5);font-weight:bold;"><span style="flex:1;">Total</span><span>${{data.partsChange.cost | number:0}}</span></div>
+        <div ng-if="data.balance >= data.partsChange.cost" style="font-size:13px;color:#c9d6d2;">You have ${{data.balance | number:0}}, leaving ${{data.balance - data.partsChange.cost | number:0}}.</div>
+        <div ng-if="data.balance < data.partsChange.cost" style="font-size:13px;color:#eb5757;">You have ${{data.balance | number:0}}: ${{data.partsChange.cost - data.balance | number:0}} short.</div>
+        <div ng-if="!isConfirming('parts', data.partsChange.cost)" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+          <button type="button" ng-click="askToPay('parts', data.partsChange.cost)" ng-disabled="!data.buyPartsAllowed" ng-style="data.buyPartsAllowed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Pay ${{data.partsChange.cost | number:0}}</button>
+          <button type="button" ng-click="revertParts()" ng-disabled="!data.revertPartsAllowed" style="padding:7px 12px;">Undo changes</button>
+        </div>
+        <div ng-if="isConfirming('parts', data.partsChange.cost)" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;">
+          <span style="font-weight:bold;">Pay ${{data.partsChange.cost | number:0}}?</span>
+          <button type="button" ng-click="cancelPay(); buyParts()" ng-disabled="!data.buyPartsAllowed" style="padding:7px 12px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">Yes, pay</button>
+          <button type="button" ng-click="cancelPay()" style="padding:7px 12px;">Cancel</button>
+        </div>
+        <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Drive off without paying and the changes are undone.</div>
+        <div ng-if="data.partsFeedback" role="status" style="margin-top:4px;">{{data.partsFeedback}}</div>
+      </div>
+      <div ng-if="!data.carChange && !data.partsChange" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+        <div style="font-weight:bold;color:#a7e5c9;">Change parts or buy a car</div>
+        <ol style="margin:4px 0 0;padding-left:20px;">
+          <li>Change parts in the game's parts menu (Ctrl+W), or pick a car in the vehicle selector (Ctrl+E). Nothing is paid yet.</li>
+          <li>The bill shows up here, less what you trade in.</li>
+          <li>Pay to keep it, or undo it.</li>
+        </ol>
+        <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Cargo: {{data.space.slots}} parcel slots, up to {{data.space.kg | number:0}} kg<span ng-if="data.space.boot"> in the boot</span><span ng-if="!data.space.boot">: {{data.space.boxes.join(', ')}}</span>. A Cargo Load box adds room.</div>
+      </div>
+      <div ng-if="(!data.carChange && !data.partsChange) || data.repairOwed > 0 || data.puncture" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+        <div style="font-weight:bold;color:#a7e5c9;">Repair</div>
+        <div ng-if="data.repairOwed > 0">Repair still owed: ${{data.repairOwed | number:0}}</div>
+        <div ng-if="data.puncture" style="color:#eb5757;">Puncture: the tyre repair adds ${{data.puncture.tyreCost | number:0}} to the repair.</div>
+        <div ng-if="data.repairQuote != null">Repair quote: ${{data.repairQuote | number:0}}</div>
+        <div ng-if="!(data.repairOwed > 0) && !data.puncture && data.repairQuote == null">Get a quote to price the damage to the car you are in.</div>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          <button type="button" ng-click="requestRepairQuote()" ng-disabled="!data.repairQuoteAllowed" style="padding:7px 12px;">Get repair quote</button>
+          <button type="button" ng-click="repairVehicle()" ng-disabled="!data.repairAllowed" style="padding:7px 12px;">Repair</button>
+        </div>
       </div>
       <div ng-if="data.shipping.offer && !data.shipping.booking" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
         <div style="font-weight:bold;color:#f2c94c;">Shipping paid: {{data.shipping.offer.name}}</div>
@@ -183,45 +239,7 @@
         </div>
         <div ng-if="data.shipping.feedback" style="margin-top:4px;color:#c9d6d2;">{{data.shipping.feedback}}</div>
       </div>
-      <div ng-if="data.carChange" style="margin:0 0 8px;padding:10px;border:1px solid #f2c94c;border-radius:6px;">
-        <div style="font-weight:bold;color:#f2c94c;">New car bill</div>
-        <div>{{data.carChange.name}}: ${{data.carChange.price | number:0}}</div>
-        <div ng-if="data.carChange.extras > 0">Parts changed: ${{data.carChange.extras | number:0}}</div>
-        <div>Trade-in of your car: &minus;${{data.carChange.tradeIn | number:0}}</div>
-        <div style="font-weight:bold;">Total: ${{data.carChange.cost | number:0}}</div>
-        <div style="display:flex;gap:8px;margin-top:6px;">
-          <button type="button" ng-click="buyCar()" ng-disabled="!data.buyCarAllowed" style="padding:7px 12px;">Buy car</button>
-          <button type="button" ng-click="revertCar()" ng-disabled="!data.revertCarAllowed" style="padding:7px 12px;">Revert</button>
-        </div>
-      </div>
-      <div ng-if="!data.carChange && data.partsChange" style="margin:0 0 8px;padding:10px;border:1px solid #f2c94c;border-radius:6px;">
-        <div style="font-weight:bold;color:#f2c94c;">Parts bill</div>
-        <div ng-repeat="part in data.partsChange.added">+ {{part.name}}: ${{part.price | number:0}}</div>
-        <div ng-repeat="part in data.partsChange.removed">&minus; {{part.name}} (trade-in)</div>
-        <div>Parts: ${{data.partsChange.partsCost | number:0}}</div>
-        <div ng-if="data.partsChange.repair > 0">Repair: ${{data.partsChange.repair | number:0}}</div>
-        <div style="font-weight:bold;">Total: ${{data.partsChange.cost | number:0}}</div>
-        <div style="display:flex;gap:8px;margin-top:6px;">
-          <button type="button" ng-click="buyParts()" ng-disabled="!data.buyPartsAllowed" style="padding:7px 12px;">Buy</button>
-          <button type="button" ng-click="revertParts()" ng-disabled="!data.revertPartsAllowed" style="padding:7px 12px;">Revert</button>
-        </div>
-      </div>
-      <div ng-if="(!data.carChange && !data.partsChange) || data.repairOwed > 0 || data.puncture" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
-        <div style="font-weight:bold;color:#a7e5c9;">Repair</div>
-        <div ng-if="data.repairOwed > 0">Repair still owed: ${{data.repairOwed | number:0}}</div>
-        <div ng-if="data.puncture" style="color:#eb5757;">Puncture: the tyre repair adds ${{data.puncture.tyreCost | number:0}} to the repair.</div>
-        <div ng-if="data.repairQuote != null">Repair quote: ${{data.repairQuote | number:0}}</div>
-        <div ng-if="!(data.repairOwed > 0) && !data.puncture && data.repairQuote == null">Get a quote to price the damage to the car you are in.</div>
-        <div style="display:flex;gap:8px;margin-top:6px;">
-          <button type="button" ng-click="requestRepairQuote()" ng-disabled="!data.repairQuoteAllowed" style="padding:7px 12px;">Get repair quote</button>
-          <button type="button" ng-click="repairVehicle()" ng-disabled="!data.repairAllowed" style="padding:7px 12px;">Repair</button>
-        </div>
-      </div>
-      <div ng-if="!data.carChange && !data.partsChange" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
-        <div style="font-weight:bold;color:#a7e5c9;">Buy parts or a vehicle</div>
-        <div>Fit parts in the game's parts menu, or pick a vehicle in the vehicle selector. The bill shows up here: buy it, or Revert. A vehicle is priced at its game Value, less the trade-in of yours.</div>
-      </div>
-      <p role="status" ng-repeat="text in [data.carFeedback, data.partsFeedback, data.repairFeedback] track by $index" ng-if="text" style="margin:0 0 6px;">{{text}}</p>
+      <p role="status" ng-repeat="text in [data.carChange ? null : data.carFeedback, data.partsChange ? null : data.partsFeedback, data.repairFeedback] track by $index" ng-if="text" style="margin:0 0 6px;">{{text}}</p>
     </div>
     <div ng-if="tab === 'tips'">
       <div style="font-weight:bold;color:#a7e5c9;">Tips</div>

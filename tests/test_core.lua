@@ -261,10 +261,12 @@ do
   g:fit('box', ''); c:vehicleSpawned(); c:tick(0.1)
   T.check(not c:view().buyPartsAllowed, 'cannot keep a change the load no longer fits')
   T.check(not c:buyParts(), 'refused'); T.check(c:view().partsFeedback:find('would not fit'), 'told why')
+  T.eq(c:view().partsChange.removed[1].refund, 180, 'the box sold back is shown with its refund')
   T.check(c:revertParts(false), 'reverted')
   -- A car picked in the selector is billed, but not while carrying a load.
   g.vehicleId, g.model, a.vehicle = 2, 'sport', { id = 2, model = 'sport' }; c:tick(0.1)
-  T.check(c:view().carChange ~= nil, 'car billed'); T.check(not c:view().buyCarAllowed, 'not with a load on board')
+  T.check(c:view().carChange ~= nil, 'car billed'); T.check(c:view().carChange.oldName ~= nil, 'names the car traded in')
+  T.check(c:view().carChange.repair ~= nil, 'shows what its damage took off the trade-in'); T.check(not c:view().buyCarAllowed, 'not with a load on board')
   T.check(not c:buyCar(), 'refused with a load')
   T.eq(Core.STARTER_MODEL, 'burnside', 'starter model')
 end
@@ -272,6 +274,10 @@ end
 -- Repairs are priced by the car's Value, as in Enduro.
 do
   local pricing = require('earthFreight/pricing')
+  local diff = pricing.partsDiff({ parts = { a = 'x', b = 'y' }, values = { x = 105, y = 105 } },
+    { parts = { a = 'z', b = '' }, values = { z = 100 } })
+  T.eq(diff.removed[1].refund + diff.removed[2].refund, 64, 'each refund rounded on its own')
+  T.eq(diff.cost, 100 - 64, 'the bill adds up line by line')
   T.eq(pricing.repairCost(1000, 25000), 600, 'moderate damage on a $25,000 car')
   T.eq(pricing.repairCost(1000, 5000), 200, 'a $5,000 car pays a fifth as much per point')
   T.eq(pricing.repairCost(49, 100000), 0, 'a scratch is free')
