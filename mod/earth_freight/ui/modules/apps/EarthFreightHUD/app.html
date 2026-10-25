@@ -46,13 +46,22 @@
         <div style="margin-top:4px;font-size:12px;color:#c9d6d2;">The GPS was set when you bought the load. If it is not showing, paste these into the BeamNG.Earth map and click the point.</div>
       </div>
       <div ng-if="data.bestRun" style="margin:0 0 8px;color:#6fcf97;">Best run: {{data.bestRun.good}}, {{data.bestRun.from}} &rarr; {{data.bestRun.to}}, about +${{data.bestRun.profit | number:0}}</div>
-      <div ng-if="data.nearby.length" style="font-weight:bold;color:#a7e5c9;margin-bottom:4px;">Nearby</div>
+      <div ng-if="data.nearby.length" style="display:flex;align-items:flex-end;gap:8px;margin-bottom:2px;">
+        <div style="flex:1;font-weight:bold;color:#a7e5c9;">Nearby</div>
+        <div ng-repeat="g in data.nearby[0].dots" style="width:40px;text-align:center;font-size:11px;color:#7d8b88;">{{g.name}}</div>
+        <div style="width:64px;text-align:right;font-size:11px;color:#7d8b88;">Distance</div>
+      </div>
       <div ng-repeat="p in data.nearby" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
         <div style="flex:1;min-width:0;"><span ng-style="{fontWeight: p.destination ? 'bold' : 'normal', color: p.destination ? '#f2c94c' : '#f2f6f5'}">{{p.name}}</span> <span style="color:#7d8b88;font-size:12px;">{{p.size}}</span></div>
-        <span ng-repeat="g in p.dots" title="{{g.name}}: {{g.level === 'cheap' ? 'stocked, cheap here' : (g.level === 'short' ? 'short, pays well' : 'normal price')}}" ng-style="{background: dotColor(g.level)}" style="display:inline-block;width:10px;height:10px;border-radius:5px;"></span>
+        <div ng-repeat="g in p.dots" style="width:40px;text-align:center;"><span title="{{g.name}}: {{g.level === 'cheap' ? 'stocked, cheap here' : (g.level === 'short' ? 'short, pays well' : 'normal price')}}" ng-style="{background: dotColor(g.level)}" style="display:inline-block;width:10px;height:10px;border-radius:5px;"></span></div>
         <div style="width:64px;text-align:right;color:#c9d6d2;">&asymp; {{km(p.distanceMetres)}} km</div>
       </div>
-      <div ng-if="data.nearby.length" style="margin-top:6px;font-size:12px;color:#c9d6d2;">Dots, left to right: parts, food, bricks. Green is cheap to buy there, red pays well to deliver. Distances are straight line &times; 1.3.</div>
+      <div ng-if="data.nearby.length" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font-size:12px;color:#c9d6d2;">
+        <span><span ng-style="{background: dotColor('cheap')}" style="display:inline-block;width:10px;height:10px;border-radius:5px;"></span> Stocked: cheap to buy there</span>
+        <span><span ng-style="{background: dotColor('normal')}" style="display:inline-block;width:10px;height:10px;border-radius:5px;"></span> Normal price</span>
+        <span><span ng-style="{background: dotColor('short')}" style="display:inline-block;width:10px;height:10px;border-radius:5px;"></span> Short: pays well to deliver there</span>
+      </div>
+      <div ng-if="data.nearby.length" style="margin-top:2px;font-size:12px;color:#c9d6d2;">Distances are straight line &times; 1.3.</div>
       <div ng-if="data.dumpAllowed" style="margin-top:10px;">
         <button type="button" ng-click="dumpLoad()" ng-style="data.dumpArmed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="padding:5px 10px;">{{data.dumpArmed ? 'Confirm dump' : 'Dump load'}}</button>
         <span style="font-size:12px;color:#c9d6d2;"> Throws the load away. Its money is lost.</span>
