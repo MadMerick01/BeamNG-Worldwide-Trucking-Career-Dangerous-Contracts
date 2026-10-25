@@ -141,6 +141,12 @@ do
   c.load.drivenKm = 1; a.pose = F.copy(stClair); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.check(c.load == nil, 'a long teleport cancels the load')
   T.eq(c:view().flash.kind, 'cancelled', 'player told the load was lost')
+  T.check(c:view().stranded ~= nil, 'an unbooked teleport strands the player')
+  T.check(c:tradeProblem(c:here()):find('without booking shipping'), 'and stops trading')
+  -- Teleporting back to where they left from frees them.
+  a.pose = location.destination(F.PENRITH, 90, 1500); c:tick(0.1)
+  T.eq(c.stranded, nil, 'back where they left from'); T.eq(c:view().flash.title, 'BACK ON THE ROAD', 'told so')
+  a.pose = F.copy(stClair); c.stranded = nil; c.odometer:reset(); c.lastDriven = nil; c:tick(0.1); c:tick(0.6); c:tick(0.6)
   -- A load not driven far enough does not sell.
   c:buy('food', penrith.id); c.load.from = penrith.id; c.load.drivenKm = 2
   T.check(not c:sell(), 'not driven far enough'); T.check(c:view().town.sale.problem:find('Drive it here'), 'told to drive')
@@ -202,7 +208,7 @@ do
   c.profile.progression.balance = 21; c:fuelReading(1, 10, 50)
   T.near(c:view().town.refuel.litres, 10, 1e-9, 'only what the money buys')
   -- Away from a town there is no Refuel.
-  a.pose = location.destination(F.PENRITH, 0, 3000); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  a.pose = location.destination(F.PENRITH, 0, 1900); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.eq(c:view().town, nil, 'no town panel out of town'); T.check(not c:refuel(), 'no refuel out of town')
   -- A repair respawns the car with a full tank; the fuel it had is put back, free.
   c.profile.progression.balance = 10000; g.damage = 2000; c:tick(0.1)
@@ -279,6 +285,51 @@ do
   T.check(not c:newGame(), 'asks first'); T.check(c:newGame(), 'confirmed')
   T.eq(c:view().balance, Core.STARTING_MONEY, 'starting money'); T.eq(c.mode, 'start', 'back to the start')
   T.eq(io.files[B].atStart, true, 'saved at the start')
+end
+
+-- Shipping: book with an empty car, teleport to the coordinates, arrive with the booking used up.
+do
+  local shipping = require('earthFreight/shipping')
+  local c, io, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local v = c:view()
+  T.eq(#v.shipping.destinations, #shipping.DESTINATIONS, 'destinations listed')
+  local coroico = shipping.get('coroico')
+  T.eq(v.shipping.destinations[1].here, true, 'Penrith is where you are')
+  local fee = shipping.fee(F.PENRITH, coroico)
+  T.check(fee > 100 and fee < 500, 'shipping is cheap: ' .. fee)
+  c:buy('food', stClair.id)
+  T.check(not c:bookShipping('coroico'), 'not with a load on board'); T.check(c:view().shipping.feedback:find('cargo cannot'), 'told why')
+  c.load = nil
+  T.check(not c:bookShipping('penrith'), 'not to where you are')
+  T.check(not c:bookShipping('nowhere'), 'not to an unknown place')
+  local before = c:view().balance
+  T.check(c:bookShipping('coroico'), 'booked'); T.eq(c:view().balance, before - fee, 'fee paid')
+  T.check(not c:bookShipping('bormio'), 'one booking at a time')
+  T.check(not c:view().saveAllowed, 'no Save while a booking is open'); T.check(not c:manualSave(), 'save refused')
+  T.check(c:cancelShipping(), 'cancelled'); T.eq(c:view().balance, before, 'refunded')
+  T.check(c:bookShipping('coroico'), 'booked again')
+  T.eq(c:view().shipping.booking.latitude, coroico.latitude, 'coordinates to paste')
+  -- Earth pauses while it teleports; the jump still counts as one.
+  a.valid = false; c:tick(0.1)
+  a.valid = true; a.pose = location.destination(coroico, 0, 1000); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(c.booking, nil, 'booking used up'); T.eq(c.stranded, nil, 'not stranded')
+  T.eq(c:view().flash.title, 'SHIPPED TO COROICO', 'told they arrived')
+  T.eq(c:view().region.name, 'Death Road', 'in the Death Road region'); T.check(c:view().region.boost >= 2.7, 'paying near 3x')
+  T.check(c:view().saveAllowed, 'Save works again')
+  -- Teleporting on without a booking strands you, and the coordinates to go back are shown.
+  a.pose = shipping.get('bormio'); c:tick(0.1); c:tick(0.6)
+  local stranded = c:view().stranded
+  T.check(stranded ~= nil and location.distance(stranded, coroico) < 1500, 'go back to where you left')
+  T.eq(c:view().flash.title, 'SHIPPING NOT BOOKED', 'told why')
+  local km = c:view().totalDistanceKm
+  a.pose = location.destination(shipping.get('bormio'), 0, 200); c:tick(1)
+  T.eq(c:view().totalDistanceKm, km, 'driving does not count while stranded')
+  T.check(not c:manualSave(), 'and nothing saves')
+  -- Booking shipping from where you are frees you once you land.
+  T.check(c:bookShipping('leh'), 'shipping can be booked while stranded')
+  a.pose = shipping.get('leh'); c:tick(0.1); c:tick(0.6)
+  T.eq(c.stranded, nil, 'shipped on, no longer stranded')
 end
 
 T.done('Earth Freight controller')

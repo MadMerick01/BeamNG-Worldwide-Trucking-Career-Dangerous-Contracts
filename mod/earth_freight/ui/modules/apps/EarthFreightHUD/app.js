@@ -20,9 +20,9 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.setTab = function (id) { scope.tab = id }
       // Marks a tab that has something waiting for the player.
       var alerts = {
-        route: function (d) { return !!d.resume },
+        route: function (d) { return !!d.resume || !!d.stranded },
         town: function (d) { return !!d.town && (!!d.town.sellAllowed || (!!d.town.buyAllowed && !d.load)) },
-        garage: function (d) { return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture }
+        garage: function (d) { return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!(d.shipping && d.shipping.booking) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
@@ -103,6 +103,10 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.sellLoad = function () { if (scope.data.town && scope.data.town.sellAllowed) core('sellLoad()') }
       scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }
       scope.dumpLoad = function () { if (scope.data.dumpAllowed) core('dumpLoad()') }
+      scope.bookShipping = function (destination) {
+        if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")
+      }
+      scope.cancelShipping = function () { if (scope.data.shipping && scope.data.shipping.booking) core('cancelShipping()') }
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       scope.addTestMoney = function () { if (scope.data.testMoneyAllowed) core('addTestMoney()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }

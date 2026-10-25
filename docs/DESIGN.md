@@ -290,7 +290,7 @@ The first playable loop, in `mod/earth_freight/`:
 
 Needs checking in game: whether the vanilla Cargo Load part names match (and which fit the starter Burnside), `obj:setNodeMass` and `partOrigin` on vehicle nodes, the fuel tanks' `remainingVolume`/`setRemainingRatio`, and Earth's `gps.setDestination`.
 
-Not in layer 1: supply and demand, shipping, rural pickup points, the planning map, roadside events.
+Not in layer 1: supply and demand, rural pickup points, the planning map, roadside events.
 
 ## Worldwide places as built
 
@@ -310,6 +310,12 @@ Each place gets a boost from 1× to 3× when the list is built; nothing is worke
 The total is capped at 3×. With these settings: Sydney, Parramatta and Penrith 1.0×, Springwood 1.2×, Katoomba 1.5×, Lithgow 1.4×, La Paz 1.9×, Zermatt 2.5×, Leh 2.7×, and Coroico (Death Road), Bormio (Stelvio) and Gilgit (Karakoram) 3.0×. Worldwide the median is 1.13×, and 138 places are at the cap. `python tools/make_places.py --report` prints the breakdown.
 
 **In game:** the boost multiplies every price at a place (what you pay to buy and what a delivery pays) and a run's freight pay at the average of its two ends. A run within a steep region pays that much more, a run up into one pays more again, and a run back down to the flat loses money. The HUD shows the region and its boost next to the town name, like "Death Road ×3.0", and each drop-off's boost on the Town tab.
+## Shipping as built
+
+- **Book shipping** on the Garage tab: a list of eight destinations in `shipping.lua` (Penrith, Katoomba, La Paz at the top of Death Road, Coroico at the bottom, Bormio for the Stelvio, Zermatt, Gilgit on the Karakoram Highway, Leh). The fee is $100 plus 2 cents a km, so Sydney to Bolivia is about $360. You can only book with no load on board and no garage bill open. Booking shows the coordinates with a Copy button, and Cancel refunds the fee.
+- **Arriving:** a teleport (a jump over 2 km) that lands within 5 km of the booked destination uses the booking up. The mod also catches a teleport made while Earth paused (the last place driven to is kept across the pause).
+- **Without a booking:** any load on board is lost, as before, and the player is stranded. Deliveries, trading and driving distance stop, and the Route tab shows the coordinates to go back to. Coming back within 1 km of them, or booking shipping from where they are and landing there, frees them.
+- **Save** waits while a booking is open or the player is stranded. Neither is kept in the save, so the save format is unchanged.
 
 ## Open questions
 

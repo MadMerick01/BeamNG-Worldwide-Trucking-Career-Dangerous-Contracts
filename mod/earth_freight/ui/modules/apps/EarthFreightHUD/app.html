@@ -28,6 +28,15 @@
   </div>
   <div role="tabpanel" style="padding-top:10px;">
     <div ng-if="tab === 'route'">
+      <div ng-if="data.stranded" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">
+        <div style="font-weight:bold;color:#eb5757;">Teleported without shipping</div>
+        <div style="font-size:13px;">Deliveries and driving do not count until you go back to where you left from, or book shipping on the Garage tab.</div>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <input aria-label="Coordinates to go back to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.stranded)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+          <button type="button" aria-label="Copy coordinates to go back to" ng-click="copyCoordinates(data.stranded)">Copy</button>
+        </div>
+        <div ng-if="data.stranded.distanceMetres != null" style="margin-top:4px;">You are {{km(data.stranded.distanceMetres)}} km away.</div>
+      </div>
       <div ng-if="data.resume" style="margin:0 0 8px;padding:10px;border:1px solid #a7e5c9;border-radius:6px;">
         <label><span style="font-weight:bold;color:#a7e5c9;">{{data.mode === 'start' ? 'Go to ' + data.startTown : 'Go back to your last save'}}</span>
           <div style="display:flex;gap:6px;margin-top:4px;">
@@ -127,6 +136,29 @@
         <div>{{data.space.slots}} parcel slots, up to {{data.space.kg | number:0}} kg<span ng-if="data.space.boot"> in the boot</span><span ng-if="!data.space.boot">: {{data.space.boxes.join(', ')}}</span>.</div>
         <div style="font-size:13px;color:#c9d6d2;">Fit a Cargo Load box in the game's parts menu for more room. It is billed below like any part.</div>
       </div>
+      <div ng-if="data.shipping" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+        <div style="font-weight:bold;color:#a7e5c9;">Book shipping</div>
+        <div ng-if="data.shipping.booking">
+          <div>Booked to <b>{{data.shipping.booking.name}}</b>, {{data.shipping.booking.region}} (${{data.shipping.booking.fee | number:0}}).</div>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <input aria-label="Shipping coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.shipping.booking)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+            <button type="button" aria-label="Copy shipping coordinates" ng-click="copyCoordinates(data.shipping.booking)">Copy</button>
+          </div>
+          <div style="font-size:13px;color:#c9d6d2;margin-top:4px;">Paste them into the BeamNG.Earth map and teleport there. Your car goes with you; cargo cannot.</div>
+          <button type="button" ng-click="cancelShipping()" style="margin-top:6px;padding:5px 10px;">Cancel booking (refund ${{data.shipping.booking.fee | number:0}})</button>
+        </div>
+        <div ng-if="!data.shipping.booking">
+          <div style="font-size:13px;color:#c9d6d2;">Take your car to another region cheaply. Book with an empty car, pay, then teleport there with the coordinates. Teleporting without a booking loses any load and stops pay until you go back.</div>
+          <div ng-if="data.shipping.problem" style="color:#f2c94c;">{{data.shipping.problem}}</div>
+          <div ng-repeat="d in data.shipping.destinations" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+            <div style="flex:1;min-width:0;">{{d.name}} <span style="color:#7d8b88;font-size:12px;">{{d.region}}</span></div>
+            <div ng-if="d.here" style="color:#7d8b88;font-size:12px;">You are here</div>
+            <div ng-if="!d.here">${{d.fee | number:0}}</div>
+            <button type="button" ng-click="bookShipping(d.id)" ng-disabled="!d.allowed" style="padding:4px 8px;">Book</button>
+          </div>
+        </div>
+        <div ng-if="data.shipping.feedback" style="margin-top:4px;color:#c9d6d2;">{{data.shipping.feedback}}</div>
+      </div>
       <div ng-if="data.carChange" style="margin:0 0 8px;padding:10px;border:1px solid #f2c94c;border-radius:6px;">
         <div style="font-weight:bold;color:#f2c94c;">New car bill</div>
         <div>{{data.carChange.name}}: ${{data.carChange.price | number:0}}</div>
@@ -172,7 +204,7 @@
       <ul style="margin:4px 0 0;padding-left:18px;">
         <li>Buy a load in one town and deliver it to another. Green dots are cheap to buy, red ones pay well. The best run line suggests one.</li>
         <li>Buying a load sets the BeamNG.Earth GPS to the drop-off, so the route and arrows show up on their own.</li>
-        <li>Deliveries must be driven: a load only sells once you have driven most of the way there. A teleport longer than 2 km loses the load and its money; a short hop past a cliff or river is fine.</li>
+        <li>Deliveries must be driven: a load only sells once you have driven most of the way there. A teleport longer than 2 km loses the load and its money; a short hop past a cliff or river is fine. To go far, book shipping on the Garage tab.</li>
         <li>Weight is real: a heavy load is slower, brakes later and burns more fuel. Bricks run out of weight before space.</li>
         <li>Rough driving damages the cargo and cuts the payout. Parts are the most fragile.</li>
         <li>Fuel costs money. Refuel on the Town tab, stopped in a town.</li>
