@@ -10,6 +10,10 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - Bricks now fit in the boot, and a full set of cargo boxes can be filled with bricks instead of running out of weight after a few slots. Only the biggest Cargo box XL still runs out of weight before space with bricks.
 - Because freight pay is paid per tonne for each road km, these goods now earn much less freight pay per slot: about a tenth as much for parts, a third for food and a fifth for bricks. What a town pays for the goods themselves is the same.
 - Saves still work. A load you are carrying when you load a save keeps the weight it had when you bought it, but is paid freight at the new, lighter weight.
+## Build 15 · 25 Oct 2026
+
+- **New game now always gives you a fresh starter car.** Before, if you were still driving the starter Burnside when you pressed New game, it kept every part you had paid for, such as a radiator, cargo boxes or a turbo, and the next Save kept them too. Now the Burnside is swapped for a stock one when you reach Penrith, even if you are already standing there. Your saves still work.
+- When you are close to Penrith or your last save, the Go to card now says you can simply drive there instead of teleporting, and how close you need to get.
 
 ## Build 14 · 25 Oct 2026
 

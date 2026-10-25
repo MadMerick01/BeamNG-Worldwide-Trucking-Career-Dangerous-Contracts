@@ -64,15 +64,16 @@ T.check(G.new(partsEnv):repair(revert), 'respawn with given parts accepted')
 T.eq(replaced.options.config.partsTree.chosenPartName, 'pickup', 'respawns with the given parts')
 T.eq(replaced.options.config.vars['$tune'], 2, 'keeps the current tuning'); T.eq(replaced.options.config.paints[1], 'red', 'keeps the current paint')
 T.eq(revert.vars['$tune'], 1, 'given config left unchanged')
--- Starter car: spawns a .pc file in place, unless the vehicle already came from it.
+-- Starter car: spawns a .pc file in place, even when the vehicle already came from it.
 T.check(G.new(env()):spawnConfig('burnside', 'vehicles/burnside/starter.pc'), 'starter spawn accepted')
 T.eq(replaced.model, 'burnside', 'spawns the starter model'); T.eq(replaced.options.config, 'vehicles/burnside/starter.pc', 'spawns from the config file')
 T.eq(replaced.veh:getID(), 7, 'replaces the player vehicle in place')
 replaced = nil
 local fromStarter = env({ manager = function() return { getVehicleData = function() return { config = {
   model = 'burnside', partConfigFilename = '/vehicles/burnside/Starter.pc' } } end } end })
-local spawned, note = G.new(fromStarter):spawnConfig('burnside', 'vehicles/burnside/starter.pc')
-T.check(spawned, 'already the starter is fine'); T.eq(note, 'already_fitted', 'reported'); T.eq(replaced, nil, 'not respawned')
+local spawned = G.new(fromStarter):spawnConfig('burnside', 'vehicles/burnside/starter.pc')
+T.check(spawned, 'already the starter is fine'); T.eq(replaced.options.config, 'vehicles/burnside/starter.pc', 'respawned fresh, in case parts were changed')
+replaced = nil
 local savedCar = { model = 'burnside', partsTree = { chosenPartName = 'burnside' } }
 T.check(G.new(fromStarter):spawnConfig('burnside', savedCar), 'saved config spawned even from the starter file')
 T.eq(replaced.options.config.partsTree.chosenPartName, 'burnside', 'spawns the saved parts')

@@ -91,12 +91,11 @@ function F.garage()
   g.spawns = {}
   function g:spawnConfig(model, config)
     if not self.accepts then return false, 'spawn_failed', 'rejected' end
-    if type(config) == 'string' and self.spawnedFrom == config then return true, 'already_fitted' end
     self.spawns[#self.spawns + 1] = { model = model, config = F.copy(config) }
     if type(config) == 'table' then
-      self.model, self.fitted, self.damage, self.spawnedFrom = model, F.copy(config.parts), 0, nil
+      self.model, self.fitted, self.damage = model, F.copy(config.parts), 0
     elseif self.starter then
-      self.model, self.fitted, self.damage, self.spawnedFrom = model, F.copy(self.starter), 0, config
+      self.model, self.fitted, self.damage = model, F.copy(self.starter), 0
     end
     return true
   end
