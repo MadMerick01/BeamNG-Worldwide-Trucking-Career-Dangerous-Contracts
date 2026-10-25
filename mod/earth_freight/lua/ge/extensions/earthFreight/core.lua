@@ -18,7 +18,7 @@ local fuel = require('earthFreight/fuel')
 local workshop = require('earthFreight/workshop')
 local M = {}
 -- Money a new game starts with, and the amount the HUD test button adds.
-local STARTING_MONEY = 1500
+local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and a first load
 local TEST_MONEY = 10000
 local MAX_BALANCE = 9007199254740991
 M.STARTING_MONEY = STARTING_MONEY

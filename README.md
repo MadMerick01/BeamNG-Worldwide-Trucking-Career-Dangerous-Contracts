@@ -10,7 +10,7 @@ Copy `earth_freight.zip` into the `mods` folder of your BeamNG user folder. Do n
 
 ## Play
 
-1. Load the BeamNG.Earth Freeroam level. The HUD shows Penrith's coordinates: copy them, paste them into the BeamNG.Earth map and teleport there. You get the starter car, a rusty Burnside, and $1,500.
+1. Load the BeamNG.Earth Freeroam level. The HUD shows Penrith's coordinates: copy them, paste them into the BeamNG.Earth map and teleport there. You get the starter car, a rusty Burnside, and $2,500. The car needs a radiator straight away, so fit one first in the parts menu.
 2. Stop inside Penrith. The **Town** tab lists the goods you can buy (parts, food, bricks) and the nearby drop-offs with what each pays. Green dots are cheap to buy, red ones pay well.
 3. **Buy** fills your cargo space as far as your money goes and sets BeamNG.Earth's GPS to the drop-off, so the route and road arrows appear on their own.
 4. Drive there. The load's weight is added to the car, so it is slower and burns more fuel. Rough driving damages the cargo and cuts the pay.
