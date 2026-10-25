@@ -4,581 +4,411 @@ return {
   source = "geonames_world.tsv.gz + geonames_sydney.tsv", spacingKm = 4, tileDegrees = 5, maxBoost = 3.0,
   -- The places in each tile; a tile not listed has none.
   tiles = { n0e10 = 57, n0e100 = 135, n0e105 = 26, n0e110 = 21, n0e115 = 40, n0e120 = 49, n0e125 = 33, n0e130 = 1, n0e15 = 20, n0e150 = 2, n0e165 = 1, n0e170 = 8, n0e20 = 15, n0e25 = 9, n0e30 = 130, n0e35 = 25, n0e40 = 19, n0e45 = 11, n0e5 = 86, n0e70 = 16, n0e95 = 176, n0w10 = 5, n0w160 = 3, n0w5 = 2, n0w55 = 11, n0w60 = 1, n0w65 = 2, n0w70 = 6, n0w75 = 151, n0w80 = 282, n0w85 = 2, n10e0 = 66, n10e10 = 114, n10e100 = 309, n10e105 = 254, n10e115 = 24, n10e120 = 1136, n10e125 = 74, n10e140 = 11, n10e145 = 1, n10e15 = 18, n10e160 = 1, n10e165 = 4, n10e170 = 1, n10e20 = 11, n10e25 = 11, n10e30 = 35, n10e35 = 31, n10e40 = 115, n10e45 = 59, n10e5 = 206, n10e50 = 7, n10e70 = 25, n10e75 = 441, n10e80 = 32, n10e90 = 2, n10e95 = 55, n10w10 = 34, n10w15 = 63, n10w20 = 79, n10w25 = 5, n10w5 = 85, n10w60 = 9, n10w65 = 90, n10w70 = 101, n10w75 = 88, n10w80 = 17, n10w85 = 57, n10w90 = 458, n10w95 = 175, n15e0 = 6, n15e10 = 1, n15e100 = 366, n15e105 = 123, n15e110 = 8, n15e115 = 35, n15e120 = 544, n15e145 = 1, n15e15 = 1, n15e20 = 3, n15e30 = 15, n15e35 = 13, n15e40 = 117, n15e45 = 28, n15e5 = 6, n15e50 = 13, n15e55 = 1, n15e70 = 167, n15e75 = 228, n15e80 = 131, n15e85 = 6, n15e90 = 1, n15e95 = 148, n15w10 = 4, n15w100 = 1849, n15w105 = 477, n15w110 = 4, n15w15 = 19, n15w155 = 5, n15w160 = 19, n15w20 = 12, n15w25 = 15, n15w30 = 3, n15w5 = 10, n15w65 = 67, n15w70 = 181, n15w75 = 241, n15w80 = 83, n15w85 = 12, n15w90 = 223, n15w95 = 771, n20e0 = 1, n20e10 = 2, n20e100 = 119, n20e105 = 248, n20e110 = 111, n20e115 = 68, n20e120 = 35, n20e125 = 1, n20e15 = 2, n20e20 = 1, n20e30 = 4, n20e35 = 8, n20e40 = 11, n20e45 = 5, n20e5 = 1, n20e50 = 9, n20e55 = 26, n20e65 = 36, n20e70 = 230, n20e75 = 270, n20e80 = 162, n20e85 = 269, n20e90 = 108, n20e95 = 36, n20w100 = 604, n20w105 = 1072, n20w110 = 165, n20w115 = 8, n20w15 = 3, n20w160 = 61, n20w20 = 3, n20w5 = 1, n20w75 = 15, n20w80 = 90, n20w85 = 89, n20w90 = 198, n20w95 = 23, n25e0 = 4, n25e10 = 5, n25e100 = 100, n25e105 = 162, n25e110 = 192, n25e115 = 165, n25e120 = 35, n25e125 = 10, n25e140 = 1, n25e15 = 3, n25e20 = 3, n25e25 = 3, n25e30 = 59, n25e35 = 8, n25e40 = 13, n25e45 = 36, n25e5 = 1, n25e50 = 65, n25e55 = 40, n25e60 = 17, n25e65 = 122, n25e70 = 107, n25e75 = 484, n25e80 = 263, n25e85 = 196, n25e90 = 109, n25e95 = 41, n25w10 = 10, n25w100 = 314, n25w105 = 180, n25w110 = 265, n25w115 = 57, n25w15 = 28, n25w20 = 63, n25w5 = 1, n25w80 = 12, n25w85 = 449, n25w90 = 8, n25w95 = 72, n30e0 = 20, n30e10 = 33, n30e100 = 57, n30e105 = 118, n30e110 = 153, n30e115 = 163, n30e120 = 56, n30e125 = 57, n30e130 = 235, n30e135 = 127, n30e15 = 4, n30e20 = 12, n30e25 = 4, n30e30 = 165, n30e35 = 415, n30e40 = 54, n30e45 = 109, n30e5 = 36, n30e50 = 65, n30e55 = 23, n30e60 = 56, n30e65 = 121, n30e70 = 303, n30e75 = 196, n30e80 = 4, n30e85 = 2, n30e90 = 13, n30e95 = 18, n30w10 = 152, n30w100 = 481, n30w105 = 109, n30w110 = 110, n30w115 = 178, n30w120 = 359, n30w125 = 11, n30w20 = 16, n30w5 = 67, n30w65 = 2, n30w80 = 106, n30w85 = 509, n30w90 = 506, n30w95 = 407, n35e0 = 193, n35e10 = 318, n35e100 = 51, n35e105 = 46, n35e110 = 143, n35e115 = 215, n35e120 = 38, n35e125 = 261, n35e130 = 19, n35e135 = 337, n35e140 = 133, n35e15 = 367, n35e20 = 427, n35e25 = 369, n35e30 = 313, n35e35 = 473, n35e40 = 386, n35e45 = 164, n35e5 = 228, n35e50 = 72, n35e55 = 42, n35e60 = 31, n35e65 = 180, n35e70 = 66, n35e75 = 12, n35e80 = 4, n35e85 = 2, n35e90 = 2, n35e95 = 12, n35w10 = 729, n35w100 = 298, n35w105 = 117, n35w110 = 165, n35w115 = 78, n35w120 = 140, n35w125 = 366, n35w30 = 31, n35w35 = 2, n35w5 = 1048, n35w75 = 59, n35w80 = 783, n35w85 = 734, n35w90 = 623, n35w95 = 494, n40e0 = 1215, n40e10 = 1677, n40e100 = 14, n40e105 = 14, n40e110 = 40, n40e115 = 45, n40e120 = 58, n40e125 = 85, n40e130 = 82, n40e135 = 8, n40e140 = 64, n40e145 = 5, n40e15 = 976, n40e20 = 1261, n40e25 = 879, n40e30 = 226, n40e35 = 220, n40e40 = 538, n40e45 = 317, n40e5 = 890, n40e50 = 22, n40e55 = 17, n40e60 = 21, n40e65 = 85, n40e70 = 117, n40e75 = 31, n40e80 = 23, n40e85 = 21, n40e90 = 5, n40e95 = 4, n40w10 = 1196, n40w100 = 238, n40w105 = 96, n40w110 = 58, n40w115 = 143, n40w120 = 37, n40w125 = 138, n40w5 = 2158, n40w65 = 13, n40w70 = 116, n40w75 = 1300, n40w80 = 759, n40w85 = 720, n40w90 = 871, n40w95 = 478, n45e0 = 1817, n45e10 = 2862, n45e100 = 75, n45e105 = 57, n45e110 = 39, n45e115 = 15, n45e120 = 28, n45e125 = 55, n45e130 = 53, n45e135 = 11, n45e140 = 34, n45e145 = 1, n45e15 = 2154, n45e20 = 1887, n45e25 = 1401, n45e30 = 441, n45e35 = 411, n45e40 = 182, n45e45 = 51, n45e5 = 3071, n45e50 = 12, n45e55 = 8, n45e60 = 10, n45e65 = 2, n45e70 = 25, n45e75 = 14, n45e80 = 26, n45e85 = 14, n45e90 = 41, n45e95 = 53, n45w10 = 2, n45w100 = 111, n45w105 = 65, n45w110 = 34, n45w115 = 72, n45w120 = 123, n45w125 = 363, n45w130 = 4, n45w5 = 1244, n45w55 = 14, n45w60 = 18, n45w65 = 44, n45w70 = 76, n45w75 = 241, n45w80 = 67, n45w85 = 30, n45w90 = 46, n45w95 = 184, n50e0 = 1097, n50e10 = 1893, n50e100 = 64, n50e105 = 60, n50e110 = 23, n50e115 = 30, n50e120 = 15, n50e125 = 19, n50e130 = 6, n50e135 = 13, n50e140 = 11, n50e15 = 1310, n50e155 = 7, n50e20 = 945, n50e25 = 248, n50e30 = 249, n50e35 = 281, n50e40 = 153, n50e45 = 159, n50e5 = 1956, n50e50 = 96, n50e55 = 94, n50e60 = 40, n50e65 = 26, n50e70 = 36, n50e75 = 36, n50e80 = 96, n50e85 = 92, n50e90 = 45, n50e95 = 16, n50w10 = 366, n50w100 = 8, n50w105 = 26, n50w110 = 24, n50w115 = 74, n50w120 = 23, n50w125 = 16, n50w130 = 8, n50w135 = 1, n50w15 = 3, n50w170 = 2, n50w5 = 1803, n50w60 = 2, n50w65 = 2, n50w70 = 6, n50w75 = 1, n50w80 = 1, n50w85 = 2, n50w95 = 4, n55e0 = 1, n55e10 = 564, n55e100 = 13, n55e105 = 10, n55e110 = 10, n55e115 = 4, n55e120 = 5, n55e125 = 5, n55e135 = 1, n55e140 = 1, n55e15 = 208, n55e150 = 5, n55e155 = 5, n55e160 = 3, n55e20 = 174, n55e25 = 219, n55e30 = 134, n55e35 = 351, n55e40 = 196, n55e45 = 130, n55e5 = 221, n55e50 = 111, n55e55 = 127, n55e60 = 132, n55e65 = 50, n55e70 = 23, n55e75 = 11, n55e80 = 36, n55e85 = 38, n55e90 = 33, n55e95 = 25, n55w10 = 40, n55w100 = 1, n55w105 = 1, n55w110 = 1, n55w115 = 2, n55w120 = 14, n55w125 = 6, n55w135 = 6, n55w140 = 2, n55w155 = 5, n55w160 = 1, n55w165 = 2, n55w5 = 335, n5e0 = 185, n5e10 = 82, n5e100 = 104, n5e105 = 42, n5e115 = 55, n5e120 = 602, n5e125 = 336, n5e130 = 15, n5e135 = 3, n5e140 = 5, n5e145 = 8, n5e15 = 25, n5e150 = 21, n5e155 = 5, n5e160 = 5, n5e165 = 11, n5e170 = 6, n5e20 = 6, n5e25 = 15, n5e30 = 15, n5e35 = 60, n5e40 = 13, n5e45 = 10, n5e5 = 356, n5e50 = 1, n5e70 = 7, n5e75 = 136, n5e80 = 49, n5e95 = 137, n5w10 = 82, n5w15 = 93, n5w5 = 105, n5w55 = 8, n5w60 = 23, n5w65 = 32, n5w70 = 79, n5w75 = 480, n5w80 = 347, n5w85 = 401, n5w90 = 2, n60e0 = 4, n60e10 = 115, n60e100 = 2, n60e105 = 1, n60e110 = 4, n60e115 = 2, n60e120 = 4, n60e125 = 13, n60e130 = 6, n60e135 = 4, n60e140 = 1, n60e145 = 5, n60e15 = 113, n60e150 = 5, n60e155 = 3, n60e165 = 1, n60e175 = 2, n60e20 = 252, n60e25 = 198, n60e30 = 75, n60e35 = 15, n60e40 = 39, n60e45 = 29, n60e5 = 132, n60e50 = 22, n60e55 = 8, n60e60 = 14, n60e65 = 8, n60e70 = 14, n60e75 = 12, n60e90 = 3, n60e95 = 1, n60w10 = 20, n60w115 = 2, n60w120 = 3, n60w125 = 1, n60w130 = 1, n60w140 = 3, n60w145 = 1, n60w150 = 33, n60w155 = 8, n60w165 = 1, n60w170 = 3, n60w175 = 1, n60w20 = 1, n60w25 = 17, n60w5 = 3, n60w50 = 4, n60w55 = 1, n60w70 = 1, n60w80 = 1, n60w95 = 1, n65e10 = 40, n65e110 = 3, n65e120 = 1, n65e130 = 3, n65e135 = 1, n65e145 = 1, n65e15 = 41, n65e150 = 2, n65e160 = 1, n65e165 = 1, n65e170 = 1, n65e20 = 37, n65e25 = 25, n65e30 = 36, n65e35 = 3, n65e40 = 2, n65e50 = 4, n65e55 = 6, n65e60 = 9, n65e65 = 4, n65e70 = 6, n65e75 = 4, n65e85 = 8, n65w100 = 1, n65w120 = 1, n65w130 = 1, n65w135 = 2, n65w15 = 4, n65w165 = 1, n65w175 = 2, n65w180 = 1, n65w20 = 6, n65w25 = 2, n65w40 = 1, n65w55 = 5, n65w70 = 1, n70e100 = 1, n70e110 = 1, n70e125 = 1, n70e135 = 1, n70e145 = 1, n70e20 = 7, n70e25 = 8, n70e30 = 1, n70e80 = 1, n70w10 = 1, n70w150 = 1, n70w160 = 1, n70w55 = 1, n70w60 = 1, n70w70 = 1, n75e15 = 1, s10e10 = 11, s10e100 = 9, s10e105 = 268, s10e110 = 300, s10e115 = 99, s10e120 = 93, s10e125 = 17, s10e130 = 4, s10e135 = 5, s10e140 = 17, s10e145 = 14, s10e15 = 5, s10e150 = 2, s10e155 = 8, s10e160 = 2, s10e175 = 6, s10e20 = 11, s10e25 = 8, s10e30 = 56, s10e35 = 71, s10w140 = 1, s10w145 = 1, s10w15 = 1, s10w175 = 3, s10w35 = 15, s10w40 = 299, s10w45 = 60, s10w50 = 22, s10w55 = 4, s10w60 = 2, s10w65 = 7, s10w70 = 9, s10w75 = 23, s10w80 = 372, s10w85 = 12, s15e10 = 7, s15e105 = 1, s15e120 = 22, s15e125 = 1, s15e130 = 19, s15e135 = 3, s15e140 = 5, s15e15 = 12, s15e150 = 2, s15e160 = 1, s15e165 = 2, s15e175 = 1, s15e20 = 11, s15e25 = 28, s15e30 = 35, s15e35 = 33, s15e40 = 44, s15e45 = 24, s15e50 = 3, s15e55 = 1, s15e95 = 1, s15w170 = 2, s15w175 = 21, s15w180 = 3, s15w40 = 125, s15w45 = 68, s15w50 = 18, s15w55 = 4, s15w60 = 8, s15w65 = 10, s15w70 = 32, s15w75 = 264, s15w80 = 241, s20e10 = 3, s20e120 = 5, s20e125 = 4, s20e130 = 1, s20e135 = 2, s20e140 = 2, s20e145 = 53, s20e15 = 13, s20e160 = 1, s20e165 = 7, s20e175 = 6, s20e20 = 9, s20e25 = 33, s20e30 = 44, s20e35 = 14, s20e40 = 3, s20e45 = 59, s20e55 = 2, s20e60 = 1, s20w10 = 1, s20w140 = 1, s20w150 = 20, s20w155 = 4, s20w170 = 1, s20w175 = 3, s20w180 = 1, s20w40 = 17, s20w45 = 124, s20w50 = 81, s20w55 = 30, s20w60 = 15, s20w65 = 38, s20w70 = 80, s20w75 = 141, s20w80 = 2, s25e10 = 5, s25e110 = 2, s25e115 = 11, s25e120 = 2, s25e130 = 3, s25e135 = 1, s25e140 = 4, s25e145 = 33, s25e15 = 16, s25e150 = 35, s25e160 = 9, s25e165 = 19, s25e20 = 16, s25e25 = 78, s25e30 = 20, s25e35 = 1, s25e40 = 10, s25e45 = 30, s25e55 = 62, s25w135 = 1, s25w155 = 1, s25w160 = 1, s25w175 = 1, s25w180 = 4, s25w45 = 158, s25w50 = 323, s25w55 = 129, s25w60 = 35, s25w65 = 33, s25w70 = 34, s25w75 = 3, s30e110 = 8, s30e115 = 1, s30e120 = 4, s30e130 = 2, s30e145 = 9, s30e15 = 10, s30e150 = 280, s30e165 = 1, s30e20 = 25, s30e25 = 127, s30e30 = 76, s30e40 = 1, s30e45 = 6, s30w110 = 1, s30w135 = 1, s30w50 = 74, s30w55 = 148, s30w60 = 225, s30w65 = 73, s30w70 = 67, s30w75 = 8, s35e115 = 128, s35e120 = 5, s35e130 = 2, s35e135 = 70, s35e140 = 17, s35e145 = 56, s35e15 = 25, s35e150 = 288, s35e170 = 1, s35e20 = 34, s35e25 = 52, s35e30 = 6, s35w55 = 49, s35w60 = 199, s35w65 = 223, s35w70 = 64, s35w75 = 44, s40e115 = 3, s40e135 = 35, s40e140 = 146, s40e145 = 227, s40e150 = 17, s40e170 = 35, s40e175 = 34, s40w15 = 1, s40w60 = 39, s40w65 = 70, s40w70 = 39, s40w75 = 60, s45e145 = 60, s45e165 = 2, s45e170 = 34, s45e175 = 11, s45w180 = 1, s45w65 = 3, s45w70 = 16, s45w75 = 37, s50e165 = 12, s50e170 = 3, s50e70 = 1, s50w70 = 9, s50w75 = 10, s55w40 = 1, s55w60 = 1, s55w70 = 7, s55w75 = 7, s5e10 = 29, s5e100 = 175, s5e105 = 26, s5e110 = 49, s5e115 = 124, s5e120 = 58, s5e125 = 25, s5e130 = 54, s5e135 = 50, s5e140 = 18, s5e145 = 1, s5e15 = 14, s5e150 = 3, s5e165 = 3, s5e20 = 5, s5e25 = 40, s5e30 = 119, s5e35 = 98, s5e40 = 7, s5e5 = 3, s5e55 = 8, s5e70 = 3, s5e95 = 4, s5w35 = 1, s5w40 = 36, s5w45 = 79, s5w50 = 57, s5w55 = 15, s5w60 = 18, s5w65 = 10, s5w70 = 12, s5w75 = 14, s5w80 = 91, s5w85 = 49, s5w90 = 1, s5w95 = 2, s80e165 = 1 },
-  -- The places paying at least 2.7x, for the paid-shipping offers: id, name, latitude, longitude,
-  -- pay boost in tenths, region.
+  -- The places paying at least 2.3x with another place within 7 km by road, for the
+  -- paid-shipping offers: id, name, latitude, longitude, pay boost in tenths, region.
   hardest = [==[
-137013	Sīsakht	30.8639	51.4559	28	Iran
-267156	Sîr ed Danniyé	34.3853	36.0311	27	Lebanon
-303645	Oğuz	39.5059	38.8837	27	Turkey
-401019	Al Ḩadīyah	14.5264	43.5705	27	Yemen
-401023	Kusmah	14.5817	43.6368	27	Yemen
-401043	Al Jabīn	14.7039	43.5992	28	Yemen
-448232	Margherita	0.4186	29.8911	29	Uganda
-479933	Tyrnyauz	43.3828	42.9183	28	Russia
-483269	Terskol	43.2568	42.5148	27	Russia
-500316	Rutul	41.5357	47.4239	27	Russia
-583707	Aknada	42.4016	46.1723	27	Russia
-587045	Baş Göynük	41.3258	47.1136	27	Azerbaijan
-735399	Litóchoro	40.1006	22.4978	27	Greece
-740937	Ortaköy	41.2510	41.9836	28	Turkey
-1120616	Zaybāk	36.5295	71.3441	28	Afghanistan
-1125890	Shahrān	36.9798	70.7393	27	Afghanistan
-1129928	Qal‘ah-ye Kūf	38.0412	70.4730	29	Afghanistan
-1130469	Pārūn	35.4206	70.9226	29	Afghanistan
-1131591	Nūsay	38.4435	70.8041	30	Afghanistan
-1132127	Now Dahānak	35.6240	70.0051	27	Afghanistan
-1133657	Māymay	38.4086	71.0384	30	Afghanistan
-1133987	Mandōl	35.2840	70.1702	29	Afghanistan
-1134762	Larkird	35.4894	66.6641	28	Afghanistan
-1135656	Kuran wa Munjan	36.0287	70.7726	30	Afghanistan
-1136354	Deh Khwāhān	37.8897	70.2188	28	Afghanistan
-1136737	Khinj	35.4290	69.7348	28	Afghanistan
-1137148	Khandūd	36.9513	72.3180	30	Afghanistan
-1145607	Chākarān	36.9111	71.0688	28	Afghanistan
-1146979	Barg-e Matāl	35.6728	71.3434	30	Afghanistan
-1148268	Ashkāsham	36.6833	71.5333	29	Afghanistan
-1163626	Thang	34.9274	76.7934	30	India
-1164076	Thal	35.4784	72.2438	28	Pakistan
-1164709	Skardu	35.2979	75.6337	30	Pakistan
-1168288	Patan	35.1096	73.0078	30	Karakoram Highway
-1178338	Gilgit	35.9187	74.3124	30	Karakoram Highway
-1179082	Gakuch	36.1768	73.7638	30	Pakistan
-1181065	Chitral	35.8518	71.7864	30	Pakistan
-1181138	Chilas	35.4129	74.1041	30	Karakoram Highway
-1184701	Aliabad	36.3070	74.6154	30	Karakoram Highway
-1220210	Vanj	38.3708	71.4547	30	Tajikistan
-1220685	Rŭshon	37.9449	71.5575	30	Tajikistan
-1220694	Roshtqal’a	37.2583	71.8259	29	Tajikistan
-1221328	Khorugh	37.4897	71.5530	29	Tajikistan
-1221614	Ishqoshim	36.7248	71.6133	29	Tajikistan
-1221740	Rasht	39.0287	70.3745	27	Tajikistan
-1221802	Jirghatol	39.2197	71.1916	27	Tajikistan
-1222222	Ayní	39.3941	68.5377	27	Tajikistan
-1252408	Trongsa	27.5026	90.5072	28	Bhutan
-1252422	Trashi Yangtse	27.6116	91.4980	27	Bhutan
-1252423	Trashigang	27.3331	91.5542	27	Bhutan
-1252451	Shemgang	27.2169	90.6579	30	Bhutan
-1252514	Mongar	27.2747	91.2396	28	Bhutan
-1252526	Lhuentse	27.6679	91.1839	27	Bhutan
-1252578	Gasa	27.9037	89.7269	29	Bhutan
-1254832	Tawang	27.5742	91.9244	30	India
-1257277	Sarāhan	31.5099	77.7939	29	India
-1258596	Rāmpur	31.4494	77.6309	28	India
-1259617	Pīpalkoti	30.4255	79.4307	28	India
-1260784	Pālampur	32.1145	76.5568	28	India
-1260942	Padam	33.4666	76.8849	29	India
-1262252	Nagar	32.1381	77.1739	29	India
-1263776	Mangan	27.5097	88.5221	28	India
-1263967	Manāli	32.2574	77.1748	28	India
-1264976	Leh	34.1650	77.5840	27	India
-1265376	Kyelang	32.5717	77.0245	30	India
-1266475	Kishtwār	33.3135	75.7673	28	India
-1267776	Kargil	34.5577	76.1262	28	India
-1268814	Joshīmath	30.5554	79.5644	29	India
-1270167	Hayuliang	28.0730	96.5430	28	India
-1272832	Dharamsala	32.2201	76.3201	28	India
-1279451	Zhowagoin	28.6591	97.4506	30	China
-1279489	Zhamog	29.8665	95.7590	30	China
-1279843	Tungdor	29.2000	94.0833	28	China
-1279965	Songmai	28.7147	99.2863	28	China
-1280013	Shengping	28.4856	98.9114	30	China
-1280031	Shangpa	26.9195	98.9516	30	China
-1280277	Qiangqinxue	29.2667	89.9000	28	China
-1280485	Nangxian	29.0470	93.0880	28	China
-1280590	Motuo	29.3133	95.3074	30	China
-1280659	Luzhang	25.9731	98.8234	28	China
-1281098	Gyigang	28.6667	97.5167	30	China
+79006	Al Maḩābishah	15.9476	43.4359	23	Yemen
+251187	Zonianá	35.2950	24.8294	23	Greece
+312143	Hilal	37.4753	42.7858	24	Turkey
+586295	Qaxbaş	41.4325	46.9646	24	Azerbaijan
+735030	Náousa	40.6294	22.0681	23	Greece
+781979	Poliçan	40.6122	20.0981	24	Albania
+782061	Peshkopi	41.6850	20.4289	23	Albania
+782321	Melan	41.6542	20.4653	23	Albania
+784205	Vratnica	42.1433	21.1169	24	North Macedonia
+787692	Nerašte	42.1071	21.1081	24	North Macedonia
+799386	Lutkun	41.4808	47.6858	23	Russia
 1281323	Domartang	30.9390	94.6891	27	China
-1281484	Chongdui	28.1500	85.9667	30	China
-1281497	Cikai	27.7634	98.7111	30	China
-1281708	Baima	30.0575	96.9185	30	China
-1283011	Namche Bazar	27.8053	86.7106	30	Nepal
-1283119	Lobujya	27.9500	86.8167	30	Nepal
-1283189	Kothari	27.9606	85.9567	30	Nepal
-1283484	Dārchulā	29.8300	80.5500	27	Nepal
-1429521	Kirāmān	35.2973	69.6813	28	Afghanistan
-1464922	Pul-e Ḩişār	35.6179	69.4713	27	Afghanistan
-1564065	Thị Trấn Trạm Tấu	21.4666	104.3797	27	Vietnam
-1629930	Rasiei	-2.8170	134.5292	27	Indonesia
-1634739	Mulia	-3.7147	137.9853	29	Indonesia
-1651810	Ainaro	-8.9924	125.5082	27	Timor Leste
-1783956	Zhouqu Chengguanzhen	33.7842	104.3628	30	China
-1785258	Zhanggu	30.8687	101.8885	29	China
-1785522	Zagunao	31.4462	103.1766	30	China
-1788730	Xinmian	29.2399	102.3721	27	China
-1788871	Xinhua	26.8884	102.9332	28	China
-1791406	Wenxian Chengguanzhen	32.9471	104.6814	27	China
-1791566	Weizhou	31.4927	103.5849	29	China
-1792997	Tiandiba	27.7018	103.2481	30	China
-1798505	Puji	27.3802	102.5413	30	China
-1798600	Pisha	27.0706	102.7577	29	China
-1799841	Yongle	33.2647	104.2328	28	China
-1801756	Luqiao	29.9325	102.2316	28	China
-1802171	Kangding	30.0022	101.9569	29	China
-1805734	Jinchuan	31.4755	102.0588	28	China
-1805744	Jincheng	28.2665	103.5684	30	China
-1811182	Fengyi	31.6841	103.8538	30	China
-1816899	Muping	30.3705	102.8122	27	China
-2088143	Porgera	-5.4630	143.1480	27	Papua New Guinea
-2233410	Buea	4.1534	9.2423	27	Cameroon
-2517346	Garafía	28.8167	-17.9333	27	Spain
-2526239	Setti Fatma	31.2251	-7.6775	28	Morocco
+1281493	Coka	30.9054	94.6695	26	China
+1848124	Yudomari	30.2347	130.4794	24	Japan
+1858711	Koshima	30.2346	130.5352	24	Japan
+2509853	Válor	36.9962	-3.0829	23	Spain
+2511091	Santa Úrsula	28.4261	-16.4888	23	Spain
+2511180	Santa Cruz de la Palma	28.6835	-17.7642	25	Spain
+2511287	San Miguel De Abona	28.0983	-16.6171	23	Spain
+2512373	Pórtugos	36.9419	-3.3107	25	Spain
+2512858	Paterna del Río	37.0222	-2.9534	23	Spain
+2513978	Mazo	28.6091	-17.7780	24	Spain
+2515692	La Orotava	28.3908	-16.5231	26	Spain
+2516474	Icod de los Vinos	28.3724	-16.7119	23	Spain
+2516860	Guía de Isora	28.2115	-16.7795	26	Spain
+2517111	Granadilla de Abona	28.1188	-16.5760	24	Spain
+2520194	Capileira	36.9615	-3.3586	26	Spain
+2520800	Breña Alta	28.6500	-17.7833	25	Spain
+2521582	Arona	28.0996	-16.6810	23	Spain
+2522437	Adeje	28.1227	-16.7260	24	Spain
+2522785	Verbicaro	39.7608	15.9073	23	Italy
+2523338	Sant'Alfio	37.7439	15.1395	23	Italy
 2658110	Visperterminen	46.2590	7.9019	27	Switzerland
 2658112	Visp	46.2937	7.8815	27	Switzerland
+2658157	Vernayaz	46.1367	7.0391	26	Switzerland
+2658306	Troistorrents	46.2289	6.9159	25	Switzerland
+2658311	Trimmis	46.9008	9.5612	24	Switzerland
+2658576	Sitten	46.2274	7.3556	25	Switzerland
 2658606	Sierre	46.2919	7.5356	27	Switzerland
-2658811	Sankt Niklaus	46.1772	7.8035	27	Switzerland
+2658684	Schwanden	46.9954	9.0701	24	Switzerland
+2658769	Saxon	46.1494	7.1751	26	Switzerland
+2658793	Sargans	47.0490	9.4410	23	Switzerland
+2658801	Santa Maria in Calanca	46.2629	9.1448	26	Switzerland
 2659098	Raron	46.3120	7.8003	27	Switzerland
-2659281	Orsières	46.0290	7.1444	27	Switzerland
-2659510	Naters	46.3254	7.9891	27	Switzerland
 2659623	Montana	46.3134	7.4884	27	Switzerland
+2659748	Martigny-Ville	46.1028	7.0724	25	Switzerland
 2659775	Malvaglia	46.4059	8.9819	27	Switzerland
-2659864	Lodrino	46.3002	8.9799	27	Switzerland
-2659907	Leukerbad	46.3794	7.6269	27	Switzerland
-2659908	Leuk	46.3174	7.6341	27	Switzerland
+2659831	Lumino	46.2302	9.0642	24	Switzerland
+2659839	Luchsingen	46.9664	9.0372	24	Switzerland
 2659954	Lens	46.2830	7.4498	27	Switzerland
-2659992	Lauterbrunnen	46.5931	7.9094	27	Switzerland
-2660371	Hérémence	46.1803	7.4048	27	Switzerland
-2660498	Grindelwald	46.6240	8.0360	27	Switzerland
+2660083	Laax	46.8045	9.2579	24	Switzerland
+2660275	Ilanz	46.7741	9.2046	23	Switzerland
+2660277	Igis	46.9453	9.5722	23	Switzerland
 2660503	Grimisuat	46.2594	7.3841	27	Switzerland
+2660559	Gordola	46.1826	8.8666	24	Switzerland
+2660594	Glarus	47.0406	9.0680	24	Switzerland
 2660672	Gampel	46.3160	7.7421	27	Switzerland
+2660700	Fully	46.1385	7.1147	25	Switzerland
+2660747	Flums	47.0906	9.3430	23	Switzerland
 2660757	Flims	46.8370	9.2846	27	Switzerland
-2661226	Chamoson	46.2028	7.2232	27	Switzerland
-2661365	Brusio	46.2595	10.1238	27	Switzerland
+2660841	Evionnaz	46.1810	7.0223	26	Switzerland
+2661001	Domat	46.8348	9.4507	25	Switzerland
+2661129	Conthey	46.2237	7.3028	25	Switzerland
+2661160	Claro	46.2576	9.0225	26	Switzerland
+2661453	Bonaduz	46.8110	9.3982	24	Switzerland
+2661463	Bodio	46.3781	8.9099	26	Switzerland
 2661524	Biasca	46.3597	8.9696	27	Switzerland
-2661641	Bagnes	46.0833	7.2167	27	Switzerland
+2661527	Bex	46.2497	7.0098	26	Switzerland
 2661704	Arvigo	46.3021	9.1130	27	Switzerland
-2661865	Acquarossa	46.4547	8.9426	27	Switzerland
-2782852	Ainet	46.8660	12.6897	27	Austria
-3000622	Les Houches	45.8927	6.8064	27	France
-3027301	Chamonix-Mont-Blanc	45.9237	6.8693	27	France
-3164260	Villa di Chiavenna	46.3307	9.4811	27	Italy
-3164684	Varzo	46.2074	8.2527	27	Italy
+2760632	Zell am Ziller	47.2333	11.8833	24	Austria
+2761476	Werfenweng	47.4620	13.2558	23	Austria
+2761479	Werfen	47.4759	13.1902	23	Austria
+2761488	Wenns	47.1667	10.7333	24	Austria
+2764137	Strengen	47.1259	10.4620	24	Austria
+2764453	Steinfeld	46.7581	13.2493	23	Austria
+2764958	Hall in Tirol	47.2833	11.5167	24	Austria
+2764993	Sistrans	47.2333	11.4500	24	Austria
+2765036	Silz	47.2667	10.9333	24	Austria
+2765331	See	47.0833	10.4667	24	Austria
+2766085	Scheffau am Tennengebirge	47.5883	13.2202	23	Austria
+2766971	Rum	47.2833	11.4500	23	Austria
+2767227	Roppen	47.2167	10.8167	24	Austria
+2768291	Prutz	47.0833	10.6667	24	Austria
+2769211	Patsch	47.2053	11.4151	24	Austria
+2769637	Obervellach	46.9367	13.2042	26	Austria
+2769926	Obermieming	47.3000	10.9833	24	Austria
+2770264	Oberdrauburg	46.7431	12.9703	24	Austria
+2770740	Neukirchen am Großvenediger	47.2505	12.2759	23	Austria
+2771109	Mühlbach am Hochkönig	47.3775	13.1293	24	Austria
+2771307	Möllbrücke	46.8364	13.3728	24	Austria
+2772672	Lendorf	46.8353	13.4303	23	Austria
+2773070	Landeck	47.1399	10.5659	24	Austria
+2775185	Irschen	46.7569	13.0253	25	Austria
+2775220	Innsbruck	47.2627	11.3945	23	Austria
+2775307	Imst	47.2450	10.7397	23	Austria
+2777001	Haiming	47.2500	10.8833	23	Austria
+2777974	Gries im Sellrain	47.1955	11.1562	25	Austria
+2778048	Greifenburg	46.7503	13.1798	24	Austria
+2779485	Fliess	47.1167	10.6167	24	Austria
+2779504	Flattach	46.9386	13.1344	25	Austria
+2781054	Dellach im Drautal	46.7375	13.0783	25	Austria
+2782106	Axams	47.2311	11.2789	23	Austria
+2782382	Arzl im Pitztal	47.2071	10.7626	24	Austria
+2968985	Villard-Bonnot	45.2346	5.8832	24	France
+2972911	Theys	45.3013	5.9985	26	France
+2976406	Sallanches	45.9442	6.6316	23	France
+2987275	Pierrefitte-Nestalas	42.9667	-0.0667	23	France
+2988393	Passy	45.9234	6.6956	23	France
+3004764	Le Champ-près-Froges	45.2805	5.9398	24	France
+3016957	Frontenex	45.6334	6.3117	23	France
+3042073	Balzers	47.0667	9.5025	23	Liechtenstein
+3105311	Villanúa	42.6797	-0.5377	23	Spain
+3112694	Puértolas	42.5475	0.1321	23	Spain
+3118057	Losar de la Vera	40.1216	-5.6045	23	Spain
+3120931	Guisando	40.2223	-5.1395	24	Spain
+3123445	Éller	42.4164	1.7922	23	Spain
+3126580	Canfranc	42.7163	-0.5256	23	Spain
+3163998	Vodo	46.4192	12.2456	23	Italy
+3164253	Villadossola	46.0708	8.2671	23	Italy
+3164519	Verres	45.6666	7.6891	26	Italy
+3164620	Venaus	45.1571	7.0107	26	Italy
 3164769	Valpelline	45.8249	7.3255	27	Italy
-3165124	Tubre	46.6440	10.4633	30	Stelvio Pass
+3165144	Trodena	46.3218	11.3498	23	Italy
+3165293	Traversella	45.5091	7.7494	26	Italy
 3165526	Torgnon	45.8062	7.5698	27	Italy
+3165645	Tires	46.4682	11.5270	25	Italy
 3165647	Tirano	46.2148	10.1633	27	Italy
+3165796	Terento	46.8299	11.7829	23	Italy
+3166018	Susa	45.1368	7.0581	26	Italy
+3166091	Strigno	46.0669	11.5222	23	Italy
 3166166	Stelvio	46.5977	10.5458	30	Stelvio Pass
-3166537	Silandro	46.6283	10.7681	27	Italy
-3168123	San Lorenzo	46.1272	8.2006	27	Italy
+3166229	Sporminore	46.2369	11.0292	26	Italy
+3166398	Sondalo	46.3298	10.3269	26	Italy
+3166483	Siusi	46.5413	11.5587	23	Italy
+3166575	Settimo Vittone	45.5493	7.8333	24	Italy
+3167390	Sant'Antonino di Susa	45.1076	7.2733	23	Italy
+3168702	Salbertrand	45.0735	6.8874	25	Italy
+3168714	Saint-Pierre	45.7115	7.2268	26	Italy
+3169002	Ronco Canavese	45.5008	7.5470	25	Italy
 3169075	La Cretaz-Roisan	45.7840	7.3131	27	Italy
-3169712	Quart	45.7410	7.4152	27	Italy
+3169366	Rima	45.8854	7.9986	24	Italy
 3169914	Prato Allo Stelvio	46.6190	10.5914	30	Stelvio Pass
-3172367	Naturno	46.6480	11.0013	27	Italy
-3174144	Malles Venosta	46.6879	10.5465	30	Stelvio Pass
-3175096	Lasa	46.6178	10.6978	30	Stelvio Pass
+3170190	Pont-Saint-Martin	45.5954	7.7945	25	Italy
+3170316	Pont-Canavese	45.4214	7.6002	23	Italy
+3170370	Pollone	45.5798	8.0059	23	Italy
+3170754	Pieve di Cadore	46.4247	12.3642	23	Italy
+3170765	Pieve	45.7727	10.7591	23	Italy
+3171012	Piamborno	45.9197	10.2253	23	Italy
+3171191	Perrero	44.9385	7.1126	24	Italy
+3171250	Pennapiedimonte	42.1556	14.1943	25	Italy
+3171763	Oyace	45.8512	7.3830	26	Italy
+3172185	Novate Mezzola	46.2194	9.4497	26	Italy
+3172192	Nova Levante	46.4290	11.5394	23	Italy
+3172288	Netro	45.5400	7.9470	23	Italy
+3172617	Morbegno	46.1372	9.5741	26	Italy
+3172658	Montjovet	45.7080	7.6741	26	Italy
+3173203	Molveno	46.1424	10.9630	26	Italy
+3173577	Merano	46.6682	11.1595	26	Italy
+3173600	Meltina	46.5874	11.2549	23	Italy
+3173678	Mazzo di Valtellina	46.2574	10.2553	26	Italy
+3174137	Malonno	46.1217	10.3184	25	Italy
+3174186	Malè	46.3536	10.9125	24	Italy
+3174188	Malcesine	45.7614	10.8086	23	Italy
+3174710	Limone sul Garda	45.8145	10.7928	23	Italy
+3174723	Lillianes	45.6295	7.8413	26	Italy
+3175177	Lana	46.6121	11.1565	23	Italy
+3175216	Lama dei Peligni	42.0421	14.1868	26	Italy
 3175328	Laces	46.6164	10.8573	27	Italy
+3175429	Isola del Gran Sasso d'Italia	42.5032	13.6572	25	Italy
+3175507	Ingria	45.4665	7.5712	25	Italy
+3175749	Grumes	46.2212	11.2935	24	Italy
+3175788	Grosio	46.2997	10.2757	26	Italy
+3175869	Gravedona-San Gregorio	46.1464	9.3009	24	Italy
+3176000	Gordona	46.2918	9.3670	26	Italy
+3176199	Gera Lario	46.1700	9.3674	24	Italy
+3176287	Garzeno	46.1341	9.2496	24	Italy
+3176410	Gais	46.8366	11.9493	23	Italy
+3176671	Fortezza	46.7896	11.6100	24	Italy
+3177216	Fano Adriano	42.5523	13.5376	23	Italy
 3177326	Exilles	45.0975	6.9292	27	Italy
-3177872	Courmayeur	45.7966	6.9689	27	Italy
+3177330	Etroubles	45.8208	7.2314	25	Italy
+3177384	Entracque	44.2403	7.3985	24	Italy
+3177410	Serre	44.5403	7.0903	23	Italy
+3177466	Dubino	46.1671	9.4305	25	Italy
+3177539	Domegge di Cadore	46.4567	12.4072	23	Italy
+3177582	Dimaro	46.3257	10.8734	23	Italy
+3177623	Denno	46.2742	11.0491	25	Italy
+3177630	Delebio	46.1365	9.4616	25	Italy
+3177761	Crodo	46.2173	8.3224	26	Italy
+3178405	Colledimacine	42.0037	14.2008	24	Italy
+3178451	Colico Piano	46.1320	9.3771	23	Italy
+3178764	Chiusa	46.6400	11.5657	23	Italy
+3178782	Chiomonte	45.1191	6.9842	26	Italy
+3178808	Chiesa in Valmalenco	46.2672	9.8491	26	Italy
 3178829	Chiavenna	46.3206	9.3982	27	Italy
+3178887	Chialamberto	45.3629	7.3436	23	Italy
+3178905	Chatillon	45.7499	7.6167	25	Italy
+3178921	Chambave	45.7443	7.5493	26	Italy
+3178952	Cesiomaggiore	46.0868	11.9854	23	Italy
+3179111	Cercino	46.1581	9.5081	26	Italy
+3179227	Cedegolo	46.0740	10.3514	26	Italy
+3179516	Castelnuovo Nigra	45.4382	7.6946	23	Italy
+3179572	Castello Tesino	46.0630	11.6325	23	Italy
+3179626	Castelli	42.4848	13.7120	23	Italy
+3179720	Casteldelfino	44.5900	7.0703	23	Italy
+3180593	Caramanico Terme	42.1559	14.0048	23	Italy
+3180688	Capo di Ponte	46.0300	10.3428	25	Italy
+3181015	Campiglia Cervo	45.6629	7.9997	23	Italy
 3181467	Brusson	45.7593	7.7290	27	Italy
-3181730	Bormio	46.4672	10.3701	30	Stelvio Pass
+3181569	Breno	45.9589	10.3065	25	Italy
+3181603	Braone	45.9901	10.3418	26	Italy
+3181799	Borgofranco d'Ivrea	45.5164	7.8586	23	Italy
+3181822	Borgo Valsugana	46.0512	11.4576	23	Italy
+3181971	Darfo Boario Terme	45.8915	10.1888	23	Italy
+3182067	Bianzone	46.1867	10.1093	26	Italy
+3182173	Berbenno di Valtellina	46.1664	9.7473	26	Italy
+3182601	Baceno	46.2606	8.3187	25	Italy
+3182772	Arvier	45.7020	7.1627	26	Italy
 3182961	Aprica	46.1522	10.1488	27	Italy
 3182997	Aosta	45.7376	7.3172	27	Italy
-3323885	Kals am Großglockner	47.0023	12.6455	27	Austria
-3374338	Igreja	15.0339	-24.3250	27	Cabo Verde
-3374707	Cova Figueira	14.8905	-24.2934	27	Cabo Verde
-3516833	Santos Reyes Pápalo	17.8053	-96.8616	27	Mexico
-3516906	Santiago Zacatepec	17.1600	-95.9146	27	Mexico
-3516929	Santiago Nuyoó	17.0145	-97.7666	28	Mexico
+3183082	Andalo	46.1665	11.0043	26	Italy
+3183304	Aldeno	45.9776	11.0928	23	Italy
+3183349	Albaredo	46.1029	9.5905	25	Italy
+3319573	Sellrain	47.2167	11.2167	25	Austria
+3323920	Gerlosberg	47.2167	11.9333	24	Austria
+3514008	Zongolica	18.6667	-96.9971	23	Mexico
+3514502	Xilitla	21.3868	-98.9901	25	Mexico
+3514915	Unión Juárez	15.0628	-92.0807	26	Mexico
+3515811	Tepoztlán	18.9862	-99.1005	24	Mexico
+3516893	Santo Domingo	15.0307	-92.1036	25	Mexico
+3517355	Santa Margarita Huitepec	16.9382	-95.6694	23	Mexico
+3517957	San Pedro Teutila	17.9777	-96.7060	24	Mexico
+3517989	Jaltepetongo	17.6862	-97.0357	24	Mexico
+3518013	Cajonos	17.1680	-96.2617	23	Mexico
 3518632	San Juan Ozolotepec	16.1332	-96.2592	27	Mexico
+3519189	San Ildefonso Villa Alta	17.3383	-96.1523	23	Mexico
 3519259	San Francisco Ozolotepec	16.1008	-96.2218	28	Mexico
-3522238	Santo Domingo Ozolotepec	16.1502	-96.3105	27	Mexico
-3524240	Loma Grande	18.9225	-97.2308	27	Mexico
-3594423	La Libertad	15.5142	-91.8694	27	Guatemala
-3626047	Tovar	8.3301	-71.7528	27	Venezuela
-3626094	Torondoy	9.0346	-71.0141	30	Venezuela
-3626237	Timotes	8.9822	-70.7393	28	Venezuela
-3627021	Santo Domingo	8.8605	-70.6948	28	Venezuela
-3627633	San Simón	8.3502	-71.8511	28	Venezuela
-3629800	Pueblo Llano	8.9152	-70.6592	27	Venezuela
-3632051	Monte Carmelo	9.1882	-70.8123	28	Venezuela
-3636565	La Quebrada	9.1552	-70.5770	27	Venezuela
-3667473	Támesis	5.6646	-75.7134	27	Colombia
-3667660	Susacón	6.2298	-72.6901	29	Colombia
-3669264	San Miguel	6.5758	-72.6459	27	Colombia
-3669310	San Mateo	6.4020	-72.5531	28	Colombia
-3670506	Sabanalarga	6.8489	-75.8171	28	Colombia
-3672512	Peque	7.0212	-75.9093	28	Colombia
-3674618	Molagavita	6.6731	-72.8088	27	Colombia
-3675255	Maripí	5.5519	-74.0086	27	Colombia
-3677767	La Salina	6.1316	-72.3384	28	Colombia
-3679776	La Belleza	5.8637	-73.9617	28	Colombia
-3680316	Jericó	6.1459	-72.5708	29	Colombia
-3681222	Güicán	6.4655	-72.4154	28	Colombia
-3685428	Cumbitara	1.6479	-77.5782	28	Colombia
-3686471	Chiscas	6.5564	-72.5038	27	Colombia
-3687394	Carcasí	6.6271	-72.6262	27	Colombia
-3687426	Caramanta	5.5478	-75.6437	27	Colombia
-3688420	Buenavista	5.5138	-73.9491	27	Colombia
+3519906	San Andrés Yaá	17.2929	-96.1538	23	Mexico
+3519915	San Andrés Solaga	17.2725	-96.2361	25	Mexico
+3522461	Santo Domingo Ocotitlán	19.0145	-99.0610	25	Mexico
+3524376	Libertad Ventanas	15.5395	-92.2758	23	Mexico
+3528566	El Pacayal	15.5985	-92.0425	23	Mexico
+3528569	Eloxochitlán	18.4999	-96.9537	25	Mexico
+3530807	Chiquihuitlán de Benito Juárez	17.9958	-96.7447	25	Mexico
+3532248	San Melchor Betaza	17.2527	-96.1528	23	Mexico
+3532314	Bejucal de Ocampo	15.4553	-92.1583	25	Mexico
+3532910	Amatlán de Quetzalcoatl	18.9754	-99.0374	23	Mexico
+3532926	Amatenango de la Frontera	15.4344	-92.1157	24	Mexico
+3589925	San Juan Atitán	15.4289	-91.6240	25	Guatemala
+3591106	Pueblo Nuevo	14.6471	-91.5395	23	Guatemala
+3601925	San Luis de Planes	14.9833	-88.1333	26	Honduras
+3609453	Guacamaya	15.0167	-88.1500	23	Honduras
+3627611	Santa Ana	8.1170	-72.0217	25	Venezuela
+3628423	San Felipe	10.3399	-68.7425	23	Venezuela
+3629459	Queniquea	7.9166	-72.0138	25	Venezuela
+3633412	Macuto	10.6051	-66.8975	24	Venezuela
+3646767	Caraballeda	10.6122	-66.8519	26	Venezuela
+3652462	Quito	-0.2298	-78.5250	25	Ecuador
+3666596	Tununguá	5.7297	-73.9414	26	Colombia
+3668219	Sativasur	6.0896	-72.7243	24	Colombia
+3668221	Sativanorte	6.1316	-72.7090	26	Colombia
+3669545	San José de Miranda	6.6587	-72.7334	26	Colombia
+3669938	Sandoná	1.2863	-77.4692	23	Colombia
+3672255	Pijao	4.3335	-75.7046	25	Colombia
+3672981	Panqueba	6.4453	-72.4627	25	Colombia
+3674735	Miraflores	5.1961	-73.1450	23	Colombia
+3675605	Málaga	6.6990	-72.7323	24	Colombia
+3681255	Guayatá	4.9642	-73.4875	23	Colombia
+3684510	El Cocuy	6.4115	-72.4488	25	Colombia
+3685984	Consacá	1.2081	-77.4655	26	Colombia
+3687490	Capitanejo	6.5288	-72.6959	24	Colombia
+3687913	California	7.3478	-72.9458	26	Colombia
 3688500	Briceño	5.6882	-73.9178	27	Colombia
-3688775	Boavita	6.3303	-72.5850	28	Colombia
 3690257	Albania	5.7589	-73.9138	27	Colombia
-3690733	Yauya	-8.9833	-77.3000	28	Peru
-3690812	Yanama	-9.0333	-77.4833	30	Peru
+3690673	Yungay	-9.1383	-77.7436	24	Peru
 3690818	Yanac	-8.6167	-77.8667	30	Peru
-3690828	Yamango	-5.1775	-79.7500	27	Peru
 3691028	Usquil	-7.8167	-78.4167	29	Peru
-3691082	Ucuncha	-7.1333	-77.8833	29	Peru
 3691087	Uco	-9.1884	-76.9277	30	Peru
-3691136	Tunal	-5.2092	-79.6753	28	Peru
-3691192	Trinidad	-7.3500	-79.0333	28	Peru
-3691454	Taurija	-8.3086	-77.4219	30	Peru
-3691459	Tauca	-8.4833	-78.0500	30	Peru
-3691640	Tabaconas	-5.3147	-79.2828	27	Peru
-3691682	Sucre	-8.9500	-77.8500	29	Peru
-3691696	Succha	-9.8333	-77.6500	30	Peru
-3691780	Sitabamba	-8.0333	-77.7333	30	Peru
-3691795	Sinsicap	-7.8333	-78.7667	28	Peru
-3691836	Sihuas	-8.5667	-77.6167	27	Peru
-3691879	Shirac	-7.3500	-78.0500	30	Peru
-3691886	Shilla	-9.2308	-77.6250	29	Peru
-3691969	Sayapullo	-7.6000	-78.4667	28	Peru
-3692005	Sartimbamba	-7.6992	-77.7436	29	Peru
-3692030	Sapillica	-4.7784	-79.9826	27	Peru
-3692066	Santo Domingo	-5.0261	-79.8742	28	Peru
-3692349	San Pablo	-7.1167	-78.8333	28	Peru
-3692532	San Gregorio	-7.0500	-79.1000	28	Peru
-3692616	San Benito	-7.4333	-78.9333	29	Peru
-3692714	Salpo	-8.0000	-78.6167	28	Peru
-3692716	Sallique	-5.6550	-79.3133	28	Peru
-3693012	Quinuabamba	-8.7333	-77.3667	29	Peru
-3693028	Quillo	-9.3292	-78.0414	29	Peru
-3693042	Quiches	-8.3950	-77.4908	30	Peru
-3693555	Pira	-9.5667	-77.7167	29	Peru
+3691355	Tingo	-6.3717	-77.9119	23	Peru
+3691359	Tinco	-9.2697	-77.6794	25	Peru
+3691804	Singa	-9.3874	-76.8126	26	Peru
+3692940	Ranrahirca	-9.1714	-77.7219	23	Peru
 3693804	Paucas	-9.1523	-76.8991	30	Peru
-3693979	Pampas	-9.6667	-77.8333	30	Peru
-3693980	Pampas	-8.2000	-77.9000	29	Peru
-3693981	Pamparomas	-9.0736	-77.9814	30	Peru
-3694075	Pallasca	-8.2500	-78.0167	30	Peru
-3694202	Oxamarca	-7.0333	-78.0667	28	Peru
-3694369	Niepos	-6.9269	-79.1286	29	Peru
-3694688	Mollepata	-8.2000	-77.9500	28	Peru
+3694136	Paclas	-6.0622	-77.9767	26	Peru
+3694252	Olto	-6.1025	-77.9594	25	Peru
 3694781	Miracosta	-6.4042	-79.2844	30	Peru
-3695019	Malvas	-9.9167	-77.6833	29	Peru
-3695072	Magdalena	-7.2500	-78.6667	27	Peru
-3695102	Macate	-8.7667	-78.0833	30	Peru
-3695135	Lucmapampa	-6.9500	-78.1000	29	Peru
-3695138	Lucma	-7.6333	-78.5500	28	Peru
-3695246	Longuita	-6.4142	-77.9686	27	Peru
-3695247	Longotea	-7.0667	-77.9167	30	Peru
-3695306	Lluchubamba	-7.5217	-77.9708	30	Peru
-3695334	Llama	-8.8833	-77.3000	29	Peru
-3695335	Llama	-6.5144	-79.1203	28	Peru
+3695063	Maino	-6.3367	-77.8800	24	Peru
+3695320	Llata	-9.4167	-76.7833	25	Peru
 3695386	Licupis	-6.4244	-79.2417	30	Peru
+3695675	La Peca	-5.6111	-78.4350	24	Peru
 3695685	La Pampa	-8.6500	-77.9000	29	Peru
-3695846	Lagunas	-4.7894	-79.8444	28	Peru
-3695996	Lacabamba	-8.2667	-77.9000	29	Peru
-3696227	Incahuasi	-6.2356	-79.3169	27	Peru
-3696295	Huaylillas	-8.1872	-77.3425	27	Peru
-3696322	Huata	-9.0161	-77.8608	30	Peru
-3696363	Huarmaca	-5.5658	-79.5219	27	Peru
-3696372	Huari	-9.3333	-77.2333	27	Peru
-3696384	Huaranchal	-7.6833	-78.4500	29	Peru
+3695747	La Merced	-9.7352	-77.6169	23	Peru
 3696435	Huandoval	-8.3333	-77.9833	30	Peru
-3696441	Huanchay	-9.7333	-77.8333	28	Peru
-3696531	Huallanca	-8.8167	-77.8667	29	Peru
-3696564	Huachis	-9.4167	-77.1167	27	Peru
 3696565	Huacchis	-9.2003	-76.7878	29	Peru
-3696570	Huacaybamba	-9.0382	-76.9529	30	Peru
 3696574	Huacaschuque	-8.3000	-78.0000	30	Peru
-3696605	Huacachi	-9.3167	-76.9395	30	Peru
-3696764	Guzmango	-7.3833	-78.9000	30	Peru
-3696986	Frias	-4.9296	-79.9480	28	Peru
-3697007	La Florida	-6.8697	-79.1211	29	Peru
-3697221	El Prado	-7.0333	-79.0000	30	Peru
-3697794	Corongo	-8.5833	-77.9167	30	Peru
-3697805	Coris	-9.8333	-77.7500	29	Peru
-3697970	Colcabamba	-9.5833	-77.8167	28	Peru
-3698013	Cochabamba	-9.4936	-77.8594	28	Peru
-3698017	Cocabamba	-6.6000	-78.0167	29	Peru
-3698073	Chuquibamba	-6.9342	-77.8522	30	Peru
-3698095	Chumuch	-6.6000	-78.2167	29	Peru
-3698272	Chingas	-9.1197	-76.9913	30	Peru
-3698371	Chetilla	-7.1500	-78.6667	29	Peru
 3698416	Charat	-7.8333	-78.4500	29	Peru
-3698515	Chalaco	-5.0389	-79.7939	27	Peru
-3698523	Chaglla	-9.8436	-75.9031	27	Peru
-3698545	Chacas	-9.2333	-77.3833	27	Peru
-3698705	Cascas	-7.4833	-78.8167	27	Peru
-3698841	Carás	-9.0469	-77.8090	27	Peru
-3698931	Canchaque	-5.3731	-79.6003	28	Peru
-3698941	Cañaris	-6.0461	-79.2647	29	Peru
-3699083	Cajamarquilla	-9.6333	-77.7500	29	Peru
+3698641	Cauday	-7.5833	-78.0833	25	Peru
+3698814	Carhuaz	-9.2819	-77.6447	24	Peru
 3699095	Cajabamba	-7.6167	-78.0500	28	Peru
-3699185	Cabana	-8.4000	-78.0333	30	Peru
-3699280	Bolognesi	-8.3500	-78.0667	30	Peru
-3699452	Bambas	-8.6000	-78.0000	30	Peru
-3699461	Balsas	-6.8333	-78.0167	28	Peru
-3699557	Aricapampa	-7.8058	-77.7172	29	Peru
 3699590	Arancay	-9.1723	-76.7489	27	Peru
-3699873	Aco	-8.5333	-77.8833	30	Peru
-3753846	Utco	-6.9167	-78.0500	29	Peru
-3792374	Buriticá	6.7187	-75.9073	27	Colombia
+3699821	Aija	-9.7811	-77.6094	25	Peru
+3739076	San José de Bolívar	7.9124	-71.9725	26	Venezuela
+3762739	Santa María Temaxcalapa	17.3804	-96.1614	24	Mexico
+3792381	Covarachía	6.5056	-72.7331	24	Colombia
 3795170	La Grita	8.1332	-71.9839	27	Venezuela
-3801747	Santiago Xanica	16.0101	-96.2246	27	Mexico
-3823461	Tonalaco	19.4293	-97.1327	27	Mexico
+3801056	Texcatitlán	17.7126	-97.0662	24	Mexico
+3801145	Teotitlán	18.1318	-97.0706	23	Mexico
+3815771	Arroyo Grande	17.1912	-92.8721	23	Mexico
+3816106	Pasté	16.7042	-92.7411	23	Mexico
+3818790	Francisco I. Madero	19.2498	-97.2265	23	Mexico
+3818798	San Miguel Zoapan	19.0843	-97.3536	23	Mexico
 3834403	Tilcara	-23.5782	-65.3952	27	Argentina
-3835937	Santa Rosa de Tastil	-24.4517	-65.9745	27	Argentina
-3836845	Sañogasta	-29.0952	-67.1159	27	Argentina
-3843504	Mutquín	-28.3210	-66.1425	27	Argentina
 3845254	Maimará	-23.6239	-65.4080	29	Argentina
-3849375	La Poma	-24.7220	-66.2011	29	Argentina
-3853699	Iruya	-22.7919	-65.2170	27	Argentina
-3874552	Putre	-18.1982	-69.5607	29	Chile
-3901485	Viloco	-16.9500	-67.5500	30	Bolivia
-3904043	Sorata	-15.7730	-68.6497	30	Bolivia
-3906765	Quime	-16.9833	-67.2167	30	Bolivia
-3914197	Independencia	-17.0839	-66.8180	27	Bolivia
-3919085	Coroico	-16.1939	-67.7300	30	Death Road
-3924105	Amarete	-15.2368	-68.9846	29	Bolivia
-3925568	Yauyos	-12.4594	-75.9172	30	Peru
-3925703	Yanaquihua	-15.7739	-72.8767	28	Peru
-3925868	Yanaca	-14.2178	-73.1411	29	Peru
-3926066	Viraco	-15.6569	-72.5253	30	Peru
-3926097	Viñac	-12.9311	-75.7786	29	Peru
-3926308	Velinga	-15.2733	-73.0217	30	Peru
-3926474	Urasqui	-16.0286	-73.1706	28	Peru
-3926507	Uñon	-15.7294	-72.4297	30	Peru
-3926698	Ubinas	-16.4000	-70.8667	30	Peru
-3926751	Tupe	-12.7408	-75.8083	30	Peru
-3927145	Toro	-15.2642	-72.9289	30	Peru
-3927155	Toraya	-14.0506	-73.2972	28	Peru
-3927199	Tomepampa	-15.1731	-72.8308	30	Peru
+3925498	Yucay	-13.3214	-72.0822	24	Peru
+3925665	Yanque	-15.6492	-71.6578	25	Peru
+3926152	Vilcanchos	-13.6117	-74.5319	26	Peru
+3926166	Vilcabamba	-14.0756	-72.6258	25	Peru
+3926438	Urubamba	-13.3047	-72.1158	25	Peru
+3926453	Uripa	-13.5325	-73.6772	25	Peru
+3926737	Turpay	-14.2192	-72.6239	25	Peru
+3926980	Totos	-13.5672	-74.5236	26	Peru
+3927023	Totoral	-17.4062	-70.3646	26	Peru
 3927202	Tomay Kichwa	-10.0772	-76.2119	27	Peru
-3927557	Ticrapo	-13.3500	-75.4167	30	Peru
-3927563	Ticllos	-10.2540	-77.1909	30	Peru
-3927680	Tauripampa	-12.5833	-76.1167	28	Peru
-3927683	Tauria	-15.3561	-73.2325	30	Peru
-3927774	Tarata	-17.4744	-70.0328	27	Peru
-3927822	Tapay	-15.5781	-71.9392	30	Peru
-3927827	Tapairihua	-14.1403	-73.1428	29	Peru
-3927829	Tapacocha	-10.0167	-77.5833	30	Peru
-3927934	Tambo Quemado	-14.7333	-74.6833	27	Peru
-3928223	Susapaya	-17.3531	-70.1319	28	Peru
-3928243	Surcubamba	-12.1333	-74.6833	30	Peru
-3928246	Surco	-11.8847	-76.4397	28	Peru
-3928298	Sumbilca	-11.4075	-76.8200	30	Peru
+3927436	Tintay	-13.9592	-73.1858	26	Peru
+3927818	Tapo	-11.3906	-75.5636	23	Peru
 3928394	Soraya	-14.1628	-73.3125	27	Peru
-3928601	Sina	-14.5000	-69.2833	27	Peru
-3928920	Saurama	-13.6936	-73.7586	29	Peru
-3928941	Sarhua	-13.6742	-74.3200	28	Peru
-3929061	Santa Teresa	-13.1322	-72.5906	28	Peru
-3929243	Santa Cruz	-11.0600	-76.9303	30	Peru
-3929295	Santa Ana	-12.8667	-72.7167	27	Peru
-3929353	San Pedro	-14.7667	-74.1000	28	Peru
-3929417	San Mateo	-11.7594	-76.3006	28	Peru
-3929530	San Juan	-13.2000	-75.6500	30	Peru
-3929670	Sangallaya	-12.1667	-76.2667	30	Peru
-3929740	Sandia	-14.2333	-69.4333	28	Peru
+3929114	Santa Rosa	-14.1500	-72.6667	25	Peru
 3929790	San Buenaventura	-11.4889	-76.6619	30	Peru
-3929806	Sañayca	-14.2069	-73.3356	27	Peru
-3930008	Salcabamba	-12.2000	-74.7833	28	Peru
-3930612	Quito-Arma	-13.5333	-75.3333	27	Peru
-3930761	Quinocay	-12.3667	-76.2333	30	Peru
-3930764	Quinistaquillas	-16.7500	-70.8833	29	Peru
-3930853	Quilcata	-15.2478	-73.4539	29	Peru
-3930897	Quicacha	-15.6258	-73.7983	30	Peru
-3930902	Quiaca	-14.4333	-69.3500	27	Peru
-3930946	Querobamba	-14.0133	-73.8397	30	Peru
-3931084	Quebrada Honda	-12.7667	-72.2333	30	Peru
-3931223	Puquio	-14.7000	-74.1333	27	Peru
-3931437	Puyca	-15.0600	-72.6908	28	Peru
-3932017	Pocohuanca	-14.2167	-73.0833	30	Peru
-3932195	Pirca	-11.2344	-76.6556	30	Peru
-3932399	Pichirhua	-13.8608	-73.0736	29	Peru
-3932454	Phara	-14.1517	-69.6631	28	Peru
-3932625	Pausa	-15.2797	-73.3458	30	Peru
-3932657	Paucarbamba	-12.5500	-74.5500	27	Peru
-3933179	Pampas Chico	-10.1153	-77.3978	30	Peru
-3933184	Pampas	-13.2289	-73.8942	29	Peru
-3933284	Pampacolca	-15.7131	-72.5742	29	Peru
-3933342	Palpacachi	-13.8700	-72.5039	28	Peru
-3933519	Palca	-17.7753	-69.9603	27	Peru
-3933584	Paico	-14.0378	-73.6436	28	Peru
-3933664	Pacobamba	-13.6164	-73.0861	28	Peru
-3933720	Pachaconas	-14.2225	-73.0256	28	Peru
-3933745	Paccho	-10.9572	-76.9322	30	Peru
-3933824	Pacaraos	-11.1861	-76.6475	30	Peru
-3933869	Oyolo	-15.1797	-73.1861	30	Peru
-3934030	Ongoy	-13.4036	-73.6697	30	Peru
-3934039	Omate	-16.6833	-70.9833	30	Peru
-3934042	Omas	-12.5167	-76.2833	27	Peru
-3934058	Ollachea	-13.8167	-70.4833	30	Peru
-3934108	Ocros	-13.3914	-73.9150	29	Peru
-3934109	Ocros	-10.4029	-77.3967	30	Peru
-3934119	Ocoyo	-14.0081	-75.0219	29	Peru
-3934165	Ocobamba	-13.4819	-73.5611	30	Peru
-3934470	Mungui	-15.1828	-72.9056	30	Peru
+3932666	Paucar	-10.3711	-76.4436	24	Peru
+3933538	Palca	-11.3461	-75.5686	23	Peru
+3933955	Oropesa	-14.2561	-72.5550	26	Peru
 3934701	Mollepampa	-13.3000	-75.4000	30	Peru
-3934887	Miraflores	-12.2736	-75.8500	28	Peru
-3935155	Matucana	-11.8500	-76.4000	28	Peru
-3935210	Matalaque	-16.4833	-70.8167	30	Peru
-3935270	Mariatana	-12.2500	-76.3333	30	Peru
-3935321	Marcapata	-13.5897	-70.9722	30	Peru
 3935345	Marcabamba	-15.1506	-73.3419	30	Peru
-3935353	Marca	-10.0883	-77.4743	30	Peru
-3935371	Maray	-10.9356	-76.8339	30	Peru
-3935376	Maranura	-12.9631	-72.6647	29	Peru
-3935397	Mara	-14.0853	-72.1081	27	Peru
-3935446	Mangas	-10.3741	-77.1021	30	Peru
-3935618	Madrigal	-15.6078	-71.8081	28	Peru
-3935705	Macachacra	-12.9833	-74.2000	28	Peru
-3935707	Maca	-15.6417	-71.7694	27	Peru
-3935725	Luricocha	-12.8500	-74.2667	29	Peru
+3935494	Mamara	-14.2294	-72.5861	26	Peru
 3935784	Lucre	-13.9492	-73.2261	29	Peru
 3936058	Locroja	-12.6833	-74.4333	27	Peru
-3936139	Lloque	-16.3333	-70.7333	27	Peru
-3936184	Llipa	-10.3819	-77.2058	30	Peru
-3936346	Llacllin	-10.0667	-77.6167	30	Peru
 3936349	Llaclla	-10.2988	-77.1453	30	Peru
-3936857	Laraos	-12.3467	-75.7864	28	Peru
 3936858	Laraos	-11.6647	-76.5394	27	Peru
-3936870	Laramate	-14.2500	-74.8667	27	Peru
 3936982	Lampian	-11.2378	-76.8397	28	Peru
-3937103	Lahuaytambo	-12.1000	-76.4000	29	Peru
-3937197	La Esmeralda	-12.6333	-74.6000	28	Peru
-3937282	Lachaqui	-11.5533	-76.6233	30	Peru
-3938056	Jucul	-10.9486	-76.7450	30	Peru
-3938232	Iray	-15.8564	-72.6256	29	Peru
-3938236	Iquipi	-15.9403	-73.1300	27	Peru
-3938457	Ihuari	-11.1892	-76.9514	29	Peru
-3938907	Huayllapampa	-10.0500	-77.5333	30	Peru
-3939068	Huasta	-10.1238	-77.1573	27	Peru
-3939143	Huaros	-11.4058	-76.5769	29	Peru
-3939340	Huaquirca	-14.3314	-72.8903	27	Peru
-3939386	Huanta	-12.9333	-74.2500	27	Peru
-3939408	Huanipaca	-13.5000	-72.9333	30	Peru
-3939414	Huangascar	-12.8989	-75.8311	30	Peru
-3939515	Huancapi	-13.7567	-74.0667	29	Peru
-3939653	Huampara	-12.3500	-76.1833	30	Peru
-3939675	Huambo	-15.7308	-72.1075	30	Peru
-3939684	Huamatambo	-13.1167	-75.6833	29	Peru
-3939693	Huamantanga	-11.4992	-76.7489	29	Peru
-3939986	Huachos	-13.2000	-75.5167	30	Peru
-3940069	Huacaña	-14.1736	-73.8864	28	Peru
-3940150	Hongos	-12.8114	-75.7650	30	Peru
-3940716	Gorgor	-10.5833	-77.0333	30	Peru
-3941639	Curahuasi	-13.5500	-72.7000	29	Peru
-3941835	Cuchumbaya	-16.7500	-70.6833	30	Peru
-3942014	Coyllurqui	-13.8364	-72.4308	30	Peru
-3942084	Cotabambas	-13.7464	-72.3567	29	Peru
-3942233	Corculla	-15.2625	-73.2006	30	Peru
-3942259	Coracora	-15.0333	-73.7833	28	Peru
-3942290	Copa	-10.3718	-77.4874	30	Peru
-3942377	Congas	-10.3371	-77.4419	30	Peru
+3937036	Lamay	-13.3642	-71.9239	23	Peru
+3939355	Huanza	-11.6567	-76.5033	24	Peru
+3940057	Huacar	-10.1603	-76.2369	23	Peru
+3940712	Goyllarisquizga	-10.4739	-76.4094	23	Peru
+3941620	Curibaya	-17.3825	-70.3347	25	Peru
 3942538	Conchamarca	-10.0378	-76.2153	27	Peru
 3942602	Colta	-15.1622	-73.2947	30	Peru
-3942688	Colonia	-12.6328	-75.8906	30	Peru
-3942811	Colcabamba	-14.0078	-73.2478	28	Peru
-3942813	Colcabamba	-12.4000	-74.7000	30	Peru
-3942822	Colca	-13.7147	-74.0331	27	Peru
-3942881	Cocharcas	-13.6100	-73.7400	28	Peru
+3942875	Cochas	-11.6571	-75.1012	25	Peru
 3942940	Cocas	-13.2667	-75.3667	28	Peru
-3942959	Cocachacra	-11.9133	-76.5383	28	Peru
-3942980	Coalaque	-16.6506	-71.0214	30	Peru
-3943006	Circa	-13.8742	-72.8728	29	Peru
 3943132	Churcampa	-12.7000	-74.4000	30	Peru
-3943156	Chuquibambilla	-14.1019	-72.7067	27	Peru
-3943224	Chungui	-13.2186	-73.6192	30	Peru
-3943259	Chumpi	-15.1000	-73.7667	27	Peru
-3943547	Chojata	-16.4000	-70.7333	29	Peru
-3943580	Choco	-15.5756	-72.1300	30	Peru
 3943769	Chincheros	-13.5183	-73.7222	29	Peru
-3943923	Chilcas	-13.1714	-73.9069	28	Peru
-3944050	Chichas	-15.5475	-72.9186	30	Peru
-3944092	Chiara	-13.8681	-73.6672	27	Peru
-3944274	Charcana	-15.2406	-73.0711	30	Peru
-3944343	Chapimarca	-13.9753	-73.0650	29	Peru
-3944553	Chalcos	-13.8478	-73.7533	27	Peru
-3945068	Ccapi	-13.8528	-72.0792	27	Peru
-3945149	Cayara	-13.7947	-73.9889	29	Peru
-3945223	Catahuasi	-12.7989	-75.8919	30	Peru
-3945233	Castrovirreyna	-13.2667	-75.3167	27	Peru
-3945358	Carumas	-16.8167	-70.7167	30	Peru
-3945462	Carhuanca	-13.7425	-73.7883	28	Peru
-3945554	Carania	-12.3442	-75.8683	30	Peru
-3945610	Carac	-11.1919	-76.7803	30	Peru
+3944179	Chaupimarca	-10.4070	-76.4617	23	Peru
 3945676	Capaya	-14.1194	-73.3181	29	Peru
-3945694	Capacmarca	-14.0081	-71.9981	27	Peru
 3945750	Canta	-11.4672	-76.6242	30	Peru
 3945779	Canis	-10.3390	-77.1694	30	Peru
-3945878	Canaria	-13.9214	-73.9053	29	Peru
-3946110	Callahuanca	-11.8283	-76.6164	28	Peru
-3946280	Cajacay	-10.1550	-77.4396	30	Peru
-3946350	Cachora	-13.5133	-72.8100	29	Peru
-3946475	Cabanaconde	-15.6214	-71.9789	30	Peru
-3946960	Ayo	-15.6817	-72.2742	29	Peru
-3946962	Ayna	-12.6500	-73.9167	29	Peru
+3946177	Calca	-13.3333	-71.9500	24	Peru
 3947203	Asquipata	-14.0550	-73.9100	28	Peru
-3947300	Arma	-13.1167	-75.5333	29	Peru
-3947397	Arahuay	-11.6222	-76.6694	28	Peru
-3947409	Aquia	-10.0741	-77.1442	27	Peru
 3947431	Apongo	-14.0147	-73.9331	29	Peru
-3947718	Andarapa	-13.5261	-73.3661	30	Peru
-3947730	Andamarca	-11.7319	-74.8028	30	Peru
-3947735	Andajes	-10.7922	-76.9094	30	Peru
-3947959	Ambar	-10.7333	-77.2667	30	Peru
-3948198	Alca	-15.1347	-72.7647	30	Peru
+3947956	Ambo	-10.1308	-76.2047	25	Peru
 3948419	Acos	-11.2736	-76.8208	28	Peru
-3948492	Aco	-10.4972	-77.2415	30	Peru
-3948574	Accomarca	-13.8000	-73.9031	27	Peru
-3948608	Acas	-10.4578	-77.3273	30	Peru
-3948642	Abancay	-13.6339	-72.8814	29	Peru
-3948841	Huayllati	-13.9278	-72.4839	28	Peru
-3948871	Sabaino	-14.3089	-72.9467	27	Peru
-3948878	Huayllo	-14.1325	-73.2686	28	Peru
+3948510	Achoma	-15.6608	-71.7008	25	Peru
+3948949	San Antonio	-14.1647	-72.6211	25	Peru
 3948950	Curpahuasi	-14.0622	-72.6697	28	Peru
-3961461	Caujul	-10.8053	-76.9789	30	Peru
-4015640	Canelas	25.1234	-106.5462	27	Mexico
-5849207	Kēōkea	20.7071	-156.3545	27	United States
-6100799	Pemberton	50.3164	-122.8027	27	Canada
-6258562	Echarate	-12.7351	-72.6157	29	Peru
-6268046	Kupwāra	34.0306	74.2642	27	India
-6377880	Choropampa	-6.4375	-78.3497	30	Peru
-6384830	Parcoy	-8.0339	-77.4792	28	Peru
-6385248	Urpay	-8.3472	-77.3894	30	Peru
-6385311	Ullulluco	-8.4556	-77.4267	30	Peru
-6385368	Challas	-8.4383	-77.3206	30	Peru
-6534419	Ayas	45.8151	7.6891	27	Italy
+5775320	Granite	40.5730	-111.8060	23	United States
+6534309	Pramollo	44.9081	7.1907	23	Italy
+6534319	Salza di Pinerolo	44.9400	7.0524	24	Italy
 6534420	Challand-Saint-Anselme	45.7146	7.7345	27	Italy
-6534460	Tresivio	46.1757	9.9426	27	Italy
-6534709	Rhemes-Saint-Georges	45.6523	7.1544	27	Italy
-6534732	Isolaccia	46.4890	10.2941	29	Stelvio Pass
-6534789	Senales	46.7060	10.9085	27	Italy
-6534833	Antrona Schieranco	46.0604	8.1146	27	Italy
+6534422	Chamois	45.8389	7.6187	25	Italy
+6534423	Champorcher	45.6238	7.6215	26	Italy
+6534486	Castione Andevenno	46.1728	9.8003	26	Italy
+6534533	Lozio	45.9857	10.2610	24	Italy
+6534586	Rumo	46.4414	11.0186	23	Italy
+6534588	Sant'Orsola Terme	46.1088	11.3024	23	Italy
+6534589	Terragnolo	45.8783	11.1547	23	Italy
+6534594	Valfloriana	46.2497	11.3431	24	Italy
+6534731	Samolaco	46.2425	9.3940	26	Italy
+6534740	Paisco Loveno	46.0791	10.2926	25	Italy
+6534766	Valtournenche	45.8761	7.6243	24	Italy
+6534771	Aldino	46.3658	11.3551	23	Italy
+6534795	Vandoies - Vintl	46.8151	11.7207	23	Italy
+6534906	Hone	45.6136	7.7385	26	Italy
+6535078	Pont-Bozet	45.6073	7.6864	26	Italy
 6535137	Spriana	46.2203	9.8643	27	Italy
-6535563	San Lorenzo in Banale	46.0766	10.9085	27	Italy
+6535257	Cis	46.3984	11.0033	24	Italy
+6535348	Cortenova	46.0003	9.3845	23	Italy
+6535383	Seppiana	46.0583	8.2166	25	Italy
+6535421	Rueglio	45.4683	7.7546	24	Italy
+6674553	Mucllo	-11.6161	-75.0911	26	Peru
 6675503	Anra	-9.2329	-76.9233	30	Peru
-6675671	Cochabamba	-9.0954	-76.8369	29	Peru
-6941691	Chitre	28.4267	83.6908	27	Nepal
-6945979	Lillooet	50.6856	-121.9420	28	Canada
-6976238	Xia’er	29.0059	101.5144	28	China
-7423730	Eidgah	35.3471	74.8563	30	Pakistan
-7427390	Dasu	35.2917	73.2906	30	Karakoram Highway
-7427939	Barishal	36.3216	74.6950	30	Karakoram Highway
-7649203	Talas	42.3547	72.6568	29	Kyrgyzstan
-8045774	Mainling	29.2177	94.2133	28	China
-8059137	Xarlung	29.9000	93.3000	30	China
-8217253	Mehron	39.4169	69.2868	27	Tajikistan
-8411051	Rablà	46.6704	11.0646	27	Italy
-8468713	San Giacomo	46.1602	10.0253	27	Italy
-8530839	Bilogai	-3.7181	136.6683	27	Indonesia
-8530865	Beoga	-3.8395	137.1667	27	Indonesia
-8531216	Wurigelebur	-3.7627	138.8085	28	Indonesia
-8531221	Karubaga	-3.6994	138.4579	29	Indonesia
-8560194	Yinla	29.5773	94.4830	28	China
-8571723	Mersak	3.5142	97.3821	28	Indonesia
-8571734	Bambol	3.4499	97.8797	28	Indonesia
+8521963	Yıldırım	40.1885	29.1097	23	Turkey
+8531961	Kula	20.7909	-156.3270	26	United States
 8571738	Lawesigalagala Timur	3.3322	97.9421	27	Indonesia
 8572105	Lawepakam	3.3044	97.9679	27	Indonesia
-8608938	Sangpi	28.9339	99.7999	29	China
+8858705	San José Chapayal	17.3006	-92.8903	24	Mexico
+8858769	Tenochtitlán	19.8092	-96.9161	24	Mexico
+8858868	La Pimienta	17.1411	-92.7622	23	Mexico
+8859211	Huitzmaloc	18.4564	-96.9406	26	Mexico
+8859445	Ignacio Zaragoza	17.2900	-92.9381	24	Mexico
+8859607	Aurora Ermita	17.2358	-92.8739	23	Mexico
 8949085	Fénis	45.7347	7.4954	27	Italy
 8949479	Rifiano	46.7029	11.1806	27	Italy
-8952248	Meiern	46.5650	10.7827	27	Italy
 9036140	Castelbello	46.6288	10.9072	27	Italy
-10999966	Dasu	35.2744	73.2240	30	Karakoram Highway
-11169179	Hawai	27.8868	96.8017	30	India
-11901838	San Cayetano	5.3359	-74.0266	27	Colombia
-12069849	Bolívar	-7.1540	-77.7026	29	Peru
+10277901	Tutamandahostel	-0.1973	-78.4975	25	Ecuador
+10629658	Vandans	47.0957	9.8652	23	Austria
 ]==],
 }
