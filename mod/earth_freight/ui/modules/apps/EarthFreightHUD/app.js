@@ -51,6 +51,12 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       }
       scope.setCount = function (count) { scope.picked.count = count }
       // The drop-off's price plus its freight pay, less what you pay here, for the chosen count.
+      // The delivery distance slider; it starts at Lua's value and sends each change back.
+      scope.range = { km: null }
+      scope.setRange = function () {
+        var km = scope.range.km
+        if (scope.data.town && Number.isInteger(km) && km >= 5 && km <= 50) core('setDeliveryRange(' + km + ')')
+      }
       scope.profit = function (g, p) { return (p.price + (p.freight || 0) - g.price) * scope.buyCount(g) }
       scope.pickedGood = function (d) {
         var list = (d && d.town && d.town.goods) || []
@@ -123,6 +129,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         scope.$evalAsync(function () {
           if (disposed) return
           follow(scope.data || {}, data)
+          if (scope.range.km === null && data.town && data.town.range) scope.range.km = data.town.range.km
           scope.data = data
         })
       })

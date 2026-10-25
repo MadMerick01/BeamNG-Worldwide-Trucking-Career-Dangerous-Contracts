@@ -49,6 +49,29 @@ function M.nearest(point, n, except)
   return out
 end
 
+-- The n places whose estimated road distance from point is closest to roadMetres, nearest first,
+-- as { place, metres } with metres the straight-line distance like nearest.
+function M.around(point, roadMetres, n, except)
+  local found = {}
+  for _, place in ipairs(M.list) do
+    if place.id ~= except then
+      local d = location.distance(point, place)
+      if d then found[#found + 1] = { place = place, metres = d, off = math.abs(d * M.ROAD_FACTOR - roadMetres) } end
+    end
+  end
+  table.sort(found, function(a, b)
+    if a.off ~= b.off then return a.off < b.off end
+    return a.place.id < b.place.id
+  end)
+  local out = {}
+  for i = 1, math.min(n, #found) do out[i] = { place = found[i].place, metres = found[i].metres } end
+  table.sort(out, function(a, b)
+    if a.metres ~= b.metres then return a.metres < b.metres end
+    return a.place.id < b.place.id
+  end)
+  return out
+end
+
 -- The estimated road distance between two points, in metres.
 function M.roadEstimate(a, b)
   local d = location.distance(a, b)

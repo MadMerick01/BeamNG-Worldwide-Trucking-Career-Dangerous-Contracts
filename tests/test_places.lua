@@ -5,7 +5,7 @@ local goods = require('earthFreight/goods')
 local config = require('earthFreight/config')
 local location = require('earthFreight/location')
 
--- The generated list: the Sydney region around Penrith, about 8 km apart.
+-- The generated list: the Sydney region around Penrith, about 4 km apart.
 T.check(#places.list > 30, 'a useful number of places'); T.eq(places.list[1].id:sub(1, 2), 'gn', 'GeoNames ids')
 local seen, names = {}, {}
 for _, p in ipairs(places.list) do
@@ -20,7 +20,7 @@ local closest = math.huge
 for i, a in ipairs(places.list) do
   for j = i + 1, #places.list do closest = math.min(closest, location.distance(a, places.list[j])) end
 end
-T.check(closest >= 8000, 'places are at least 8 km apart')
+T.check(closest >= 4000, 'places are at least 4 km apart')
 
 -- The start is Penrith.
 local penrith = places.get(config.START_PLACE)
@@ -52,10 +52,13 @@ T.eq(market.payout(penrith, food, 3, 0.5), math.floor(p1 * 3 * 0.5 + 0.5), 'payo
 do
   local far = places.nearest(penrith, 1, penrith.id)[1].place
   local km = location.distance(penrith, far) / 1000 * places.ROAD_FACTOR
-  local perSlot = km * food.kgPerSlot / 1000 * market.FREIGHT_PER_TONNE_KM
+  local rate = market.FREIGHT_PER_TONNE_KM * (1 + km / market.LONG_HAUL_KM)
+  local perSlot = km * food.kgPerSlot / 1000 * rate
   T.near(market.freightPerSlot(penrith, far, food), perSlot, 1e-9, 'freight is per tonne per road km')
-  T.near(market.freightPerSlot(penrith, far, goods.get('bricks')), km * 0.12 * market.FREIGHT_PER_TONNE_KM, 1e-9, 'heavier goods earn more')
+  T.near(market.freightPerSlot(penrith, far, goods.get('bricks')), km * 0.12 * rate, 1e-9, 'heavier goods earn more')
   T.eq(market.freightPerSlot(penrith, penrith, food), 0, 'no freight for no distance')
+  T.near(market.freightRate(0), market.FREIGHT_PER_TONNE_KM, 1e-9, 'short runs pay the base rate')
+  T.near(market.freightRate(market.LONG_HAUL_KM), 2 * market.FREIGHT_PER_TONNE_KM, 1e-9, 'a long haul pays twice the rate per km')
   T.eq(market.freightPerSlot(nil, far, food), 0, 'no freight without an origin')
   local price = market.price(far, food)
   T.eq(market.payout(far, food, 4, 1, penrith), math.floor((price + perSlot) * 4 + 0.5), 'payout adds freight')
@@ -63,3 +66,18 @@ do
 end
 T.near(market.drivenNeeded(penrith, near[1].place), near[1].metres * 0.7, 1e-6, '70% of the straight line must be driven')
 T.done('places and market')
+
+-- Drop-offs around a delivery distance.
+do
+  for _, km in ipairs({ 5, 25, 50 }) do
+    local list = places.around(penrith, km * 1000, 6, penrith.id)
+    T.eq(#list, 6, km .. ' km: six drop-offs')
+    local worst = 0
+    for i, d in ipairs(list) do
+      T.check(d.place.id ~= penrith.id, 'never the place itself')
+      if i > 1 then T.check(d.metres >= list[i - 1].metres, 'nearest first') end
+      worst = math.max(worst, math.abs(d.metres * places.ROAD_FACTOR - km * 1000))
+    end
+    T.check(worst < 4000, km .. ' km: all within 4 km of the distance (worst ' .. math.floor(worst) .. ' m)')
+  end
+end
