@@ -2,6 +2,7 @@
 -- a factor from a seeded hash of the place and the good, and the place's size. Nothing is stored
 -- and nothing changes as you trade; supply and demand come later. No game globals.
 local location = require('earthFreight/location')
+local places = require('earthFreight/places')
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
@@ -10,6 +11,9 @@ M.MIN_FACTOR, M.MAX_FACTOR = 0.7, 1.3 -- the seeded spread of a place's prices
 M.SIZE_FACTOR = { city = 0.9, town = 1, village = 1.1 }
 -- The HUD's dots: a factor below CHEAP is stocked (green, good to buy), above SHORT is short (red, pays well).
 M.CHEAP, M.SHORT = 0.9, 1.1
+-- Freight pay: every delivery also pays this much per slot for each estimated road km (straight
+-- line times the road factor) from where the load was bought, so every run is worth driving.
+M.FREIGHT_PER_SLOT_KM = 1.5
 -- A load only sells at a place once you have driven at least this share of the straight-line
 -- distance from where it was bought, so a teleport or a lift never delivers.
 M.DRIVEN_SHARE = 0.7
@@ -47,10 +51,18 @@ function M.drivenNeeded(from, to)
   return d and d * M.DRIVEN_SHARE or math.huge
 end
 
--- What a load pays on delivery at a place: its slots at the place's price, cut by cargo damage.
-function M.payout(place, good, slots, condition)
+-- Freight pay for one slot carried from one place to another, in dollars (not rounded).
+function M.freightPerSlot(from, to)
+  local d = from and to and location.distance(from, to)
+  if not d then return 0 end
+  return d / 1000 * places.ROAD_FACTOR * M.FREIGHT_PER_SLOT_KM
+end
+
+-- What a load bought at from pays on delivery at a place: its slots at the place's price plus the
+-- freight pay, all cut by cargo damage.
+function M.payout(place, good, slots, condition, from)
   local c = type(condition) == 'number' and math.max(0, math.min(1, condition)) or 1
-  return math.floor(M.price(place, good) * slots * c + 0.5)
+  return math.floor((M.price(place, good) + M.freightPerSlot(from, place)) * slots * c + 0.5)
 end
 
 return M

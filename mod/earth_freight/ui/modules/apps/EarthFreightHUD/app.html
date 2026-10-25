@@ -91,11 +91,11 @@
           </div>
           <div ng-repeat="p in pickedGood(data).prices" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
             <div style="flex:1;min-width:0;">{{destinationName(data, p.id).name}} <span style="color:#7d8b88;font-size:12px;">&asymp; {{km(destinationName(data, p.id).distanceMetres)}} km</span></div>
-            <div ng-style="{color: dotColor(p.level)}">${{p.price | number:0}}</div>
+            <div ng-style="{color: dotColor(p.level)}">${{p.price + (p.freight || 0) | number:0}}</div>
             <div ng-style="{color: profit(pickedGood(data), p) > 0 ? '#6fcf97' : '#eb5757'}" style="width:64px;text-align:right;">{{profit(pickedGood(data), p) >= 0 ? '+' : '&minus;'}}${{(profit(pickedGood(data), p) < 0 ? -profit(pickedGood(data), p) : profit(pickedGood(data), p)) | number:0}}</div>
             <button type="button" ng-click="buyLoad(pickedGood(data).id, p.id, buyCount(pickedGood(data)))" ng-disabled="!data.town.buyAllowed || pickedGood(data).slots < 1" style="padding:4px 8px;">Buy</button>
           </div>
-          <div style="margin-top:4px;font-size:12px;color:#c9d6d2;">Pick how many to buy (Max fills your space as far as your money goes). Buy sets the GPS to the drop-off. Your profit is what the drop-off pays minus what you pay here, for that many, before fuel.</div>
+          <div style="margin-top:4px;font-size:12px;color:#c9d6d2;">Pick how many to buy (Max fills your space as far as your money goes). Buy sets the GPS to the drop-off. Pays per slot is the drop-off's price plus ${{data.town.freightPerSlotKm | number:2}} a slot for each road km. Your profit is that, minus what you pay here, for that many, before fuel.</div>
         </div>
         <div style="margin:10px 0;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
           <div style="font-weight:bold;">Fuel</div>

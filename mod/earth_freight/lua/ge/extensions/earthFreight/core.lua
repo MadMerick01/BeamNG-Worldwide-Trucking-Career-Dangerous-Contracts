@@ -385,7 +385,7 @@ function M.new(deps)
   function c:saleQuote(place)
     if not self.load or not place then return nil end
     local good, from = goods.get(self.load.good), places.get(self.load.from)
-    local quote = { payout = market.payout(place, good, self.load.slots, self.load.condition) }
+    local quote = { payout = market.payout(place, good, self.load.slots, self.load.condition, from) }
     if place.id == from.id then quote.problem = 'You bought this load here. Deliver it somewhere else.'
     else
       local needed = market.drivenNeeded(from, place)
@@ -527,7 +527,7 @@ function M.new(deps)
       local quote = self:buyQuote(place, good)
       if quote.slots > 0 then
         for _, d in ipairs(destinations) do
-          local profit = quote.slots * (market.price(d.place, good) - quote.price)
+          local profit = math.floor(quote.slots * (market.price(d.place, good) + market.freightPerSlot(place, d.place) - quote.price) + 0.5)
           if profit > 0 and (not best or profit > best.profit) then
             best = { good = good.name, from = place.name, to = d.place.name, toId = d.place.id, goodId = good.id, profit = profit }
           end
@@ -564,7 +564,9 @@ function M.new(deps)
         local prices = {}
         for _, d in ipairs(destinations) do
           local sell = market.price(d.place, good)
-          prices[#prices + 1] = { id = d.place.id, price = sell, profit = quote.slots * (sell - quote.price), level = market.level(d.place, good) }
+          local freight = market.freightPerSlot(place, d.place)
+          prices[#prices + 1] = { id = d.place.id, price = sell, freight = freight,
+            profit = math.floor(quote.slots * (sell + freight - quote.price) + 0.5), level = market.level(d.place, good) }
         end
         goodsHere[#goodsHere + 1] = { id = good.id, name = good.name, price = quote.price, level = market.level(place, good),
           kgPerSlot = good.kgPerSlot, slots = quote.slots, fits = quote.fits, cost = quote.cost, prices = prices }
@@ -577,7 +579,7 @@ function M.new(deps)
       local refuel = self:refuelQuote()
       town = {
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
-        goods = goodsHere, destinations = destList,
+        goods = goodsHere, destinations = destList, freightPerSlotKm = market.FREIGHT_PER_SLOT_KM,
         buyAllowed = problem == nil and not self.load,
         sale = sale and { payout = sale.payout, problem = sale.problem } or nil,
         sellAllowed = problem == nil and sale ~= nil and sale.problem == nil,
@@ -595,7 +597,7 @@ function M.new(deps)
         from = from.name, to = to and to.name or nil, destination = to and location.copy(to) or nil,
         distanceMetres = to and current and places.roadEstimate(current, to) or nil,
         direction = to and current and location.compassPoint(location.bearing(current, to)) or nil,
-        payout = to and market.payout(to, good, self.load.slots, self.load.condition) or nil,
+        payout = to and market.payout(to, good, self.load.slots, self.load.condition, from) or nil,
       }
     end
     local destinations = anchor and places.nearest(anchor, NEARBY_COUNT, anchor.id) or {}

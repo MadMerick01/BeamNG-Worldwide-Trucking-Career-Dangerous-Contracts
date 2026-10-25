@@ -71,6 +71,7 @@ test('the buy count starts at the most you can take and stays within 1 and that'
   a.scope.setCount(1); a.scope.stepCount(g, -1); assert.equal(a.scope.buyCount(g), 1, 'never below 1')
   a.scope.setCount(9); assert.equal(a.scope.buyCount(g), 4, 'never above what you can take')
   assert.equal(a.scope.profit(g, { price: 130 }), 120, 'profit on that many')
+  assert.equal(a.scope.profit(g, { price: 130, freight: 20 }), 200, 'freight pay counts in the profit')
   a.scope.setCount(2); assert.equal(a.scope.buyCount({ slots: 1 }), 1, 'shrinks when you can take fewer')
   assert.equal(a.scope.buyCount({ slots: 0 }), 0, 'nothing when nothing fits')
   a.scope.pickGood('food'); assert.equal(a.scope.buyCount(g), 4, 'a new good starts at max again')

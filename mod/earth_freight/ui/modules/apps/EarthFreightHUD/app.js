@@ -50,7 +50,8 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         scope.picked.count = Math.max(1, Math.min(g.slots, scope.buyCount(g) + delta))
       }
       scope.setCount = function (count) { scope.picked.count = count }
-      scope.profit = function (g, p) { return (p.price - g.price) * scope.buyCount(g) }
+      // The drop-off's price plus its freight pay, less what you pay here, for the chosen count.
+      scope.profit = function (g, p) { return (p.price + (p.freight || 0) - g.price) * scope.buyCount(g) }
       scope.pickedGood = function (d) {
         var list = (d && d.town && d.town.goods) || []
         for (var i = 0; i < list.length; i++) if (list[i].id === scope.picked.good) return list[i]
