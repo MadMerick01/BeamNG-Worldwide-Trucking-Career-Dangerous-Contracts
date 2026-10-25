@@ -131,7 +131,7 @@ The HUD's green and red dots come from the current price relative to the good's 
 
 Fuel costs money. BeamNG already simulates fuel use, so the mod reads the tank level and the player refuels at towns, paying per litre. Weight matters here too: a heavy load burns more fuel, so it is part of the cost of every run.
 
-**❓ OPEN — Q15a:** How refuelling works on Earth, which has no petrol stations: a Refuel button on the HUD when stopped inside a town's arrival circle (and maybe at roadhouses), filling the tank through the vehicle's fuel storage. Needs a check of the vehicle-side energy storage calls.
+**Decided (Q15a):** a **Refuel** button on the HUD when stopped inside a town's arrival circle or at a roadhouse, paid per litre, filling the tank through the vehicle's fuel storage. (The exact vehicle-side fuel call still needs checking in game.)
 
 ### Pay modifiers
 
@@ -140,7 +140,7 @@ The generator scores every place once for how hard it is to get to:
 - **Ruggedness:** how steep and broken the terrain is, from elevation data.
 - **Remoteness:** distance to the nearest big city (long hauls with nowhere to repair).
 - **Climate:** snow, desert or monsoon zones.
-- **Danger (optional):** CarKov-style hostiles in some regions.
+- **Danger:** not for now (Q16). CarKov-style hostiles could be added later.
 
 Pay is a multiplier on that score. Norway's fjords, the Andes, the Australian outback and Himalayan passes pay several times more than flat European highways. Katoomba → Lithgow is a good local example of a climb that should pay more.
 
@@ -167,7 +167,7 @@ The same arc as Rust to Race Car, ending in a truck.
 
 Vehicles are bought through the garage as in Enduro: a car's game Value sets its price, the old car is traded in, and repair prices scale with the car's Value.
 
-**❓ OPEN — Q8:** Which vanilla vehicles fit each tier best, for tips and balance (the Enduro starter is a Burnside; the ute/pickup could be a D-Series or Roamer config; trucks a Gavril T-Series). Is the semi tier usable on BeamNG.Earth's streamed roads at all, given tight terrain streaming around the car?
+**Decided (Q8): the semi tier stays.** BeamNG.Earth builds solid road out to at least 150 m around the car, which is plenty for a trailer. Which vanilla vehicles suit each tier is left to the player (Q9); the HUD tips can suggest some, such as a D-Series or Roamer for the ute stage and a Gavril T-Series for trucks.
 
 **Decided (Q9): there is no forced ladder.** The player can buy any vanilla BeamNG vehicle they can afford. The sedan → ute → truck → semi tiers above describe the usual path, not a rule; money does the gating.
 
@@ -242,8 +242,8 @@ Copy from [`earth-enduro---rust-to-race-car`](https://github.com/MadMerick01/ear
 | mileage and teleport checks in `core.lua` | — | extract | `addMileage` and the 150 m/s teleport rule |
 | arrival logic in `core.lua` | — | extract | "within radius of a point" from resume / finish |
 | `punctures.lua` | ~95 | as is | |
-| `roadEvents.lua` | ~60 | maybe | bandits and friendly villages could fit freight too |
-| `hostile.lua` | ~330 | later | for the danger modifier, if wanted |
+| `roadEvents.lua` | ~60 | adapt | **friendly village free-part offer only** (decided, Q16); bandits left out |
+| `hostile.lua` | ~330 | not now | no hostiles for now (Q16) |
 | `landmask.lua` + `tools/make_land_mask.py` | | pattern | the town-list generator follows the same "build data offline, ship a Lua table" approach |
 | `tools/package.py`, `tools/check_earth_versions.py`, `tests/` harness | | as is | LuaJIT/Lupa test runner and mocked game APIs |
 
@@ -288,7 +288,7 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 | Q6 | Offset size and decay rate | **Decided:** halves every 2 in-game hours; offset scales with load size |
 | Q7 | Pay multiplier cap | **Decided:** 3× |
 | Q7a | Elevation source for ruggedness | SRTM or Copernicus DEM |
-| Q8 | Vehicles per tier; is a semi usable on Earth's streaming? | to test in game |
+| Q8 | Is a semi usable on Earth's streaming? | **Decided:** yes, Earth's road reaches at least 150 m, plenty for a trailer |
 | Q9 | Strict tier ladder or buy anything affordable | **Decided:** any vanilla vehicle you can afford |
 | Q10 | How a teleport gets paid for | **Decided:** cheap "Book shipping" with an empty vehicle, then coordinates to paste |
 | Q11 | Free short hops | **Decided:** yes, under ~2 km and cargo-safe |
@@ -296,8 +296,8 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 | Q13 | ~~Set Earth's GPS destination when a load is bought?~~ | **Decided: yes**, guarded, with a setting to turn it off |
 | Q14 | Place-data format and size | per-cell files if a single table is too big |
 | Q15 | Fuel as a running cost | **Decided:** yes, refuel at towns; heavy loads burn more |
-| Q15a | How refuelling works with no petrol stations | Refuel button inside a town's arrival circle |
-| Q16 | Does CarKov or any Enduro side mode carry over? | no, at least not in layers 1–3 |
+| Q15a | How refuelling works | **Decided:** Refuel button in towns and at roadhouses, paid per litre |
+| Q16 | What carries over from Enduro's extras | **Decided:** punctures and the friendly village part offer; no bandits, hostiles or CarKov for now |
 
 ## Credits
 
