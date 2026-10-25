@@ -2,7 +2,7 @@
 
 A world freight economy mod for BeamNG.drive on [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth). Start in a rust-bucket sedan, end in a semi.
 
-The design is in [`docs/DESIGN.md`](docs/DESIGN.md). This is the first playable layer: fixed prices, parcels only, around Sydney.
+The design is in [`docs/DESIGN.md`](docs/DESIGN.md). What is built so far: parcels between 100,000 towns worldwide, fixed prices, a region pay boost for hard places, and shipping to anywhere on Earth.
 
 ## Install
 
@@ -11,15 +11,38 @@ Copy `earth_freight.zip` into the `mods` folder of your BeamNG user folder. Do n
 ## Play
 
 1. Load the BeamNG.Earth Freeroam level. The HUD shows Penrith's coordinates: copy them, paste them into the BeamNG.Earth map and teleport there. You get the starter car, a rusty Burnside, and $2,500. The car needs a radiator straight away, so fit one first in the parts menu.
-2. Stop inside Penrith. The **Town** tab lists the goods you can buy (parts, food, bricks) and the nearby drop-offs with what each pays. Green dots are cheap to buy, red ones pay well.
-3. **Buy** fills your cargo space as far as your money goes and sets BeamNG.Earth's GPS to the drop-off, so the route and road arrows appear on their own.
-4. Drive there. The load's weight is added to the car, so it is slower and burns more fuel. Rough driving damages the cargo and cuts the pay.
-5. Stop inside the drop-off town and press **Deliver** to get paid. **Refuel** is on the Town tab too, at $2.10 a litre.
-6. **Save** keeps your money, car, load and fuel.
+2. Stop inside a town. The **Town** tab lists the goods you can buy (parts, food, bricks). Green dots are cheap to buy, red ones pay well. The **Best run** line on the Route tab suggests a good first load.
+3. Pick a good, then set **how far** you want to drive with the slider (5 to 50 km). The drop-offs closest to that distance are listed with what each pays and your profit.
+4. Pick **how many** to buy with − / + (or 1, or Max to fill your space as far as your money goes), then press **Buy** next to a drop-off. BeamNG.Earth's GPS is set to it, so the route and road arrows appear on their own.
+5. Drive there. The load's weight is added to the car, so it is slower and burns more fuel. Rough driving damages the cargo and cuts the pay, and tyres can puncture (more often off road).
+6. Stop inside the drop-off town and press **Deliver** to get paid. **Refuel** is on the Town tab too, at $2.10 a litre.
+7. **Save** keeps your money, car, load and fuel. Anything since your last Save is lost when you exit.
 
-A car with no cargo box carries 2 parcels in the boot. Fit a "Cargo Load" box in the game's parts menu for more: the Garage tab bills it like any part (Box S 1 slot, M 4, L 16, XL 128). Repairs, parts and buying cars work as in Earth Enduro.
+**Pay.** A delivery pays the drop-off's price for the goods plus freight pay: $20 a tonne for each road km, and the rate rises the longer the run, to twice that on a 50 km run.
 
-Deliveries must be driven: a load only sells once you have driven 70% of the straight-line distance. A teleport longer than 2 km loses the load and its money; a short hop past a cliff or river keeps it.
+**Cargo space.** A car with no cargo box carries 2 parcels in the boot. Fit a "Cargo Load" box in the game's parts menu for more: the Garage tab bills it like any part (Box S 1 slot, M 4, L 16, XL 128). Repairs, parts and buying cars work as in Earth Enduro.
+
+**Deliveries must be driven.** A load only sells once you have driven 70% of the straight-line distance, and never where you bought it.
+
+## The world
+
+**Towns everywhere.** Every place in the world with over 1,000 people is in the game, thinned to about 4 km apart: 100,125 towns. They load as you drive, so the Nearby list and the Town tab work wherever you are.
+
+**Region pay boost.** Steep, remote and high places pay more, from ×1 up to ×3. The boost comes from how much the ground rises and falls around a town, how few people live nearby, its altitude, and a bonus for famous roads (Death Road, the Stelvio Pass, the Karakoram Highway). Flat Sydney pays ×1.0, Katoomba in the Blue Mountains ×1.5, La Paz ×1.9 and Coroico on Death Road ×3.0. The HUD shows it next to the region name, like "Death Road ×3.0", and on each drop-off. It multiplies everything a town pays and charges, so runs in a hard region pay more, and a run up into one pays more again.
+
+## Shipping
+
+To go far, book shipping on the **Garage** tab with an empty car (no load on board):
+
+- pick one of the listed regions (Penrith, Katoomba, La Paz, Coroico, Bormio, Zermatt, Gilgit, Leh),
+- or **Find** any town by the start of its name (case and accents don't matter: "zurich" finds Zürich),
+- or paste any **coordinates**, like `-16.19, -67.73`.
+
+It costs $100 plus 2 cents a km (Sydney to Bolivia is about $360). You get the coordinates with a Copy button: paste them into the BeamNG.Earth map and teleport there. Landing within 5 km uses the booking up. **Cancel** refunds it. Save waits until you have used or cancelled it.
+
+**Paid shipping offer.** A card at the top of the Garage tab names a town in one of the world's hardest regions (×2.7 to ×3.0) that will pay your shipping if you come and deliver there. A new town is offered every 5 minutes. You pay when you book, and your first delivery within 50 km of that town pays it back. The refund waits in your save, even after the card has moved on.
+
+**Teleporting without a booking.** A teleport longer than 2 km loses any load on board and the money paid for it. Deliveries, trading and driving distance then stop until you go back to where you left from (the Route tab shows the coordinates), or book shipping and land there. A short hop under 2 km, past a cliff or river, is fine and keeps the load.
 
 ## Settings
 
@@ -36,6 +59,7 @@ python tests/run.py                    # every Lua, HUD and packaging test
 python tools/package.py                # builds dist/earth_freight.zip
 python tools/make_places.py            # rebuilds the worldwide place tiles from tools/data/
 python tools/make_places.py --report   # prints the pay boost of some well-known places
+python tools/sample_terrain.py --places PLACES --cache DIR   # re-samples elevation (see its --help)
 python tools/check_earth_versions.py C:\path\to\BeamNG.Earth   # checks the adapter against Earth releases
 ```
 
