@@ -63,6 +63,12 @@ local loadMessages = {
   unreadable = 'Your save file could not be read, so this is a fresh start. Saving will replace it.',
 }
 
+-- How much of a good, as the player reads it: '20 parts', or '400 L of water' for a fluid.
+local function amount(good, units)
+  if good.kind == 'fluid' then return math.floor(units * good.litres + 0.5) .. ' L of ' .. good.name:lower() end
+  return units .. ' ' .. good.name:lower()
+end
+
 local function copy(value)
   if type(value) ~= 'table' then return value end
   local out = {}
@@ -238,7 +244,7 @@ function M.new(deps)
     if not self.cargo then return end
     local kg = self.load and self.load.kg or 0
     if not force and self.appliedWeight == kg then return end
-    local ok, why, detail = self.cargo:setWeight(kg, self:space().parts)
+    local ok, why, detail = self.cargo:setWeight(kg, cargo.partsFor(self:space(), self.load and goods.get(self.load.good)))
     if ok then self.appliedWeight = kg
     else self.diag:event('weight_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W') end
   end
@@ -545,7 +551,9 @@ function M.new(deps)
     end
     local quote = job and not problem and self:jobQuote(job) or nil
     local good = job and goods.get(job.good)
-    if quote and quote.units == 0 then
+    if quote and quote.units == 0 and good.kind == 'fluid' then
+      problem = good.name .. ' needs a fluid tank. Fit a Cargo Load fluid tank in the parts menu (Ctrl+W) and pay for it on the Garage tab.'
+    elseif quote and quote.units == 0 then
       problem = 'Not enough cargo space or payload for ' .. good.name:lower() .. ': one unit takes ' .. good.slots
         .. (good.slots == 1 and ' slot' or ' slots') .. ' and ' .. good.kg .. ' kg. Fit a cargo box in the parts menu.'
     end
@@ -562,7 +570,7 @@ function M.new(deps)
     self:applyWeight()
     if job.drop then
       -- No GPS: an off-road drop is found by the arrow on the Route tab.
-      self.tradeFeedback = 'Loaded ' .. quote.units .. ' ' .. good.name:lower() .. ' (' .. quote.kg .. ' kg) for an off-road drop '
+      self.tradeFeedback = 'Loaded ' .. amount(good, quote.units) .. ' (' .. quote.kg .. ' kg) for an off-road drop '
         .. string.format('%.1f', job.km) .. ' km to the ' .. location.compassPoint(location.bearing(place, job.drop))
         .. '. Follow the arrow on the Route tab and stop within ' .. jobs.DROP_RADIUS .. ' m of the spot. It pays ' .. dollars(quote.pay) .. '.'
       self.diag:event('job_taken', string.format('%s x%d %s -> drop %.5f,%.5f for %d', good.id, quote.units, place.id,
@@ -575,7 +583,7 @@ function M.new(deps)
       gps = ok and ' The GPS is set to ' .. destination.name .. '.' or ' Set the GPS yourself: copy the drop-off coordinates on the Route tab.'
       self.diag:event('gps', ok and destination.id or tostring(why), ok and 'I' or 'W')
     end
-    self.tradeFeedback = 'Loaded ' .. quote.units .. ' ' .. good.name:lower() .. ' (' .. quote.kg .. ' kg) for ' .. destination.name
+    self.tradeFeedback = 'Loaded ' .. amount(good, quote.units) .. ' (' .. quote.kg .. ' kg) for ' .. destination.name
       .. '. It pays ' .. dollars(quote.pay) .. ' on delivery.' .. gps
     self.diag:event('job_taken', string.format('%s x%d %s -> %s for %d', good.id, quote.units, place.id, destination.id, quote.pay))
     return true
@@ -631,7 +639,7 @@ function M.new(deps)
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
-    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), load.units .. ' ' .. good.name:lower() .. ' dropped off road. '
+    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' dropped off road. '
       .. self:named('Nice driving') .. '.' .. refund .. ' Save to keep it.')
     self.tradeFeedback = nil
     self.diag:event('job_delivered', string.format('%s x%d -> drop for %d', good.id, load.units, load.pay))
@@ -661,7 +669,7 @@ function M.new(deps)
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
-    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), load.units .. ' ' .. good.name:lower() .. ' to ' .. place.name
+    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' to ' .. place.name
       .. '. ' .. self:named('Nice driving') .. '.' .. refund .. ' Save to keep it.')
     self.tradeFeedback = nil
     self.diag:event('job_delivered', string.format('%s x%d -> %s for %d', good.id, load.units, place.id, load.pay))
@@ -784,7 +792,7 @@ function M.new(deps)
   end
 
   -- What a town is known for, as the Town tab says it.
-  local characterText = { city = 'City: wants parts', building = 'Building town: wants bricks', farming = 'Farming town: wants food' }
+  local characterText = { city = 'City: wants parts', building = 'Building town: wants bricks', farming = 'Farming town: wants water' }
 
   -- A place's dots, one per good: how much it pays to deliver that good there now.
   function c:dots(place, now)
@@ -823,6 +831,7 @@ function M.new(deps)
         direction = job.drop and location.compassPoint(location.bearing(place, job.drop)) or nil,
         distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
         units = q.units, kg = q.kg, unitSlots = good.slots, unitKg = good.kg,
+        fluid = good.kind == 'fluid' or nil, unitLitres = good.litres, litres = good.litres and q.units * good.litres or nil,
         shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road > 1.005 and q.road or nil,
         allowed = allowed and q.units > 0 }
     end
@@ -894,6 +903,8 @@ function M.new(deps)
       loadView = {
         good = good.name, goodId = good.id, units = self.load.units or self.load.slots, slots = self.load.slots,
         kg = self.load.kg, pay = self.load.pay, drivenKm = self.load.drivenKm,
+        -- A fluid load's slots are its litres.
+        litres = good.kind == 'fluid' and self.load.slots or nil,
         from = from.name, to = to.name, destination = location.copy(to),
         distanceMetres = current and places.roadEstimate(current, to) or nil,
         direction = current and location.compassPoint(location.bearing(current, to)) or nil,
@@ -990,7 +1001,7 @@ function M.new(deps)
       unsavedBalance = self.profile and math.max(0, self.profile.progression.balance - self.savedBalance) or 0,
       unsavedSpending = self.profile and math.max(0, self.savedBalance - self.profile.progression.balance) or 0,
       -- Cargo space from the boxes on the car, the fuel in the tank, and trading.
-      space = { slots = space.slots, kg = space.kg, boxes = space.boxes, boot = space.boot },
+      space = { slots = space.slots, kg = space.kg, boxes = space.boxes, boot = space.boot, litres = space.litres, tanks = space.tanks },
       fuel = self.fuel and { litres = self.fuel.litres, capacity = self.fuel.capacity, pricePerLitre = fuel.PRICE_PER_LITRE } or nil,
       here = trade.here, region = trade.region, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
       shortages = trade.shortages,

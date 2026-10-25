@@ -1,6 +1,6 @@
--- Cargo space and weight. Space comes from the cargo boxes fitted to the vehicle (BeamNG's own
--- "Cargo Load" parts, fitted in the parts menu and paid for in the garage); a car with no box
--- still takes a couple of parcels in the boot. The load itself is a number in the save, never
+-- Cargo space and weight. Space comes from the cargo boxes and fluid tanks fitted to the vehicle
+-- (BeamNG's own "Cargo Load" parts, fitted in the parts menu and paid for in the garage); a car
+-- with no box still takes a couple of parcels in the boot, but fluids need a tank. The load itself is a number in the save, never
 -- objects in the tray, but its weight is added to the vehicle's nodes so a heavy load really is
 -- slower, brakes later and burns more fuel. Every game call is guarded: a missing or changed one
 -- means no added weight, and the delivery carries on.
@@ -18,6 +18,28 @@ M.BOXES = {
   { size = 's', label = 'Cargo box S', slots = 1, kg = 50 },
 }
 
+-- Fluid tanks by size, matched like the boxes on a part that mentions cargo and a fluid tank (the
+-- parts menu calls them "Cargo Load Fluid Tank ..."), never the car's own fuel tank. Only XL's
+-- 800 L is from BeamNG's docs; the others are guesses to check in game. A tank holds as many kg
+-- as litres of water.
+M.TANKS = {
+  { size = 'xl', label = 'Fluid tank XL', litres = 800 },
+  { size = 'l', label = 'Fluid tank L', litres = 400 },
+  { size = 'm', label = 'Fluid tank M', litres = 200 },
+  { size = 's', label = 'Fluid tank S', litres = 100 },
+}
+
+-- The tank a fitted part is, or nil.
+function M.tank(partName, displayName)
+  local text = (tostring(partName or '') .. ' ' .. tostring(displayName or '')):lower()
+  if not text:find('cargo', 1, true) or not (text:find('fluid', 1, true) or text:find('tank', 1, true)) then return nil end
+  if text:find('fuel', 1, true) or text:find('box', 1, true) then return nil end
+  for _, tank in ipairs(M.TANKS) do
+    if text:find('%f[%w]' .. tank.size .. '%f[%W]') then return tank end
+  end
+  return nil
+end
+
 -- The box a fitted part is, or nil. A box's part name or display name mentions cargo and a box
 -- (internal names contain cargo_load_; the parts menu calls them "Cargo Load Box S" and so on),
 -- and ends in its size. A holder that seats several boxes (burnside_cargo_load_box_5M_trunk) is
@@ -32,10 +54,12 @@ function M.box(partName, displayName)
   return nil
 end
 
--- The parcel space of a parts snapshot (the garage's { parts, names }): { slots, kg, boxes, parts },
--- where boxes lists the box labels and parts the box part names. With no box it is the boot.
+-- The space of a parts snapshot (the garage's { parts, names }): { slots, kg, boxes, parts, litres,
+-- tankKg, tanks, tankParts }, where boxes and tanks list the labels and parts and tankParts the part
+-- names. With no box the parcel space is the boot.
 function M.capacity(snapshot)
   local slots, kg, boxes, parts = 0, 0, {}, {}
+  local litres, tanks, tankParts = 0, {}, {}
   if type(snapshot) == 'table' and type(snapshot.parts) == 'table' then
     local names = type(snapshot.names) == 'table' and snapshot.names or {}
     local sorted = {}
@@ -43,20 +67,35 @@ function M.capacity(snapshot)
     table.sort(sorted)
     for _, part in ipairs(sorted) do
       local box = M.box(part, names[part])
+      local tank = not box and M.tank(part, names[part])
       if box then
         slots, kg = slots + box.slots, kg + box.kg
         boxes[#boxes + 1], parts[#parts + 1] = box.label, part
+      elseif tank then
+        litres = litres + tank.litres
+        tanks[#tanks + 1], tankParts[#tankParts + 1] = tank.label, part
       end
     end
   end
-  if slots == 0 then return { slots = M.BOOT.slots, kg = M.BOOT.kg, boxes = {}, parts = {}, boot = true } end
-  return { slots = slots, kg = kg, boxes = boxes, parts = parts, boot = false }
+  local space = { slots = slots, kg = kg, boxes = boxes, parts = parts, boot = false,
+    litres = litres, tankKg = litres, tanks = tanks, tankParts = tankParts }
+  if slots == 0 then space.slots, space.kg, space.boot = M.BOOT.slots, M.BOOT.kg, true end
+  return space
 end
 
--- How many units of a good fit in this space, by slots and by weight, and the slots and kg they take.
+-- How many units of a good fit in this space, by slots (litres in a tank, for a fluid) and by
+-- weight, and the slots (or litres) and kg they take.
 function M.fits(space, good)
-  local units = math.max(0, math.min(math.floor(space.slots / good.slots), math.floor(space.kg / good.kg)))
+  local room, kg = space.slots, space.kg
+  if good.kind == 'fluid' then room, kg = space.litres or 0, space.tankKg or 0 end
+  local units = math.max(0, math.min(math.floor(room / good.slots), math.floor(kg / good.kg + 1e-9)))
   return units, units * good.slots, units * good.kg
+end
+
+-- The part names a good's weight goes on: the tanks for a fluid, the boxes for the rest.
+function M.partsFor(space, good)
+  if good and good.kind == 'fluid' then return space.tankParts or {} end
+  return space.parts
 end
 
 local function defaults()

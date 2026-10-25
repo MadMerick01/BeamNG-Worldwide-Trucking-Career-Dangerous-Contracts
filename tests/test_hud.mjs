@@ -123,6 +123,16 @@ test('the off-road drop delivers from the Route tab only when Lua allows it, wit
   assert.ok(html.includes('ng-if="data.load.drop"') && html.includes('ng-style="arrowStyle(data.load.drop)"'), 'the Route tab shows the arrow')
   assert.ok(html.includes('off-road drop'), 'the board names the drop')
 })
+test('a fluid job shows litres, or that it needs a tank', () => {
+  const a = app()
+  const water = { id: 'water_gn1', fluid: true, units: 40, unitLitres: 10, unitKg: 10, pay: 1320, allowed: true }
+  a.state({ state: 'READY', town: { jobs: [water] } })
+  a.scope.shares.water_gn1 = '50'
+  assert.deepEqual({ ...a.scope.taken(water) }, { units: 20, kg: 200, pay: 660 }, 'half a tank: 200 L, 200 kg')
+  assert.ok(html.includes('taken(j).units * j.unitLitres'), 'the board shows litres')
+  assert.ok(html.includes('Needs a tank'), 'and says when a tank is needed')
+  assert.ok(html.includes('L of {{data.load.good | lowercase}}'), 'the job banner shows litres')
+})
 test('insurance is only claimed when Lua offers it', () => {
   const a = app()
   a.state({ state: 'READY', insurance: { allowed: false } }); a.scope.claimInsurance()

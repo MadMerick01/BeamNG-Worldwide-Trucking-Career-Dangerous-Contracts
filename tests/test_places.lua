@@ -53,6 +53,22 @@ T.near(jobs.basePay(parts, 20, 5), 1700, 1e-6, 'a full load of parts pays $1,700
 T.near(jobs.basePay(food, 10, 5), 2000, 1e-6, 'food $2,000')
 T.near(jobs.basePay(bricks, 6, 5), 2400, 1e-6, 'bricks $2,400')
 T.near(jobs.basePay(food, 10, 20), 12000, 1e-6, 'food $12,000 over 20 km')
+-- Fluids: litres in a tank, paying about a quarter more than bricks for the weight.
+local water, fuel = goods.get('water'), goods.get('fuel')
+local tank = { slots = 20, kg = 1000, litres = 800, tankKg = 800 }
+T.eq(cargo.fits(starter, water), 0, 'no fluid without a tank')
+units, slots, kg = cargo.fits(tank, water)
+T.eq(units, 80, '80 units of 10 L'); T.eq(slots, 800, 'filling 800 L'); T.eq(kg, 800, 'weighing 800 kg')
+units, slots, kg = cargo.fits(tank, fuel); T.eq(slots, 800, 'fuel fills the tank too'); T.eq(kg, 600, 'lighter: 600 kg')
+T.near(jobs.basePay(water, 80, 5), 2640, 1e-6, 'a full tank of water pays $2,640 over 5 km')
+T.near(jobs.basePay(fuel, 80, 5), 2880, 1e-6, 'fuel $2,880')
+T.check(jobs.basePay(water, 1, 5) / water.kg > 1.2 * bricks.pay / bricks.kg, 'water pays over 20% more than bricks a kg')
+T.check(jobs.basePay(water, 1, 5) / water.kg < 1.3 * bricks.pay / bricks.kg, 'and under 30% more')
+T.check(goods.get('food').retired and not goods.ofKind('parcel')[3], 'food is no longer posted, but still known')
+local fluidsSeen = {}
+for _, n in ipairs(places.nearest(penrith, 40)) do fluidsSeen[jobs.fluid(n.place).id] = true end
+T.check(fluidsSeen.water and fluidsSeen.fuel, 'some towns post water, others fuel')
+T.eq(jobs.fluid(penrith).id, jobs.fluid(penrith).id, 'a town keeps its fluid')
 -- Rough roads: half the region boost above 1, at most 2x.
 T.near(jobs.roadBonusFor(1), 1, 1e-9, 'flat roads add nothing'); T.near(jobs.roadBonusFor(1.5), 1.25, 1e-9, 'the Blue Mountains')
 T.near(jobs.roadBonusFor(3), 2, 1e-9, 'Death Road doubles'); T.near(jobs.roadBonusFor(5), 2, 1e-9, 'never more than 2x')
@@ -109,7 +125,9 @@ do
       local metres = location.distance(n.place, drop.drop)
       T.check(metres >= jobs.DROP_MIN - 1 and metres <= jobs.DROP_MAX + 1, 'the drop spot is 1.8 to 3.2 km out: ' .. math.floor(metres))
       T.near(drop.km, metres / 1000, 1e-9, 'its distance is the straight line')
-      T.check(#board >= 3 and #board <= 5, n.place.name .. ' posts 3 to 5 jobs')
+      T.eq(#board, 3, n.place.name .. ' posts three town jobs')
+      T.eq(board[1].good, 'parts', 'parts'); T.eq(board[2].good, 'bricks', 'bricks')
+      T.eq(board[3].good, jobs.fluid(n.place).id, 'and the town fluid')
       local ids, decent = { [drop.id] = true }, false
       for _, j in ipairs(board) do
         T.check(not ids[j.id], 'each job once'); ids[j.id] = true
@@ -149,7 +167,7 @@ do
     bearings[math.floor(location.bearing(penrith, d.drop) / 90)] = true
     T.check(goods.get(d.good).kind == 'parcel', 'a good that can be carried')
   end
-  T.check(seen.parts and seen.food and seen.bricks, 'parts, food and bricks all come up')
+  T.check(seen.parts and seen.bricks and not seen.food and not seen.water, 'the drop carries parts or bricks')
   T.check(bearings[0] and bearings[1] and bearings[2] and bearings[3], 'the spot can be any way out of town')
   local a, b = jobs.dropJob(penrith, 7), jobs.dropJob(penrith, 7)
   T.eq(a.drop.latitude, b.drop.latitude, 'the same spot for the same board'); T.eq(a.id, b.id, 'and the same job')

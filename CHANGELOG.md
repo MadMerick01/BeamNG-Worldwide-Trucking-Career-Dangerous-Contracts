@@ -6,6 +6,10 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Water and fuel jobs.** Every town's job board is now four jobs: parts, bricks, one fluid (water or fuel, depending on the town) and the off-road drop, which carries parts or bricks. Fluids are carried in litres and pay about a quarter more than bricks for the same weight. The Load slider works in litres.
+- **Fluids need a tank.** Without one, the fluid job says "Needs a tank". Fit a Cargo Load fluid tank in the parts menu (Ctrl+W) and pay for it on the Garage tab, the same way as a cargo box. The Garage tab shows how many litres your tank holds.
+- Food is no longer posted, and farming towns now want water. A food job you saved before this build still delivers. Saves still work.
+
 ## Build 21 · 25 Oct 2026
 
 - **Off-road drops.** Every town's job board now has one off-road drop: parts, food or bricks to a random spot 1.8 to 3.2 km out of town, away from the roads. There is no GPS route. The Route tab shows how far the spot is and an arrow pointing to it, and you deliver it from there by stopping within 100 m of the spot. It pays like a 5 km job, and more in steep country. The spot can land anywhere, up a hill or across a creek, so getting there is part of the challenge. The Load slider and insurance work as on any other job. Saves still work.

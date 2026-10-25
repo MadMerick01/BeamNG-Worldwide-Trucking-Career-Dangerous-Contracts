@@ -383,6 +383,16 @@ Decided by Rowan on 25 Oct: one job on every board goes to a spot off the roads 
 - **Water and cliffs:** not checked (Rowan, 25 Oct). With a 100 m zone the spot is usually reachable; when it is not, that is the risk the player takes, and they can abandon the job.
 - **Needs checking in game:** that the arrow turns the right way (`getDirectionVector` in Earth's world frame, where +y is north).
 
+## Fluids as built
+
+Decided by Rowan on 25 Oct: the board is four jobs, parts (light), bricks (heavy), one fluid and the off-road drop (parts or bricks). Food is no longer posted.
+
+- **Goods:** water (1 kg a litre) and fuel (0.75 kg a litre), counted in units of 10 L. They pay $3.30 and $3.60 a litre over 5 km, about a quarter more than bricks for the weight: a full 800 L tank pays $2,640 of water or $2,880 of fuel. Each town posts one fluid, fixed for the town. Farming towns now want water.
+- **Tanks:** BeamNG's Cargo Load fluid tank parts, matched on a part that mentions cargo and a fluid tank, never the car's own fuel tank. They are bought like boxes: fitted in the parts menu and paid for on the Garage tab. XL holds 800 L (BeamNG's docs); L 400, M 200 and S 100 are guesses to check in game. A tank holds as many kg as litres of water.
+- **Weight:** a fluid load's weight goes on the tank part's nodes, like a box. It does not slosh yet. BeamNG's own sloshing comes with its tanks when the game's cargo code fills them, and that call is not in the 0.39 API dump. `tools/probe_fluid_tank.lua`, run once in the game console with a tank fitted, shows which calls and data the car has.
+- **Old saves:** food stays a known good, so a food job in an older save still loads and delivers.
+- **Needs checking in game:** the fluid tank part names and sizes, and the probe's output.
+
 ## Open questions
 
 | # | Question | Working assumption |
