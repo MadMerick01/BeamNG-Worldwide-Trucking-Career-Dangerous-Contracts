@@ -291,6 +291,9 @@ do
   T.check(not c:newGame(), 'asks first'); T.check(c:newGame(), 'confirmed')
   T.eq(c:view().balance, Core.STARTING_MONEY, 'starting money'); T.eq(c.mode, 'start', 'back to the start')
   T.eq(io.files[B].atStart, true, 'saved at the start')
+  local v = c:view()
+  T.check(v.saveFeedback:find('-33.75000000, 150.70000000', 1, true), 'the new-game message gives the coordinates')
+  T.near(v.resume.latitude, -33.75, 1e-9, 'the HUD shows where to go'); T.eq(v.startTown, 'Penrith', 'named')
 end
 
 -- Shipping: book with an empty car, teleport to the coordinates, arrive with the booking used up.

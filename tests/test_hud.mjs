@@ -149,7 +149,7 @@ test('coordinates copy as one latitude, longitude pair through the game clipboar
 })
 test('the HUD keeps money, Save, the message and the load outside the tabs', () => {
   const panels = html.indexOf('role="tabpanel"')
-  for (const always of ['ng-click="save()"', 'data.balance', 'notice(data)', 'data.load.to', 'data.fuel.litres']) {
+  for (const always of ['ng-click="save()"', 'data.balance', 'notice(data)', 'data.load.to', 'data.fuel.litres', 'copyCoordinates(data.resume)']) {
     assert.ok(html.indexOf(always) > -1 && html.indexOf(always) < panels, always)
   }
   for (const id of ['route', 'town', 'garage', 'tips']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)

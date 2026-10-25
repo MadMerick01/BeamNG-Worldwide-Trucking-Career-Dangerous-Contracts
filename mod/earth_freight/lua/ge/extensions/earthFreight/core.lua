@@ -994,7 +994,8 @@ function M.new(deps)
     end
     self.diag:event('new_game', config.START_TOWN)
     self:reload()
-    self.feedback = 'New game started. Go to ' .. config.START_TOWN .. ' to get your starter car.'
+    self.feedback = string.format('New game started. Teleport to %s at %.8f, %.8f (Copy is just below) to get your starter car.',
+      config.START_TOWN, start.latitude, start.longitude)
     return true
   end
 
