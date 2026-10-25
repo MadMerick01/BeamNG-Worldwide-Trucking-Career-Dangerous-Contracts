@@ -74,6 +74,13 @@ do
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
   T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 5000, 'distances are road estimates')
   T.eq(v.town.destinations[1].name, 'Jordan Springs', 'Jordan Springs is the nearest drop-off')
+  T.eq(v.town.range.km, 5, 'drop-offs start around 5 km')
+  T.check(c:setDeliveryRange(23), 'distance set'); T.eq(c:view().town.range.km, 25, 'rounded to 5 km steps')
+  local far = c:view().town.destinations
+  T.check(far[1].distanceMetres > 20000 and far[#far].distanceMetres < 30000, 'drop-offs around 25 km')
+  c:setDeliveryRange(999); T.eq(c:view().town.range.km, 50, 'at most 50 km')
+  T.check(not c:setDeliveryRange('x'), 'odd values refused')
+  c:setDeliveryRange(5)
   T.check(v.bestRun ~= nil and v.bestRun.from == 'Penrith', 'a best run is suggested')
   T.check(v.town.buyAllowed, 'buying allowed')
   local parts = goods.get('parts')

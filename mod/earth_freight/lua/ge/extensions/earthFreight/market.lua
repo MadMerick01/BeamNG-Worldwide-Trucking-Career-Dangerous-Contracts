@@ -15,6 +15,9 @@ M.CHEAP, M.SHORT = 0.9, 1.1
 -- (straight line times the road factor) from where the load was bought, so every run is worth
 -- driving and heavy loads earn more for the distance (and burn more fuel getting there).
 M.FREIGHT_PER_TONNE_KM = 20
+-- Longer runs pay more per km, to make the risk worth it: the rate grows by its own size every
+-- LONG_HAUL_KM, so a 50 km run pays twice the per-km rate of a very short one.
+M.LONG_HAUL_KM = 50
 -- A load only sells at a place once you have driven at least this share of the straight-line
 -- distance from where it was bought, so a teleport or a lift never delivers.
 M.DRIVEN_SHARE = 0.7
@@ -52,11 +55,17 @@ function M.drivenNeeded(from, to)
   return d and d * M.DRIVEN_SHARE or math.huge
 end
 
+-- The freight rate per tonne per km for a run of this many road km.
+function M.freightRate(roadKm)
+  return M.FREIGHT_PER_TONNE_KM * (1 + math.max(0, roadKm) / M.LONG_HAUL_KM)
+end
+
 -- Freight pay for one slot of a good carried from one place to another, in dollars (not rounded).
 function M.freightPerSlot(from, to, good)
   local d = from and to and good and location.distance(from, to)
   if not d then return 0 end
-  return d / 1000 * places.ROAD_FACTOR * good.kgPerSlot / 1000 * M.FREIGHT_PER_TONNE_KM
+  local km = d / 1000 * places.ROAD_FACTOR
+  return km * good.kgPerSlot / 1000 * M.freightRate(km)
 end
 
 -- What a load bought at from pays on delivery at a place: its slots at the place's price plus the

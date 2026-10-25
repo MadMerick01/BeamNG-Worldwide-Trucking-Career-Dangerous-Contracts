@@ -25,6 +25,10 @@ M.STARTING_MONEY = STARTING_MONEY
 M.STARTER_MODEL, M.STARTER_CONFIG = workshop.STARTER_MODEL, workshop.STARTER_CONFIG
 -- How many places the nearby list and a town's delivery list show.
 local NEARBY_COUNT = 6
+-- The delivery distance the player picks on the Town tab, in road km: drop-offs are the places
+-- closest to it.
+local RANGE = { min = 5, max = 50, step = 5, default = 5 }
+M.RANGE = RANGE
 -- How long the HUD shows a delivery, a cancelled load or a puncture.
 local FLASH_SECONDS = 8
 -- A puncture's tyre repair, as damage points, so every repair quote and bill includes it. Like
@@ -543,6 +547,18 @@ function M.new(deps)
     return out
   end
 
+  -- Sets the delivery distance the Town tab's drop-offs are picked around, in road km.
+  function c:setDeliveryRange(km)
+    if type(km) ~= 'number' or km ~= km then return false end
+    self.rangeKm = math.max(RANGE.min, math.min(RANGE.max, math.floor(km / RANGE.step + 0.5) * RANGE.step))
+    return true
+  end
+
+  -- The drop-offs offered from a place: the places nearest the picked delivery distance.
+  function c:destinationsFrom(place)
+    return places.around(place, (self.rangeKm or RANGE.default) * 1000, NEARBY_COUNT, place.id)
+  end
+
   function c:tradeView(current)
     local place = current and self:here()
     local anchor = place or (current and (places.nearest(current, 1)[1] or {}).place)
@@ -557,7 +573,7 @@ function M.new(deps)
     local town
     if place then
       local problem = self:tradeProblem(place)
-      local destinations = places.nearest(place, NEARBY_COUNT, place.id)
+      local destinations = self:destinationsFrom(place)
       local goodsHere = {}
       for _, good in ipairs(goods.carried()) do
         local quote = self:buyQuote(place, good)
@@ -580,6 +596,7 @@ function M.new(deps)
       town = {
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
         goods = goodsHere, destinations = destList, freightPerTonneKm = market.FREIGHT_PER_TONNE_KM,
+        range = { km = self.rangeKm or RANGE.default, min = RANGE.min, max = RANGE.max, step = RANGE.step },
         buyAllowed = problem == nil and not self.load,
         sale = sale and { payout = sale.payout, problem = sale.problem } or nil,
         sellAllowed = problem == nil and sale ~= nil and sale.problem == nil,
@@ -600,7 +617,7 @@ function M.new(deps)
         payout = to and market.payout(to, good, self.load.slots, self.load.condition, from) or nil,
       }
     end
-    local destinations = anchor and places.nearest(anchor, NEARBY_COUNT, anchor.id) or {}
+    local destinations = anchor and self:destinationsFrom(anchor) or {}
     return {
       here = place and { id = place.id, name = place.name, size = place.size } or nil,
       nearby = nearby, town = town, load = loadView,
@@ -864,6 +881,7 @@ end
 function M.sellLoad() return safely(function() return ensure():sell() end) end
 function M.dumpLoad() return safely(function() return ensure():dumpLoad() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end
+function M.setDeliveryRange(km) return safely(function() return ensure():setDeliveryRange(km) end) end
 -- The player car's answers to fuel.lua's commands.
 function M.fuelReading(vehicleId, litres, capacity)
   return safely(function() if active then active:fuelReading(vehicleId, litres, capacity) end end)

@@ -76,6 +76,19 @@ test('the buy count starts at the most you can take and stays within 1 and that'
   assert.equal(a.scope.buyCount({ slots: 0 }), 0, 'nothing when nothing fits')
   a.scope.pickGood('food'); assert.equal(a.scope.buyCount(g), 4, 'a new good starts at max again')
 })
+test('the delivery distance starts at the game\'s value and only sends whole km in range', () => {
+  const a = app()
+  a.scope.range.km = 25; a.scope.setRange()
+  assert.equal(a.commands.length, 1, 'nothing sent outside a town')
+  a.scope.range.km = null
+  a.state({ state: 'READY', town: { range: { km: 10, min: 5, max: 50, step: 5 } } })
+  assert.equal(a.scope.range.km, 10, 'starts at the game value')
+  a.scope.range.km = 25; a.scope.setRange()
+  assert.equal(a.commands.at(-1), fixed('setDeliveryRange(25)'))
+  const sent = a.commands.length
+  for (const odd of [0, 55, 12.5, '20) os.exit(', null]) { a.scope.range.km = odd; a.scope.setRange() }
+  assert.equal(a.commands.length, sent, 'odd values never sent')
+})
 test('the picked good defaults to the best run, then the first good', () => {
   const a = app()
   const goods = [{ id: 'parts' }, { id: 'food' }]
