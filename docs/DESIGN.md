@@ -124,7 +124,13 @@ Nothing ticks in the background, and the save only holds places you have actuall
 
 The HUD's green and red dots come from the current price relative to the good's world baseline: green means stocked and cheap to buy, red means short and pays well to deliver.
 
-**❓ OPEN — Q6:** Decay curve and rate (linear vs exponential, a half-life in in-game hours?), and how big one delivery's offset is relative to vehicle size. A semi load should move a village's price far more than a parcel.
+**Decided (Q6):** the offset decays exponentially and **halves every 2 in-game hours**. Its size scales with the load: one delivery's offset is the load's size relative to how much the place wants, so a semi load can flood a village in one drop while a parcel barely moves a city's price.
+
+### Fuel (decided, Q15)
+
+Fuel costs money. BeamNG already simulates fuel use, so the mod reads the tank level and the player refuels at towns, paying per litre. Weight matters here too: a heavy load burns more fuel, so it is part of the cost of every run.
+
+**❓ OPEN — Q15a:** How refuelling works on Earth, which has no petrol stations: a Refuel button on the HUD when stopped inside a town's arrival circle (and maybe at roadhouses), filling the tank through the vehicle's fuel storage. Needs a check of the vehicle-side energy storage calls.
 
 ### Pay modifiers
 
@@ -137,7 +143,9 @@ The generator scores every place once for how hard it is to get to:
 
 Pay is a multiplier on that score. Norway's fjords, the Andes, the Australian outback and Himalayan passes pay several times more than flat European highways. Katoomba → Lithgow is a good local example of a climb that should pay more.
 
-**❓ OPEN — Q7:** Which elevation source for ruggedness (SRTM / Copernicus DEM sampled per place?) and how strong the multiplier is (cap at 3×? 5×?).
+**Decided (Q7): the multiplier is capped at 3×.** Flat highways pay 1×, the Blue Mountains around 1.5×, the Andes or Himalayas near 3×. Any higher and nobody would deliver anywhere else.
+
+**❓ OPEN — Q7a:** Which elevation source the generator samples for ruggedness (SRTM or Copernicus DEM per place).
 
 ### Cargo damage
 
@@ -196,7 +204,7 @@ One helper line suggests the best run for a new player, e.g. *"Best run: grain, 
 
 **Arrival:** a place's "you've arrived" circle is sized from its importance (a city depot is bigger than a village store). Trading only works inside it and when stopped.
 
-**❓ OPEN — Q12:** Road distance. Straight-line is trivial; road distance needs BeamNG's road graph (`map.findClosestRoad` / the navgraph), which on Earth only exists for streamed tiles near the car. Options: show straight-line ×1.3 as an estimate, compute road distance only for loaded tiles, or precompute in the generator. Enduro's puncture code already notes that how complete Earth's road map is remains unproven. Earth's GPS can plan a true road route through its companion server (see the planning map section), but only one destination at a time and only online, so it fits the current delivery, not a list of six places.
+**Decided (Q12):** the nearby list shows **straight-line distance × 1.3, marked "≈"**, because Earth's road graph only covers the roads close to the car. The current delivery shows the true road distance from Earth's GPS route once it is set (see the planning map section).
 
 ### Planning map: our own screen, not Earth's (decided)
 
@@ -276,16 +284,18 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 | Q5 | Physical or abstract cargo | **Decided:** a number; space from the cargo boxes fitted, weight matters |
 | Q5a | How the load's weight reaches the physics | look at how career cargo adds mass |
 | Q5b | Which parts are cargo boxes and what each holds | career cargo slots if readable, else our own table |
-| Q6 | Offset size and decay rate | exponential decay; offset scales with load size |
-| Q7 | Elevation source and multiplier cap | to decide |
+| Q6 | Offset size and decay rate | **Decided:** halves every 2 in-game hours; offset scales with load size |
+| Q7 | Pay multiplier cap | **Decided:** 3× |
+| Q7a | Elevation source for ruggedness | SRTM or Copernicus DEM |
 | Q8 | Vehicles per tier; is a semi usable on Earth's streaming? | to test in game |
 | Q9 | Strict tier ladder or buy anything affordable | **Decided:** any vanilla vehicle you can afford |
 | Q10 | How a teleport gets paid for | **Decided:** cheap "Book shipping" with an empty vehicle, then coordinates to paste |
 | Q11 | Free short hops | **Decided:** yes, under ~2 km and cargo-safe |
-| Q12 | Road distance on Earth's partial road graph | straight-line × factor, labelled as an estimate |
+| Q12 | Road distance on the HUD | **Decided:** straight-line × 1.3 marked ≈; true road distance for the current delivery from Earth's GPS |
 | Q13 | ~~Set Earth's GPS destination when a load is bought?~~ | **Decided: yes**, guarded, with a setting to turn it off |
 | Q14 | Place-data format and size | per-cell files if a single table is too big |
-| Q15 | Fuel as a running cost? BeamNG simulates fuel; Enduro ignores it | to decide |
+| Q15 | Fuel as a running cost | **Decided:** yes, refuel at towns; heavy loads burn more |
+| Q15a | How refuelling works with no petrol stations | Refuel button inside a town's arrival circle |
 | Q16 | Does CarKov or any Enduro side mode carry over? | no, at least not in layers 1–3 |
 
 ## Credits
