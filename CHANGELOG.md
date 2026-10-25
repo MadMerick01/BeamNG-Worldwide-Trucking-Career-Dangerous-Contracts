@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The HUD stays where you left it after the parts menu or the map.** Closing the parts menu (Ctrl+W) or the map no longer sends the HUD back to the start page, and it stays on the tab you were on instead of jumping to Town or Garage. The start page still opens by itself on a new game, and any time from the Profile button. Saves still work.
+
 ## Build 16 · 25 Oct 2026
 
 - **Parts, food and bricks are much lighter.** Each slot of parts now weighs 2 kg (was 20 kg), food 8 kg (was 25 kg) and bricks 25 kg (was 120 kg). Your car feels the lighter load and uses less fuel carrying it.
