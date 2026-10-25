@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 23 · 25 Oct 2026
+
 - **Water and fuel now slosh in the tank.** A fluid load is poured into the Cargo Load fluid tank itself, the same way BeamNG fills it, so it moves around when you brake, corner or climb instead of sitting still like a solid weight. Please try it and say how it feels.
 - **The Garage tab shows your tank's real size.** Once you have driven to a town with a tank fitted, the game asks the car how many litres the tank holds, and job sizes use that instead of an estimate.
 - If your tank turns out not to slosh, the load still weighs the same as before. Your saves still work.
