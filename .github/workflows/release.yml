@@ -3,6 +3,8 @@ name: Release
 # Every push to main is tested, packaged and published as a new GitHub
 # Release. The ZIP asset always has the same name, so
 # releases/latest/download/earth-freight-sim.zip points at the newest build.
+# The release notes are the "Coming next" entries from CHANGELOG.md, which
+# are then moved under "## Build N" and pushed back to main.
 on:
   push:
     branches: [main]
@@ -20,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -35,8 +39,27 @@ jobs:
       - name: Run tests
         run: python tests/run.py
 
+      # The ZIP's copy of CHANGELOG.md lists this build's changes under its number.
+      - name: Number the changelog in the ZIP
+        env:
+          BUILD: ${{ github.run_number }}
+        run: |
+          cp CHANGELOG.md "$RUNNER_TEMP/released-changelog.md"
+          python tools/changelog.py --build "$BUILD" --released "$RUNNER_TEMP/released-changelog.md" --notes "$RUNNER_TEMP/zip-notes.md"
+
       - name: Build mod ZIP
         run: python tools/package.py --output dist/earth-freight-sim.zip
+
+      # Main may have moved on since this commit, so the notes only list the
+      # entries main still has waiting in "Coming next".
+      - name: Write release notes and number the changelog on main
+        env:
+          BUILD: ${{ github.run_number }}
+        run: |
+          git checkout -- CHANGELOG.md
+          git fetch origin main
+          git checkout -B main origin/main
+          python tools/changelog.py --build "$BUILD" --released "$RUNNER_TEMP/released-changelog.md" --notes "$RUNNER_TEMP/changes.md"
 
       - name: Publish release
         env:
@@ -44,15 +67,42 @@ jobs:
           TAG: build-${{ github.run_number }}
         run: |
           short_sha="${GITHUB_SHA::7}"
-          subject="$(git log -1 --format=%s)"
           {
-            echo "Built from $short_sha on $(date -u +%Y-%m-%d): $subject"
+            echo "## What's changed"
             echo
-            echo 'Install Earth Freight Sim: copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. Do not extract it.'
+            cat "$RUNNER_TEMP/changes.md"
+            echo
+            echo 'Every change so far is in [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).'
+            echo
+            echo "## Install"
+            echo
+            echo 'Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. Do not extract it.'
+            echo
+            echo "Built from $short_sha on $(date -u +%Y-%m-%d)."
           } > notes.md
           gh release create "$TAG" dist/earth-freight-sim.zip \
             --target "$GITHUB_SHA" \
             --title "Earth Freight Sim build ${{ github.run_number }} ($short_sha)" \
             --notes-file notes.md \
-            --generate-notes \
             --latest
+
+      - name: Push the numbered changelog
+        env:
+          BUILD: ${{ github.run_number }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898283+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4; do
+            if git diff --quiet CHANGELOG.md; then
+              echo 'Nothing to number in CHANGELOG.md'
+              exit 0
+            fi
+            git commit -m "Changelog: number build $BUILD" CHANGELOG.md
+            git push origin main && exit 0
+            # main moved on: number the same entries on top of it and retry.
+            sleep $((attempt * 2))
+            git fetch origin main
+            git reset --hard origin/main
+            python tools/changelog.py --build "$BUILD" --released "$RUNNER_TEMP/released-changelog.md" --notes "$RUNNER_TEMP/retry-notes.md"
+          done
+          exit 1

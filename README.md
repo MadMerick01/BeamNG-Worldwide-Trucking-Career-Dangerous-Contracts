@@ -6,7 +6,7 @@ The design is in [`docs/DESIGN.md`](docs/DESIGN.md). What is built so far: parce
 
 ## Install
 
-Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. Do not extract it. If you have the older `earth_freight.zip` there, delete it first; your saves carry over. Every push to `main` builds a new ZIP on the [Releases](../../releases/latest) page. Turn on the **Earth Freight Sim** UI app in the game's UI apps menu.
+Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. Do not extract it. If you have the older `earth_freight.zip` there, delete it first; your saves carry over. Every push to `main` builds a new ZIP on the [Releases](../../releases/latest) page. What changed in each build is listed in plain English in [`CHANGELOG.md`](CHANGELOG.md) and on its release page. Turn on the **Earth Freight Sim** UI app in the game's UI apps menu.
 
 ## Play
 
@@ -62,6 +62,8 @@ python tools/make_places.py --report   # prints the pay boost of some well-known
 python tools/sample_terrain.py --places PLACES --cache DIR   # re-samples elevation (see its --help)
 python tools/check_earth_versions.py C:\path\to\BeamNG.Earth   # checks the adapter against Earth releases
 ```
+
+Every pull request adds a line for players under **Coming next** in [`CHANGELOG.md`](CHANGELOG.md). The release workflow uses those lines as the release notes and moves them under the new build's number. See [`CLAUDE.md`](CLAUDE.md) for how to write them.
 
 The mod's Lua is in `mod/earth_freight/lua/ge/extensions/earthFreight/`. `core.lua` ties it together; `workshop.lua` (garage bills), `earthAdapter.lua`, `persistence.lua`, `garage.lua`, `punctures.lua` and `pricing.lua` come from Earth Enduro. `docs/beamng-api/` is the BeamNG 0.39 API dump, searchable with `tools/api_lookup.py`.
 

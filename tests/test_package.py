@@ -29,7 +29,7 @@ class PackageTest(unittest.TestCase):
             for name in ('scripts/earthFreight/modScript.lua', 'lua/ge/extensions/earthFreight/core.lua',
                          'lua/ge/extensions/earthFreight/placesIndex.lua', 'lua/ge/extensions/earthFreight/tiles/s35e150.lua',
                          'ui/modules/apps/EarthFreightHUD/app.json',
-                         'README.md', 'docs/DESIGN.md', 'config.example.json'):
+                         'README.md', 'CHANGELOG.md', 'docs/DESIGN.md', 'config.example.json'):
                 self.assertIn(name, names)
             self.assertFalse(any(n.startswith(('settings/', 'tests/', 'tools/', 'earth_freight/', 'docs/beamng-api/')) for n in names))
             self.assertFalse(any('save-a.json' in n or 'save-b.json' in n or n.endswith('.pyc') for n in names))
