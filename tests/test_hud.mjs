@@ -99,6 +99,11 @@ test('the delivery distance starts at the game\'s value and only sends whole km 
   const sent = a.commands.length
   for (const odd of [0, 55, 12.5, '20) os.exit(', null]) { a.scope.range.km = odd; a.scope.setRange() }
   assert.equal(a.commands.length, sent, 'odd values never sent')
+  a.scope.range.km = '35'; a.scope.setRange()
+  assert.equal(a.commands.at(-1), fixed('setDeliveryRange(35)'), 'a string value from older AngularJS is parsed')
+  a.state({ state: 'READY', town: { range: { km: 35, min: 5, max: 50, step: 5 } } })
+  a.scope.stepRange(5); assert.equal(a.commands.at(-1), fixed('setDeliveryRange(40)'), '+ steps up')
+  a.scope.range.km = 50; a.scope.stepRange(5); assert.equal(a.commands.at(-1), fixed('setDeliveryRange(50)'), 'never past 50')
 })
 test('the picked good defaults to the best run, then the first good', () => {
   const a = app()

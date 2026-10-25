@@ -92,7 +92,11 @@
             <button type="button" ng-repeat="g in data.town.goods" ng-click="pickGood(g.id)" ng-style="pickedGood(data).id === g.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="padding:5px 8px;border:1px solid #568d7a;border-radius:4px;"><span ng-style="{background: dotColor(g.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> {{g.name}} ${{g.price | number:0}}</button>
           </div>
           <div ng-if="data.town.range" style="margin-top:8px;">
-            <div style="display:flex;justify-content:space-between;font-size:13px;"><span>Delivery distance</span><span style="font-weight:bold;">about {{range.km}} km</span></div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:13px;">
+              <span style="flex:1;">Delivery distance: <b>about {{data.town.range.km}} km</b></span>
+              <button type="button" aria-label="Shorter deliveries" ng-click="stepRange(-5)" ng-disabled="data.town.range.km <= 5" style="padding:2px 9px;">&minus;</button>
+              <button type="button" aria-label="Longer deliveries" ng-click="stepRange(5)" ng-disabled="data.town.range.km >= 50" style="padding:2px 9px;">+</button>
+            </div>
             <input type="range" min="5" max="50" step="5" ng-model="range.km" ng-change="setRange()" aria-label="Delivery distance in km" style="width:100%;">
             <div style="font-size:12px;color:#c9d6d2;">Drop-offs below are the places closest to this distance. Longer runs pay more per km.</div>
           </div>
