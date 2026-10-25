@@ -25,6 +25,27 @@ M.ARRIVE_METRES = 5000
 -- After a teleport without a booking, getting back this close to where you jumped from frees you.
 M.RETURN_METRES = 1000
 
+-- The paid-shipping offer: a town in one of the hardest regions pays back your shipping fee once
+-- you deliver within OFFER_RADIUS_METRES of it. A new town is offered every OFFER_SECONDS.
+M.OFFER_SECONDS = 300
+M.OFFER_RADIUS_METRES = 50000
+
+-- The offer showing at a time (seconds), from a list of places, and the seconds until the next.
+-- The pick is a hash of the time window, so it is the same for everyone in that window.
+function M.offer(now, list)
+  if type(now) ~= 'number' or not list or #list == 0 then return nil end
+  local window = math.floor(now / M.OFFER_SECONDS)
+  local h = (window * 2654435761) % 4294967296
+  h = (h * 1103515245 + 12345) % 2147483648
+  return list[h % #list + 1], M.OFFER_SECONDS - (now - window * M.OFFER_SECONDS)
+end
+
+-- Whether a delivery at a place pays back an offer's shipping.
+function M.offerPays(place, offer)
+  local d = offer and location.distance(place, offer)
+  return d ~= nil and d <= M.OFFER_RADIUS_METRES
+end
+
 local byId = {}
 for _, d in ipairs(M.DESTINATIONS) do byId[d.id] = d end
 

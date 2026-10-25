@@ -98,6 +98,14 @@ function M.validate(s)
   if not resume then return nil, poseWhy end
   -- atStart marks a new game the player has not reached the start of yet.
   if s.atStart ~= nil and s.atStart ~= true then return nil, 'invalid_identity' end
+  -- A paid-shipping offer not yet paid back: where to deliver, the town's name and the fee.
+  local offer = nil
+  if s.offer ~= nil then
+    local o = s.offer
+    if type(o) ~= 'table' or not location.valid(o) or type(o.name) ~= 'string' or not optionalString(o.name)
+        or not integer(o.fee, 0) then return nil, 'invalid_offer' end
+    offer = { latitude = o.latitude, longitude = o.longitude, name = o.name, fee = o.fee }
+  end
   local cargo = nil
   if s.load ~= nil then
     cargo = load(s.load)
@@ -108,7 +116,7 @@ function M.validate(s)
     base = location.copy(s.base), resume = resume, progression = p,
     vehicle = { model = s.vehicle.model, configuration = s.vehicle.configuration, config = vehicleConfig,
       damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres },
-    atStart = s.atStart, load = cargo,
+    atStart = s.atStart, load = cargo, offer = offer,
   }
 end
 
@@ -172,7 +180,7 @@ function M.new(io)
       schemaVersion = candidate.schemaVersion, profileId = candidate.profileId,
       generation = self.generation + 1, base = candidate.base, resume = candidate.resume,
       progression = candidate.progression, vehicle = candidate.vehicle,
-      atStart = candidate.atStart, load = candidate.load,
+      atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

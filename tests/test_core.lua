@@ -345,4 +345,49 @@ do
   T.eq(c.booking, nil, 'arrived at the coordinates')
 end
 
+-- The paid-shipping offer: a town in one of the hardest regions, a new one every 5 minutes; its
+-- shipping fee comes back with the first delivery near it, and a Save keeps that.
+do
+  local shipping = require('earthFreight/shipping')
+  local hardest = places.hardest()
+  T.check(#hardest > 100, 'hundreds of hard places: ' .. #hardest)
+  for _, p in ipairs(hardest) do T.check(p.boost >= 2.7 and p.boost <= 3, p.name .. ' pays 2.7x to 3x') end
+  T.eq(shipping.offer(1000, hardest), shipping.offer(1199, hardest), 'the same offer within 5 minutes')
+  local changed = false
+  for w = 1, 5 do if shipping.offer(w * 300, hardest) ~= shipping.offer(0, hardest) then changed = true end end
+  T.check(changed, 'and a new one after')
+  local _, left = shipping.offer(1000, hardest); T.eq(left, 200, 'seconds until the next')
+  local c, io, a, g = F.controller()
+  g.fitted.box = 'pickup_cargo_load_box_m'
+  c.now = function() return 1000 end
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local offer = c:view().shipping.offer
+  T.eq(offer.name, shipping.offer(1000, hardest).name, 'the offer is on the HUD'); T.eq(offer.secondsLeft, 200, 'with its time left')
+  T.check(offer.boost >= 2.7, 'from the hardest places'); T.check(offer.allowed, 'bookable')
+  local before = c:view().balance
+  T.check(c:bookOffer(), 'offer booked'); T.eq(c:view().balance, before - offer.fee, 'the fee is paid now')
+  T.check(c:view().shipping.booking.offer, 'the booking is the offer')
+  c.now = function() return 5000 end -- the offer moves on; the booking still counts
+  local target = places.hardest()[1]
+  for _, p in ipairs(places.hardest()) do if p.name == offer.name then target = p end end
+  a.pose = { latitude = target.latitude, longitude = target.longitude }; c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(c.booking, nil, 'shipped'); T.eq(c.offer.fee, offer.fee, 'the refund is waiting')
+  T.check(c:view().flash.text:find('pays back'), 'told how to get it back')
+  T.check(c:manualSave(), 'saved'); T.eq(io.files[A].offer.fee, offer.fee, 'the save keeps it')
+  local r = F.controller({ io = io }); T.eq(r.offer.name, offer.name, 'and a reload has it back')
+  -- A delivery near the town pays it back.
+  local here = c:here()
+  T.check(here ~= nil, 'arrived in ' .. offer.name)
+  local nearby = places.nearest(here, 1, here.id)[1].place
+  T.check(c:buy('food', nearby.id, 1), 'a load bought')
+  c.load.from, c.load.drivenKm = here.id, 1000
+  a.pose = { latitude = nearby.latitude, longitude = nearby.longitude }; c.odometer:reset(); c.lastDriven = nil
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local balance = c:view().balance
+  local payout = c:saleQuote(c:here()).payout
+  T.check(c:sell(), 'delivered')
+  T.eq(c:view().balance, balance + payout + offer.fee, 'the shipping is paid back')
+  T.check(c:view().flash.text:find('paid back'), 'told so'); T.eq(c.offer, nil, 'only once')
+end
+
 T.done('Earth Freight controller')

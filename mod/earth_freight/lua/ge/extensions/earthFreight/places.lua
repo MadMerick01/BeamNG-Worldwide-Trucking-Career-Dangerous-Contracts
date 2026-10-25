@@ -186,6 +186,23 @@ function M.roadEstimate(a, b)
   return d and d * M.ROAD_FACTOR or nil
 end
 
+-- The places paying the most (from placesIndex.lua), for the paid-shipping offers, as places
+-- that are not loaded into the lookups.
+local hardest
+function M.hardest()
+  if not hardest then
+    hardest = {}
+    for line in (index.hardest or ''):gmatch('[^\n]+') do
+      local id, name, lat, lon, boost, region = line:match('^(%d+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t(%d+)\t([^\t]+)$')
+      if id then
+        hardest[#hardest + 1] = { id = 'gn' .. id, name = name, latitude = tonumber(lat), longitude = tonumber(lon),
+          boost = tonumber(boost) / 10, region = region }
+      end
+    end
+  end
+  return hardest
+end
+
 -- Searching by name, for shipping: placesNames.lua (read the first time) lists every place's
 -- folded name with its id and tile, sorted by name and then size. The query is folded the same way
 -- for plain letters and digits; the tiles of the places found are loaded so they can be shown.

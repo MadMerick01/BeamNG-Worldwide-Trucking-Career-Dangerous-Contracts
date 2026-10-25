@@ -124,6 +124,12 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         scope.ship.error = p ? null : 'Paste latitude, longitude, like -16.19, -67.73.'
         if (p && scope.data.shipping && !scope.data.shipping.booking) core('bookShippingTo(' + p.latitude + ', ' + p.longitude + ')')
       }
+      scope.bookOffer = function () { if (scope.data.shipping && scope.data.shipping.offer && scope.data.shipping.offer.allowed) core('bookOffer()') }
+      scope.clock = function (seconds) {
+        if (typeof seconds !== 'number' || !isFinite(seconds)) return ''
+        var s = Math.max(0, Math.ceil(seconds))
+        return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2)
+      }
       scope.cancelShipping = function () { if (scope.data.shipping && scope.data.shipping.booking) core('cancelShipping()') }
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       scope.addTestMoney = function () { if (scope.data.testMoneyAllowed) core('addTestMoney()') }

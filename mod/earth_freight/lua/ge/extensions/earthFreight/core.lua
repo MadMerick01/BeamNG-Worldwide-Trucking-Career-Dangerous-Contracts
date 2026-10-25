@@ -83,6 +83,8 @@ function M.new(deps)
     feedback = 'Not saved this session.', garage = deps.garage,
     paused = deps.paused or function() return false end,
     random = deps.random or math.random,
+    -- Wall-clock seconds, which the paid-shipping offers rotate by.
+    now = deps.now or os.time,
     -- Bursts tyres and tells whether the car is off road; without it there are no punctures.
     punctures = deps.punctures,
     -- Adds the load's weight to the car, and reads and sets its fuel; without them the load has no
@@ -124,6 +126,8 @@ function M.new(deps)
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
+    -- A paid-shipping offer the player shipped in on, paid back by their first delivery near it.
+    self.offer = self.profile and copy(self.profile.offer) or nil
     -- The saved load's places are near where the player left off.
     if self.profile then places.ensure(self.profile.resume) end
     self.diag:event('save_loaded_or_rejected', self.loadStatus, self.profile and 'I' or 'W')
@@ -292,8 +296,14 @@ function M.new(deps)
     if self.booking and shipping.arrived(to, self.booking) then
       local b = self.booking
       self.booking, self.stranded = nil, nil
+      local paid = ''
+      if b.offer then
+        self.offer = { latitude = b.latitude, longitude = b.longitude, name = b.name, fee = b.fee }
+        paid = ' ' .. b.name .. ' pays back your ' .. dollars(b.fee) .. ' shipping when you deliver within '
+          .. math.floor(shipping.OFFER_RADIUS_METRES / 1000) .. ' km of it.'
+      end
       self:showFlash(lost ~= '' and 'cancelled' or 'delivered', 'SHIPPED TO ' .. b.name:upper(),
-        'Welcome to ' .. b.region .. '. Find a load in town.' .. lost)
+        'Welcome to ' .. b.region .. '. Find a load in town.' .. paid .. lost)
       self.diag:event('shipped', b.id)
     elseif self.stranded and shipping.returned(to, self.stranded) then
       self:unstrand()
@@ -338,6 +348,25 @@ function M.new(deps)
     return self:book({ id = 'coordinates', name = string.format('%.5f, %.5f', latitude, longitude),
       region = near and (near.metres < 50000 and ('near ' .. near.place.name .. ', ' .. near.place.region) or near.place.region) or 'somewhere remote',
       latitude = latitude, longitude = longitude })
+  end
+
+  -- The paid-shipping offer showing now, and the seconds until the next one.
+  function c:currentOffer()
+    return shipping.offer(self.now(), places.hardest())
+  end
+
+  -- Books the offer showing now. The fee is paid as usual and paid back by a delivery there.
+  function c:bookOffer()
+    local offer = self:currentOffer()
+    if not offer then
+      self.shippingFeedback = 'No offer right now.'
+      return false
+    end
+    if not self:book({ id = offer.id, name = offer.name, region = offer.region,
+      latitude = offer.latitude, longitude = offer.longitude }) then return false end
+    self.booking.offer = true
+    self.shippingFeedback = self.shippingFeedback .. ' ' .. offer.name .. ' pays it back when you deliver there.'
+    return true
   end
 
   -- Finds places by name to ship to.
@@ -538,10 +567,17 @@ function M.new(deps)
     self:addMoney(quote.payout)
     self.load, self.dumpArmed, self.cargoDamage = nil, false, nil
     self:applyWeight()
+    local refund = ''
+    if self.offer and shipping.offerPays(place, self.offer) then
+      self:addMoney(self.offer.fee)
+      refund = ' ' .. self.offer.name .. ' paid back your ' .. dollars(self.offer.fee) .. ' shipping.'
+      self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
+      self.offer = nil
+    end
     local profit = quote.payout - load.paid
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(quote.payout), load.slots .. ' ' .. good.name:lower() .. ' to ' .. place.name
       .. (load.condition < 0.995 and (', ' .. math.floor(load.condition * 100 + 0.5) .. '% intact') or '')
-      .. '. ' .. (profit >= 0 and ('Profit ' .. dollars(profit)) or ('Loss ' .. dollars(-profit))) .. ' on the ' .. dollars(load.paid) .. ' load. Save to keep it.')
+      .. '. ' .. (profit >= 0 and ('Profit ' .. dollars(profit)) or ('Loss ' .. dollars(-profit))) .. ' on the ' .. dollars(load.paid) .. ' load.' .. refund .. ' Save to keep it.')
     self.tradeFeedback = nil
     self.diag:event('load_delivered', string.format('%s x%d -> %s for %d', good.id, load.slots, place.id, quote.payout))
     return true
@@ -768,11 +804,20 @@ function M.new(deps)
       found[#found + 1] = { id = d.id, name = d.name, region = d.region, fee = fee, here = here,
         allowed = problem == nil and not here and self:canAfford(fee) }
     end
+    local offer, left = self:currentOffer()
+    local offerView
+    if offer then
+      local here, fee = shipping.arrived(current, offer), shipping.fee(current, offer)
+      offerView = { id = offer.id, name = offer.name, region = offer.region, boost = offer.boost, fee = fee,
+        secondsLeft = left, here = here, allowed = problem == nil and not here and self:canAfford(fee) }
+    end
     local b = self.booking
     return {
-      destinations = list, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
+      offer = offerView, destinations = list, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
       problem = problem, feedback = self.shippingFeedback,
-      booking = b and { id = b.id, name = b.name, region = b.region, fee = b.fee, latitude = b.latitude, longitude = b.longitude,
+      pending = self.offer and { name = self.offer.name, fee = self.offer.fee, radiusKm = shipping.OFFER_RADIUS_METRES / 1000,
+        distanceMetres = location.distance(current, self.offer) } or nil,
+      booking = b and { id = b.id, name = b.name, region = b.region, fee = b.fee, offer = b.offer == true, latitude = b.latitude, longitude = b.longitude,
         distanceMetres = location.distance(current, b) } or nil,
     }
   end
@@ -907,7 +952,7 @@ function M.new(deps)
       progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres },
-      load = copy(self.load),
+      load = copy(self.load), offer = copy(self.offer),
     })
     if not saved then
       -- Nothing is lost: the last save is untouched and the session carries on, so Save can be tried again.
@@ -1053,6 +1098,7 @@ function M.searchShipping(query)
   if type(query) ~= 'string' or #query > 60 or query:find('[^%w %.%-]') then return false end
   return safely(function() return ensure():searchShipping(query) end)
 end
+function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 function M.cancelShipping() return safely(function() return ensure():cancelShipping() end) end
 function M.setDeliveryRange(km) return safely(function() return ensure():setDeliveryRange(km) end) end
 -- The player car's answers to fuel.lua's commands.

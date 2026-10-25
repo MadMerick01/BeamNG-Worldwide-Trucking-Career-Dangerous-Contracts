@@ -56,6 +56,8 @@ RELIEF_FLAT_M, RELIEF_STEEP_M, STEEP_BOOST = 200, 2000, 1.6
 # Remoteness: the people living within REMOTE_RADIUS_KM, from nothing at a big city's
 # REMOTE_BUSY people down to the full REMOTE_BOOST at REMOTE_EMPTY people.
 REMOTE_RADIUS_KM, REMOTE_BUSY, REMOTE_EMPTY, REMOTE_BOOST = 50, 1000000, 5000, 0.4
+# The paid-shipping offers on the HUD rotate through the places with at least this boost.
+OFFER_BOOST = 2.7
 # Altitude: thin air and snow above ALTITUDE_LOW_M, up to ALTITUDE_BOOST at ALTITUDE_HIGH_M.
 ALTITUDE_LOW_M, ALTITUDE_HIGH_M, ALTITUDE_BOOST = 2000, 4500, 0.3
 
@@ -257,11 +259,16 @@ def render(kept, terrain, people, areas, countries, source):
         + '-- One place a line, sorted: folded name, GeoNames id, tile (a number into tiles).\n'
         + 'return {\n  tiles = { ' + ', '.join(lua_text(k) for k in keys) + ' },\n'
         + '  names = [==[\n' + '\n'.join(f'{k}\t{gid}\t{t}' for k, _, gid, t in entries if k) + '\n]==],\n}\n')
+    hardest = sorted((p['geonameid'], p['name'], p['lat'], p['lon'], boost, region)
+                     for rows in tiles.values() for p, boost, region in rows if boost >= OFFER_BOOST * 10)
     files['placesIndex.lua'] = (header
         + 'return {\n'
         + f'  source = {lua_text(source)}, spacingKm = {SPACING_KM}, tileDegrees = {TILE_DEGREES}, maxBoost = {MAX_BOOST},\n'
         + f'  -- The places in each tile; a tile not listed has none.\n'
         + f'  tiles = {{ {counts} }},\n'
+        + f'  -- The places paying at least {OFFER_BOOST}x, for the paid-shipping offers: id, name, latitude, longitude,\n'
+        + '  -- pay boost in tenths, region.\n'
+        + '  hardest = [==[\n' + '\n'.join(f'{g}\t{n}\t{la:.4f}\t{lo:.4f}\t{b}\t{r}' for g, n, la, lo, b, r in hardest) + '\n]==],\n'
         + '}\n')
     return files
 
