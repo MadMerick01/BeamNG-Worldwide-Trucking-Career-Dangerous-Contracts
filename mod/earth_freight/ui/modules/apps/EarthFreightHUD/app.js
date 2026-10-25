@@ -3,7 +3,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
   // What the player was looking at. BeamNG rebuilds the app each time the parts menu or the map
   // closes, so this is kept out here and the new app carries on where the old one was.
   var kept = {
-    tab: 'route', introShown: false, intro: { open: false, name: '' },
+    tab: 'route', introShown: false, intro: { open: false, name: '' }, shares: {},
     ship: { query: '', coords: '', error: null }, last: null
   }
   return {
@@ -105,9 +105,27 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         return !!d && (!!d.nameUnsaved || d.unsavedBalance > 0 || d.unsavedSpending > 0 || d.unsavedDistanceKm >= 0.005)
       }
       var plainId = function (id) { return /^[a-z0-9_]+$/.test(String(id)) }
+      // The load slider: how much of each job to take, 10% to 100% in steps of 10, by job id. Older
+      // AngularJS (as in BeamNG's UI) gives a range input's value as a string, so it is parsed here.
+      scope.shares = kept.shares
+      scope.shareOf = function (job) {
+        var share = job ? parseInt(scope.shares[job.id], 10) : NaN
+        return share >= 10 && share <= 100 && share % 10 === 0 ? share : 100
+      }
+      // What that share comes to, as Lua works it out: whole units (at least one), their kg, and a
+      // straight share of the pay in tens of dollars.
+      var taken = { units: 0, kg: 0, pay: 0 }
+      scope.taken = function (job) {
+        if (!job || !(job.units > 0)) { taken.units = 0; taken.kg = 0; taken.pay = 0; return taken }
+        var units = Math.max(1, Math.min(job.units, Math.floor(job.units * scope.shareOf(job) / 100 + 0.5)))
+        taken.units = units
+        taken.kg = units * job.unitKg
+        taken.pay = units === job.units ? job.pay : Math.max(10, Math.floor(job.pay * units / job.units / 10 + 0.5) * 10)
+        return taken
+      }
       scope.takeJob = function (job) {
         if (!scope.data.town || scope.data.load || !job || !job.allowed || !plainId(job.id)) return
-        core("takeJob('" + job.id + "')")
+        core("takeJob('" + job.id + "', " + scope.shareOf(job) + ')')
       }
       scope.deliverJob = function () { if (scope.data.town && scope.data.town.delivery && scope.data.town.delivery.allowed) core('deliverJob()') }
       scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }

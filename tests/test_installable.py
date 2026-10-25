@@ -101,6 +101,7 @@ class InstalledHooksTest(unittest.TestCase):
         job = next(j for j in state['town']['jobs'].values() if j['allowed'])
         self.assertTrue(self.core.takeJob(job['id']))
         self.assertFalse(self.core.takeJob("food') os.exit() --"), 'odd ids refused')
+        self.assertFalse(self.core.takeJob(job['id'], 50), 'one job at a time, whatever the share')
         self.assertTrue(self.core.save())
         saved = json.loads(self.path(SETTINGS + 'save-a.json').read_text())
         self.assertEqual(saved['load']['good'], job['goodId'])

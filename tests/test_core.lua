@@ -311,6 +311,14 @@ do
   T.check(c:buyParts(), 'box bought'); T.eq(c:view().space.slots, 4, 'box space now usable')
   c:tick(0.6); c:tick(0.6)
   T.check(c:takeJob(food), 'filled the box'); T.eq(c.load.units, 2, 'two food in the box')
+  local full = c.load.pay
+  c.load = nil; c.profile.load = nil
+  T.check(c:takeJob(F.offer(c, stClair, 'food'), 50), 'half the food'); T.eq(c.load.units, 1, 'one food')
+  T.eq(c.load.kg, 50, 'half the weight'); T.eq(c.load.slots, 2, 'half the slots'); T.check(math.abs(c.load.pay - full / 2) <= 5, 'half the pay, to the nearest $10')
+  c.load = nil; c.profile.load = nil
+  T.check(c:takeJob(F.offer(c, stClair, 'food'), 10), 'a tenth of the food'); T.eq(c.load.units, 1, 'still at least one unit')
+  c.load = nil; c.profile.load = nil
+  T.check(c:takeJob(food), 'filled the box again')
   g:fit('box', ''); c:vehicleSpawned(); c:tick(0.1)
   T.check(not c:view().buyPartsAllowed, 'cannot keep a change the load no longer fits')
   T.check(not c:buyParts(), 'refused'); T.check(c:view().partsFeedback:find('would not fit'), 'told why')
@@ -505,3 +513,14 @@ do
 end
 
 T.done('Earth Freight controller')
+
+-- The load slider: a straight share of a full load, in whole units and tens of dollars.
+do
+  T.eq(jobs.SHARE_STEP, 10, 'slider steps of 10%')
+  local u, p = jobs.share(6, 2400, 50); T.eq(u, 3, 'half of 6 bricks'); T.eq(p, 1200, 'for half the pay')
+  u, p = jobs.share(20, 1700, 70); T.eq(u, 14, '70% of 20 parts'); T.eq(p, 1190, 'for 70% of the pay')
+  u, p = jobs.share(6, 2400, 100); T.eq(u, 6, 'all of it'); T.eq(p, 2400, 'for all the pay')
+  u, p = jobs.share(1, 500, 10); T.eq(u, 1, 'never less than one unit'); T.eq(p, 500, 'one unit is the whole job')
+  u, p = jobs.share(3, 1000, 50); T.eq(u, 2, 'shares round to whole units'); T.eq(p, 670, 'paid for the units taken')
+  u, p = jobs.share(0, 0, 50); T.eq(u, 0, 'nothing fits'); T.eq(p, 0, 'nothing paid')
+end
