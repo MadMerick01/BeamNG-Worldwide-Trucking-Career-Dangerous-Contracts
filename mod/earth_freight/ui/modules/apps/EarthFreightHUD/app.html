@@ -13,6 +13,15 @@
     <button type="button" ng-click="save()" ng-disabled="!data.saveAllowed" ng-style="unsaved(data) && data.saveAllowed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:5px 12px;margin-left:auto;border:1px solid #568d7a;border-radius:4px;">Save<span ng-if="data.unsavedBalance > 0"> &middot; ${{data.unsavedBalance | number:0}} unsaved</span><span ng-if="!(data.unsavedBalance > 0) && data.unsavedSpending > 0"> &middot; ${{data.unsavedSpending | number:0}} spent</span></button>
   </div>
   <div ng-if="data.saveFeedback" style="margin:-4px 0 8px;color:#c9d6d2;font-size:12px;">{{data.saveFeedback}}</div>
+  <div ng-if="data.resume" style="margin:0 0 8px;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
+    <label><span style="font-weight:bold;color:#a7e5c9;">{{data.mode === 'start' ? 'Go to ' + data.startTown : 'Go back to your last save'}}</span>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <input aria-label="Coordinates to go to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+        <button type="button" aria-label="Copy coordinates" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
+      </div>
+    </label>
+    <div ng-if="data.resumeDistanceMetres != null" style="margin-top:4px;">You are {{km(data.resumeDistanceMetres)}} km away.</div>
+  </div>
   <div ng-if="data.load" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
     <div style="font-weight:bold;color:#f2c94c;">{{data.load.slots}} &times; {{data.load.good}} &middot; {{data.load.kg | number:0}} kg<span ng-if="data.load.to"> &rarr; {{data.load.to}}</span></div>
     <div ng-if="data.load.distanceMetres != null" style="margin-top:2px;font-weight:bold;">&asymp; {{km(data.load.distanceMetres)}} km<span ng-if="data.load.direction"> to the {{data.load.direction}}</span></div>
@@ -36,15 +45,6 @@
           <button type="button" aria-label="Copy coordinates to go back to" ng-click="copyCoordinates(data.stranded)">Copy</button>
         </div>
         <div ng-if="data.stranded.distanceMetres != null" style="margin-top:4px;">You are {{km(data.stranded.distanceMetres)}} km away.</div>
-      </div>
-      <div ng-if="data.resume" style="margin:0 0 8px;padding:10px;border:1px solid #a7e5c9;border-radius:6px;">
-        <label><span style="font-weight:bold;color:#a7e5c9;">{{data.mode === 'start' ? 'Go to ' + data.startTown : 'Go back to your last save'}}</span>
-          <div style="display:flex;gap:6px;margin-top:4px;">
-            <input aria-label="Coordinates to go to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
-            <button type="button" aria-label="Copy coordinates" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
-          </div>
-        </label>
-        <div ng-if="data.resumeDistanceMetres != null" style="margin-top:4px;">You are {{km(data.resumeDistanceMetres)}} km away.</div>
       </div>
       <div ng-if="data.load.destination" style="margin:0 0 8px;padding:10px;border:1px solid #f2c94c;border-radius:6px;">
         <div style="font-weight:bold;color:#f2c94c;">Drop-off: {{data.load.to}}</div>
@@ -92,7 +92,11 @@
             <button type="button" ng-repeat="g in data.town.goods" ng-click="pickGood(g.id)" ng-style="pickedGood(data).id === g.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="padding:5px 8px;border:1px solid #568d7a;border-radius:4px;"><span ng-style="{background: dotColor(g.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> {{g.name}} ${{g.price | number:0}}</button>
           </div>
           <div ng-if="data.town.range" style="margin-top:8px;">
-            <div style="display:flex;justify-content:space-between;font-size:13px;"><span>Delivery distance</span><span style="font-weight:bold;">about {{range.km}} km</span></div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:13px;">
+              <span style="flex:1;">Delivery distance: <b>about {{data.town.range.km}} km</b></span>
+              <button type="button" aria-label="Shorter deliveries" ng-click="stepRange(-5)" ng-disabled="data.town.range.km <= 5" style="padding:2px 9px;">&minus;</button>
+              <button type="button" aria-label="Longer deliveries" ng-click="stepRange(5)" ng-disabled="data.town.range.km >= 50" style="padding:2px 9px;">+</button>
+            </div>
             <input type="range" min="5" max="50" step="5" ng-model="range.km" ng-change="setRange()" aria-label="Delivery distance in km" style="width:100%;">
             <div style="font-size:12px;color:#c9d6d2;">Drop-offs below are the places closest to this distance. Longer runs pay more per km.</div>
           </div>
