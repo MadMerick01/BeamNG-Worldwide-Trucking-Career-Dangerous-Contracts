@@ -14,6 +14,13 @@ end
 local function amount(n)
   return n == nil or (location.finite(n) and n >= 0 and n <= MAX_INTEGER)
 end
+-- The player's name, as typed on the start page: up to 80 bytes (20 letters in any alphabet),
+-- with no control characters, quotes or backslashes, and no spaces at either end.
+M.NAME_BYTES = 80
+function M.validName(s)
+  return type(s) == 'string' and #s > 0 and #s <= M.NAME_BYTES and not s:find('[%c"\\]')
+    and not s:find('^%s') and not s:find('%s$')
+end
 
 -- Copies a saved vehicle config (the game's own config table: model, partsTree, vars, paints),
 -- keeping only plain JSON data and refusing anything oversized. Returns nil when unusable.
@@ -106,6 +113,7 @@ function M.validate(s)
         or not integer(o.fee, 0) then return nil, 'invalid_offer' end
     offer = { latitude = o.latitude, longitude = o.longitude, name = o.name, fee = o.fee }
   end
+  if s.playerName ~= nil and not M.validName(s.playerName) then return nil, 'invalid_identity' end
   local cargo = nil
   if s.load ~= nil then
     cargo = load(s.load)
@@ -116,7 +124,7 @@ function M.validate(s)
     base = location.copy(s.base), resume = resume, progression = p,
     vehicle = { model = s.vehicle.model, configuration = s.vehicle.configuration, config = vehicleConfig,
       damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres },
-    atStart = s.atStart, load = cargo, offer = offer,
+    atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName,
   }
 end
 
@@ -181,6 +189,7 @@ function M.new(io)
       generation = self.generation + 1, base = candidate.base, resume = candidate.resume,
       progression = candidate.progression, vehicle = candidate.vehicle,
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
+      playerName = candidate.playerName,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

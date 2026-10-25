@@ -10,7 +10,7 @@ Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. 
 
 ## Play
 
-1. Load the BeamNG.Earth Freeroam level. The HUD shows Penrith's coordinates: copy them, paste them into the BeamNG.Earth map and teleport there. You get the starter car, a rusty Burnside, and $2,500. The car needs a radiator straight away, so fit one first in the parts menu.
+1. Load the BeamNG.Earth Freeroam level. A new game opens the start page: type your name and read the short how-to (the **Profile** button at the top of the HUD opens it again). The HUD shows Penrith's coordinates: copy them, paste them into the BeamNG.Earth map and teleport there. You get the starter car, a rusty Burnside, and $2,500. The car needs a radiator straight away, so fit one first in the parts menu.
 2. Stop inside a town. The **Town** tab lists the goods you can buy (parts, food, bricks). Green dots are cheap to buy, red ones pay well. The **Best run** line on the Route tab suggests a good first load.
 3. Pick a good, then set **how far** you want to drive with the slider (5 to 50 km). The drop-offs closest to that distance are listed with what each pays and your profit.
 4. Pick **how many** to buy with − / + (or 1, or Max to fill your space as far as your money goes), then press **Buy** next to a drop-off. BeamNG.Earth's GPS is set to it, so the route and road arrows appear on their own.

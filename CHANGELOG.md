@@ -6,6 +6,12 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **A new start page welcomes you to Earth Freight Sim.** It opens when you start a new game, with a box for your name and seven short steps on how to play: going to Penrith (with the coordinates and a Copy button), fitting a radiator, buying a load, the delivery distance slider, delivering, refuelling, the Garage and shipping. Press **Let's go** to close it.
+- You can open the start page again at any time with the button at the top right of the HUD (it shows your name, or "Profile"), or with **Your name and how to play** on the Tips tab.
+- The HUD uses your name: it welcomes you when you reach Penrith or get back to your last save, after a delivery, and when you save. Your name is kept when you press Save, and New game keeps it too.
+- Typing in the HUD's text boxes (your name, and the town or coordinates boxes for shipping) no longer drives the car or triggers other game keys.
+- Saves from earlier builds still load. They just have no name until you add one.
+
 ## Build 12 · 25 Oct 2026
 
 - Each build's download page now lists every earlier build's changes too, under "Earlier builds", so you can see everything that has been added so far.
