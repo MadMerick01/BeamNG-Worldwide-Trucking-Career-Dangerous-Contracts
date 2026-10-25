@@ -6,7 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
-- **Off-road drops.** Every town's job board now has one off-road drop: parts, food or bricks to a spot about 2 km out of town, away from the roads. There is no GPS route. The Route tab shows how far the spot is and an arrow pointing to it, and you deliver it from there by stopping within 100 m of the spot. It pays like a 5 km job, and more in steep country. If the spot turns out to be in water or on a cliff, it moves to firmer ground nearby as you get close, and you are told. The Load slider and insurance work as on any other job. Saves still work.
+- **Off-road drops.** Every town's job board now has one off-road drop: parts, food or bricks to a random spot 1.8 to 3.2 km out of town, away from the roads. There is no GPS route. The Route tab shows how far the spot is and an arrow pointing to it, and you deliver it from there by stopping within 100 m of the spot. It pays like a 5 km job, and more in steep country. The spot can land anywhere, up a hill or across a creek, so getting there is part of the challenge. The Load slider and insurance work as on any other job. Saves still work.
+- The help text under the job board is gone: the jobs and sliders explain themselves.
 
 ## Build 20 · 25 Oct 2026
 

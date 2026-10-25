@@ -79,11 +79,11 @@ end
 -- was taken at and the place it goes to (place ids) and the distance driven with it. Saves from
 -- before the job board carry bought cargo instead: no pay, but what was paid for it, which the
 -- controller refunds. Saves from before cargo damage was removed carry a condition, which is
--- ignored. An off-road drop carries its spot: { latitude, longitude, checked, moved }. The
+-- ignored. An off-road drop carries its spot: { latitude, longitude }. The
 -- controller drops a job whose good or places it does not know.
 local function drop(d)
   if type(d) ~= 'table' or not location.valid(d) then return nil end
-  return { latitude = d.latitude, longitude = d.longitude, checked = d.checked == true or nil, moved = d.moved == true or nil }
+  return { latitude = d.latitude, longitude = d.longitude }
 end
 
 local function load(l)

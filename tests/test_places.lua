@@ -107,7 +107,7 @@ do
       local drop = table.remove(board)
       T.check(drop.drop ~= nil and drop.to == n.place.id and drop.id:match('^drop_%l+_[%w_]+$') ~= nil, n.place.name .. ' ends its board with an off-road drop')
       local metres = location.distance(n.place, drop.drop)
-      T.check(metres >= jobs.DROP_MIN - 1 and metres <= jobs.DROP_MAX + 1, 'the drop spot is about 2 km out: ' .. math.floor(metres))
+      T.check(metres >= jobs.DROP_MIN - 1 and metres <= jobs.DROP_MAX + 1, 'the drop spot is 1.8 to 3.2 km out: ' .. math.floor(metres))
       T.near(drop.km, metres / 1000, 1e-9, 'its distance is the straight line')
       T.check(#board >= 3 and #board <= 5, n.place.name .. ' posts 3 to 5 jobs')
       local ids, decent = { [drop.id] = true }, false
@@ -161,18 +161,6 @@ do
   T.eq(jobs.steepBonus({ id = 'x', boost = 1 }), 1, 'flat ground pays the base')
   T.eq(jobs.steepBonus({ id = 'x', boost = 1.5 }), 1.5, 'steep ground pays the whole region boost')
   T.eq(jobs.steepBonus({ id = 'x', boost = 3 }), 2, 'at most twice')
-  -- Better ground: nearest first, out to 320 m around the spot, then back toward town.
-  local list = jobs.dropCandidates(a.drop, penrith)
-  local last = 0
-  for i = 1, 64 do
-    local m = location.distance(a.drop, list[i])
-    T.check(m >= last - 1e-6 and m <= 320.5, 'rings of candidates, nearest first'); last = m
-  end
-  T.check(location.distance(list[#list], penrith) < location.distance(a.drop, penrith) - 900, 'the last ones lead back toward town')
-  T.check(jobs.dropGround({ water = false, slope = 12 }), 'dry ground that is not too steep will do')
-  T.check(not jobs.dropGround({ water = true, slope = 0 }), 'not water')
-  T.check(not jobs.dropGround({ water = false, slope = 40 }), 'not a cliff')
-  T.check(not jobs.dropGround(nil), 'not ground that has not loaded')
 end
 T.near(jobs.drivenNeeded(penrith, near[1].place), near[1].metres * 0.7, 1e-6, '70% of the straight line must be driven')
 T.done('places and jobs')

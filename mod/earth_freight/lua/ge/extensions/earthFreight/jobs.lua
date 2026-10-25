@@ -43,18 +43,15 @@ M.DRIVEN_SHARE = 0.7
 M.SHARE_STEP = 10
 -- What abandoning a job costs (or all the player's money, if less).
 M.ABANDON_FEE = 1000
--- The off-road drop: one job on every board to a spot DROP_MIN to DROP_MAX metres from town, off
--- the roads, with no GPS route. It pays like a DROP_KM job, times the steep-ground bonus: the
--- region boost (1 to 3) as 1 + (boost - 1) * DROP_STEEP_SHARE, at most MAX_ROAD. It is delivered
--- stopped within DROP_RADIUS metres of the spot.
-M.DROP_MIN, M.DROP_MAX, M.DROP_KM, M.DROP_STEEP_SHARE, M.DROP_RADIUS = 1800, 2200, 5, 1, 100
+-- The off-road drop: one job on every board to a spot a random DROP_MIN to DROP_MAX metres from
+-- town, off the roads, with no GPS route. It pays like a DROP_KM job, times the steep-ground
+-- bonus: the region boost (1 to 3) as 1 + (boost - 1) * DROP_STEEP_SHARE, at most MAX_ROAD. It is
+-- delivered stopped within DROP_RADIUS metres of the spot. The spot is not checked for water or
+-- cliffs: reaching it is the player's risk.
+M.DROP_MIN, M.DROP_MAX, M.DROP_KM, M.DROP_STEEP_SHARE, M.DROP_RADIUS = 1800, 3200, 5, 1, 100
 -- The spot heads for a place within DROP_TOWARD metres, give or take DROP_SPREAD degrees, so it
--- leans inland rather than out to sea. Once the ground there has loaded, a spot in water or
--- steeper than DROP_MAX_SLOPE degrees moves to the nearest dry, gentler ground.
-M.DROP_TOWARD, M.DROP_SPREAD, M.DROP_MAX_SLOPE = 15000, 30, 30
--- The ground at the spot is looked at once the car is within DROP_CHECK_METRES of it: BeamNG
--- only has ground to read for about a kilometre around the car.
-M.DROP_CHECK_METRES = 400
+-- leans inland rather than out to sea.
+M.DROP_TOWARD, M.DROP_SPREAD = 15000, 30
 
 -- A number in [0, 1) fixed for this text: a small polynomial hash, mixed so that texts differing
 -- only at the end land far apart. The same on every machine.
@@ -297,25 +294,6 @@ function M.dropJob(from, seed)
   local drop = M.dropPoint(from, seed)
   return { id = 'drop_' .. good.id .. '_' .. from.id, good = good.id, from = from.id, to = from.id,
     km = location.distance(from, drop) / 1000, drop = drop, jackpot = jackpotFor(from.id .. ':' .. seed .. ':drop:' .. good.id) }
-end
-
--- Where to look for better ground when a drop spot is in water or too steep, nearest first: rings
--- of 8 points every 40 m out to 320 m, then back along the way from town every 100 m out to 1 km.
-function M.dropCandidates(drop, from)
-  local out = {}
-  for ring = 1, 8 do
-    for k = 0, 7 do out[#out + 1] = location.destination(drop, (k * 45 + ring * 22.5) % 360, ring * 40) end
-  end
-  local back = location.bearing(drop, from)
-  if back then
-    for metres = 400, 1000, 100 do out[#out + 1] = location.destination(drop, back, metres) end
-  end
-  return out
-end
-
--- Whether ground read at a drop spot ({ water, slope } from the Earth adapter) will do for a drop.
-function M.dropGround(ground)
-  return type(ground) == 'table' and not ground.water and type(ground.slope) == 'number' and ground.slope <= M.DROP_MAX_SLOPE
 end
 
 -- A share of a job: the whole units it comes to (at least one) and their pay, a straight share

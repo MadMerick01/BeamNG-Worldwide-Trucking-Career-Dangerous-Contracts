@@ -72,7 +72,7 @@
         <div ng-if="data.stranded.distanceMetres != null" style="margin-top:4px;">You are {{km(data.stranded.distanceMetres)}} km away.</div>
       </div>
       <div ng-if="data.load.drop" style="margin:0 0 8px;padding:10px;border:1px solid #f2c94c;border-radius:6px;">
-        <div style="font-weight:bold;color:#f2c94c;">Off-road drop<span ng-if="data.load.drop.moved"> (moved to firmer ground)</span></div>
+        <div style="font-weight:bold;color:#f2c94c;">Off-road drop</div>
         <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
           <div ng-if="data.load.drop.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.load.drop)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#f2c94c;">&#9650;</div>
           <div style="flex:1;min-width:0;">
@@ -147,7 +147,6 @@
             <span ng-if="shareOf(j) < 100">full load ${{j.pay | number:0}}</span>
            </div>
           </div>
-          <div style="margin-top:4px;font-size:12px;color:#c9d6d2;">A job fills every slot your car has, so bigger cargo boxes pay more. Slide Load to take less: the weight and pay drop by the same share. The pay is fixed when you take it and paid in full on delivery. Longer jobs pay more per km: 20 km pays six times 5 km. Green pays above the usual, red below, gold is a shortage or a jackpot. Taking a job sets the GPS to the drop-off. The off-road drop has no GPS: follow the arrow on the Route tab to a spot about 2 km out of town. Abandoning one costs ${{data.abandonFee | number:0}}.</div>
         </div>
         <div style="margin:10px 0;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
           <div style="font-weight:bold;">Fuel</div>
@@ -282,7 +281,7 @@
       <ul style="margin:4px 0 0;padding-left:18px;">
         <li>Take a job in one town and deliver it to another. A job fills all your cargo slots, so bigger boxes and vehicles earn more. Parts take 1 slot (15 kg) each, food 2 slots (50 kg) and bricks 3 slots (150 kg).</li>
         <li>Taking a job sets the BeamNG.Earth GPS to the drop-off, so the route and arrows show up on their own.</li>
-        <li>Every town also has an off-road drop: a spot about 2 km out with no roads and no GPS. Follow the arrow on the Route tab and stop within 100 m of it. It pays like a 5 km job, more in steep country. If the spot turns out to be in water or on a cliff, it moves to firmer ground as you get close.</li>
+        <li>Every town also has an off-road drop: a spot 2 to 3 km out with no roads and no GPS. Follow the arrow on the Route tab and stop within 100 m of it. It pays like a 5 km job, more in steep country. The spot is random, so it may be up a hill or across a creek: that's the challenge.</li>
         <li>Jobs must be driven: a job only delivers once you have driven most of the way there. A teleport longer than 2 km cancels it; a short hop past a cliff or river is fine. To go far, book shipping on the Garage tab.</li>
         <li>Each delivery makes that town want the good a little less for an hour or so. Try another town or another good.</li>
         <li>Watch for gold dots: a shortage pays double for an hour, and the odd jackpot job pays two to three times.</li>

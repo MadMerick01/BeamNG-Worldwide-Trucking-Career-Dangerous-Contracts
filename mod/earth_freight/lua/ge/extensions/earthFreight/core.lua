@@ -562,7 +562,6 @@ function M.new(deps)
     self:applyWeight()
     if job.drop then
       -- No GPS: an off-road drop is found by the arrow on the Route tab.
-      self.dropCheckedAt = nil
       self.tradeFeedback = 'Loaded ' .. quote.units .. ' ' .. good.name:lower() .. ' (' .. quote.kg .. ' kg) for an off-road drop '
         .. string.format('%.1f', job.km) .. ' km to the ' .. location.compassPoint(location.bearing(place, job.drop))
         .. '. Follow the arrow on the Route tab and stop within ' .. jobs.DROP_RADIUS .. ' m of the spot. It pays ' .. dollars(quote.pay) .. '.'
@@ -637,37 +636,6 @@ function M.new(deps)
     self.tradeFeedback = nil
     self.diag:event('job_delivered', string.format('%s x%d -> drop for %d', good.id, load.units, load.pay))
     return true
-  end
-
-  -- Looks at the ground at an off-road drop's spot once the car is close enough for it to have
-  -- loaded. A spot in water or too steep moves to the nearest ground that will do. Until the
-  -- ground there has loaded it waits; when none of it will do, the spot stays.
-  function c:checkDrop()
-    local load, sample = self.load, self.lastSample
-    if not load or not load.drop or load.drop.checked or not self.adapter.ground then return end
-    if self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then return end
-    local away = location.distance(sample, load.drop)
-    if not away or away > jobs.DROP_CHECK_METRES then return end
-    if self.dropCheckedAt and self.clock - self.dropCheckedAt < 1 then return end
-    self.dropCheckedAt = self.clock
-    local function ground(p)
-      local ok, g = pcall(self.adapter.ground, self.adapter, p)
-      return ok and g or nil
-    end
-    local spot = ground(load.drop)
-    if spot == nil then return end
-    if jobs.dropGround(spot) then load.drop.checked = true; return end
-    for _, p in ipairs(jobs.dropCandidates(load.drop, places.get(load.from))) do
-      if jobs.dropGround(ground(p)) then
-        local moved = location.distance(load.drop, p)
-        load.drop = { latitude = p.latitude, longitude = p.longitude, checked = true, moved = true }
-        self:showFlash('delivered', 'DROP SPOT MOVED', 'The spot was ' .. (spot.water and 'under water' or 'too steep to stop on')
-          .. ', so it moved ' .. math.floor(moved + 0.5) .. ' m to firmer ground. Follow the arrow.')
-        self.diag:event('drop_moved', string.format('%s %.0f m', spot.water and 'water' or string.format('slope %.0f', spot.slope), moved))
-        return
-      end
-    end
-    if away <= jobs.DROP_RADIUS then load.drop.checked = true end
   end
 
   -- Delivers the job at its drop-off: paid in full, and the town needs that good a little less.
@@ -808,7 +776,6 @@ function M.new(deps)
     self:afterRespawn()
     self:watchFuel()
     self:watchInsurance()
-    self:checkDrop()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
       self.refuelPending, self.tradeFeedback = nil, 'Refuelling did not go through. You have not been charged.'
@@ -918,7 +885,7 @@ function M.new(deps)
           distanceMetres = away, bearing = bearing,
           -- Which way to turn: the spot's bearing from the way the car points (or last went), 0 is straight ahead.
           arrow = bearing and heading and (bearing - heading) % 360 or nil,
-          inZone = away ~= nil and away <= jobs.DROP_RADIUS, radiusMetres = jobs.DROP_RADIUS, moved = drop.moved == true,
+          inZone = away ~= nil and away <= jobs.DROP_RADIUS, radiusMetres = jobs.DROP_RADIUS,
           delivery = { allowed = problem == nil, problem = problem },
         },
       }

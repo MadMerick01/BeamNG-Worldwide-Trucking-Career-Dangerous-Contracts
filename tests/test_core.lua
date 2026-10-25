@@ -545,28 +545,13 @@ do
   T.check(not v.load.drop.inZone and not v.load.drop.delivery.allowed, 'not in the drop zone yet')
   T.eq(v.town.delivery, nil, 'nothing to deliver in town')
   T.check(not c:deliver(), 'not delivered in town'); T.check(c:view().tradeFeedback:find('100 m'), 'told to drive to the spot')
-  -- The ground: nothing reads until the car is within a kilometre; the spot itself is under water.
-  local first = F.copy(job.drop)
-  a.reads = 0
-  function a:ground(p)
-    self.reads = self.reads + 1
-    if location.distance(self.pose, p) > 1000 then return nil end
-    if location.distance(p, first) < 30 then return { water = true, slope = 0 } end
-    return { water = false, slope = 5 }
-  end
-  local half = location.destination(penrith, location.bearing(penrith, first), 1000)
+  -- Driven there with no GPS, the arrow points the way.
+  local half = location.destination(penrith, location.bearing(penrith, job.drop), 1000)
   F.drive(c, a, half)
-  T.eq(a.reads, 0, 'the ground is not read from far off')
   T.check(c:view().load.drop.arrow < 1 or c:view().load.drop.arrow > 359, 'the arrow points straight ahead')
-  F.drive(c, a, first)
-  T.check(c.load.drop.moved and c.load.drop.checked, 'the spot moved off the water')
-  local moved = location.distance(first, c.load.drop)
-  T.check(moved >= 30 and moved <= 41, 'to the nearest dry ground: ' .. math.floor(moved) .. ' m')
-  T.eq(c.flash.title, 'DROP SPOT MOVED', 'the player is told'); T.check(c.flash.text:find('under water'), 'why')
-  T.check(c:view().load.drop.moved, 'and the HUD says so')
-  local reads = a.reads; F.advance(c, 3); T.eq(a.reads, reads, 'the ground is read once')
+  F.drive(c, a, job.drop)
   -- Saved and loaded, the job keeps its spot.
-  T.check(c:manualSave(), 'saved'); T.check(io.files[A].load.drop.moved, 'the spot is in the save')
+  T.check(c:manualSave(), 'saved'); T.near(io.files[A].load.drop.latitude, job.drop.latitude, 1e-12, 'the spot is in the save')
   local r = F.controller({ io = io })
   T.near(r.load.drop.latitude, c.load.drop.latitude, 1e-12, 'a reload keeps the spot')
   -- Delivered stopped in the zone, once driven.
