@@ -42,7 +42,7 @@ GeoNames is CC BY 4.0, so the mod needs a credit line (README and the HUD's Tips
 
 ### Rural pickup points
 
-Out in the country towns alone are too far apart (Goulburn's nearest town is 27 km away). The gaps are filled with **rural pickup points**: farms, mines, quarries, sawmills, grain silos and roadhouses, taken from GeoNames feature classes and OpenStreetMap. A rural point sells or buys only one or two goods and has no full board. It means there is a 10–15 km job from almost anywhere, and it feels right for the genre: grain from a farm to the town silo, gravel from a quarry to a building site.
+Out in the country towns alone are too far apart (Goulburn's nearest town is 27 km away). The gaps are filled with **rural pickup points**: farms, mines, quarries, brickworks, dams, grain silos and roadhouses, taken from GeoNames feature classes and OpenStreetMap. A rural point sells or buys only one or two goods and has no full board. It means there is a 10–15 km job from almost anywhere, and it feels right for the genre: grain from a farm to the town silo, gravel from a quarry to a building site.
 
 ### What each place makes and needs
 
@@ -50,7 +50,7 @@ There is no worldwide database of what towns produce, so the generator **guesses
 
 | Signal | Source | Tag |
 |---|---|---|
-| Land cover around it: cropland, forest, grassland, desert | ESA WorldCover | farm, timber, livestock |
+| Land cover around it: cropland, grassland, desert | ESA WorldCover | farm (cropland, grassland); dry (desert: needs water) |
 | A mine, quarry or oil field within a few km | GeoNames / OSM | mining, quarry, fuel |
 | A harbour, or on the coast | GeoNames / OSM, coastline | port |
 | Big city | importance rank | city: makes parts and fuel, needs food and raw goods |
@@ -64,35 +64,44 @@ Each tag maps to goods it **supplies** and goods it **demands**. That gives trad
 
 There is no hand-built region. Your region is simply the places around you, so it moves with you: drive far enough and you are among new towns. The HUD covers the nearest 5–6, and the planning map covers about 50 km.
 
-**❓ OPEN — Q2:** Where does a new game start? Options: a fixed starter town (e.g. somewhere in the Sydney region, which is the most researched), a short list to pick from, or anywhere the player chooses. A fixed start makes early balance testable.
+**Decided (Q2): a new game starts in Penrith, NSW.** It sits on the edge of Sydney, so the first runs mix city and country driving, and the Blue Mountains next door give better-paying, more interesting hill deliveries early on. Penrith is one of the towns GeoNames thins out, so it goes on the generator's hand-edited "always include" list. A choice of start towns can come later.
 
 ## Goods and cargo sizes
 
-Only about six goods, so the dots stay readable. Each one is spread across the cargo sizes so the same good shows up at every stage of progress.
+Seven goods, few enough that the dots stay readable. Each maps onto one of BeamNG's built-in cargo types (see below), so the vanilla Cargo Load parts carry them. Livestock and timber were dropped because BeamNG has no cargo type for them; water and bricks replace them (decided, Q3).
 
-| Good | Feel | Typical flow |
-|---|---|---|
-| **Grain / food** | heavy, bulky | farms → towns and cities |
-| **Livestock** | pays well, rough driving costs you | farms → cities |
-| **Timber** | long load | forests and sawmills → towns |
-| **Gravel / ore** | very heavy | quarries and mines → cities |
-| **Fuel** | dangerous, pays well | cities → remote places |
-| **Parts / machinery** | light, valuable | cities → farms and mines |
+| Good | BeamNG type | Feel | Typical flow |
+|---|---|---|---|
+| **Parts / machinery** | parcel | light, valuable | cities → farms and mines |
+| **Food** | parcel | everyday, always wanted | farms → towns and cities |
+| **Bricks** | parcel | very heavy per slot, so weight runs out before space | brickworks and quarries → towns and building sites |
+| **Grain** | dry bulk | bulky | farms and silos → towns, cities and ports |
+| **Gravel / ore** | dry bulk | very heavy | quarries and mines → cities |
+| **Water** | fluid | heavy, sloshes | towns and dams → remote places, mines, dry farms |
+| **Fuel** | fluid | dangerous, pays well | cities → remote places |
 
 | Size | Carried by | Notes |
 |---|---|---|
-| **Parcels** | any car; a rust-bucket sedan takes 3–4 | low pay, always available (parts, mail, food boxes) |
-| **Pallets** | ute or pickup takes 1–2 | where fuel drums and machinery start |
-| **Bulk** | tray truck or bigger | grain, gravel, timber, livestock; where the money is |
-| **Trailers** | semi | long, high-paying runs into dangerous regions |
+| **Parcels** | any car with a box; Cargo Load Box S/M holds 1–4 slots | low pay, always available (parts, food, a few bricks) |
+| **Pallets** | ute or pickup with an L box (16 slots) or a small tank | where fuel and water start |
+| **Bulk** | tray truck or bigger with an XL box (128 slots), aggregate box or fluid tank | grain, gravel, bricks by the pallet; where the money is |
+| **Trailers** | semi | containers and tankers on the long, high-paying runs into dangerous regions |
 
 A green bulk dot you can't carry yet is meant to be visible early on; it is what keeps you saving.
 
-**❓ OPEN — Q3:** Exactly which goods exist at which sizes (e.g. is there a "livestock parcel"? probably not). A good × size table needs filling in.
-
 **❓ OPEN — Q4:** Vehicle capacity. BeamNG's own career mode puts cargo slots on vehicles for its delivery jobs. If we can read those outside career mode (Earth Freeroam does not load career modules, which is why Enduro's garage uses base-game calls only), each vehicle's capacity comes free and stays right when the car is modded. Otherwise we set capacity per vehicle class ourselves. Needs a check against the API dump (`docs/beamng-api/` in the Enduro repo) and in game.
 
-**❓ OPEN — Q5:** Is cargo physical (props spawned in the bed, which can fall out) or abstract (a number, with damage taken from the vehicle's damage and g-forces)? Abstract is far simpler and safer on Earth's streamed terrain. The working assumption is **abstract cargo, with damage derived from impacts and harsh driving**.
+**Decided (Q5): cargo is a number, but space comes from the cargo boxes on the vehicle, and weight matters.**
+
+- A vehicle's cargo space is the number and size of the cargo boxes (or trays, racks, tanks) fitted to it. Fit more or bigger boxes in the garage and you can carry more. A bare car with no boxes still takes a couple of parcels in the boot.
+- Every load also has a **weight**, and weight is a big part of the game: each vehicle has a payload limit, and a heavy load should make the vehicle slower, brake later and handle worse, so overloading a rust bucket is a real risk. Gravel and ore fill a vehicle's weight limit long before its space; parcels and parts fill space first.
+- The load itself is still a number in the save, not objects in the tray, so it never falls through Earth's ground.
+
+**What BeamNG has built in.** Since 0.31, vanilla vehicles can carry `cargoStorage` parts for career deliveries, sold in the parts menu as "Cargo Load …" (internal names contain `cargo_load_`). The `cargoStorage` jbeam section also says how stored cargo adds weight to the vehicle's nodes. Cargo types are `parcel`, `fluid`, `dryBulk` and `passenger`. Parcel capacity is counted in slots: Cargo Load Box S holds 1, M holds 4, L holds 16, XL holds 128, and 20 ft and 40 ft containers hold far more. Fluid and dry bulk are counted in litres (e.g. Fluid Tank XL and Aggregate Box XL, 800). From BeamNG's [Cargo Storage docs](https://documentation.beamng.com/modding/vehicle/sections/cargostorage/), via search; not yet checked against the 0.39 game files.
+
+**❓ OPEN — Q5a:** How the load's weight reaches the physics. Options: change the vehicle's mass through a weight-adjusting part or jbeam variable, the way BeamNG's own career cargo does, or apply it as a game-side mass change. Needs a look at how career cargo adds mass, alongside Q4.
+
+**❓ OPEN — Q5b:** Which parts count as cargo boxes and how much each holds. If BeamNG's career cargo slots (Q4) can be read, they answer this. Otherwise we keep our own table of box parts with their space and weight limit.
 
 ## Economy
 
@@ -116,7 +125,13 @@ Nothing ticks in the background, and the save only holds places you have actuall
 
 The HUD's green and red dots come from the current price relative to the good's world baseline: green means stocked and cheap to buy, red means short and pays well to deliver.
 
-**❓ OPEN — Q6:** Decay curve and rate (linear vs exponential, a half-life in in-game hours?), and how big one delivery's offset is relative to vehicle size. A semi load should move a village's price far more than a parcel.
+**Decided (Q6):** the offset decays exponentially and **halves every 2 in-game hours**. Its size scales with the load: one delivery's offset is the load's size relative to how much the place wants, so a semi load can flood a village in one drop while a parcel barely moves a city's price.
+
+### Fuel (decided, Q15)
+
+Fuel costs money. BeamNG already simulates fuel use, so the mod reads the tank level and the player refuels at towns, paying per litre. Weight matters here too: a heavy load burns more fuel, so it is part of the cost of every run.
+
+**Decided (Q15a):** a **Refuel** button on the HUD when stopped inside a town's arrival circle or at a roadhouse, paid per litre, filling the tank through the vehicle's fuel storage. (The exact vehicle-side fuel call still needs checking in game.)
 
 ### Pay modifiers
 
@@ -125,15 +140,17 @@ The generator scores every place once for how hard it is to get to:
 - **Ruggedness:** how steep and broken the terrain is, from elevation data.
 - **Remoteness:** distance to the nearest big city (long hauls with nowhere to repair).
 - **Climate:** snow, desert or monsoon zones.
-- **Danger (optional):** CarKov-style hostiles in some regions.
+- **Danger:** not for now (Q16). CarKov-style hostiles could be added later.
 
 Pay is a multiplier on that score. Norway's fjords, the Andes, the Australian outback and Himalayan passes pay several times more than flat European highways. Katoomba → Lithgow is a good local example of a climb that should pay more.
 
-**❓ OPEN — Q7:** Which elevation source for ruggedness (SRTM / Copernicus DEM sampled per place?) and how strong the multiplier is (cap at 3×? 5×?).
+**Decided (Q7): the multiplier is capped at 3×.** Flat highways pay 1×, the Blue Mountains around 1.5×, the Andes or Himalayas near 3×. Any higher and nobody would deliver anywhere else.
+
+**❓ OPEN — Q7a:** Which elevation source the generator samples for ruggedness (SRTM or Copernicus DEM per place).
 
 ### Cargo damage
 
-Rough driving damages the cargo and cuts the payout. Damage costs more the more the load is worth, so careful driving pays. Livestock and fuel are the most sensitive. A cheap pickup on a dirt road is a real trade-off.
+Rough driving damages the cargo and cuts the payout. Damage costs more the more the load is worth, so careful driving pays. Fuel and parts are the most sensitive. A cheap pickup on a dirt road is a real trade-off.
 
 ### Living world (later)
 
@@ -150,23 +167,23 @@ The same arc as Rust to Race Car, ending in a truck.
 
 Vehicles are bought through the garage as in Enduro: a car's game Value sets its price, the old car is traded in, and repair prices scale with the car's Value.
 
-**❓ OPEN — Q8:** Which BeamNG vehicles and configs for each tier (the Enduro starter is a Burnside; the ute/pickup could be a D-Series or Roamer config; trucks a Gavril T-Series). Is the semi tier usable on BeamNG.Earth's streamed roads at all, given tight terrain streaming around the car?
+**Decided (Q8): the semi tier stays.** BeamNG.Earth builds solid road out to at least 150 m around the car, which is plenty for a trailer. Which vanilla vehicles suit each tier is left to the player (Q9); the HUD tips can suggest some, such as a D-Series or Roamer for the ute stage and a Gavril T-Series for trucks.
 
-**❓ OPEN — Q9:** Is the player limited to a tier ladder (must own a ute before a truck), or can they buy anything they can afford?
+**Decided (Q9): there is no forced ladder.** The player can buy any vanilla BeamNG vehicle they can afford. The sedan → ute → truck → semi tiers above describe the usual path, not a rule; money does the gating.
 
-## Teleporting
+## Teleporting: book shipping (decided, Q10 and Q11)
 
-Teleporting is how you reach a far-off, better-paying region, and it is an investment, not a shortcut:
+The point of the game is to take your vehicle all over the world, so moving it should be **cheap**. What you cannot do is teleport with goods.
 
-- It **costs money**, like shipping your truck overseas. Price scales with distance (and maybe vehicle size).
-- **Any cargo on board is cancelled** when you teleport. The money paid for it is lost.
-- Every delivery still has to be driven: teleport-sized jumps never count as driving.
+1. **Book shipping.** A small, minimal screen: pick a destination (a place from the list, or coordinates), see the price, pay. The price is low, scaling a little with distance and vehicle size. You can only book with an **empty** vehicle; sell or drop your load first.
+2. **Teleport.** Once paid, the HUD gives the destination coordinates with a Copy button, to paste into the BeamNG.Earth map, as Enduro does. The mod never teleports the player itself.
+3. **Arrive.** A jump that lands near the booked destination is accepted and the booking is used up.
 
-As in Enduro, the mod never teleports the player itself. It shows coordinates; the player uses BeamNG.Earth's map. The mod detects the jump (Enduro treats movement faster than 150 m/s between two readings as a teleport) and charges and cancels then.
+**A teleport without a booking.** The mod detects the jump (Enduro treats movement faster than 150 m/s between two readings as a teleport). Any cargo on board is cancelled and the money paid for it is lost. A message tells the player where they left from, with the coordinates to return to, and no driving pay or deliveries count until they are back there (or book shipping from where they are).
 
-**❓ OPEN — Q10:** How does the player pay for a teleport the mod doesn't perform? Options: (a) a "Book shipping" button that quotes the price, takes the money and then accepts the next jump to near that destination; an unbooked jump is charged a penalty or blocks pay until they drive back. (b) Charge after the fact by the jump distance. (a) gives a clear price up front.
+**Short hops** under about 2 km, to get past a cliff or river, are free, need no booking and keep the cargo.
 
-**❓ OPEN — Q11:** Is a short hop (say under 2 km, to get past a cliff or river, like CarKov's 500 m drop zone) free and cargo-safe?
+Every delivery still has to be driven: teleport-sized jumps never count as driving.
 
 ## HUD
 
@@ -188,7 +205,7 @@ One helper line suggests the best run for a new player, e.g. *"Best run: grain, 
 
 **Arrival:** a place's "you've arrived" circle is sized from its importance (a city depot is bigger than a village store). Trading only works inside it and when stopped.
 
-**❓ OPEN — Q12:** Road distance. Straight-line is trivial; road distance needs BeamNG's road graph (`map.findClosestRoad` / the navgraph), which on Earth only exists for streamed tiles near the car. Options: show straight-line ×1.3 as an estimate, compute road distance only for loaded tiles, or precompute in the generator. Enduro's puncture code already notes that how complete Earth's road map is remains unproven. Earth's GPS can plan a true road route through its companion server (see the planning map section), but only one destination at a time and only online, so it fits the current delivery, not a list of six places.
+**Decided (Q12):** the nearby list shows **straight-line distance × 1.3, marked "≈"**, because Earth's road graph only covers the roads close to the car. The current delivery shows the true road distance from Earth's GPS route once it is set (see the planning map section).
 
 ### Planning map: our own screen, not Earth's (decided)
 
@@ -225,8 +242,8 @@ Copy from [`earth-enduro---rust-to-race-car`](https://github.com/MadMerick01/ear
 | mileage and teleport checks in `core.lua` | — | extract | `addMileage` and the 150 m/s teleport rule |
 | arrival logic in `core.lua` | — | extract | "within radius of a point" from resume / finish |
 | `punctures.lua` | ~95 | as is | |
-| `roadEvents.lua` | ~60 | maybe | bandits and friendly villages could fit freight too |
-| `hostile.lua` | ~330 | later | for the danger modifier, if wanted |
+| `roadEvents.lua` | ~60 | adapt | **friendly village free-part offer only** (decided, Q16); bandits left out |
+| `hostile.lua` | ~330 | not now | no hostiles for now (Q16) |
 | `landmask.lua` + `tools/make_land_mask.py` | | pattern | the town-list generator follows the same "build data offline, ship a Lua table" approach |
 | `tools/package.py`, `tools/check_earth_versions.py`, `tests/` harness | | as is | LuaJIT/Lupa test runner and mocked game APIs |
 
@@ -262,21 +279,25 @@ The real work is **balance**, not code: pay per km against repairs and fuel, how
 | # | Question | Working assumption |
 |---|---|---|
 | Q1 | Land-cover source the generator can actually sample | try a coarser set than ESA WorldCover first |
-| Q2 | Where a new game starts | fixed start in the Sydney region |
-| Q3 | Good × size table | to fill in |
+| Q2 | Where a new game starts | **Decided:** Penrith, NSW |
+| Q3 | Which goods, at which sizes | **Decided:** parts, food, bricks (parcel); grain, gravel/ore (dry bulk); water, fuel (fluid) |
 | Q4 | Can we read career-mode cargo slots in Earth Freeroam? | capacity per vehicle class, set by us |
-| Q5 | Physical or abstract cargo | abstract |
-| Q6 | Offset size and decay rate | exponential decay; offset scales with load size |
-| Q7 | Elevation source and multiplier cap | to decide |
-| Q8 | Vehicles per tier; is a semi usable on Earth's streaming? | to test in game |
-| Q9 | Strict tier ladder or buy anything affordable | buy anything affordable |
-| Q10 | How a teleport the mod doesn't perform gets paid for | "Book shipping" up front |
-| Q11 | Free short hops | yes, under ~2 km and cargo-safe |
-| Q12 | Road distance on Earth's partial road graph | straight-line × factor, labelled as an estimate |
+| Q5 | Physical or abstract cargo | **Decided:** a number; space from the cargo boxes fitted, weight matters |
+| Q5a | How the load's weight reaches the physics | use the `cargoStorage` weight from the Cargo Load parts, if it works outside career |
+| Q5b | Which parts are cargo boxes and what each holds | the vanilla Cargo Load parts (Box S/M/L/XL, tanks, aggregate boxes) |
+| Q6 | Offset size and decay rate | **Decided:** halves every 2 in-game hours; offset scales with load size |
+| Q7 | Pay multiplier cap | **Decided:** 3× |
+| Q7a | Elevation source for ruggedness | SRTM or Copernicus DEM |
+| Q8 | Is a semi usable on Earth's streaming? | **Decided:** yes, Earth's road reaches at least 150 m, plenty for a trailer |
+| Q9 | Strict tier ladder or buy anything affordable | **Decided:** any vanilla vehicle you can afford |
+| Q10 | How a teleport gets paid for | **Decided:** cheap "Book shipping" with an empty vehicle, then coordinates to paste |
+| Q11 | Free short hops | **Decided:** yes, under ~2 km and cargo-safe |
+| Q12 | Road distance on the HUD | **Decided:** straight-line × 1.3 marked ≈; true road distance for the current delivery from Earth's GPS |
 | Q13 | ~~Set Earth's GPS destination when a load is bought?~~ | **Decided: yes**, guarded, with a setting to turn it off |
 | Q14 | Place-data format and size | per-cell files if a single table is too big |
-| Q15 | Fuel as a running cost? BeamNG simulates fuel; Enduro ignores it | to decide |
-| Q16 | Does CarKov or any Enduro side mode carry over? | no, at least not in layers 1–3 |
+| Q15 | Fuel as a running cost | **Decided:** yes, refuel at towns; heavy loads burn more |
+| Q15a | How refuelling works | **Decided:** Refuel button in towns and at roadhouses, paid per litre |
+| Q16 | What carries over from Enduro's extras | **Decided:** punctures and the friendly village part offer; no bandits, hostiles or CarKov for now |
 
 ## Credits
 
