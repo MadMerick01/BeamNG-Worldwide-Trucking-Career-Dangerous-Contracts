@@ -18,7 +18,7 @@ Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. 
 6. Stop inside the drop-off town and press **Deliver** to get paid. **Refuel** is on the Town tab too, at $2.10 a litre.
 7. **Save** keeps your money, car, load and fuel. Anything since your last Save is lost when you exit.
 
-**Pay.** A delivery pays the drop-off's price for the goods plus freight pay: $45 a tonne for each road km, and the rate rises the longer the run, to $90 on a 50 km run.
+**Pay.** A delivery pays the drop-off's price for the goods, plus the gap between that price and what you paid again as a bonus (when the gap is in your favour), plus freight pay: $45 a tonne for each road km, and the rate rises the longer the run, to $90 on a 50 km run.
 
 **Cargo space.** A car with no cargo box carries 2 parcels in the boot. Fit a "Cargo Load" box in the game's parts menu for more: the Garage tab bills it like any part (Box S 1 slot, M 4, L 16, XL 128). Repairs, parts and buying cars work as in Earth Enduro.
 

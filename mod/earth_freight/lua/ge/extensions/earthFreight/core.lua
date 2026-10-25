@@ -699,7 +699,7 @@ function M.new(deps)
       local quote = self:buyQuote(place, good)
       if quote.slots > 0 then
         for _, d in ipairs(destinations) do
-          local profit = math.floor(quote.slots * (market.price(d.place, good) + market.freightPerSlot(place, d.place, good) - quote.price) + 0.5)
+          local profit = math.floor(quote.slots * (market.price(d.place, good) + market.bonusPerSlot(place, d.place, good) + market.freightPerSlot(place, d.place, good) - quote.price) + 0.5)
           if profit > 0 and (not best or profit > best.profit) then
             best = { good = good.name, from = place.name, to = d.place.name, toId = d.place.id, goodId = good.id, profit = profit }
           end
@@ -748,9 +748,9 @@ function M.new(deps)
         local prices = {}
         for _, d in ipairs(destinations) do
           local sell = market.price(d.place, good)
-          local freight = market.freightPerSlot(place, d.place, good)
-          prices[#prices + 1] = { id = d.place.id, price = sell, freight = freight,
-            profit = math.floor(quote.slots * (sell + freight - quote.price) + 0.5), level = market.level(d.place, good) }
+          local bonus, freight = market.bonusPerSlot(place, d.place, good), market.freightPerSlot(place, d.place, good)
+          prices[#prices + 1] = { id = d.place.id, price = sell, bonus = bonus, freight = freight,
+            profit = math.floor(quote.slots * (sell + bonus + freight - quote.price) + 0.5), level = market.level(d.place, good) }
         end
         goodsHere[#goodsHere + 1] = { id = good.id, name = good.name, price = quote.price, level = market.level(place, good),
           kgPerSlot = good.kgPerSlot, slots = quote.slots, fits = quote.fits, cost = quote.cost, prices = prices }

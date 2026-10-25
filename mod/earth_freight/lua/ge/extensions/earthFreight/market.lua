@@ -25,6 +25,10 @@ M.LONG_HAUL_KM = 50
 -- tools/make_places.py) multiplies everything a place pays and charges, and the freight pay of a
 -- run at the average of its two ends: runs within a steep region pay that much more, and a run
 -- up into one pays more than the run back down.
+-- Town pay: a delivery also pays this share of the price gap again (the drop-off's price over what
+-- the load cost), so a short run to a town that is short of the good pays about twice as much. A
+-- gap that loses money is not made worse, and a load costs the same to buy.
+M.GAP_BONUS = 1
 -- A load only sells at a place once you have driven at least this share of the straight-line
 -- distance from where it was bought, so a teleport or a lift never delivers.
 M.DRIVEN_SHARE = 0.7
@@ -80,10 +84,16 @@ function M.freightPerSlot(from, to, good)
   return km * good.kgPerSlot / 1000 * M.freightRate(km) * M.runBoost(from, to)
 end
 
+-- The town pay bonus for one slot of a good carried from one place to another, in dollars.
+function M.bonusPerSlot(from, to, good)
+  if not (from and to and good) then return 0 end
+  return math.max(0, M.price(to, good) - M.price(from, good)) * M.GAP_BONUS
+end
+
 -- What a load bought at from pays on delivery at a place: its slots at the place's price plus the
--- freight pay. It pays in full however the car was driven: repairing the car is cost enough.
+-- town pay bonus and the freight pay. It pays in full however the car was driven: repairing the car is cost enough.
 function M.payout(place, good, slots, from)
-  return math.floor((M.price(place, good) + M.freightPerSlot(from, place, good)) * slots + 0.5)
+  return math.floor((M.price(place, good) + M.bonusPerSlot(from, place, good) + M.freightPerSlot(from, place, good)) * slots + 0.5)
 end
 
 return M

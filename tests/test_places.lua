@@ -60,8 +60,18 @@ do
   T.near(market.freightRate(market.LONG_HAUL_KM), 2 * market.FREIGHT_PER_TONNE_KM, 1e-9, 'a long haul pays twice the rate per km')
   T.eq(market.freightPerSlot(nil, far, food), 0, 'no freight without an origin')
   local price = market.price(far, food)
-  T.eq(market.payout(far, food, 4, penrith), math.floor((price + perSlot) * 4 + 0.5), 'payout adds freight')
+  local bonus = math.max(0, price - market.price(penrith, food))
+  T.eq(market.bonusPerSlot(penrith, far, food), bonus, 'the town pay bonus is the price gap')
+  T.eq(market.payout(far, food, 4, penrith), math.floor((price + bonus + perSlot) * 4 + 0.5), 'payout adds the bonus and freight')
 end
+-- The town pay bonus pays a gain twice but never makes a loss worse.
+for _, good in ipairs(goods.carried()) do
+  for _, p in ipairs(near) do
+    local gap = market.price(p.place, good) - market.price(penrith, good)
+    T.eq(market.bonusPerSlot(penrith, p.place, good), math.max(0, gap), good.id .. ' bonus to ' .. p.place.name)
+  end
+end
+T.eq(market.bonusPerSlot(nil, penrith, food), 0, 'no bonus without an origin')
 T.near(market.drivenNeeded(penrith, near[1].place), near[1].metres * 0.7, 1e-6, '70% of the straight line must be driven')
 T.done('places and market')
 

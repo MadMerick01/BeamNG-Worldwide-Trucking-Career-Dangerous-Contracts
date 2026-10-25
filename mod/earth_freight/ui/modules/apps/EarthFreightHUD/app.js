@@ -80,7 +80,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         scope.picked.count = Math.max(1, Math.min(g.slots, scope.buyCount(g) + delta))
       }
       scope.setCount = function (count) { scope.picked.count = count }
-      // The drop-off's price plus its freight pay, less what you pay here, for the chosen count.
+      // The drop-off's price plus its town pay bonus and freight pay, less what you pay here, for the chosen count.
       // The delivery distance slider; it starts at Lua's value and sends each change back. Older
       // AngularJS (as in BeamNG's UI) gives a range input's value as a string, so it is parsed here.
       scope.range = { km: null }
@@ -97,7 +97,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         scope.range.km = Math.max(5, Math.min(50, current + delta))
         scope.setRange()
       }
-      scope.profit = function (g, p) { return (p.price + (p.freight || 0) - g.price) * scope.buyCount(g) }
+      scope.profit = function (g, p) { return (p.price + (p.bonus || 0) + (p.freight || 0) - g.price) * scope.buyCount(g) }
       scope.pickedGood = function (d) {
         var list = (d && d.town && d.town.goods) || []
         for (var i = 0; i < list.length; i++) if (list[i].id === scope.picked.good) return list[i]
