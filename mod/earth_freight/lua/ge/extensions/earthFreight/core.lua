@@ -887,7 +887,8 @@ function M.new(deps)
       partsFeedback = self.partsFeedback,
       carChange = self.pendingCar and {
         name = self.pendingCar.name, price = self.pendingCar.price, extras = self.pendingCar.extras,
-        tradeIn = self.pendingCar.tradeIn, cost = self.pendingCar.cost,
+        tradeIn = self.pendingCar.tradeIn, repair = self.pendingCar.repair, cost = self.pendingCar.cost,
+        oldName = self.ownedParts and self.ownedParts.name or nil,
       } or nil,
       buyCarAllowed = self:buyCarAllowed(),
       revertCarAllowed = self.pendingCar ~= nil,

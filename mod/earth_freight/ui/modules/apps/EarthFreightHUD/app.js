@@ -135,6 +135,12 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.addTestMoney = function () { if (scope.data.testMoneyAllowed) core('addTestMoney()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
+      // Paying for a bill takes two presses: the first asks to confirm that total, and a changed
+      // total asks again.
+      scope.confirming = { kind: null, cost: null }
+      scope.askToPay = function (kind, cost) { scope.confirming.kind = kind; scope.confirming.cost = cost }
+      scope.isConfirming = function (kind, cost) { return scope.confirming.kind === kind && scope.confirming.cost === cost }
+      scope.cancelPay = function () { scope.confirming.kind = null; scope.confirming.cost = null }
       scope.buyParts = function () { if (scope.data.buyPartsAllowed) core('buyParts()') }
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
       scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar()') }

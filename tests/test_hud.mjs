@@ -49,6 +49,17 @@ test('buttons only send fixed commands when Lua enabled them', () => {
     assert.equal(a.commands.at(-1), fixed(body), name)
   }
 })
+test('paying a bill asks to confirm that total, and a new total asks again', () => {
+  const a = app()
+  a.state({ state: 'READY', partsChange: { cost: 500 }, buyPartsAllowed: true })
+  assert.equal(a.scope.isConfirming('parts', 500), false)
+  a.scope.askToPay('parts', 500)
+  assert.equal(a.scope.isConfirming('parts', 500), true, 'asks to confirm')
+  assert.equal(a.scope.isConfirming('parts', 650), false, 'a changed bill asks again')
+  assert.equal(a.scope.isConfirming('car', 500), false)
+  a.scope.cancelPay(); assert.equal(a.scope.isConfirming('parts', 500), false, 'cancelled')
+  assert.ok(html.includes('ng-click="cancelPay(); buyParts()"') && html.includes('ng-click="cancelPay(); buyCar()"'), 'only the confirm pays')
+})
 test('town buttons only send fixed commands, with plain ids, when Lua enabled them', () => {
   const a = app()
   a.state({ state: 'READY', town: {} })
@@ -142,7 +153,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
     assert.ok(html.indexOf(always) > -1 && html.indexOf(always) < panels, always)
   }
   for (const id of ['route', 'town', 'garage', 'tips']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
-  for (const action of ['buyParts()', 'revertParts()', 'buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
+  for (const action of ['cancelPay(); buyParts()', 'revertParts()', 'cancelPay(); buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
     'newGame()', 'addTestMoney()', 'sellLoad()', 'refuel()', 'dumpLoad()', 'buyLoad(pickedGood(data).id, p.id, buyCount(pickedGood(data)))']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
   }
