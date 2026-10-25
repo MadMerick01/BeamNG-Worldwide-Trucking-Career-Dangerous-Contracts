@@ -293,6 +293,34 @@ do
   T.near(v.resume.latitude, -33.75, 1e-9, 'the HUD shows where to go'); T.eq(v.startTown, 'Penrith', 'named')
 end
 
+-- New game while still in an upgraded starter car, on the start spot: a fresh starter car replaces
+-- it, so the paid-for parts are not carried into the new game.
+do
+  local c, io, a, g = F.controller()
+  g.starter = { engine = 'burnside_engine_i6' }
+  a.pose = F.copy(F.PENRITH); c:tick(0.1); c:vehicleSpawned(); c:tick(0.1)
+  c:addTestMoney(); g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
+  T.check(c:buyParts(), 'turbo paid for'); c:tick(0.1); T.eq(c.ownedParts.parts.turbo, 'pickup_turbo', 'turbo owned')
+  T.check(c:manualSave(), 'saved'); c:newGame(); T.check(c:newGame(), 'new game')
+  c:tick(0.1)
+  T.check(c:view().arrived, 'arrives straight away on the start spot')
+  T.eq(c:view().flash.title, 'WELCOME TO PENRITH', 'welcomed')
+  T.eq(#g.spawns, 2, 'a fresh starter car is spawned'); T.eq(g.fitted.turbo, nil, 'the turbo is gone')
+  c:vehicleSpawned(); c:tick(0.6); c:tick(0.6)
+  T.eq(c.ownedParts.parts.turbo, nil, 'the turbo is not owned'); T.eq(c.pendingParts, nil, 'no bill')
+  T.eq(c:view().balance, Core.STARTING_MONEY, 'starting money')
+  T.eq(c:view().town.problem, nil, 'can trade in Penrith')
+end
+
+-- Off the start spot, the card says how far and that driving there counts too.
+do
+  local c, io, a = F.controller()
+  a.pose = F.position(-33.75 + 300 * north, 150.7); c:tick(0.1)
+  local v = c:view()
+  T.near(v.resumeDistanceMetres, 300, 0.01, 'distance to the spot'); T.eq(v.resumeRadiusMetres, 50, 'how close counts')
+  F.drive(c, a, F.PENRITH); T.check(c:view().arrived, 'driving onto the spot arrives')
+end
+
 -- Shipping: book with an empty car, teleport to the coordinates, arrive with the booking used up.
 do
   local shipping = require('earthFreight/shipping')
