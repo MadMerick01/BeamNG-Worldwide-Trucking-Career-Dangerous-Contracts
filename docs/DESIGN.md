@@ -74,7 +74,7 @@ Seven goods, few enough that the dots stay readable. Each maps onto one of BeamN
 |---|---|---|---|
 | **Parts / machinery** | parcel | light, valuable | cities → farms and mines |
 | **Food** | parcel | everyday, always wanted | farms → towns and cities |
-| **Bricks** | parcel | very heavy per slot, so weight runs out before space | brickworks and quarries → towns and building sites |
+| **Bricks** | parcel | heaviest parcel (25 kg a slot), so in the biggest box weight runs out before space | brickworks and quarries → towns and building sites |
 | **Grain** | dry bulk | bulky | farms and silos → towns, cities and ports |
 | **Gravel / ore** | dry bulk | very heavy | quarries and mines → cities |
 | **Water** | fluid | heavy, sloshes | towns and dams → remote places, mines, dry farms |

@@ -54,7 +54,7 @@ do
   local rate = market.FREIGHT_PER_TONNE_KM * (1 + km / market.LONG_HAUL_KM)
   local perSlot = km * food.kgPerSlot / 1000 * rate
   T.near(market.freightPerSlot(penrith, far, food), perSlot, 1e-9, 'freight is per tonne per road km')
-  T.near(market.freightPerSlot(penrith, far, goods.get('bricks')), km * 0.12 * rate, 1e-9, 'heavier goods earn more')
+  T.near(market.freightPerSlot(penrith, far, goods.get('bricks')), km * 0.025 * rate, 1e-9, 'heavier goods earn more')
   T.eq(market.freightPerSlot(penrith, penrith, food), 0, 'no freight for no distance')
   T.near(market.freightRate(0), market.FREIGHT_PER_TONNE_KM, 1e-9, 'short runs pay the base rate')
   T.near(market.freightRate(market.LONG_HAUL_KM), 2 * market.FREIGHT_PER_TONNE_KM, 1e-9, 'a long haul pays twice the rate per km')

@@ -6,6 +6,11 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Parts, food and bricks are much lighter.** Each slot of parts now weighs 2 kg (was 20 kg), food 8 kg (was 25 kg) and bricks 25 kg (was 120 kg). Your car feels the lighter load and uses less fuel carrying it.
+- Bricks now fit in the boot, and a full set of cargo boxes can be filled with bricks instead of running out of weight after a few slots. Only the biggest Cargo box XL still runs out of weight before space with bricks.
+- Because freight pay is paid per tonne for each road km, these goods now earn much less freight pay per slot: about a tenth as much for parts, a third for food and a fifth for bricks. What a town pays for the goods themselves is the same.
+- Saves still work. A load you are carrying when you load a save keeps the weight it had when you bought it, but is paid freight at the new, lighter weight.
+
 ## Build 14 · 25 Oct 2026
 
 - **The Garage's "Change parts or buy a car" box is tidier.** It no longer lists keyboard keys, and the Cargo line now gives one short total, such as "Cargo: 5 boxes · 20 slots · 1,000 kg max", instead of naming every box. Saves still work.
