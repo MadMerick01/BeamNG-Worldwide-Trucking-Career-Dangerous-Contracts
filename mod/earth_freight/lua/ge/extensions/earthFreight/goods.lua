@@ -5,9 +5,9 @@ local M = {}
 
 -- basePrice: dollars for one parcel slot at an average place. kgPerSlot: what one slot weighs.
 M.list = {
-  { id = 'parts', name = 'Parts', kind = 'parcel', basePrice = 150, kgPerSlot = 20 },
-  { id = 'food', name = 'Food', kind = 'parcel', basePrice = 60, kgPerSlot = 25 },
-  { id = 'bricks', name = 'Bricks', kind = 'parcel', basePrice = 45, kgPerSlot = 120 },
+  { id = 'parts', name = 'Parts', kind = 'parcel', basePrice = 150, kgPerSlot = 2 },
+  { id = 'food', name = 'Food', kind = 'parcel', basePrice = 60, kgPerSlot = 8 },
+  { id = 'bricks', name = 'Bricks', kind = 'parcel', basePrice = 45, kgPerSlot = 25 },
   { id = 'grain', name = 'Grain', kind = 'dryBulk', basePrice = 30, kgPerSlot = 80 },
   { id = 'gravel', name = 'Gravel / ore', kind = 'dryBulk', basePrice = 25, kgPerSlot = 160 },
   { id = 'water', name = 'Water', kind = 'fluid', basePrice = 20, kgPerSlot = 100 },

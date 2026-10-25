@@ -59,7 +59,9 @@ do
   T.eq(#starter.boxes, 5, 'five M boxes, holder not counted')
   T.eq(starter.slots, 20, 'five M boxes of slots')
   local slots, kg = cargo.fits({ slots = 16, kg = 600 }, goods.get('bricks'))
-  T.eq(slots, 5, 'bricks run out of weight before space'); T.eq(kg, 600, 'their weight')
+  T.eq(slots, 16, 'bricks fill a Cargo box L'); T.eq(kg, 400, 'their weight')
+  slots, kg = cargo.fits({ slots = 128, kg = 2500 }, goods.get('bricks'))
+  T.eq(slots, 100, 'bricks run out of weight before space in a Cargo box XL'); T.eq(kg, 2500, 'their weight')
 end
 
 -- The delivery loop: buy parcels in Penrith, the GPS goes to the drop-off, drive there, get paid.
