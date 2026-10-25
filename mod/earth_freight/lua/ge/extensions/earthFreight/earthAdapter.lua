@@ -1,6 +1,6 @@
 -- The only Earth Freight module permitted to touch BeamNG.Earth. It never calls teleport,
 -- loads/enables Earth, or replaces any upstream function. It asks where the player vehicle is
--- geographically, and its one write is setting Earth's GPS destination when a load is bought.
+-- geographically and which way it points, and its one write is setting Earth's GPS destination when a job is taken.
 -- Not tied to an Earth version: each position source is tried in turn and any missing or
 -- changed one is skipped, so Earth updates only break Earth Freight if every source changes.
 local location = require('earthFreight/location')
@@ -87,9 +87,16 @@ function M.new(environment)
     local pathOK, path = pcall(function() return vehicle:getPath() end)
     if pathOK and type(path) == 'string' then model = path:match('^/?vehicles/([^/\\]+)/?') end
     local idOK, id = pcall(function() return vehicle:getID() end)
+    -- Which way the car points, in degrees from north: Earth's world is its anchor's east-north-up
+    -- frame, so +y is north (within a fraction of a degree near the anchor).
+    local heading
+    local dirOK, dir = pcall(function() return vehicle:getDirectionVector() end)
+    if dirOK and type(dir) ~= 'nil' and location.finite(dir.x) and location.finite(dir.y) and (dir.x ~= 0 or dir.y ~= 0) then
+      heading = (math.deg(math.atan2(dir.x, dir.y)) + 360) % 360
+    end
     return {
       valid = true, available = true, latitude = current.latitude, longitude = current.longitude,
-      source = source, vehicle = { id = idOK and id or nil, model = model },
+      source = source, vehicle = { id = idOK and id or nil, model = model }, heading = heading,
     }
   end
 

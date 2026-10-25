@@ -78,4 +78,16 @@ do
   local none = Adapter.new({ core = function() return nil end, module = function() return gps end, vehicle = function() return vehicle end })
   T.eq(select(2, none:setDestination({ latitude = 1, longitude = 1 })), 'earth_missing', 'no Earth, no GPS')
 end
+-- Which way the car points.
+do
+  local car = { getPosition = function() return { x = 0, y = 0, z = 5 } end, getID = function() return 1 end,
+    getDirectionVector = function() return { x = 1, y = 0, z = 0 } end }
+  local g = Adapter.new({ core = function() return { _state = function() return { anchor = anchor } end } end, module = function() end,
+    vehicle = function() return car end })
+  T.near(g:sample().heading, 90, 1e-9, 'pointing east is 90 degrees')
+  car.getDirectionVector = function() return { x = 0, y = -1, z = 0 } end
+  T.near(g:sample().heading, 180, 1e-9, 'south is 180')
+  car.getDirectionVector = function() error('changed') end
+  T.check(g:sample().valid and g:sample().heading == nil, 'no heading without the call, and the sample still stands')
+end
 T.done('Earth adapter (mocked engine)')

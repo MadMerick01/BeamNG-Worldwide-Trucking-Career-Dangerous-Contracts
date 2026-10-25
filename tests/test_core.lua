@@ -512,7 +512,6 @@ do
   T.check(r:setPlayerName(''), 'cleared'); T.eq(r:view().playerName, nil, 'no name'); T.check(r:view().nameUnsaved, 'clearing is unsaved too')
 end
 
-T.done('Earth Freight controller')
 
 -- The load slider: a straight share of a full load, in whole units and tens of dollars.
 do
@@ -524,3 +523,55 @@ do
   u, p = jobs.share(3, 1000, 50); T.eq(u, 2, 'shares round to whole units'); T.eq(p, 670, 'paid for the units taken')
   u, p = jobs.share(0, 0, 50); T.eq(u, 0, 'nothing fits'); T.eq(p, 0, 'nothing paid')
 end
+
+-- The off-road drop: no GPS, an arrow to a spot about 2 km out, delivered stopped within 100 m.
+do
+  local c, io, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local job = jobs.dropJob(penrith, 0)
+  job.good, job.id, job.jackpot = 'parts', 'drop_parts_' .. penrith.id, nil
+  local board = c.board
+  c.board = function(self, place) local list = board(self, place); list[#list] = F.copy(job); return list end
+  local row = c:view().town.jobs[#c:view().town.jobs]
+  T.check(row.drop, 'the board ends with the off-road drop'); T.eq(row.to, 'Off-road drop', 'named so')
+  T.eq(row.direction, location.compassPoint(location.bearing(penrith, job.drop)), 'with its direction')
+  T.near(row.distanceMetres, location.distance(penrith, job.drop), 1e-6, 'and its distance')
+  local gps = #a.gps
+  T.check(c:takeJob(job.id), 'drop taken'); T.eq(#a.gps, gps, 'no GPS route')
+  T.check(c:view().tradeFeedback:find('Follow the arrow'), 'told to follow the arrow')
+  T.near(c.load.drop.latitude, job.drop.latitude, 1e-12, 'the spot is on the load')
+  local v = c:view()
+  T.eq(v.load.to, 'off-road drop', 'the HUD shows an off-road drop'); T.eq(v.load.destination, nil, 'with no coordinates to copy')
+  T.check(not v.load.drop.inZone and not v.load.drop.delivery.allowed, 'not in the drop zone yet')
+  T.eq(v.town.delivery, nil, 'nothing to deliver in town')
+  T.check(not c:deliver(), 'not delivered in town'); T.check(c:view().tradeFeedback:find('100 m'), 'told to drive to the spot')
+  -- Driven there with no GPS, the arrow points the way.
+  local half = location.destination(penrith, location.bearing(penrith, job.drop), 1000)
+  F.drive(c, a, half)
+  T.check(c:view().load.drop.arrow < 1 or c:view().load.drop.arrow > 359, 'the arrow points straight ahead')
+  F.drive(c, a, job.drop)
+  -- Saved and loaded, the job keeps its spot.
+  T.check(c:manualSave(), 'saved'); T.near(io.files[A].load.drop.latitude, job.drop.latitude, 1e-12, 'the spot is in the save')
+  local r = F.controller({ io = io })
+  T.near(r.load.drop.latitude, c.load.drop.latitude, 1e-12, 'a reload keeps the spot')
+  -- Delivered stopped in the zone, once driven.
+  c.odometer:reset(); c:tick(0.1)
+  T.check(not c:view().load.drop.delivery.allowed, 'not while moving')
+  c:tick(0.6); c:tick(0.6)
+  local balance, pay, done = c:view().balance, c.load.pay, c.profile.progression.jobsDone or 0
+  T.check(c:view().load.drop.inZone and c:view().load.drop.delivery.allowed, 'in the zone and stopped')
+  T.check(c:deliver(), 'delivered'); T.eq(c:view().balance, balance + pay, 'paid in full')
+  T.eq(c.load, nil, 'job done'); T.eq(c.profile.progression.jobsDone, done + 1, 'the boards move on')
+  T.check(c:view().flash.title:find('DELIVERED'), 'told so')
+  -- A job not driven does not deliver at the spot.
+  local d, d2 = F.controller()
+  d:tick(0.1); d:tick(0.6); d:tick(0.6)
+  local j2 = jobs.dropJob(penrith, 0); j2.good, j2.id = 'parts', 'drop_parts_' .. penrith.id
+  local b2 = d.board
+  d.board = function(self, place) local list = b2(self, place); list[#list] = F.copy(j2); return list end
+  T.check(d:takeJob(j2.id), 'another drop')
+  d2.pose = F.copy(j2.drop); d.odometer:reset(); d.lastDriven = nil; d:tick(0.1); d:tick(0.6); d:tick(0.6)
+  T.check(not d:deliver(), 'a lift to the spot does not deliver')
+end
+
+T.done('Earth Freight controller')
