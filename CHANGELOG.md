@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 45 · 26 Oct 2026
+
 - **The Buy parts and Buy new car buttons are now inside the Change parts or buy a car card on the Garage tab**, under the steps, so it's clear where to start. Buy parts opens the parts menu and Buy new car opens the car selector.
 - Tips and messages no longer tell you to press Ctrl+W. They point you to the Buy parts button instead, for example when your starter car needs a radiator or a job needs a fluid tank. To get these buttons, put the new `earth-freight-sim.zip` in your mods folder in place of the old one. Your saves still work.
 
