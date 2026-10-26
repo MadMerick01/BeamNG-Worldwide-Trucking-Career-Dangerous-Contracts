@@ -7,6 +7,9 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **The Garage tab has Buy parts and Buy new car buttons.** Buy parts opens the parts menu and Buy new car opens the car selector, so you no longer need Ctrl+W or Ctrl+E. The bill still shows up on the Garage tab to pay or undo as before. Your saves still work.
+## Build 38 · 26 Oct 2026
+
+- **The load slider on the Town tab no longer jumps when you drag it down from 100%.** The "full load" price that used to pop up beside it is gone, so the slider keeps the same size the whole time you drag. The pay for the share you pick still shows next to Take job. Your saves still work.
 
 ## Build 37 · 26 Oct 2026
 

@@ -186,9 +186,8 @@
             <button type="button" ng-click="takeJob(j)" ng-disabled="!j.allowed" style="padding:4px 8px;">Take job</button>
            </div>
            <div ng-if="j.units > 1" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c9d6d2;">
-            <span style="width:62px;">Load {{shareOf(j)}}%</span>
+            <span style="flex:none;width:62px;">Load {{shareOf(j)}}%</span>
             <input type="range" min="10" max="100" step="10" ng-model="shares[j.id]" ng-init="shares[j.id] = shareOf(j)" ng-disabled="!j.allowed" aria-label="How much of the {{j.good | lowercase}} to take" style="flex:1;min-width:0;">
-            <span ng-if="shareOf(j) < 100">full load ${{j.pay | number:0}}</span>
            </div>
           </div>
         </div>
