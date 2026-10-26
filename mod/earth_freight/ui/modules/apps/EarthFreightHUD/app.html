@@ -169,8 +169,8 @@
           </div>
           <div aria-hidden="true" style="margin-top:4px;height:8px;border-radius:4px;background:rgba(86,141,122,.3);overflow:hidden;"><div ng-style="{width: cargoRoom(data).percent + '%'}" style="height:100%;background:#f2c94c;"></div></div>
           <div style="margin-top:4px;font-size:13px;color:#c9d6d2;"><span ng-if="data.space.boot">Boot only</span><span ng-if="!data.space.boot">{{data.space.boxes.length}} cargo {{data.space.boxes.length === 1 ? 'box' : 'boxes'}}</span> &middot; {{data.space.kg | number:0}} kg max<span ng-if="cargoRoom(data).used > 0"> &middot; your load takes {{cargoRoom(data).used}}</span><span ng-if="data.space.litres > 0"> &middot; tank {{data.space.litres | number:0}} L</span></div>
-          <div style="margin-top:4px;font-size:13px;">More slots carry more goods and earn more per job. Fit Cargo Load boxes in the parts menu (Ctrl+W): a box S adds 1 slot, M adds 4, L adds 16 and XL adds 128. Then pay for them on the Garage tab.</div>
-          <button type="button" ng-click="setTab('garage')" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy more cargo space</button>
+          <div style="margin-top:4px;font-size:13px;">More slots carry more goods and earn more per job. A Cargo Load box S adds 1 slot, M adds 4, L adds 16 and XL adds 128. Fit one, then pay for it on the Garage tab.</div>
+          <button type="button" ng-click="openPartsMenu()" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy more cargo space</button>
         </div>
         <div style="margin:8px 0;">
           <div style="font-weight:bold;">Jobs from {{data.town.name}}</div>

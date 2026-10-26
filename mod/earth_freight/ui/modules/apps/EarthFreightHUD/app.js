@@ -215,6 +215,11 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
       scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar()') }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
+      // Open the game's own parts menu (Ctrl+W); the bill then shows up on the Garage tab.
+      scope.openPartsMenu = function () {
+        call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
+          "elseif guihooks then guihooks.trigger('ChangeState', {state = 'menu.vehicleconfig.parts'}) end")
+      }
       // The first press asks Lua to confirm; the second wipes the save.
       scope.newGame = function () { if (scope.data.newGameAllowed) core('newGame()') }
       scope.cancelNewGame = function () { if (scope.data && scope.data.newGameArmed) core('cancelNewGame()') }

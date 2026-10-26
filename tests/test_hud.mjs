@@ -319,7 +319,7 @@ test('a changed name lights up Save', () => {
   assert.equal(a.scope.unsaved({ nameUnsaved: true }), true)
   assert.equal(a.scope.unsaved({ nameUnsaved: false }), false)
 })
-test('the Town tab shows cargo slots above the jobs and leads to the Garage', () => {
+test('the Town tab shows cargo slots above the jobs and opens the parts menu', () => {
   const a = app()
   a.state({ state: 'READY', space: { slots: 16, kg: 600, boxes: ['Cargo box L'] } })
   assert.deepEqual({ ...a.scope.cargoRoom(a.scope.data) }, { total: 16, used: 0, free: 16, percent: 0 })
@@ -331,10 +331,8 @@ test('the Town tab shows cargo slots above the jobs and leads to the Garage', ()
   const town = html.indexOf("tab === 'town'")
   const card = html.indexOf('Cargo slots')
   assert.ok(card > town && card < html.indexOf('Jobs from {{data.town.name}}'), 'the card sits above the jobs')
-  a.scope.setTab('town')
-  const count = a.commands.length
-  assert.ok(html.includes('ng-click="setTab(\'garage\')"'), 'the card has a button to the Garage tab')
-  a.scope.setTab('garage')
-  assert.equal(a.scope.tab, 'garage')
-  assert.equal(a.commands.length, count, 'switching tab sends nothing')
+  assert.ok(html.includes('ng-click="openPartsMenu()"'), 'the card opens the parts menu')
+  a.scope.openPartsMenu()
+  assert.match(a.commands.at(-1), /core_vehicles\.openPartsSelectorUI\(\)/)
+  assert.match(a.commands.at(-1), /menu\.vehicleconfig\.parts/)
 })
