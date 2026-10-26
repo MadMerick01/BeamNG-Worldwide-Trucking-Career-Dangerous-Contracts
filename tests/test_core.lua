@@ -84,7 +84,7 @@ do
   local boot = cargo.capacity({ parts = { engine = 'x' }, names = {} })
   T.eq(boot.slots, cargo.BOOT.slots, 'no box: boot slots'); T.check(boot.boot, 'marked as the boot')
   local m = cargo.capacity({ parts = { a = 'pickup_cargo_load_box_m', b = 'x' }, names = { pickup_cargo_load_box_m = 'Cargo Load Box M' } })
-  T.eq(m.slots, 4, 'box M holds 4 slots'); T.eq(m.kg, 200, 'box M weight limit'); T.eq(m.boxes[1], 'Cargo box M', 'box listed')
+  T.eq(m.slots, 4, 'box M holds 4 slots'); T.eq(m.kg, 130, 'box M weight limit'); T.eq(m.boxes[1], 'Cargo box M', 'box listed')
   T.eq(cargo.box('van_cargo_load_box_xl').slots, 128, 'XL matched before L')
   T.eq(cargo.box('cargo_load_box_l').slots, 16, 'L')
   T.eq(cargo.box('x', 'Cargo Load Box S').slots, 1, 'matched on the display name')
@@ -131,7 +131,9 @@ do
   T.eq(v.town.jobs[3].goodId, jobs.fluid(penrith).id, 'then the town fluid'); T.check(v.town.jobs[4].drop, 'then the drop')
   T.check(v.town.jobs[3].fluid and v.town.jobs[3].units == 0 and not v.town.jobs[3].allowed, 'a fluid needs a tank')
   for _, j in ipairs(v.town.jobs) do
-    if not j.fluid then T.check(j.pay > 0 and j.allowed, j.id .. ' pays and can be taken') end
+    -- A brick (150 kg) is too heavy for one box M (130 kg).
+    if j.goodId == 'bricks' then T.check(j.units == 0 and not j.allowed, j.id .. ' does not fit one box M')
+    elseif not j.fluid then T.check(j.pay > 0 and j.allowed, j.id .. ' pays and can be taken') end
     T.check(j.distanceMetres <= 20000 + 1e-6, j.id .. ' within 20 km')
   end
   T.check(v.bestJob ~= nil and v.bestJob.from == 'Penrith', 'the best job is suggested')
