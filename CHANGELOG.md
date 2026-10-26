@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 50 · 26 Oct 2026
+
 - **When Earth Freight Sim hits a problem and shows FREIGHT PAUSED, the notice now tells you where to look:** search `beamng.log` for `internal_error`. That line now names exactly where the problem happened and how the game got there, so sending it along is all it takes to get it fixed. Nothing else changes, and your saves still work.
 
 ## Build 49 · 26 Oct 2026
