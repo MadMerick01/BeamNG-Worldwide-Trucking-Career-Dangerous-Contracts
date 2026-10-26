@@ -32,21 +32,23 @@ Rowan's call after playing layer 1: the per-tonne-km freight pay never showed in
 
 **Goods.** Parts and bricks in cargo boxes, and one fluid per town (water or fuel) in a tank. **Every job fills all the slots (or litres) the vehicle has**, so a bigger vehicle earns more. Food is retired.
 
-**Pay by weight (Rowan, 26 Oct).** Boxes stay, but goods are heavy for their slots, so weight is the real limit and pay goes by the load's weight. A full load of **300 kg pays $2,000 over 5 km**; heavier loads pay more but less a kg, as $2,000 × (kg ÷ 300)^0.46. Loads under 300 kg pay a straight share by weight ($200 for 30 kg), so a car boot never out-earns a cargo box.
+**Pay by weight (Rowan, 26 Oct).** Boxes stay, but goods are heavy for their slots, so weight is the real limit and pay goes by the load's weight. The starter Burnside easily gets to 52 slots of boxes before its first run, so that full load sets the scale: **52 slots of parts (780 kg) pays $2,000 over 5 km**. Heavier loads pay more but less a kg, as $2,000 × (kg ÷ 780)^0.63. Lighter loads pay a straight share by weight ($770 for 300 kg), so a car boot never out-earns a cargo box.
 
 | Load over 5 km | Pay |
 |---|---|
-| 30 kg (2 parts in a car boot) | $200 |
-| 300 kg (starter Burnside: 20 parts) | $2,000 |
-| 600 kg (800 L of fuel) | about $2,750 |
-| 900 kg (starter Burnside: 6 bricks) | about $3,300 |
-| 3,000 kg | about $5,800 |
-| 8,000 kg | about $9,000 |
-| 12,000 kg (a truck) | about $10,900 |
+| 30 kg (2 parts in a car boot) | about $77 |
+| 300 kg (the Burnside's own 20 slots of parts) | about $770 |
+| 600 kg (800 L of fuel) | about $1,540 |
+| 780 kg (52 slots of parts) | $2,000 |
+| 800 kg (800 L of water) | about $2,030 |
+| 1,950 kg (52 slots of bricks, 3 L boxes and an M) | about $3,560 |
+| 8,000 kg | about $8,700 |
+| 10,000 kg | about $10,000 |
+| 12,000 kg (a truck) | about $11,200 |
 
-The truck earns about 5 times more a run but far less a kg, so fuel, repairs and its price matter more. Tuning, in `jobs.lua`: `PAY_PERCENT` scales every job (100 as is, 120 a fifth more), `PAY_DOLLARS` and `PAY_KG` set the 300 kg point and `WEIGHT_POWER` the curve; each good's `rate` in `goods.lua` scales that good. A unit of parts is 1 slot and 15 kg, bricks 3 slots and 150 kg (50 kg a slot), fluids 1 kg a litre (fuel 0.75). The load slider takes a straight share of the job's posted pay.
+The truck earns about 5 times more a run but far less a kg, so fuel, repairs and its price matter more. The box weight limits are ours (S 50, M 200, L 600, XL 2,500 kg), so a Burnside full of bricks can carry about 2 t, close to a small truck's pay. Tuning, in `jobs.lua`: `PAY_PERCENT` scales every job (100 as is, 120 a fifth more), `PAY_DOLLARS` and `PAY_KG` set the 780 kg point and `WEIGHT_POWER` the curve; each good's `rate` in `goods.lua` scales that good. A unit of parts is 1 slot and 15 kg, bricks 3 slots and 150 kg (50 kg a slot), fluids 1 kg a litre (fuel 0.75). The load slider takes a straight share of the job's posted pay.
 
-**Distance.** Pay grows faster than distance, to reward the longer drive: pay is the 5 km pay × (km / 5)^1.29, so 10 km pays 2.4×, 15 km 4.1× and **20 km 6×** (a full load of parts on the starter car: $2,000 at 5 km, $12,000 at 20 km). Past 20 km the curve flattens: it only grows with the square root of the distance.
+**Distance.** Pay grows faster than distance, to reward the longer drive: pay is the 5 km pay × (km / 5)^1.29, so 10 km pays 2.4×, 15 km 4.1× and **20 km 6×** (52 slots of parts on the starter car: $2,000 at 5 km, $12,000 at 20 km). Past 20 km the curve flattens: it only grows with the square root of the distance.
 
 **Town need (±30%).** Each job's pay varies around the base by the drop-off town's need for that good, from ×0.7 to ×1.3:
 
