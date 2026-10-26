@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 28 · 26 Oct 2026
+
 - **Pressing Insert no longer fixes your car for free.** Resetting the car after a crash (Insert, or the game's own recovery) still puts it back on its wheels, but the repair it needed stays on the Garage tab as "Repair still owed", and a pop-up says so. After a serious crash you can still claim insurance instead. Reloading the car, or undoing part changes in the parts menu, no longer clears the damage either.
 - A reset also leaves your fuel as it was, so it can't be used to fill up for free, and a load you're carrying keeps its weight. Your saves still work.
 
