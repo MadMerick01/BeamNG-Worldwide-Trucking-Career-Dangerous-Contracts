@@ -148,9 +148,9 @@ test('colours: green above the usual pay, red below, gold for a shortage or jack
 })
 test('a serious crash opens the Garage tab, and a shortage marks the Route tab without opening it', () => {
   const a = app()
-  a.state({ state: 'READY', arrived: true }); a.scope.setTab('tips')
+  a.state({ state: 'READY', arrived: true }); a.scope.setTab('relocate')
   a.state({ state: 'READY', arrived: true, shortages: [{ town: 'Katoomba' }] })
-  assert.equal(a.scope.tab, 'tips'); assert.equal(a.scope.tabAlert('route'), true)
+  assert.equal(a.scope.tab, 'relocate'); assert.equal(a.scope.tabAlert('route'), true)
   a.state({ state: 'READY', arrived: true, insurance: { allowed: true } })
   assert.equal(a.scope.tab, 'garage'); assert.equal(a.scope.tabAlert('garage'), true)
   assert.equal(a.scope.tabAlert('town'), false)
@@ -201,12 +201,27 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
   for (const always of ['ng-click="save()"', 'data.balance', 'notice(data)', 'data.load.to', 'data.fuel.litres', 'copyCoordinates(data.resume)']) {
     assert.ok(html.indexOf(always) > -1 && html.indexOf(always) < panels, always)
   }
-  for (const id of ['route', 'town', 'garage', 'tips']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
+  for (const id of ['route', 'town', 'garage', 'relocate']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
   for (const action of ['cancelPay(); buyParts()', 'revertParts()', 'cancelPay(); buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
     'newGame()', 'cancelNewGame()', 'addTestMoney()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
   }
   assert.ok(html.includes('GeoNames'), 'GeoNames credit')
+})
+test('the Tips tab is gone and shipping has its own Relocate tab', () => {
+  const a = app()
+  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate'])
+  assert.ok(!html.includes(`tab === 'tips'`), 'no Tips tab')
+  const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'relocate'"`))
+  const shipping = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`))
+  for (const card of ['Relocation paid:', 'Book relocation', 'bookOffer()', 'bookShipping(d.id)', 'cancelShipping()']) {
+    assert.ok(shipping.includes(card), card); assert.ok(!garage.includes(card), card + ' not on the Garage tab')
+  }
+  a.state({ state: 'READY', arrived: true, shipping: { booking: { name: 'La Paz' } } })
+  assert.equal(a.scope.tabAlert('relocate'), true, 'a booking marks the Relocate tab')
+  assert.equal(a.scope.tabAlert('garage'), false, 'and not the Garage tab')
+  const start = html.slice(0, html.indexOf('role="tabpanel"'))
+  assert.ok(start.includes('ng-click="addTestMoney()"') && start.includes('GeoNames'), 'test money and credit on the start page')
 })
 test('the start page opens once on a new game, and again after the next new game', () => {
   const a = app()
@@ -221,10 +236,19 @@ test('the start page opens once on a new game, and again after the next new game
   assert.equal(a.scope.intro.open, true, 'opens after another new game')
   const b = app()
   b.state({ state: 'READY', mode: 'resume' })
-  assert.equal(b.scope.intro.open, false, 'not shown when carrying on from a save')
+  assert.equal(b.scope.intro.open, true, 'opens on loading a save, to show the way back')
+  assert.equal(b.scope.returning({ mode: 'resume', arrived: false, resume: {} }), true)
+  b.scope.closeIntro(); b.state({ state: 'READY', mode: 'resume' })
+  assert.equal(b.scope.intro.open, false, 'Continue closes it')
+  b.state({ state: 'READY', mode: 'resume', arrived: true })
+  assert.equal(b.scope.intro.open, false, 'not shown again once back at the save')
+  assert.equal(b.scope.returning(b.scope.data), false)
   b.scope.openIntro()
   assert.equal(b.scope.intro.open, true, 'opens from the Profile button')
-  assert.ok(html.includes('ng-click="openIntro()"'), 'Profile button and Tips link')
+  b.scope.closeIntro(); b.state({ state: 'READY', mode: 'resume', arrived: false })
+  assert.equal(b.scope.intro.open, true, 'opens again on the next load')
+  assert.ok(html.includes("firstLaunch(data) ? 'Let’s go' : 'Continue'"), 'Continue, except on a brand new game')
+  assert.ok(html.includes('ng-click="openIntro()"'), 'Profile button')
 })
 test('starting over lives on the start page behind a confirm, and closing the page cancels it', () => {
   const a = app()
@@ -243,8 +267,6 @@ test('starting over lives on the start page behind a confirm, and closing the pa
   a.scope.openIntro(); count = a.commands.length; a.scope.closeIntro()
   assert.equal(a.commands.at(-1), fixed('cancelNewGame()'), 'closing the page keeps the game')
   assert.ok(a.commands.length > count)
-  const tips = html.slice(html.indexOf(`ng-if="tab === 'tips'"`))
-  assert.ok(!tips.includes('newGame()'), 'no new game button on the Tips tab')
   assert.ok(html.indexOf('ng-click="newGame()"') < html.indexOf('role="tabpanel"'), 'it is on the start page')
 })
 test('closing the parts menu or the map keeps the tab and does not reopen the start page', () => {
@@ -254,9 +276,9 @@ test('closing the parts menu or the map keeps the tab and does not reopen the st
   a.remount(); a.state({ state: 'READY', mode: 'start', playerName: 'Sam' })
   assert.equal(a.scope.intro.open, false, 'start page stays closed')
   assert.equal(a.scope.tab, 'garage', 'same tab as before')
-  a.state({ state: 'READY', mode: 'start', town: {} }); a.scope.setTab('tips')
+  a.state({ state: 'READY', mode: 'start', town: {} }); a.scope.setTab('relocate')
   a.remount(); a.state({ state: 'READY', mode: 'start', town: {} })
-  assert.equal(a.scope.tab, 'tips', 'a town already there does not open the Town tab again')
+  assert.equal(a.scope.tab, 'relocate', 'a town already there does not open the Town tab again')
   a.scope.openIntro(); a.scope.intro.name = 'Al'
   a.remount(); a.state({ state: 'READY', mode: 'start', town: {} })
   assert.equal(a.scope.intro.open, true, 'a start page left open stays open')
@@ -297,6 +319,23 @@ test('a changed name lights up Save', () => {
   const a = app()
   assert.equal(a.scope.unsaved({ nameUnsaved: true }), true)
   assert.equal(a.scope.unsaved({ nameUnsaved: false }), false)
+})
+test('the Town tab shows cargo slots above the jobs and opens the parts menu', () => {
+  const a = app()
+  a.state({ state: 'READY', space: { slots: 16, kg: 600, boxes: ['Cargo box L'] } })
+  assert.deepEqual({ ...a.scope.cargoRoom(a.scope.data) }, { total: 16, used: 0, free: 16, percent: 0 })
+  a.state({ state: 'READY', space: { slots: 16, kg: 600, boxes: ['Cargo box L'] }, load: { slots: 4 } })
+  assert.deepEqual({ ...a.scope.cargoRoom(a.scope.data) }, { total: 16, used: 4, free: 12, percent: 25 })
+  a.state({ state: 'READY', space: { slots: 2, kg: 60, boot: true, litres: 100 }, load: { slots: 80, litres: 80 } })
+  assert.equal(a.scope.cargoRoom(a.scope.data).used, 0, 'a fluid load is in the tank')
+  assert.equal(a.scope.cargoRoom({}).total, 0)
+  const town = html.indexOf("tab === 'town'")
+  const card = html.indexOf('Cargo slots')
+  assert.ok(card > town && card < html.indexOf('Jobs from {{data.town.name}}'), 'the card sits above the jobs')
+  assert.ok(html.includes('ng-click="openPartsMenu()"'), 'the card opens the parts menu')
+  a.scope.openPartsMenu()
+  assert.match(a.commands.at(-1), /core_vehicles\.openPartsSelectorUI\(\)/)
+  assert.match(a.commands.at(-1), /menu\.vehicleconfig\.parts/)
 })
 test('the HUD minimises to an Earth Freight button, and stays that way after a rebuild or a restart', () => {
   const saved = {}

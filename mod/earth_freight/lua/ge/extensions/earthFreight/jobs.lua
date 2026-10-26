@@ -9,8 +9,16 @@ local goods = require('earthFreight/goods')
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
--- Pay over 5 km is the good's pay per unit (goods.lua). It grows as (km / 5) ^ DISTANCE_POWER up
--- to FLAT_KM, so 20 km pays 6 times 5 km; past that it only grows with the square root.
+-- Pay by weight: a full load of PAY_KG kg pays PAY_DOLLARS over 5 km. Heavier loads pay more,
+-- but less a kg: pay grows as (kg / PAY_KG) ^ WEIGHT_POWER, so 1,000 kg pays about $3,500, 3,000
+-- kg about $5,800, 8,000 kg about $9,000 and 12,000 kg about $10,900. Lighter loads pay a
+-- straight share by weight, so a car boot of parts doesn't out-earn a cargo box. PAY_PERCENT
+-- scales every job's pay, for balance testing: 120 pays a fifth more, 80 a fifth less. A good's
+-- rate (goods.lua) scales its own pay.
+M.PAY_PERCENT = 100
+M.PAY_DOLLARS, M.PAY_KG, M.WEIGHT_POWER = 2000, 300, 0.46
+-- Pay grows as (km / 5) ^ DISTANCE_POWER up to FLAT_KM, so 20 km pays 6 times 5 km; past that it
+-- only grows with the square root.
 M.BASE_KM, M.FLAT_KM = 5, 20
 M.DISTANCE_POWER = math.log(6) / math.log(4)
 -- Jobs go at most this far by road (the straight line times places.ROAD_FACTOR).
@@ -136,9 +144,16 @@ function M.shortage(place, good, now)
   return true, (window + 1) * M.SHORTAGE_SECONDS - now
 end
 
--- Dollars a job pays at the base rate: the good's pay per unit, for this many units, over this many km.
+-- Dollars a load of this many kg pays over 5 km at the base rate, before PAY_PERCENT.
+function M.weightPay(kg)
+  kg = math.max(0, kg or 0)
+  if kg <= M.PAY_KG then return M.PAY_DOLLARS * kg / M.PAY_KG end
+  return M.PAY_DOLLARS * (kg / M.PAY_KG) ^ M.WEIGHT_POWER
+end
+
+-- Dollars a job pays at the base rate: this many units of the good, by their weight, over this many km.
 function M.basePay(good, units, km)
-  return good.pay * units * M.distanceFactor(km)
+  return M.weightPay(units * good.kg) * (good.rate or 1) * M.PAY_PERCENT / 100 * M.distanceFactor(km)
 end
 
 -- 'high', 'normal' or 'low': a job's pay compared with its base, for the board's colours.

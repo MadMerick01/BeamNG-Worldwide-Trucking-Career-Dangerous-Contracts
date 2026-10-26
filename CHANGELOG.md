@@ -8,6 +8,35 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **You can minimise the HUD.** Press the – button at the top right of the HUD and it shrinks to a small Earth Freight button. Press that button to open the full HUD again, on the tab you were on. It stays minimised until you open it, even after you restart the game.
 - While the HUD is minimised, a dot on the Earth Freight button tells you something is waiting: gold for a shortage, a job or a delivery you can make, red for bad news such as a cancelled load or a puncture. The HUD opens by itself for a garage bill, an insurance offer, being stranded or the start page. Your saves still work.
+
+## Build 38 · 26 Oct 2026
+
+- **The load slider on the Town tab no longer jumps when you drag it down from 100%.** The "full load" price that used to pop up beside it is gone, so the slider keeps the same size the whole time you drag. The pay for the share you pick still shows next to Take job. Your saves still work.
+
+## Build 37 · 26 Oct 2026
+
+- **Jobs now pay by the weight of the load.** A full 300 kg load pays $2,000 over 5 km, and heavier loads pay more but less for each kilogram: about $3,300 for the starter car's 6 bricks (900 kg), $5,800 for 3 tonnes and $10,900 for 12 tonnes. Distance, town need, shortages, jackpots and rough roads still raise the pay as before, and the load slider still pays its share of the job. Loads under 300 kg pay their share by weight, such as $200 for 2 parts in a car boot. The goods are the same: parts and bricks in cargo boxes, and water or fuel in a tank.
+- A job you were already carrying pays what it showed when you took it. Your saves still work.
+
+## Build 36 · 26 Oct 2026
+
+- **The Town tab now shows your cargo slots in a card above the jobs.** It shows how many slots your cargo boxes give you, how many your load takes and how many are free, with your weight limit. It explains that a Cargo Load box S adds 1 slot, M adds 4, L adds 16 and XL adds 128, and its Buy more cargo space button opens the parts menu. Fit a box there, then pay for it on the Garage tab. Your saves still work.
+
+## Build 34 · 26 Oct 2026
+
+- **Shipping is now called Relocation and has its own Relocate tab.** The Relocation paid offer (was Shipping paid) and the Book relocation card (was Book shipping) have moved from the Garage tab to the new Relocate tab, next to Garage. A gold dot marks it while you have a booking waiting. Messages in the game say relocation too, such as "Relocated to Coroico". It works exactly as before, and a refund you are owed from an earlier paid offer still comes through.
+- **The Tips tab is gone.** The +$10,000 test money button and the map data credits are now at the bottom of the start page (press your name or Profile at the top of the HUD). Your saves still work.
+
+## Build 33 · 26 Oct 2026
+
+- **Loading a saved game now opens the start page with a Welcome back box.** It shows the coordinates of your last save with a Copy button and how far away you are, in the same colours as the rest of the start page. Press Continue to close it; the coordinates stay on the HUD until you get there.
+- The start page's button now says Continue instead of Done. On a brand new game it still says Let's go.
+
+## Build 28 · 26 Oct 2026
+
+- **Pressing Insert no longer fixes your car for free.** Resetting the car after a crash (Insert, or the game's own recovery) still puts it back on its wheels, but the repair it needed stays on the Garage tab as "Repair still owed", and a pop-up says so. After a serious crash you can still claim insurance instead. Reloading the car, or undoing part changes in the parts menu, no longer clears the damage either.
+- A reset also leaves your fuel as it was, so it can't be used to fill up for free, and a load you're carrying keeps its weight. Your saves still work.
+
 ## Build 27 · 26 Oct 2026
 
 - **The start page has a new look.** The title is much bigger, the How to play steps are numbered, and when you reopen the page with the Profile button it shows your money, car and kilometres driven. The steps fold away there behind a Show the steps button.

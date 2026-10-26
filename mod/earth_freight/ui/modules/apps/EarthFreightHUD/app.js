@@ -25,7 +25,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       var mount = function (on) { core('uiMounted(' + (on ? 'true' : 'false') + ')') }
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
-        { id: 'tips', label: 'Tips' }]
+        { id: 'relocate', label: 'Relocate' }]
       scope.tab = kept.tab
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
@@ -41,9 +41,9 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
           return !d.load && (t.jobs || []).some(function (j) { return j.allowed })
         },
         garage: function (d) {
-          return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!d.insurance ||
-            !!(d.shipping && d.shipping.booking)
-        }
+          return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!d.insurance
+        },
+        relocate: function (d) { return !!(d.shipping && d.shipping.booking) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
       // The HUD shrinks to an Earth Freight button. Its dot is red for bad news, gold for anything a
@@ -64,11 +64,11 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.stranded }]
       ]
       var follow = function (previous, next) {
-        // The start page opens once on a new game, until the player has been somewhere.
-        if (next.mode === 'start' && !kept.introShown) {
+        // The start page opens once on a new game or on loading a save, until the player is there.
+        if (next.arrived || (previous.mode && previous.mode !== next.mode)) kept.introShown = false
+        if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
           kept.introShown = true; scope.openIntro(next); scope.setMinimised(false)
         }
-        if (next.mode !== 'start') kept.introShown = false
         for (var i = 0; i < autoOpen.length; i++) {
           if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) {
             scope.setTab(autoOpen[i][0])
@@ -100,6 +100,8 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         scope.intro.open = false
         scope.cancelNewGame()
       }
+      // Loaded from a save and not back at it yet: the start page shows where to go.
+      scope.returning = function (d) { return !!d && d.mode === 'resume' && !d.arrived && !!d.resume }
       // A new game that has not reached the start town yet: nothing to show or start over.
       scope.firstLaunch = function (d) { return !!d && d.mode === 'start' && !d.arrived }
       scope.introSteps = [
@@ -158,6 +160,19 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         taken.kg = units * job.unitKg
         taken.pay = units === job.units ? job.pay : Math.max(10, Math.floor(job.pay * units / job.units / 10 + 0.5) * 10)
         return taken
+      }
+      // The Town tab's cargo card: slots in the boxes, how many the load on board takes and how many
+      // are free. A fluid load sits in the tank, so it takes no slots.
+      var room = { total: 0, used: 0, free: 0, percent: 0 }
+      scope.cargoRoom = function (d) {
+        var total = d && d.space && d.space.slots > 0 ? d.space.slots : 0
+        var load = d && d.load
+        var used = load && !(load.litres > 0) && load.slots > 0 ? Math.min(load.slots, total) : 0
+        room.total = total
+        room.used = used
+        room.free = total - used
+        room.percent = total > 0 ? Math.round(used / total * 100) : 0
+        return room
       }
       scope.takeJob = function (job) {
         if (!scope.data.town || scope.data.load || !job || !job.allowed || !plainId(job.id)) return
@@ -221,6 +236,11 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
       scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar()') }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
+      // Open the game's own parts menu (Ctrl+W); the bill then shows up on the Garage tab.
+      scope.openPartsMenu = function () {
+        call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
+          "elseif guihooks then guihooks.trigger('ChangeState', {state = 'menu.vehicleconfig.parts'}) end")
+      }
       // The first press asks Lua to confirm; the second wipes the save.
       scope.newGame = function () { if (scope.data.newGameAllowed) core('newGame()') }
       scope.cancelNewGame = function () { if (scope.data && scope.data.newGameArmed) core('cancelNewGame()') }

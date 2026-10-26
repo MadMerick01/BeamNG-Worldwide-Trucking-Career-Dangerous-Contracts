@@ -135,6 +135,7 @@ function M.new(deps)
     -- A puncture not yet repaired; a reload respawns the car, so its tyre repair is owed instead.
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
+    self.ourRespawn, self.rawDamage = nil, nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
@@ -277,10 +278,13 @@ function M.new(deps)
   function c:beforeRespawn()
     if self.fuel and self.ownedParts and self.fuel.vehicleId == self.ownedParts.id then self.fuel.restore = true end
     self.appliedWeight, self.tankReading = nil, nil
+    -- Its damage drops as it respawns, which is not the game resetting it.
+    self.ourRespawn = true
   end
 
   -- The respawn did not happen, so the car keeps its fuel and weight.
   function c:respawnFailed()
+    self.ourRespawn = nil
     if self.fuel then self.fuel.restore = nil end
     self:applyWeight()
   end
@@ -354,10 +358,10 @@ function M.new(deps)
       local paid = ''
       if b.offer then
         self.offer = { latitude = b.latitude, longitude = b.longitude, name = b.name, fee = b.fee }
-        paid = ' ' .. b.name .. ' pays back your ' .. dollars(b.fee) .. ' shipping when you deliver within '
+        paid = ' ' .. b.name .. ' pays back your ' .. dollars(b.fee) .. ' relocation when you deliver within '
           .. math.floor(shipping.OFFER_RADIUS_METRES / 1000) .. ' km of it.'
       end
-      self:showFlash(lost ~= '' and 'cancelled' or 'delivered', 'SHIPPED TO ' .. b.name:upper(),
+      self:showFlash(lost ~= '' and 'cancelled' or 'delivered', 'RELOCATED TO ' .. b.name:upper(),
         'Welcome to ' .. b.region .. '. Find a load in town.' .. paid .. lost)
       self.diag:event('shipped', b.id)
     elseif self.stranded and shipping.returned(to, self.stranded) then
@@ -365,18 +369,18 @@ function M.new(deps)
       if lost ~= '' then self:showFlash('cancelled', 'LOAD LOST', 'You are back where you teleported from.' .. lost) end
     else
       self.stranded = self.stranded or from
-      self:showFlash('cancelled', 'SHIPPING NOT BOOKED', 'Deliveries and driving do not count until you go back to '
-        .. coordinates(self.stranded) .. ' (copy them on the Route tab), or book shipping on the Garage tab.' .. lost)
+      self:showFlash('cancelled', 'RELOCATION NOT BOOKED', 'Deliveries and driving do not count until you go back to '
+        .. coordinates(self.stranded) .. ' (copy them on the Route tab), or book a relocation on the Relocate tab.' .. lost)
       self.diag:event('stranded', coordinates(self.stranded), 'W')
     end
   end
 
   -- Why booking shipping is not possible now, or nil when it is.
   function c:shippingProblem()
-    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Shipping is unavailable right now.' end
-    if self.load then return 'Deliver or abandon your job first: cargo cannot be shipped.' end
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Relocation is unavailable right now.' end
+    if self.load then return 'Deliver or abandon your job first: cargo cannot be relocated.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-    if self.booking then return 'You already have shipping booked to ' .. self.booking.name .. '.' end
+    if self.booking then return 'You already have a relocation booked to ' .. self.booking.name .. '.' end
     return nil
   end
 
@@ -440,7 +444,7 @@ function M.new(deps)
     if not problem and not destination then problem = 'Pick a destination.' end
     if not problem and shipping.arrived(here, destination) then problem = 'You are already in ' .. destination.name .. '.' end
     local fee = not problem and shipping.fee(here, destination) or nil
-    if not problem and not self:spend(fee, 'shipping') then problem = 'Not enough money. Shipping to ' .. destination.name .. ' costs ' .. dollars(fee) .. '.' end
+    if not problem and not self:spend(fee, 'shipping') then problem = 'Not enough money. Relocating to ' .. destination.name .. ' costs ' .. dollars(fee) .. '.' end
     if problem then
       self.shippingFeedback = problem
       return false
@@ -542,7 +546,7 @@ function M.new(deps)
     if not place then return 'Drive into a town to find a job.' end
     if not self.odometer:stopped() then return 'Stop the car to take or deliver a job.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-    if self.stranded then return 'You teleported without booking shipping. Go back to where you left from, or book shipping on the Garage tab.' end
+    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
     return nil
   end
 
@@ -634,7 +638,7 @@ function M.new(deps)
     if not away or away > jobs.DROP_RADIUS then
       return 'Drive to the drop spot and stop within ' .. jobs.DROP_RADIUS .. ' m of it.'
     end
-    if self.stranded then return 'You teleported without booking shipping. Go back to where you left from, or book shipping on the Garage tab.' end
+    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     local needed = jobs.drivenNeeded(places.get(load.from), load.drop)
     if load.drivenKm * 1000 < needed then
@@ -658,7 +662,7 @@ function M.new(deps)
     local refund = ''
     if self.offer and shipping.offerPays(load.drop, self.offer) then
       self:addMoney(self.offer.fee)
-      refund = ' ' .. self.offer.name .. ' paid back your ' .. dollars(self.offer.fee) .. ' shipping.'
+      refund = ' ' .. self.offer.name .. ' paid back your ' .. dollars(self.offer.fee) .. ' relocation.'
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
@@ -688,7 +692,7 @@ function M.new(deps)
     local refund = ''
     if self.offer and shipping.offerPays(place, self.offer) then
       self:addMoney(self.offer.fee)
-      refund = ' ' .. self.offer.name .. ' paid back your ' .. dollars(self.offer.fee) .. ' shipping.'
+      refund = ' ' .. self.offer.name .. ' paid back your ' .. dollars(self.offer.fee) .. ' relocation.'
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
@@ -1104,8 +1108,8 @@ function M.new(deps)
     -- Until the player reaches the resume point they are not in their own car, so a Save would
     -- replace the saved car and location with the stand-in vehicle and wherever it is.
     if self.stranded or self.booking then
-      self.feedback = self.stranded and 'Go back to where you teleported from, or book shipping, before saving.'
-        or 'Teleport to your shipping booking, or cancel it, before saving.'
+      self.feedback = self.stranded and 'Go back to where you teleported from, or book a relocation, before saving.'
+        or 'Teleport to your relocation booking, or cancel it, before saving.'
       self.diag:event('manual_save_rejected', self.stranded and 'stranded' or 'booking', 'W')
       return false
     end
@@ -1303,6 +1307,7 @@ function M.tanksRead(vehicleId, litres)
   return safely(function() if active then active:tanksRead(vehicleId, litres) end end)
 end
 function M.onVehicleSpawned() return safely(function() if active then active:vehicleSpawned() end end) end
+function M.onVehicleResetted(vehicleId) return safely(function() if active then active:vehicleReset(vehicleId) end end) end
 function M.reload() return safely(function() ensure():reload() end) end
 function M.uiMounted(on) return safely(function() ensure():mount(on == true) end) end
 function M.getState() return safely(function() return ensure():view() end) end
