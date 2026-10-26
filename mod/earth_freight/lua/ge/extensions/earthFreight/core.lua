@@ -382,8 +382,10 @@ function M.new(deps)
     if section and contracts.atStart(to, section) then
       self.load.started, self.load.drivenKm, self.stranded = true, 0, nil
       self.contractTeleportAt = nil
+      local gps = self:gpsToFinish(section)
       self:showFlash('delivered', 'DANGEROUS CONTRACT: ' .. section.name:upper(), section.summary
-        .. ' Follow the arrow on the Route tab to the finish and stop there to deliver. A crash ends the contract.')
+        .. (gps and ' The GPS is set to the finish.' or ' Follow the arrow on the Route tab to the finish.')
+        .. ' Stop there to deliver. A crash ends the contract.')
       self.diag:event('contract_started', section.id)
       return
     end
@@ -681,6 +683,23 @@ function M.new(deps)
     return true
   end
 
+  -- Sets the GPS to a dangerous contract's finish. Returns whether it was set.
+  function c:gpsToFinish(section)
+    if not self.adapter.setDestination then return false end
+    local ok, why = self.adapter:setDestination(section.finish, section.name .. ' finish')
+    self.diag:event('gps', ok and ('contract:' .. section.id) or tostring(why), ok and 'I' or 'W')
+    return ok == true
+  end
+
+  -- After a test teleport to a start: once the car is there, the GPS is set to the finish.
+  function c:watchTestGps()
+    local section, sample = self.testGpsFor, self.lastSample
+    if not section or not sample or not sample.valid or not contracts.atStart(sample, section) then return end
+    self.testGpsFor = nil
+    self.testFeedback = 'At the start of ' .. section.name
+      .. (self:gpsToFinish(section) and '. The GPS is set to the finish.' or '. The GPS could not be set.')
+  end
+
   -- Asks Earth to take the car to the start of the dangerous contract on board.
   function c:teleportToContract()
     local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
@@ -904,6 +923,7 @@ function M.new(deps)
     self:afterRespawn()
     self:watchFuel()
     self:watchInsurance()
+    self:watchTestGps()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
       self.refuelPending, self.tradeFeedback = nil, 'Refuelling did not go through. You have not been charged.'
@@ -1328,6 +1348,7 @@ function M.new(deps)
       return false
     end
     self.testTeleportUntil = self.clock + TELEPORT_WAIT_SECONDS
+    self.testGpsFor = which == 'start' and section or nil
     self.testFeedback = 'Test teleport to the ' .. which .. ' of ' .. section.name .. '.'
     return true
   end

@@ -399,6 +399,7 @@ Decided by Rowan on 26 Oct: a big-pay job over about 2 km of a treacherous Earth
 - **On the board:** every town's board ends with one contract, after the off-road drop. Which section is fixed for the town and moves on after every job, so the next town usually offers a different one. The good is parts or bricks, and the Load slider works as usual.
 - **Pay:** 8 times what the same load pays at the base rate over a 5 km job, with no town need, shortage, jackpot or road bonus.
 - **Relocation:** taking it costs a flat $200, and Earth is asked to teleport the car to the start (or the player pastes the start coordinates from the Route tab). A teleport landing within 1 km of the start starts the contract and does not lose the load; driving distance counts from there. Any other teleport cancels it as on any job. Abandoning before the start pays the $200 back; the $1,000 abandon fee still applies.
+- **GPS:** set to the finish when the contract starts (and when the start page's test teleport lands at a start). The Route tab's arrow shows the way too.
 - **Delivering:** stopped within 100 m of the finish, once 70% of the straight line from the start has been driven, from the Route tab as for an off-road drop.
 - **Insurance:** a claim on a contract costs $4,000 instead of $1,000, and as on any job the contract and its cargo are lost.
 - **Saves:** the load keeps the section id, whether it has started and the fee paid. Older saves load unchanged.

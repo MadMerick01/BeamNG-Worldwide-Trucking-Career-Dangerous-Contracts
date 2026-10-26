@@ -754,6 +754,8 @@ do
   a.pose = F.copy(section.start); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.check(c.load and c.load.started, 'started at the start'); T.eq(c.stranded, nil, 'not stranded')
   T.check(c:view().flash.title:find('DANGEROUS CONTRACT'), 'told so'); T.eq(c:view().balance, 10000 - contracts.FEE, 'no abandon fee')
+  T.near(a.gps[#a.gps].latitude, section.finish.latitude, 1e-12, 'the GPS is set to the finish')
+  T.check(c:view().flash.text:find('GPS', 1, true), 'and the player is told')
   T.check(not c:teleportToContract(), 'no more teleport once started')
   -- Driven to the finish and stopped there, it delivers.
   F.drive(c, a, section.finish)
@@ -813,6 +815,9 @@ do
   a.pose = F.copy(section.finish); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.check(c.load ~= nil, 'the job is kept'); T.eq(c.stranded, nil, 'not stranded')
   T.check(c:testTeleport(section.id, 'start'), 'and to the start'); T.near(a.teleports[#a.teleports].latitude, section.start.latitude, 1e-12, 'there')
+  a.pose = F.copy(section.start); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.near(a.gps[#a.gps].latitude, section.finish.latitude, 1e-12, 'landing at the start sets the GPS to the finish')
+  T.check(c:view().testFeedback:find('GPS', 1, true), 'and says so'); T.check(c.load ~= nil, 'the job is still kept')
   local n = F.controller(); n:tick(0.1); n.adapter.teleport = nil
   T.check(not n:testTeleport(section.id, 'start'), 'not without Earth\'s teleport')
 end
