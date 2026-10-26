@@ -140,6 +140,19 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         taken.pay = units === job.units ? job.pay : Math.max(10, Math.floor(job.pay * units / job.units / 10 + 0.5) * 10)
         return taken
       }
+      // The Town tab's cargo card: slots in the boxes, how many the load on board takes and how many
+      // are free. A fluid load sits in the tank, so it takes no slots.
+      var room = { total: 0, used: 0, free: 0, percent: 0 }
+      scope.cargoRoom = function (d) {
+        var total = d && d.space && d.space.slots > 0 ? d.space.slots : 0
+        var load = d && d.load
+        var used = load && !(load.litres > 0) && load.slots > 0 ? Math.min(load.slots, total) : 0
+        room.total = total
+        room.used = used
+        room.free = total - used
+        room.percent = total > 0 ? Math.round(used / total * 100) : 0
+        return room
+      }
       scope.takeJob = function (job) {
         if (!scope.data.town || scope.data.load || !job || !job.allowed || !plainId(job.id)) return
         core("takeJob('" + job.id + "', " + scope.shareOf(job) + ')')
@@ -202,6 +215,11 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
       scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar()') }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
+      // Open the game's own parts menu (Ctrl+W); the bill then shows up on the Garage tab.
+      scope.openPartsMenu = function () {
+        call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
+          "elseif guihooks then guihooks.trigger('ChangeState', {state = 'menu.vehicleconfig.parts'}) end")
+      }
       // The first press asks Lua to confirm; the second wipes the save.
       scope.newGame = function () { if (scope.data.newGameAllowed) core('newGame()') }
       scope.cancelNewGame = function () { if (scope.data && scope.data.newGameArmed) core('cancelNewGame()') }
