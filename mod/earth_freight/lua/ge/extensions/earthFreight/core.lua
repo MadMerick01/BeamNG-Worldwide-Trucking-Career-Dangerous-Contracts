@@ -35,6 +35,9 @@ local TELEPORT_WAIT_SECONDS = 30
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
 local PUNCTURE_DAMAGE = punctures.TYRE_REPAIR_COST / pricing.REPAIR_COST_PER_DAMAGE
 local dollars = pricing.dollars
+-- The dangerous contracts the start page's test picker lists.
+local testContracts = {}
+for _, s in ipairs(contracts.LIST) do testContracts[#testContracts + 1] = { id = s.id, name = s.name } end
 
 local labels = {
   CONFIG_REQUIRED = 'BASE CONFIGURATION REQUIRED', EARTH_UNAVAILABLE = 'EARTH UNAVAILABLE',
@@ -382,6 +385,12 @@ function M.new(deps)
       self:showFlash('delivered', 'DANGEROUS CONTRACT: ' .. section.name:upper(), section.summary
         .. ' Follow the arrow on the Route tab to the finish and stop there to deliver. A crash ends the contract.')
       self.diag:event('contract_started', section.id)
+      return
+    end
+    -- A test teleport (from the start page) loses nothing and strands no one.
+    if self.testTeleportUntil and self.clock <= self.testTeleportUntil then
+      self.testTeleportUntil = nil
+      self.diag:event('test_teleported', coordinates(to))
       return
     end
     local lost = ''
@@ -1140,6 +1149,8 @@ function M.new(deps)
       tradeFeedback = self.tradeFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
       testMoneyAllowed = active,
+      testTeleportAllowed = self.profile ~= nil and not self.error and self.state == 'READY' and self.adapter.teleport ~= nil,
+      testContracts = testContracts, testFeedback = self.testFeedback,
       repairQuoteAllowed = active and self.garage ~= nil,
       repairQuote = quote and quote.cost or nil,
       repairOwed = self.owedDamage > 0 and pricing.repairCost(self.owedDamage, self:carValueOf(self.ownedParts and self.ownedParts.id)) or nil,
@@ -1300,6 +1311,27 @@ function M.new(deps)
     return true
   end
 
+  -- Testing aid: teleports to a dangerous contract's start or finish (which is 'start' or
+  -- 'finish'), so each one can be checked in game. Like test money, it is not part of the game: the
+  -- jump loses no job and strands no one.
+  function c:testTeleport(contractId, which)
+    local section = contracts.get(contractId)
+    if not section or (which ~= 'start' and which ~= 'finish') or not self.profile or self.error
+        or self.state ~= 'READY' or not self.adapter.teleport then
+      self.testFeedback = 'Test teleport is not available right now.'
+      return false
+    end
+    local ok, why = self.adapter:teleport(section[which], 'Earth Freight test: ' .. section.name .. ' ' .. which)
+    self.diag:event('test_teleport', section.id .. ':' .. which .. (ok and '' or (':' .. tostring(why))), ok and 'I' or 'W')
+    if not ok then
+      self.testFeedback = 'BeamNG.Earth did not take the teleport.'
+      return false
+    end
+    self.testTeleportUntil = self.clock + TELEPORT_WAIT_SECONDS
+    self.testFeedback = 'Test teleport to the ' .. which .. ' of ' .. section.name .. '.'
+    return true
+  end
+
   function c:mount(on)
     if self.ui:mount(on, self.clock) then
       self.diag:clear('ui_initialised'); self.diag:event('ui_initialised', 'Earth Freight HUD')
@@ -1375,6 +1407,11 @@ function M.newGame() return safely(function() return ensure():newGame() end) end
 function M.cancelNewGame() return safely(function() return ensure():cancelNewGame() end) end
 function M.teleportToResume() return safely(function() return ensure():teleportToResume() end) end
 function M.teleportToContract() return safely(function() return ensure():teleportToContract() end) end
+-- which is 'start' or 'finish'.
+function M.testTeleport(contract, which)
+  if which ~= 'start' and which ~= 'finish' then return false end
+  return safely(function() return ensure():testTeleport(id(contract), which) end)
+end
 -- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
 -- share is the slider's percentage of a full load: 10 to 100 in steps of 10; anything else takes it all.
 function M.takeJob(job, share)

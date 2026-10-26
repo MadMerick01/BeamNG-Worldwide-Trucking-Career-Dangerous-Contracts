@@ -69,6 +69,17 @@
       </div>
       <div style="margin-top:12px;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
         <button type="button" ng-click="addTestMoney()" ng-disabled="!data.testMoneyAllowed" style="padding:3px 8px;font-size:12px;">+$10,000 test money</button>
+        <div style="margin-top:8px;font-size:12px;">
+          <div style="font-weight:bold;color:#7d8b88;">Test: dangerous contract roads</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+            <select ng-model="intro.contract" ng-init="intro.contract = intro.contract || (data.testContracts[0] && data.testContracts[0].id)" aria-label="Dangerous contract road to test" style="flex:1;min-width:0;font-size:12px;">
+              <option ng-repeat="t in data.testContracts" value="{{t.id}}">{{t.name}}</option>
+            </select>
+            <button type="button" ng-click="testTeleport('start')" ng-disabled="!data.testTeleportAllowed" style="padding:3px 8px;font-size:12px;">Teleport to start</button>
+            <button type="button" ng-click="testTeleport('finish')" ng-disabled="!data.testTeleportAllowed" style="padding:3px 8px;font-size:12px;">Teleport to finish</button>
+          </div>
+          <div ng-if="data.testFeedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.testFeedback}}</div>
+        </div>
         <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Place data &copy; GeoNames (geonames.org), CC BY 4.0. Elevation: Mapzen terrain tiles (SRTM and others).</div>
       </div>
     </div>

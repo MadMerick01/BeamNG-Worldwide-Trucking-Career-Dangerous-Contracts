@@ -801,4 +801,20 @@ do
   T.check(not c:takeJob(job.id), 'refused'); T.check(c:view().tradeFeedback:find('relocation'), 'told why')
 end
 
+-- Testing aid: the start page teleports to each contract road's start or finish, losing nothing.
+do
+  local c, io, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(#c:view().testContracts, #contracts.LIST, 'every road is listed'); T.check(c:view().testTeleportAllowed, 'allowed')
+  T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a job on board')
+  local section = contracts.LIST[1]
+  T.check(not c:testTeleport('nowhere', 'start'), 'an unknown road is refused'); T.check(not c:testTeleport(section.id, 'middle'), 'so is an odd end')
+  T.check(c:testTeleport(section.id, 'finish'), 'teleported'); T.near(a.teleports[#a.teleports].latitude, section.finish.latitude, 1e-12, 'to the finish')
+  a.pose = F.copy(section.finish); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c.load ~= nil, 'the job is kept'); T.eq(c.stranded, nil, 'not stranded')
+  T.check(c:testTeleport(section.id, 'start'), 'and to the start'); T.near(a.teleports[#a.teleports].latitude, section.start.latitude, 1e-12, 'there')
+  local n = F.controller(); n:tick(0.1); n.adapter.teleport = nil
+  T.check(not n:testTeleport(section.id, 'start'), 'not without Earth\'s teleport')
+end
+
 T.done('Earth Freight controller')

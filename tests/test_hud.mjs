@@ -405,3 +405,21 @@ test('a dangerous contract shows on the board and teleports to its start only wh
   assert.equal(a.commands.at(-1), fixed('teleportToContract()'))
   assert.equal(a.scope.coordinates(contract.start), '-16.28700000, -67.81500000')
 })
+test('the start page test picker teleports to a contract road start or finish only when Lua allows it', () => {
+  assert.match(html, /ng-click="testTeleport\('start'\)"/)
+  assert.match(html, /ng-click="testTeleport\('finish'\)"/)
+  const a = app()
+  const testContracts = [{ id: 'death_road', name: 'Death Road' }, { id: 'sani_pass', name: 'Sani Pass' }]
+  a.state({ state: 'READY', testContracts })
+  let count = a.commands.length
+  a.scope.testTeleport('start')
+  assert.equal(a.commands.length, count, 'refused when not allowed')
+  a.state({ state: 'READY', testContracts, testTeleportAllowed: true })
+  a.scope.testTeleport('start')
+  assert.equal(a.commands.at(-1), fixed("testTeleport('death_road', 'start')"), 'the first road by default')
+  a.scope.intro.contract = 'sani_pass'; a.scope.testTeleport('finish')
+  assert.equal(a.commands.at(-1), fixed("testTeleport('sani_pass', 'finish')"))
+  count = a.commands.length
+  a.scope.testTeleport('middle'); a.scope.intro.contract = "x') os.exit() --"; a.scope.testTeleport('start')
+  assert.equal(a.commands.length, count, 'odd input refused')
+})
