@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 33 · 26 Oct 2026
+
 - **Loading a saved game now opens the start page with a Welcome back box.** It shows the coordinates of your last save with a Copy button and how far away you are, in the same colours as the rest of the start page. Press Continue to close it; the coordinates stay on the HUD until you get there.
 - The start page's button now says Continue instead of Done. On a brand new game it still says Let's go.
 
