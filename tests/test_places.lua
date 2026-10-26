@@ -50,12 +50,12 @@ local units, slots, kg = cargo.fits(starter, bricks)
 T.eq(units, 6, '6 bricks: the weight runs out first'); T.eq(slots, 18, 'in 18 slots'); T.eq(kg, 900, 'weighing 900 kg')
 T.eq(cargo.fits({ slots = 2, kg = 60 }, bricks), 0, 'no bricks in the boot')
 T.near(jobs.basePay(parts, 20, 5), 2000 * 300 / 780, 1e-6, '20 slots of parts (300 kg) pay about $770 over 5 km')
--- The starter Burnside with 52 slots of boxes (3 L and an M: 1,400 kg).
+-- The starter Burnside with 52 slots of boxes (3 L and an M: 1,330 kg).
 local big = { slots = 52, kg = 3 * cargo.BOXES[2].kg + cargo.BOXES[3].kg }
-T.eq(big.kg, 1400, 'L boxes take 400 kg')
-T.eq(cargo.fits(big, parts), 52, '52 parts'); T.eq(cargo.fits(big, bricks), 9, '9 bricks: the weight runs out first')
+T.eq(big.kg, 1330, 'L boxes take 400 kg and M 130 kg')
+T.eq(cargo.fits(big, parts), 52, '52 parts'); T.eq(cargo.fits(big, bricks), 8, '8 bricks: the weight runs out first')
 T.near(jobs.basePay(parts, 52, 5), 2000, 1e-6, '52 slots of parts (780 kg) pay $2,000 over 5 km')
-T.near(jobs.basePay(bricks, 9, 5), 2826, 1, 'bricks (1,350 kg) about $2,830')
+T.near(jobs.basePay(bricks, 8, 5), 2624, 1, 'bricks (1,200 kg) about $2,620')
 T.near(jobs.basePay(parts, 52, 20), 12000, 1e-6, 'parts $12,000 over 20 km')
 -- Pay by weight: heavier loads pay more, but less a kg; lighter ones a straight share.
 T.near(jobs.weightPay(30), 2000 * 30 / 780, 1e-6, 'a 30 kg boot load pays about $77')
