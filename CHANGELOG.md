@@ -6,7 +6,7 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
-- **Shipping has its own tab.** The Shipping paid offer and the Book shipping card have moved from the Garage tab to a new Shipping tab, next to Garage. A gold dot marks it while you have a booking waiting.
+- **Shipping is now called Relocation and has its own Relocate tab.** The Relocation paid offer (was Shipping paid) and the Book relocation card (was Book shipping) have moved from the Garage tab to the new Relocate tab, next to Garage. A gold dot marks it while you have a booking waiting. Messages in the game say relocation too, such as "Relocated to Coroico". It works exactly as before, and a refund you are owed from an earlier paid offer still comes through.
 - **The Tips tab is gone.** The +$10,000 test money button and the map data credits are now at the bottom of the start page (press your name or Profile at the top of the HUD). Your saves still work.
 
 ## Build 33 · 26 Oct 2026

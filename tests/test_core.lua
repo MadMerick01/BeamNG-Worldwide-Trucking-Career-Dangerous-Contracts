@@ -160,7 +160,7 @@ do
   T.eq(c:view().balance, balance - jobs.ABANDON_FEE, 'for the abandon fee')
   T.eq(c:view().flash.kind, 'cancelled', 'player told the job was lost')
   T.check(c:view().stranded ~= nil, 'an unbooked teleport strands the player')
-  T.check(c:tradeProblem(c:here()):find('without booking shipping'), 'and stops jobs')
+  T.check(c:tradeProblem(c:here()):find('without booking a relocation'), 'and stops jobs')
   -- Teleporting back to where they left from frees them.
   a.pose = location.destination(F.PENRITH, 90, 1500); c:tick(0.1)
   T.eq(c.stranded, nil, 'back where they left from'); T.eq(c:view().flash.title, 'BACK ON THE ROAD', 'told so')
@@ -482,14 +482,14 @@ do
   a.valid = false; c:tick(0.1)
   a.valid = true; a.pose = location.destination(coroico, 0, 1000); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.eq(c.booking, nil, 'booking used up'); T.eq(c.stranded, nil, 'not stranded')
-  T.eq(c:view().flash.title, 'SHIPPED TO COROICO', 'told they arrived')
+  T.eq(c:view().flash.title, 'RELOCATED TO COROICO', 'told they arrived')
   T.eq(c:view().region.name, 'Death Road', 'in the Death Road region'); T.check(c:view().region.boost >= 1.85, 'rough roads pay nearly double')
   T.check(c:view().saveAllowed, 'Save works again')
   -- Teleporting on without a booking strands you, and the coordinates to go back are shown.
   a.pose = shipping.get('bormio'); c:tick(0.1); c:tick(0.6)
   local stranded = c:view().stranded
   T.check(stranded ~= nil and location.distance(stranded, coroico) < 1500, 'go back to where you left')
-  T.eq(c:view().flash.title, 'SHIPPING NOT BOOKED', 'told why')
+  T.eq(c:view().flash.title, 'RELOCATION NOT BOOKED', 'told why')
   local km = c:view().totalDistanceKm
   a.pose = location.destination(shipping.get('bormio'), 0, 200); c:tick(1)
   T.eq(c:view().totalDistanceKm, km, 'driving does not count while stranded')

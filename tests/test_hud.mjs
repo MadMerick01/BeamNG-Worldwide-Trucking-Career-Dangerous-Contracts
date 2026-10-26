@@ -147,9 +147,9 @@ test('colours: green above the usual pay, red below, gold for a shortage or jack
 })
 test('a serious crash opens the Garage tab, and a shortage marks the Route tab without opening it', () => {
   const a = app()
-  a.state({ state: 'READY', arrived: true }); a.scope.setTab('shipping')
+  a.state({ state: 'READY', arrived: true }); a.scope.setTab('relocate')
   a.state({ state: 'READY', arrived: true, shortages: [{ town: 'Katoomba' }] })
-  assert.equal(a.scope.tab, 'shipping'); assert.equal(a.scope.tabAlert('route'), true)
+  assert.equal(a.scope.tab, 'relocate'); assert.equal(a.scope.tabAlert('route'), true)
   a.state({ state: 'READY', arrived: true, insurance: { allowed: true } })
   assert.equal(a.scope.tab, 'garage'); assert.equal(a.scope.tabAlert('garage'), true)
   assert.equal(a.scope.tabAlert('town'), false)
@@ -200,24 +200,24 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
   for (const always of ['ng-click="save()"', 'data.balance', 'notice(data)', 'data.load.to', 'data.fuel.litres', 'copyCoordinates(data.resume)']) {
     assert.ok(html.indexOf(always) > -1 && html.indexOf(always) < panels, always)
   }
-  for (const id of ['route', 'town', 'garage', 'shipping']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
+  for (const id of ['route', 'town', 'garage', 'relocate']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
   for (const action of ['cancelPay(); buyParts()', 'revertParts()', 'cancelPay(); buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
     'newGame()', 'cancelNewGame()', 'addTestMoney()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
   }
   assert.ok(html.includes('GeoNames'), 'GeoNames credit')
 })
-test('the Tips tab is gone and shipping has its own tab', () => {
+test('the Tips tab is gone and shipping has its own Relocate tab', () => {
   const a = app()
-  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'shipping'])
+  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate'])
   assert.ok(!html.includes(`tab === 'tips'`), 'no Tips tab')
-  const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'shipping'"`))
-  const shipping = html.slice(html.indexOf(`ng-if="tab === 'shipping'"`))
-  for (const card of ['Shipping paid:', 'Book shipping', 'bookOffer()', 'bookShipping(d.id)', 'cancelShipping()']) {
+  const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'relocate'"`))
+  const shipping = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`))
+  for (const card of ['Relocation paid:', 'Book relocation', 'bookOffer()', 'bookShipping(d.id)', 'cancelShipping()']) {
     assert.ok(shipping.includes(card), card); assert.ok(!garage.includes(card), card + ' not on the Garage tab')
   }
   a.state({ state: 'READY', arrived: true, shipping: { booking: { name: 'La Paz' } } })
-  assert.equal(a.scope.tabAlert('shipping'), true, 'a booking marks the Shipping tab')
+  assert.equal(a.scope.tabAlert('relocate'), true, 'a booking marks the Relocate tab')
   assert.equal(a.scope.tabAlert('garage'), false, 'and not the Garage tab')
   const start = html.slice(0, html.indexOf('role="tabpanel"'))
   assert.ok(start.includes('ng-click="addTestMoney()"') && start.includes('GeoNames'), 'test money and credit on the start page')
@@ -275,9 +275,9 @@ test('closing the parts menu or the map keeps the tab and does not reopen the st
   a.remount(); a.state({ state: 'READY', mode: 'start', playerName: 'Sam' })
   assert.equal(a.scope.intro.open, false, 'start page stays closed')
   assert.equal(a.scope.tab, 'garage', 'same tab as before')
-  a.state({ state: 'READY', mode: 'start', town: {} }); a.scope.setTab('shipping')
+  a.state({ state: 'READY', mode: 'start', town: {} }); a.scope.setTab('relocate')
   a.remount(); a.state({ state: 'READY', mode: 'start', town: {} })
-  assert.equal(a.scope.tab, 'shipping', 'a town already there does not open the Town tab again')
+  assert.equal(a.scope.tab, 'relocate', 'a town already there does not open the Town tab again')
   a.scope.openIntro(); a.scope.intro.name = 'Al'
   a.remount(); a.state({ state: 'READY', mode: 'start', town: {} })
   assert.equal(a.scope.intro.open, true, 'a start page left open stays open')
