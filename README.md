@@ -1,9 +1,9 @@
+
 # Earth Freight Sim
 
 A world freight economy career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive. Start in a rust-bucket sedan, end in a semi truck
 
-<img width="600" height="400" alt="earthFSim1" src="https://github.com/user-attachments/assets/e5ae8dbb-0c09-4c74-be09-5e2455bd544a" />
-
+<img width="1500" height="1000" alt="efsim" src="https://github.com/user-attachments/assets/25f7f69e-abf8-46d1-afed-db2db6f41cfd" />
 The design is in [`docs/DESIGN.md`](docs/DESIGN.md). What is built so far: a job board in each of 130,000 towns worldwide, parcels, a pay bonus for rough roads, insurance, and shipping to anywhere on Earth.
 
 ## Install
