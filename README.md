@@ -1,6 +1,6 @@
 
 
-# Earth Freight Sim
+# Earth Freight Sim - Dangerous Contracts
 
 A WORLD FREIGHT ECONOMY CAREER for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive. Start in a rust-bucket sedan, end in a semi truck
 
