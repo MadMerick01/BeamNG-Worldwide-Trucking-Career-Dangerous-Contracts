@@ -4,8 +4,12 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
   // closes, so this is kept out here and the new app carries on where the old one was.
   var kept = {
     tab: 'route', introShown: false, intro: { open: false, name: '', steps: false }, shares: {},
-    ship: { query: '', coords: '', error: null }, last: null
+    ship: { query: '', coords: '', error: null }, last: null, hud: null
   }
+  // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
+  var STORE = 'earthFreight.hudMinimised'
+  var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
+  var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
   return {
     templateUrl: '/ui/modules/apps/EarthFreightHUD/app.html',
     replace: true,
@@ -42,6 +46,17 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
+      // The HUD shrinks to an Earth Freight button. Its dot is red for bad news, gold for anything a
+      // tab marks, so the player can tell from the button alone that the HUD has something for them.
+      if (!kept.hud) kept.hud = { minimised: stored() }
+      scope.hud = kept.hud
+      scope.setMinimised = function (on) { scope.hud.minimised = !!on; store(!!on) }
+      scope.hudAlert = function (d) {
+        d = d || scope.data || {}
+        if (d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) return 'bad'
+        for (var id in alerts) if (alerts[id](d)) return 'waiting'
+        return ''
+      }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
@@ -50,10 +65,18 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       ]
       var follow = function (previous, next) {
         // The start page opens once on a new game, until the player has been somewhere.
-        if (next.mode === 'start' && !kept.introShown) { kept.introShown = true; scope.openIntro(next) }
+        if (next.mode === 'start' && !kept.introShown) {
+          kept.introShown = true; scope.openIntro(next); scope.setMinimised(false)
+        }
         if (next.mode !== 'start') kept.introShown = false
         for (var i = 0; i < autoOpen.length; i++) {
-          if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) { scope.setTab(autoOpen[i][0]); return }
+          if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) {
+            scope.setTab(autoOpen[i][0])
+            // A bill, an insurance offer or being stranded needs the player, so a minimised HUD
+            // opens for it. Arriving in a town only lights the button's dot.
+            if (autoOpen[i][0] !== 'town') scope.setMinimised(false)
+            return
+          }
         }
         if (scope.tab === 'town' && !next.town) scope.setTab('route')
       }

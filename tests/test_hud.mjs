@@ -7,7 +7,7 @@ const APP = '../mod/earth_freight/ui/modules/apps/EarthFreightHUD/'
 const source = readFileSync(new URL(APP + 'app.js', import.meta.url), 'utf8')
 const html = readFileSync(new URL(APP + 'app.html', import.meta.url), 'utf8')
 const fixed = body => 'if earthFreight_core then earthFreight_core.' + body + ' end'
-function app() {
+function app(storage) {
   const commands = [], handlers = {}, timers = new Map()
   let definition, clock = 0
   const scope = { $on: (name, fn) => { handlers[name] = fn }, $evalAsync: fn => fn() }
@@ -18,7 +18,8 @@ function app() {
     } },
     bngApi: { engineLua: command => commands.push(command) },
     setInterval: fn => { timers.set(1, fn); return 1 },
-    clearInterval: id => timers.delete(id), Date: { now: () => clock }
+    clearInterval: id => timers.delete(id), Date: { now: () => clock },
+    window: storage ? { localStorage: storage } : {}
   })
   definition.link(scope)
   const state = data => handlers.EarthFreightState({}, data)
@@ -296,4 +297,45 @@ test('a changed name lights up Save', () => {
   const a = app()
   assert.equal(a.scope.unsaved({ nameUnsaved: true }), true)
   assert.equal(a.scope.unsaved({ nameUnsaved: false }), false)
+})
+test('the HUD minimises to an Earth Freight button, and stays that way after a rebuild or a restart', () => {
+  const saved = {}
+  const storage = { getItem: k => (k in saved ? saved[k] : null), setItem: (k, v) => { saved[k] = String(v) } }
+  const a = app(storage)
+  assert.equal(a.scope.hud.minimised, false)
+  a.state({ state: 'READY', mode: 'free' })
+  a.scope.setMinimised(true)
+  assert.equal(a.scope.hud.minimised, true)
+  assert.equal(a.remount().scope.hud.minimised, true, 'kept when BeamNG rebuilds the app')
+  assert.equal(app(storage).scope.hud.minimised, true, 'kept after the game restarts')
+  a.scope.setMinimised(false)
+  assert.equal(app(storage).scope.hud.minimised, false)
+  assert.equal(app().scope.hud.minimised, false, 'starts open without storage')
+  assert.ok(html.includes('ng-if="hud.minimised" ng-click="setMinimised(false)"') && html.includes('>Earth Freight<'))
+  assert.ok(html.includes('ng-click="setMinimised(true)"'), 'the header has a minimise button')
+  assert.ok(/ng-style="hud\.minimised \? \{[^}]*\} : \{height:'100%'[^}]*background:'rgba/.test(html), 'the full HUD gets its look back when reopened')
+  assert.ok(html.indexOf('ng-click="setMinimised(true)"') > html.indexOf('ng-if="!intro.open"') &&
+    html.indexOf('ng-click="setMinimised(true)"') < html.indexOf('ng-if="intro.open"'), 'hidden while the start page is open')
+})
+test('a minimised HUD lights its dot for anything waiting and opens only for what needs the player', () => {
+  const a = app()
+  a.state({ state: 'READY', mode: 'free' })
+  a.scope.setMinimised(true)
+  assert.equal(a.scope.hudAlert(), '')
+  a.state({ state: 'READY', mode: 'free', shortages: [{ id: 'x' }] })
+  assert.equal(a.scope.hudAlert(), 'waiting'); assert.equal(a.scope.hud.minimised, true, 'a shortage only lights the dot')
+  a.state({ state: 'READY', mode: 'free', town: { jobs: [{ allowed: true }] } })
+  assert.equal(a.scope.hudAlert(), 'waiting'); assert.equal(a.scope.hud.minimised, true, 'arriving in a town only lights the dot')
+  a.state({ state: 'READY', mode: 'free', flash: { kind: 'cancelled', title: 'x', text: 'y' } })
+  assert.equal(a.scope.hudAlert(), 'bad'); assert.equal(a.scope.hud.minimised, true)
+  a.state({ state: 'READY', mode: 'free', insurance: { allowed: true } })
+  assert.equal(a.scope.hud.minimised, false, 'an insurance offer opens it'); assert.equal(a.scope.tab, 'garage')
+  for (const extra of [{ partsChange: {} }, { carChange: {} }, { stranded: {} }]) {
+    a.state({ state: 'READY', mode: 'free' }); a.scope.setMinimised(true)
+    a.state({ state: 'READY', mode: 'free', ...extra })
+    assert.equal(a.scope.hud.minimised, false, Object.keys(extra)[0] + ' opens it')
+  }
+  a.state({ state: 'READY', mode: 'free' }); a.scope.setMinimised(true)
+  a.state({ state: 'READY', mode: 'start' })
+  assert.equal(a.scope.hud.minimised, false, 'the start page opens it'); assert.equal(a.scope.intro.open, true)
 })
