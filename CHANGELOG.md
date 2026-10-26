@@ -9,6 +9,11 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - **Teleport to last save.** When you load the game, the Welcome back card now has a Teleport to last save button. Press it and BeamNG.Earth takes you straight to where you last saved, with no copying or pasting coordinates into its map. The same button is on the Route tab until you get there. A new game has a Teleport to Penrith button instead.
 - The coordinates and Copy button are still there if you prefer the map, or if BeamNG.Earth can't teleport you right then (the HUD tells you). Your saves still work.
 
+## Build 45 · 26 Oct 2026
+
+- **The Buy parts and Buy new car buttons are now inside the Change parts or buy a car card on the Garage tab**, under the steps, so it's clear where to start. Buy parts opens the parts menu and Buy new car opens the car selector.
+- Tips and messages no longer tell you to press Ctrl+W. They point you to the Buy parts button instead, for example when your starter car needs a radiator or a job needs a fluid tank. To get these buttons, put the new `earth-freight-sim.zip` in your mods folder in place of the old one. Your saves still work.
+
 ## Build 44 · 26 Oct 2026
 
 - **The Garage tab has Buy parts and Buy new car buttons.** Buy parts opens the parts menu and Buy new car opens the car selector, so you no longer need Ctrl+W or Ctrl+E. The bill still shows up on the Garage tab to pay or undo as before. Your saves still work.

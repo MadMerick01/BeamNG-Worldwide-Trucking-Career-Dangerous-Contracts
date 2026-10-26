@@ -545,7 +545,7 @@ function M.new(deps)
         self.odometer:reset()
         if self.mode == 'start' then
           self:showFlash('delivered', self:named('Welcome to ' .. config.START_TOWN):upper(),
-            'Your starter car needs a radiator: fit one in the parts menu (Ctrl+W), then pay on the Garage tab.')
+            'Your starter car needs a radiator: press Buy parts on the Garage tab, fit one, then pay there.')
         else
           self:showFlash('delivered', self:named('Welcome back'):upper(), 'You are where you last saved.'
             .. (self.refunded and (' Buying cargo has been replaced by job boards, so the cargo you bought was taken off and its '
@@ -604,7 +604,7 @@ function M.new(deps)
     local quote = job and not problem and self:jobQuote(job) or nil
     local good = job and goods.get(job.good)
     if quote and quote.units == 0 and good.kind == 'fluid' then
-      problem = good.name .. ' needs a fluid tank. Fit a Cargo Load fluid tank in the parts menu (Ctrl+W) and pay for it on the Garage tab.'
+      problem = good.name .. ' needs a fluid tank. Press Buy parts on the Garage tab, fit a Cargo Load fluid tank and pay for it there.'
     elseif quote and quote.units == 0 then
       problem = 'Not enough cargo space or payload for ' .. good.name:lower() .. ': one unit takes ' .. good.slots
         .. (good.slots == 1 and ' slot' or ' slots') .. ' and ' .. good.kg .. ' kg. Fit a cargo box in the parts menu.'
