@@ -8,6 +8,20 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **The Garage tab has Buy parts and Buy new car buttons.** Buy parts opens the parts menu and Buy new car opens the car selector, so you no longer need Ctrl+W or Ctrl+E. The bill still shows up on the Garage tab to pay or undo as before. Your saves still work.
 
+## Build 37 · 26 Oct 2026
+
+- **Jobs now pay by the weight of the load.** A full 300 kg load pays $2,000 over 5 km, and heavier loads pay more but less for each kilogram: about $3,300 for the starter car's 6 bricks (900 kg), $5,800 for 3 tonnes and $10,900 for 12 tonnes. Distance, town need, shortages, jackpots and rough roads still raise the pay as before, and the load slider still pays its share of the job. Loads under 300 kg pay their share by weight, such as $200 for 2 parts in a car boot. The goods are the same: parts and bricks in cargo boxes, and water or fuel in a tank.
+- A job you were already carrying pays what it showed when you took it. Your saves still work.
+
+## Build 36 · 26 Oct 2026
+
+- **The Town tab now shows your cargo slots in a card above the jobs.** It shows how many slots your cargo boxes give you, how many your load takes and how many are free, with your weight limit. It explains that a Cargo Load box S adds 1 slot, M adds 4, L adds 16 and XL adds 128, and its Buy more cargo space button opens the parts menu. Fit a box there, then pay for it on the Garage tab. Your saves still work.
+
+## Build 34 · 26 Oct 2026
+
+- **Shipping is now called Relocation and has its own Relocate tab.** The Relocation paid offer (was Shipping paid) and the Book relocation card (was Book shipping) have moved from the Garage tab to the new Relocate tab, next to Garage. A gold dot marks it while you have a booking waiting. Messages in the game say relocation too, such as "Relocated to Coroico". It works exactly as before, and a refund you are owed from an earlier paid offer still comes through.
+- **The Tips tab is gone.** The +$10,000 test money button and the map data credits are now at the bottom of the start page (press your name or Profile at the top of the HUD). Your saves still work.
+
 ## Build 33 · 26 Oct 2026
 
 - **Loading a saved game now opens the start page with a Welcome back box.** It shows the coordinates of your last save with a Copy button and how far away you are, in the same colours as the rest of the start page. Press Continue to close it; the coordinates stay on the HUD until you get there.

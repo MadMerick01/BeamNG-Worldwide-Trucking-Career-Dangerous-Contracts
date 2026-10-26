@@ -3,9 +3,9 @@
 
 A world freight economy career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive. Start in a rust-bucket sedan, end in a semi truck
 
-<img width="1500" height="1000" alt="earthFSim1" src="https://github.com/user-attachments/assets/1b5df17b-7202-407e-917b-6acc6fd7d732" />
+<img width="1500" height="1000" alt="earthFSim1" src="https://github.com/user-attachments/assets/16ebfab6-b37f-4b85-9aca-34cd8a8b4370" />
 
-The design is in [`docs/DESIGN.md`](docs/DESIGN.md). What is built so far: a job board in each of 130,000 towns worldwide, parcels, a pay bonus for rough roads, insurance, and shipping to anywhere on Earth.
+The design is in [`docs/DESIGN.md`](docs/DESIGN.md). What is built so far: a job board in each of 130,000 towns worldwide, parcels, a pay bonus for rough roads, insurance, and relocation to anywhere on Earth.
 
 ## Install
 
@@ -40,9 +40,9 @@ Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. 
 
 **Region pay boost.** Steep, remote and high places pay more, from ×1 up to ×3. The boost comes from how much the ground rises and falls around a town, how few people live nearby, its altitude, and a bonus for famous roads (Death Road, the Stelvio Pass, the Karakoram Highway). Flat Sydney pays ×1.0, Katoomba in the Blue Mountains ×1.5, La Paz ×1.9 and Coroico on Death Road ×3.0. The HUD shows it next to the region name, like "Death Road ×3.0", and on each drop-off. Jobs get a rough-road bonus of half the boost above ×1, at the average of the two towns, so a job on Death Road pays ×2 and one in the Blue Mountains about ×1.25.
 
-## Shipping
+## Relocation
 
-To go far, book shipping on the **Garage** tab with an empty car (no job on board):
+To go far, book a relocation on the **Relocate** tab with an empty car (no job on board):
 
 - pick one of the listed regions (Penrith, Katoomba, La Paz, Coroico, Bormio, Zermatt, Gilgit, Leh),
 - or **Find** any town by the start of its name (case and accents don't matter: "zurich" finds Zürich),
@@ -50,9 +50,9 @@ To go far, book shipping on the **Garage** tab with an empty car (no job on boar
 
 It costs $100 plus 2 cents a km (Sydney to Bolivia is about $360). You get the coordinates with a Copy button: paste them into the BeamNG.Earth map and teleport there. Landing within 5 km uses the booking up. **Cancel** refunds it. Save waits until you have used or cancelled it.
 
-**Paid shipping offer.** A card at the top of the Garage tab names a town in one of the world's hardest regions (×2.3 to ×3.0, with another town to deliver to within 7 km) that will pay your shipping if you come and deliver there. A new town is offered every 5 minutes. You pay when you book, and your first delivery within 50 km of that town pays it back. The refund waits in your save, even after the card has moved on.
+**Relocation paid offer.** A card at the top of the Relocate tab names a town in one of the world's hardest regions (×2.3 to ×3.0, with another town to deliver to within 7 km) that will pay your relocation if you come and deliver there. A new town is offered every 5 minutes. You pay when you book, and your first delivery within 50 km of that town pays it back. The refund waits in your save, even after the card has moved on.
 
-**Teleporting without a booking.** A teleport longer than 2 km cancels any job on board, for the $1,000 abandon fee. Deliveries, jobs and driving distance then stop until you go back to where you left from (the Route tab shows the coordinates), or book shipping and land there. A short hop under 2 km, past a cliff or river, is fine and keeps the job.
+**Teleporting without a booking.** A teleport longer than 2 km cancels any job on board, for the $1,000 abandon fee. Deliveries, jobs and driving distance then stop until you go back to where you left from (the Route tab shows the coordinates), or book a relocation and land there. A short hop under 2 km, past a cliff or river, is fine and keeps the job.
 
 ## Settings
 
