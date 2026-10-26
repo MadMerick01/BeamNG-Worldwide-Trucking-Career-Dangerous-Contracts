@@ -15,7 +15,9 @@
       </div>
       <div ng-if="returning(data)" style="margin-top:12px;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
         <div style="font-weight:bold;font-size:16px;color:#a7e5c9;">Welcome back<span ng-if="data.playerName">, {{data.playerName}}</span></div>
-        <label style="display:block;margin-top:4px;">Go back to your last save: copy the coordinates, paste them into the BeamNG.Earth map and teleport there.
+        <button type="button" ng-click="teleportToResume()" ng-disabled="!data.teleportAllowed" ng-style="{opacity: data.teleportAllowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Teleport to last save</button>
+        <div ng-if="data.teleportFeedback" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.teleportFeedback}}</div>
+        <label style="display:block;margin-top:6px;">Or copy the coordinates, paste them into the BeamNG.Earth map and teleport there.
           <div style="display:flex;gap:6px;margin-top:4px;">
             <input aria-label="Coordinates of your last save (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
             <button type="button" aria-label="Copy coordinates of your last save" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
@@ -45,6 +47,10 @@
         <li ng-repeat="step in introSteps" style="display:flex;gap:8px;margin-bottom:6px;">
           <span aria-hidden="true" style="flex:none;width:20px;height:20px;border-radius:50%;background:#568d7a;color:#0c1318;font-weight:bold;font-size:12px;text-align:center;line-height:20px;">{{$index + 1}}</span>
           <div style="flex:1;min-width:0;"><span ng-if="$first">Go to {{data.startTown}}: </span>{{step}}
+            <div ng-if="$first && data.resume && data.mode === 'start'">
+              <button type="button" ng-click="teleportToResume()" ng-disabled="!data.teleportAllowed" ng-style="{opacity: data.teleportAllowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Teleport to {{data.startTown}}</button>
+              <div ng-if="data.teleportFeedback" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.teleportFeedback}}</div>
+            </div>
             <div ng-if="$first && data.resume && data.mode === 'start'" style="display:flex;gap:6px;margin-top:4px;">
               <input aria-label="Coordinates to go to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
               <button type="button" aria-label="Copy coordinates" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
@@ -81,7 +87,10 @@
     </div>
     <div ng-if="data.saveFeedback" style="margin:-4px 0 8px;color:#c9d6d2;font-size:12px;">{{data.saveFeedback}}</div>
     <div ng-if="data.resume" style="margin:0 0 8px;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
-      <label><span style="font-weight:bold;color:#a7e5c9;">{{data.mode === 'start' ? 'Go to ' + data.startTown : 'Go back to your last save'}}</span>
+      <div style="font-weight:bold;color:#a7e5c9;">{{data.mode === 'start' ? 'Go to ' + data.startTown : 'Go back to your last save'}}</div>
+      <button type="button" ng-click="teleportToResume()" ng-disabled="!data.teleportAllowed" ng-style="{opacity: data.teleportAllowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{data.mode === 'start' ? 'Teleport to ' + data.startTown : 'Teleport to last save'}}</button>
+      <div ng-if="data.teleportFeedback" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.teleportFeedback}}</div>
+      <label style="display:block;margin-top:6px;">Or copy the coordinates into the BeamNG.Earth map.
         <div style="display:flex;gap:6px;margin-top:4px;">
           <input aria-label="Coordinates to go to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
           <button type="button" aria-label="Copy coordinates" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>

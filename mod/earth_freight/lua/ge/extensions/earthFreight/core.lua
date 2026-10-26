@@ -28,6 +28,8 @@ M.STARTER_MODEL, M.STARTER_CONFIG = workshop.STARTER_MODEL, workshop.STARTER_CON
 local NEARBY_COUNT = 6
 -- How long the HUD shows a delivery, a cancelled job or a puncture.
 local FLASH_SECONDS = 8
+-- After Teleport there, the button waits this long for Earth to load the terrain and place the car.
+local TELEPORT_WAIT_SECONDS = 30
 -- A puncture's tyre repair, as damage points, so every repair quote and bill includes it. Like
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
 local PUNCTURE_DAMAGE = punctures.TYRE_REPAIR_COST / pricing.REPAIR_COST_PER_DAMAGE
@@ -40,9 +42,11 @@ local labels = {
 -- What the HUD asks of the player until they reach the resume point.
 local goLabels = { resume = 'GO TO YOUR LAST SAVE', start = 'GO TO ' .. config.START_TOWN:upper() }
 local goMessages = {
-  resume = 'Copy these coordinates, paste them into the BeamNG.Earth map and teleport there to carry on.',
-  start = 'Copy these coordinates, paste them into the BeamNG.Earth map and teleport there to start. You get your starter car when you arrive.',
+  resume = 'Press Teleport there to carry on, or copy these coordinates into the BeamNG.Earth map.',
+  start = 'Press Teleport there to start, or copy these coordinates into the BeamNG.Earth map. You get your starter car when you arrive.',
 }
+-- The name Earth's recent places list the teleport under.
+local goPlaces = { resume = 'Earth Freight: last save', start = 'Earth Freight: ' .. config.START_TOWN }
 local messages = {
   earth_missing = 'Enable BeamNG.Earth to continue.',
   earth_starting = 'Waiting for BeamNG.Earth to finish starting.',
@@ -128,6 +132,7 @@ function M.new(deps)
     self.partsFeedback, self.carFeedback, self.tradeFeedback = nil, nil, nil
     self.vehicleProvided, self.arrivingModel, self.arrivingValue, self.arrived = false, nil, nil, false
     self.newGameArmed, self.flash, self.refunded = false, nil, nil
+    self.teleportAskedAt, self.teleportFeedback = nil, nil
     -- Shipping booked and not yet used, and where an unbooked teleport left from. Neither is saved:
     -- Save waits until both are settled.
     self.booking, self.stranded, self.shippingFeedback, self.lastDriven = nil, nil, nil, nil
@@ -177,6 +182,26 @@ function M.new(deps)
     if not self.configuration then self:transition('CONFIG_REQUIRED', 'configuration')
     elseif self.error then self:transition('ERROR', self.error)
     else self:transition('EARTH_UNAVAILABLE', 'position_invalid') end
+  end
+
+  -- Teleport there: asks Earth to take the player to the resume point (the last save, or the start
+  -- town), as pasting its coordinates into Earth's map does. Arriving is seen in observe.
+  function c:teleportToResume()
+    if self.state ~= 'READY' or self.arrived or self.error or not self.startupTarget then return false end
+    if not self.adapter.teleport then
+      self.teleportFeedback = 'Teleporting is not available. Copy the coordinates into the BeamNG.Earth map instead.'
+      return false
+    end
+    local ok, why, detail = self.adapter:teleport(self.startupTarget, goPlaces[self.mode])
+    self.diag:event('teleport_to_resume', ok and 'requested' or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
+    if not ok then
+      self.teleportAskedAt = nil
+      self.teleportFeedback = 'BeamNG.Earth did not take the teleport. Copy the coordinates into its map instead.'
+      return false
+    end
+    self.teleportAskedAt = self.clock
+    self.teleportFeedback = 'Teleporting. The terrain takes a few seconds to load.'
+    return true
   end
 
   function c:interrupt(reason)
@@ -1003,6 +1028,7 @@ function M.new(deps)
     elseif self.state == 'READY' then
       status = nil
     elseif not status then status = messages.position_invalid end
+    local teleporting = self.teleportAskedAt ~= nil and self.clock - self.teleportAskedAt < TELEPORT_WAIT_SECONDS
     local label = labels[self.state]
     if self.state == 'READY' and not self.arrived then label = goLabels[self.mode] end
     local active = self.profile ~= nil and not self.error
@@ -1017,6 +1043,11 @@ function M.new(deps)
       resume = resume,
       resumeDistanceMetres = current and resume and location.distance(current, resume) or nil,
       resumeRadiusMetres = self.configuration and self.configuration.resumeRadiusMetres or nil,
+      -- Teleport there is offered until arrival, and rests while Earth carries out the last press.
+      teleportAllowed = resume ~= nil and self.state == 'READY' and self.adapter.teleport ~= nil and not teleporting,
+      teleportFeedback = resume and (self.teleportAskedAt and not teleporting
+        and 'Not there yet? Press Teleport there again, or copy the coordinates into the BeamNG.Earth map.'
+        or self.teleportFeedback) or nil,
       startTown = config.START_TOWN,
       startingMoney = STARTING_MONEY,
       playerName = self.playerName,
@@ -1273,6 +1304,7 @@ function M.buyCar() return safely(function() return ensure():buyCar() end) end
 function M.revertCar() return safely(function() return ensure():revertCar(false) end) end
 function M.newGame() return safely(function() return ensure():newGame() end) end
 function M.cancelNewGame() return safely(function() return ensure():cancelNewGame() end) end
+function M.teleportToResume() return safely(function() return ensure():teleportToResume() end) end
 -- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
 -- share is the slider's percentage of a full load: 10 to 100 in steps of 10; anything else takes it all.
 function M.takeJob(job, share)

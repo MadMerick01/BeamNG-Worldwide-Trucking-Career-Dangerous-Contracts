@@ -39,9 +39,9 @@ function F.io(files)
   end
   return io
 end
--- Stand-in for Earth: the vehicle position, and the GPS destinations set.
+-- Stand-in for Earth: the vehicle position, the GPS destinations set and the teleports asked for.
 function F.adapter(pose)
-  local a = { pose = pose or F.copy(F.PENRITH), valid = true, vehicle = { id = 1, model = 'pickup' }, gps = {} }
+  local a = { pose = pose or F.copy(F.PENRITH), valid = true, vehicle = { id = 1, model = 'pickup' }, gps = {}, teleports = {} }
   function a:invalidate() end
   function a:sample()
     if not self.valid then return { valid = false, reason = self.reason or 'vehicle_required' } end
@@ -52,6 +52,11 @@ function F.adapter(pose)
   function a:setDestination(point, name)
     if self.gpsMissing then return false, 'gps_missing' end
     self.gps[#self.gps + 1] = { latitude = point.latitude, longitude = point.longitude, name = name }
+    return true
+  end
+  function a:teleport(point, name)
+    if self.teleportRefused then return false, 'teleport_refused' end
+    self.teleports[#self.teleports + 1] = { latitude = point.latitude, longitude = point.longitude, name = name }
     return true
   end
   return a
