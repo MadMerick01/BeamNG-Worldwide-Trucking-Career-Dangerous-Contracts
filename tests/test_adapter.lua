@@ -7,7 +7,7 @@ local vehiclePresent=true
 local pos={x=0,y=0,z=1}
 local vehicle={ getID=function() return 1 end, getPosition=function() return pos end,
   getPath=function() return 'vehicles/pickup/' end }
-local core={_state=function() return st end, teleport=function() error('Earth Freight must never teleport') end}
+local core={_state=function() return st end, teleport=function() error('reading the position must never teleport') end}
 local modules={ places={here=function() return 7,8 end} }
 local env={ core=function() return core end, module=function(name) return modules[name] end,
   vehicle=function() return vehiclePresent and vehicle or nil end }
@@ -77,6 +77,24 @@ do
   mods.gps = { setDestination = 'nope' }; T.eq(select(2, g:setDestination({ latitude = 1, longitude = 1 })), 'gps_missing', 'changed API skipped')
   local none = Adapter.new({ core = function() return nil end, module = function() return gps end, vehicle = function() return vehicle end })
   T.eq(select(2, none:setDestination({ latitude = 1, longitude = 1 })), 'earth_missing', 'no Earth, no GPS')
+end
+-- Teleporting to the last save goes through Earth's own teleport, guarded.
+do
+  local sent
+  local tcore = { _state = function() return st end }
+  local g = Adapter.new({ core = function() return tcore end, module = function() end, vehicle = function() return vehicle end })
+  T.eq(select(2, g:teleport({ latitude = 1, longitude = 2 })), 'teleport_missing', 'an Earth without teleport is skipped')
+  tcore.teleport = function(lat, lon, name, opts) sent = { lat, lon, name, opts }; return true end
+  T.check(g:teleport({ latitude = -33.7, longitude = 150.8 }, 'Earth Freight: last save'), 'teleport asked')
+  T.eq(sent[1], -33.7, 'latitude'); T.eq(sent[2], 150.8, 'longitude'); T.eq(sent[3], 'Earth Freight: last save', 'name')
+  T.eq(sent[4], nil, 'as Earth\'s map Go button')
+  T.eq(select(2, g:teleport({ latitude = 91, longitude = 0 })), 'invalid_destination', 'invalid point refused')
+  tcore.teleport = function() return false end
+  T.eq(select(2, g:teleport({ latitude = 1, longitude = 2 })), 'teleport_refused', 'Earth saying no is reported')
+  tcore.teleport = function() error('changed') end
+  T.eq(select(2, g:teleport({ latitude = 1, longitude = 2 })), 'teleport_failed', 'errors contained')
+  local none = Adapter.new({ core = function() return nil end, module = function() end, vehicle = function() return vehicle end })
+  T.eq(select(2, none:teleport({ latitude = 1, longitude = 2 })), 'earth_missing', 'no Earth, no teleport')
 end
 -- Which way the car points.
 do
