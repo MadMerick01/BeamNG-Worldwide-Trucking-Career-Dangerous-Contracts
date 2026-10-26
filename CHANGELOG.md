@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Garage tab has Buy parts and Buy new car buttons.** Buy parts opens the parts menu and Buy new car opens the car selector, so you no longer need Ctrl+W or Ctrl+E. The bill still shows up on the Garage tab to pay or undo as before. Your saves still work.
+
 ## Build 28 · 26 Oct 2026
 
 - **Pressing Insert no longer fixes your car for free.** Resetting the car after a crash (Insert, or the game's own recovery) still puts it back on its wheels, but the repair it needed stays on the Garage tab as "Repair still owed", and a pop-up says so. After a serious crash you can still claim insurance instead. Reloading the car, or undoing part changes in the parts menu, no longer clears the damage either.
