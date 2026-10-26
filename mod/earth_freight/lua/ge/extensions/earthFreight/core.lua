@@ -63,7 +63,8 @@ local messages = {
 local errorMessages = {
   newer_version = 'Your save was made by a newer version of Earth Freight Sim. Update the mod to keep playing.',
   storage_unavailable = 'Earth Freight Sim could not open its save folder. Load the level again to try again.',
-  internal_error = 'Earth Freight Sim hit a problem and paused. Load the level again to carry on from your last save.',
+  internal_error = 'Earth Freight Sim hit a problem and paused. Load the level again to carry on from your last save.'
+    .. ' What went wrong is in beamng.log: search it for internal_error.',
 }
 local loadMessages = {
   loaded = 'Loaded your last save.',
@@ -1393,8 +1394,12 @@ local function ensure()
   end
   return active
 end
+-- The error with the calls that led to it, so the log names the line that failed and how it got there.
+local function traced(e)
+  return type(debug) == 'table' and type(debug.traceback) == 'function' and debug.traceback(tostring(e), 2) or tostring(e)
+end
 local function safely(f)
-  local ok, result = pcall(f)
+  local ok, result = xpcall(f, traced)
   if not ok then
     if active then
       active.error, active.feedback = 'internal_error', 'Anything since your last save is lost when you reload.'

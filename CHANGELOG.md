@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **When Earth Freight Sim hits a problem and shows FREIGHT PAUSED, the notice now tells you where to look:** search `beamng.log` for `internal_error`. That line now names exactly where the problem happened and how the game got there, so sending it along is all it takes to get it fixed. Nothing else changes, and your saves still work.
+
 ## Build 49 · 26 Oct 2026
 
 - **Dangerous contracts are on every job board.** Each town now offers one, below the off-road drop: a load of parts or bricks over about 2 km of a famous treacherous road, such as the cliff edge of Death Road in Bolivia, the Sani Pass hairpins or the Atigun Pass in Alaska. It pays 8 times a normal 5 km job for the same load, and you choose how much to carry with the Load slider. The contract changes after every job, and the next town usually has a different road.
