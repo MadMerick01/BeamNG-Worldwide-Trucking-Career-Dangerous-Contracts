@@ -9,7 +9,7 @@ local M = {}
 -- Pay: PAY times what the same load pays at the base rate over a normal 5 km job.
 M.PAY = 8
 -- The relocation to the start, paid when the contract is taken.
-M.FEE = 2000
+M.FEE = 200
 -- An insurance claim on a dangerous contract costs this instead of the usual fee.
 M.INSURANCE_FEE = 4000
 -- The finish circle, in metres.

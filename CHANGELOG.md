@@ -7,7 +7,7 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **Dangerous contracts are on every job board.** Each town now offers one, below the off-road drop: a load of parts or bricks over about 2 km of a famous treacherous road, such as the cliff edge of Death Road in Bolivia, the Sani Pass hairpins or the Atigun Pass in Alaska. It pays 8 times a normal 5 km job for the same load, and you choose how much to carry with the Load slider. The contract changes after every job, and the next town usually has a different road.
-- Taking a dangerous contract costs $2,000 to be relocated to the start, and you are teleported there straight away (or press Teleport to the start on the Route tab). Drive the road and stop at the finish to get paid. A crash ends the contract: insurance on a dangerous contract costs $4,000 instead of $1,000. Abandoning one before you reach the start gives you the $2,000 back. The start and finish points have not been checked in game yet. Your saves still work.
+- Taking a dangerous contract costs $200 to be relocated to the start, and you are teleported there straight away (or press Teleport to the start on the Route tab). Drive the road and stop at the finish to get paid. A crash ends the contract: insurance on a dangerous contract costs $4,000 instead of $1,000. Abandoning one before you reach the start gives you the $200 back. The start and finish points have not been checked in game yet. Your saves still work.
 
 ## Build 47 · 26 Oct 2026
 

@@ -796,7 +796,7 @@ do
   T.check(c:takeJob(job.id), 'taken')
   c:abandonJob(); T.check(c:view().tradeFeedback:find('paid back'), 'the player is told the relocation comes back')
   T.check(c:abandonJob(), 'abandoned'); T.eq(c:view().balance, 5000 - jobs.ABANDON_FEE, 'only the abandon fee is lost')
-  c.profile.progression.balance = 1000
+  c.profile.progression.balance = 100
   T.check(not c:view().town.jobs[#c:view().town.jobs].allowed, 'the contract needs the relocation fee')
   T.check(not c:takeJob(job.id), 'refused'); T.check(c:view().tradeFeedback:find('relocation'), 'told why')
 end
