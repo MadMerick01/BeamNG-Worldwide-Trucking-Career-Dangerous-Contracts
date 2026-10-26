@@ -224,6 +224,13 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.cancelShipping = function () { if (scope.data.shipping && scope.data.shipping.booking) core('cancelShipping()') }
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       scope.addTestMoney = function () { if (scope.data.testMoneyAllowed) core('addTestMoney()') }
+      // Testing aid: teleports to a dangerous contract road's start or finish.
+      scope.testTeleport = function (which) {
+        var list = scope.data.testContracts || []
+        var id = scope.intro.contract || (list[0] && list[0].id)
+        if (!scope.data.testTeleportAllowed || !plainId(id) || (which !== 'start' && which !== 'finish')) return
+        core("testTeleport('" + id + "', '" + which + "')")
+      }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
       // Paying for a bill takes two presses: the first asks to confirm that total, and a changed
@@ -253,6 +260,11 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       }
       // Earth Freight asks BeamNG.Earth to teleport the player to the last save (or the start town).
       scope.teleportToResume = function () { if (scope.data && scope.data.teleportAllowed) core('teleportToResume()') }
+      // ...and to the start of a dangerous contract just taken.
+      scope.teleportToContract = function () {
+        var load = scope.data && scope.data.load
+        if (load && load.contract && load.contract.teleportAllowed) core('teleportToContract()')
+      }
       scope.copyCoordinates = function (position) {
         var text = scope.coordinates(position)
         if (text) call('setClipboard("' + text + '")')

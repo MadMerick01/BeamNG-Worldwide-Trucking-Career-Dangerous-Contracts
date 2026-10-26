@@ -7,6 +7,7 @@ local goods = require('earthFreight/goods')
 local jobs = require('earthFreight/jobs')
 local fuel = require('earthFreight/fuel')
 local location = require('earthFreight/location')
+local contracts = require('earthFreight/contracts')
 local A, B = P.DIRECTORY .. 'save-a.json', P.DIRECTORY .. 'save-b.json'
 local north = 1 / 111195.0802 -- degrees latitude per metre
 
@@ -126,9 +127,10 @@ do
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
   T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 5000, 'distances are road estimates')
   T.eq(#v.nearby[1].dots, 4, 'a dot per good: parts, bricks, water and fuel')
-  T.eq(#v.town.jobs, 4, 'the board lists parts, bricks, a fluid and the off-road drop')
+  T.eq(#v.town.jobs, 5, 'the board lists parts, bricks, a fluid, the off-road drop and a dangerous contract')
   T.eq(v.town.jobs[1].goodId, 'parts', 'parts first'); T.eq(v.town.jobs[2].goodId, 'bricks', 'then bricks')
   T.eq(v.town.jobs[3].goodId, jobs.fluid(penrith).id, 'then the town fluid'); T.check(v.town.jobs[4].drop, 'then the drop')
+  T.check(v.town.jobs[5].contract ~= nil, 'then the dangerous contract')
   T.check(v.town.jobs[3].fluid and v.town.jobs[3].units == 0 and not v.town.jobs[3].allowed, 'a fluid needs a tank')
   for _, j in ipairs(v.town.jobs) do
     -- A brick (150 kg) is too heavy for one box M (130 kg).
@@ -712,6 +714,112 @@ do
   T.check(d:takeJob(j2.id), 'another drop')
   d2.pose = F.copy(j2.drop); d.odometer:reset(); d.lastDriven = nil; d:tick(0.1); d:tick(0.6); d:tick(0.6)
   T.check(not d:deliver(), 'a lift to the spot does not deliver')
+end
+
+-- Dangerous contracts: on every board, relocated to the start for the fee, paid 8 times a 5 km job
+-- at the finish once the section is driven. A claim costs $4,000; abandoning before the start pays
+-- the relocation back.
+local function onContract(c)
+  local job = jobs.contractJob(penrith, 0)
+  job.good, job.id = 'parts', 'contract_parts_' .. job.contract
+  local board = c.board
+  c.board = function(self, place) local list = board(self, place); list[#list] = F.copy(job); return list end
+  return job, contracts.get(job.contract)
+end
+do
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 10000
+  local job, section = onContract(c)
+  local row = c:view().town.jobs[#c:view().town.jobs]
+  T.check(row.contract ~= nil and not row.drop, 'the board ends with a dangerous contract'); T.eq(row.to, section.name, 'named for its section')
+  T.eq(row.contract.fee, contracts.FEE, 'with its relocation fee'); T.eq(row.contract.insurance, 4000, 'and its $4,000 insurance')
+  T.eq(row.distanceMetres, 2000, 'about 2 km'); T.check(row.allowed, 'can be taken')
+  local q = c:jobQuote(job)
+  T.eq(q.pay, math.floor(jobs.basePay(goods.get('parts'), q.units, 5) * 8 / 10 + 0.5) * 10, '8 times a 5 km job')
+  T.eq(c:bestJob(penrith).to ~= section.name, true, 'not suggested as the best job on the Route tab')
+  T.check(c:takeJob(job.id, 50), 'taken at half load'); T.eq(c.load.units, math.floor(q.units / 2 + 0.5), 'half the load')
+  T.eq(c:view().balance, 10000 - contracts.FEE, 'the relocation is paid')
+  T.eq(#a.teleports, 1, 'Earth is asked to teleport'); T.near(a.teleports[1].latitude, section.start.latitude, 1e-12, 'to the start')
+  T.eq(a.teleports[1].name, 'Earth Freight: ' .. section.name, 'named for Earth')
+  local v = c:view()
+  T.check(v.load.contract and not v.load.contract.started, 'the HUD shows the contract, not started')
+  T.check(not v.load.drop.delivery.allowed, 'nothing to deliver yet'); T.check(not c:deliver(), 'not delivered in town')
+  T.check(c:view().tradeFeedback:find('Teleport to the start'), 'told to go to the start')
+  -- Saved before the start, the contract is kept.
+  T.check(c:manualSave(), 'saved'); T.eq(io.files[A].load.contract, section.id, 'the section is in the save')
+  local r = F.controller({ io = io })
+  T.eq(r.load.contract, section.id, 'a reload keeps the contract'); T.eq(r.load.started, nil, 'not started')
+  -- The teleport lands at the start: no load lost, not stranded, the contract starts.
+  a.pose = F.copy(section.start); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c.load and c.load.started, 'started at the start'); T.eq(c.stranded, nil, 'not stranded')
+  T.check(c:view().flash.title:find('DANGEROUS CONTRACT'), 'told so'); T.eq(c:view().balance, 10000 - contracts.FEE, 'no abandon fee')
+  T.near(a.gps[#a.gps].latitude, section.finish.latitude, 1e-12, 'the GPS is set to the finish')
+  T.check(c:view().flash.text:find('GPS', 1, true), 'and the player is told')
+  T.check(not c:teleportToContract(), 'no more teleport once started')
+  -- Driven to the finish and stopped there, it delivers.
+  F.drive(c, a, section.finish)
+  T.check(c:view().load.drop.inZone and c:view().load.drop.delivery.allowed, 'at the finish and stopped')
+  local pay = c.load.pay
+  T.check(c:deliver(), 'delivered'); T.eq(c:view().balance, 10000 - contracts.FEE + pay, 'paid in full')
+  T.check(c:view().flash.text:find(section.name, 1, true), 'over the section')
+  -- A lift to the finish does not deliver.
+  local d, da = F.controller()
+  d:tick(0.1); d:tick(0.6); d:tick(0.6)
+  d.profile.progression.balance = 10000
+  local j2, s2 = onContract(d)
+  T.check(d:takeJob(j2.id), 'another contract')
+  da.pose = F.copy(s2.start); d:tick(0.1); d:tick(0.6); d:tick(0.6)
+  da.pose = F.copy(s2.finish); d.odometer:reset(); d.lastDriven = nil; d:tick(0.1); d:tick(0.6); d:tick(0.6)
+  T.check(not d:deliver(), 'a lift to the finish does not deliver')
+end
+
+-- A crash on a dangerous contract: the claim costs $4,000 and the contract is lost.
+do
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 10000
+  local job, section = onContract(c)
+  T.check(c:takeJob(job.id), 'taken')
+  a.pose = F.copy(section.start); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  g.damage = 20000; c:tick(0.1)
+  T.eq(c:view().insurance.fee, 4000, 'the claim costs $4,000')
+  c:claimInsurance(); T.check(c:claimInsurance(), 'claimed')
+  a.pose = location.destination(section.start, 0, 50); c:tick(0.5); c:tick(0.5); c:tick(0.6)
+  T.eq(c.load, nil, 'the contract is lost'); T.eq(c:view().balance, 10000 - contracts.FEE - 4000, 'charged $4,000')
+end
+
+-- Abandoned before the start, the relocation is paid back; not enough money, no contract.
+do
+  local c, io, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 5000
+  local job = onContract(c)
+  T.check(c:takeJob(job.id), 'taken')
+  c:abandonJob(); T.check(c:view().tradeFeedback:find('paid back'), 'the player is told the relocation comes back')
+  T.check(c:abandonJob(), 'abandoned'); T.eq(c:view().balance, 5000 - jobs.ABANDON_FEE, 'only the abandon fee is lost')
+  c.profile.progression.balance = 100
+  T.check(not c:view().town.jobs[#c:view().town.jobs].allowed, 'the contract needs the relocation fee')
+  T.check(not c:takeJob(job.id), 'refused'); T.check(c:view().tradeFeedback:find('relocation'), 'told why')
+end
+
+-- Testing aid: the start page teleports to each contract road's start or finish, losing nothing.
+do
+  local c, io, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(#c:view().testContracts, #contracts.LIST, 'every road is listed'); T.check(c:view().testTeleportAllowed, 'allowed')
+  T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a job on board')
+  local section = contracts.LIST[1]
+  T.check(not c:testTeleport('nowhere', 'start'), 'an unknown road is refused'); T.check(not c:testTeleport(section.id, 'middle'), 'so is an odd end')
+  T.check(c:testTeleport(section.id, 'finish'), 'teleported'); T.near(a.teleports[#a.teleports].latitude, section.finish.latitude, 1e-12, 'to the finish')
+  a.pose = F.copy(section.finish); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c.load ~= nil, 'the job is kept'); T.eq(c.stranded, nil, 'not stranded')
+  T.check(c:testTeleport(section.id, 'start'), 'and to the start'); T.near(a.teleports[#a.teleports].latitude, section.start.latitude, 1e-12, 'there')
+  a.pose = F.copy(section.start); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.near(a.gps[#a.gps].latitude, section.finish.latitude, 1e-12, 'landing at the start sets the GPS to the finish')
+  T.check(c:view().testFeedback:find('GPS', 1, true), 'and says so'); T.check(c.load ~= nil, 'the job is still kept')
+  local n = F.controller(); n:tick(0.1); n.adapter.teleport = nil
+  T.check(not n:testTeleport(section.id, 'start'), 'not without Earth\'s teleport')
 end
 
 T.done('Earth Freight controller')
