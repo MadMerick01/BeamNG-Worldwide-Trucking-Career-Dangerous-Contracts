@@ -29,7 +29,7 @@ Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. 
 2. Stop inside a town. The **Town** tab lists 3 to 5 jobs, each with one total pay for your car. Nothing to buy and no timers. The **Best job** line on the Route tab names the best one nearby.
 3. Press **Take job**. It fills every cargo slot you have with that good, so a bigger box or vehicle earns more. BeamNG.Earth's GPS is set to the drop-off, so the route and road arrows appear on their own.
 4. Drive there. The load's weight is added to the car, so it is slower and burns more fuel. Rough driving damages the car, which costs money to repair, and tyres can puncture (more often off road). The job itself always pays in full.
-5. Stop inside the drop-off town and press **Deliver** to get paid. **Refuel** is on the Town tab too, at $2.10 a litre.
+5. Stop inside the drop-off town and press **Deliver** to get paid. **Refuel** is on the Garage tab, at $2.10 a litre, whenever you are stopped in a town.
 6. **Save** keeps your money, car, job and fuel. Anything since your last Save is lost when you exit. Next time, press **Teleport to last save** on the Welcome back card to carry on where you saved.
 
 **Goods.** Parts take 1 slot and weigh 15 kg each, food 2 slots and 50 kg, bricks 3 slots and 150 kg. On the starter Burnside (20 slots, 1,000 kg) a full load over 5 km pays about $1,700 of parts, $2,000 of food or $2,400 of bricks.

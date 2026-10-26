@@ -187,7 +187,7 @@
         <p role="status" ng-if="data.tradeFeedback" style="margin:6px 0;">{{data.tradeFeedback}}</p>
       </div>
       <div ng-if="tab === 'town'">
-        <div ng-if="!data.town" style="color:#c9d6d2;">Drive into a town and stop to take jobs, deliver and refuel. The Route tab lists the places nearby.</div>
+        <div ng-if="!data.town" style="color:#c9d6d2;">Drive into a town and stop to take jobs and deliver. The Route tab lists the places nearby.</div>
         <div ng-if="data.town">
           <div style="font-weight:bold;color:#a7e5c9;">{{data.town.name}} <span style="color:#7d8b88;font-weight:normal;font-size:12px;">{{data.town.size}}</span> <span ng-if="data.town.boost > 1.02" style="color:#f2c94c;font-size:12px;">{{data.town.region}}: rough roads &times;{{data.town.boost | number:1}} pay</span></div>
           <div ng-if="data.town.character" style="font-size:12px;color:#c9d6d2;">{{data.town.character}}</div>
@@ -196,16 +196,6 @@
             <div style="font-weight:bold;color:#6fcf97;">Deliver here: ${{data.town.delivery.pay | number:0}}</div>
             <div ng-if="data.town.delivery.problem" style="color:#c9d6d2;">{{data.town.delivery.problem}}</div>
             <button type="button" ng-click="deliverJob()" ng-disabled="!data.town.delivery.allowed" style="margin-top:6px;padding:7px 12px;background:#6fcf97;color:#0c1318;font-weight:bold;border:1px solid #6fcf97;border-radius:4px;">Deliver</button>
-          </div>
-          <div ng-if="data.space" style="margin:8px 0;padding:10px;border:2px solid #568d7a;border-radius:6px;">
-            <div style="display:flex;align-items:baseline;gap:8px;">
-              <div style="flex:1;min-width:0;font-weight:bold;color:#a7e5c9;">Cargo slots</div>
-              <div style="font-size:18px;font-weight:bold;"><span ng-if="cargoRoom(data).used > 0">{{cargoRoom(data).free}} of {{cargoRoom(data).total}} free</span><span ng-if="!(cargoRoom(data).used > 0)">{{cargoRoom(data).total}} {{cargoRoom(data).total === 1 ? 'slot' : 'slots'}}</span></div>
-            </div>
-            <div aria-hidden="true" style="margin-top:4px;height:8px;border-radius:4px;background:rgba(86,141,122,.3);overflow:hidden;"><div ng-style="{width: cargoRoom(data).percent + '%'}" style="height:100%;background:#f2c94c;"></div></div>
-            <div style="margin-top:4px;font-size:13px;color:#c9d6d2;"><span ng-if="data.space.boot">Boot only</span><span ng-if="!data.space.boot">{{data.space.boxes.length}} cargo {{data.space.boxes.length === 1 ? 'box' : 'boxes'}}</span> &middot; {{data.space.kg | number:0}} kg max<span ng-if="cargoRoom(data).used > 0"> &middot; your load takes {{cargoRoom(data).used}}</span><span ng-if="data.space.litres > 0"> &middot; tank {{data.space.litres | number:0}} L</span></div>
-            <div style="margin-top:4px;font-size:13px;">More slots carry more goods and earn more per job. A Cargo Load box S adds 1 slot, M adds 4, L adds 16 and XL adds 128. Fit one, then pay for it on the Garage tab.</div>
-            <button type="button" ng-click="openPartsMenu()" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy more cargo space</button>
           </div>
           <div style="margin:8px 0;">
             <div style="font-weight:bold;">Jobs from {{data.town.name}}</div>
@@ -228,13 +218,6 @@
               <input type="range" min="10" max="100" step="10" ng-model="shares[j.id]" ng-init="shares[j.id] = shareOf(j)" ng-disabled="!j.allowed" aria-label="How much of the {{j.good | lowercase}} to take" style="flex:1;min-width:0;">
              </div>
             </div>
-          </div>
-          <div style="margin:10px 0;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
-            <div style="font-weight:bold;">Fuel</div>
-            <div ng-if="data.town.refuel && data.town.refuel.full" style="color:#c9d6d2;">Your tank is full.</div>
-            <div ng-if="data.town.refuel && !data.town.refuel.full" style="color:#c9d6d2;">{{data.town.refuel.litres | number:1}} L for ${{data.town.refuel.cost | number:0}} at ${{data.fuel.pricePerLitre | number:2}} a litre.</div>
-            <div ng-if="!data.town.refuel" style="color:#c9d6d2;">Reading your fuel gauge...</div>
-            <button type="button" ng-click="refuel()" ng-disabled="!data.town.refuelAllowed" style="margin-top:4px;padding:7px 12px;">Refuel</button>
           </div>
         </div>
         <p role="status" ng-if="data.tradeFeedback" style="margin:6px 0;">{{data.tradeFeedback}}</p>
@@ -311,6 +294,16 @@
             <button type="button" ng-click="requestRepairQuote()" ng-disabled="!data.repairQuoteAllowed" style="padding:7px 12px;">Get repair quote</button>
             <button type="button" ng-click="repairVehicle()" ng-disabled="!data.repairAllowed" style="padding:7px 12px;">Repair</button>
           </div>
+        </div>
+        <div style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Fuel</div>
+          <div ng-if="!data.town" style="color:#c9d6d2;">Stop in a town to refuel<span ng-if="data.fuel"> at ${{data.fuel.pricePerLitre | number:2}} a litre</span>.</div>
+          <div ng-if="data.town && data.town.refuel && data.town.refuel.full" style="color:#c9d6d2;">Your tank is full.</div>
+          <div ng-if="data.town && data.town.refuel && !data.town.refuel.full" style="color:#c9d6d2;">{{data.town.refuel.litres | number:1}} L for ${{data.town.refuel.cost | number:0}} at ${{data.fuel.pricePerLitre | number:2}} a litre.</div>
+          <div ng-if="data.town && !data.town.refuel" style="color:#c9d6d2;">Reading your fuel gauge...</div>
+          <div ng-if="data.town && data.town.problem" style="font-size:13px;color:#f2c94c;">{{data.town.problem}}</div>
+          <button type="button" ng-click="refuel()" ng-disabled="!(data.town && data.town.refuelAllowed)" style="margin-top:4px;padding:7px 12px;">Refuel</button>
+          <div ng-if="data.fuelFeedback" role="status" style="margin-top:4px;">{{data.fuelFeedback}}</div>
         </div>
         <p role="status" ng-repeat="text in [data.carChange ? null : data.carFeedback, data.partsChange ? null : data.partsFeedback, data.repairFeedback] track by $index" ng-if="text" style="margin:0 0 6px;">{{text}}</p>
       </div>
