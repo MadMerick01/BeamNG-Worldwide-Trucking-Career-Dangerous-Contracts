@@ -1,7 +1,7 @@
 
 # Earth Freight Sim
 
-A world freight economy career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive. Start in a rust-bucket sedan, end in a semi truck
+A WORLD FREIGHT ECONOMY CAREER for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive. Start in a rust-bucket sedan, end in a semi truck
 
 <img width="1500" height="1000" alt="earthFSim1" src="https://github.com/user-attachments/assets/16ebfab6-b37f-4b85-9aca-34cd8a8b4370" />
 
