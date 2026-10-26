@@ -114,6 +114,23 @@ class InstalledHooksTest(unittest.TestCase):
         self.assertEqual(state['mode'], 'resume')
         self.assertEqual(state['load']['goodId'], job['goodId'])
 
+    def test_an_error_pauses_and_logs_where_it_happened(self):
+        self.lua.execute('''
+          logged = {}
+          log = function(level, tag, message) if level == 'E' then logged[#logged + 1] = message end end
+        ''')
+        self.core.onExtensionLoaded()
+        self.arrive()
+        self.lua.execute('function fakeEarth:sample() local broken = nil; return broken.latitude end')
+        self.assertFalse(self.core.onPreRender(0.1))
+        state = self.core.getState()
+        self.assertEqual(state['state'], 'ERROR')
+        self.assertIn('search it for internal_error', state['sessionStatus'])
+        logged = [m for m in self.lua.globals().logged.values() if m.startswith('internal_error: ')]
+        self.assertEqual(len(logged), 1)
+        self.assertIn("attempt to index local 'broken'", logged[0])
+        self.assertIn("in function 'tick'", logged[0], 'the log shows how the failing line was reached')
+
     def test_fuel_answers_reach_the_controller(self):
         self.core.onExtensionLoaded()
         self.arrive()
