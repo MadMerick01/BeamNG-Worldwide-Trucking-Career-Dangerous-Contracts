@@ -49,21 +49,29 @@ T.eq(cargo.fits(starter, food), 10, '10 food')
 local units, slots, kg = cargo.fits(starter, bricks)
 T.eq(units, 6, '6 bricks: the weight runs out first'); T.eq(slots, 18, 'in 18 slots'); T.eq(kg, 900, 'weighing 900 kg')
 T.eq(cargo.fits({ slots = 2, kg = 60 }, bricks), 0, 'no bricks in the boot')
-T.near(jobs.basePay(parts, 20, 5), 1700, 1e-6, 'a full load of parts pays $1,700 over 5 km')
-T.near(jobs.basePay(food, 10, 5), 2000, 1e-6, 'food $2,000')
-T.near(jobs.basePay(bricks, 6, 5), 2400, 1e-6, 'bricks $2,400')
-T.near(jobs.basePay(food, 10, 20), 12000, 1e-6, 'food $12,000 over 20 km')
--- Fluids: litres in a tank, paying about a quarter more than bricks for the weight.
+T.near(jobs.basePay(parts, 20, 5), 2000, 1e-6, 'a full load of parts (300 kg) pays $2,000 over 5 km')
+T.near(jobs.basePay(bricks, 6, 5), 2000 * 3 ^ 0.46, 1e-6, 'bricks (900 kg) about $3,300')
+T.near(jobs.basePay(parts, 20, 20), 12000, 1e-6, 'parts $12,000 over 20 km')
+-- Pay by weight: heavier loads pay more, but less a kg; lighter ones a straight share.
+T.near(jobs.weightPay(30), 200, 1e-6, 'a 30 kg boot load pays $200')
+T.near(jobs.weightPay(8000), 9057, 1, 'an 8,000 kg load about $9,000')
+T.near(jobs.weightPay(12000), 10914, 1, 'a 12,000 kg load about $10,900')
+T.check(jobs.weightPay(12000) / 12000 < jobs.weightPay(300) / 300 / 5, 'the truck earns under a fifth as much a kg')
+do
+  local percent = jobs.PAY_PERCENT
+  jobs.PAY_PERCENT = 120
+  T.near(jobs.basePay(parts, 20, 5), 2400, 1e-6, 'the pay percentage scales every job')
+  jobs.PAY_PERCENT = percent
+end
+-- Fluids: litres in a tank, paid by their weight like any load.
 local water, fuel = goods.get('water'), goods.get('fuel')
 local tank = { slots = 20, kg = 1000, litres = 800, tankKg = 800 }
 T.eq(cargo.fits(starter, water), 0, 'no fluid without a tank')
 units, slots, kg = cargo.fits(tank, water)
 T.eq(units, 80, '80 units of 10 L'); T.eq(slots, 800, 'filling 800 L'); T.eq(kg, 800, 'weighing 800 kg')
 units, slots, kg = cargo.fits(tank, fuel); T.eq(slots, 800, 'fuel fills the tank too'); T.eq(kg, 600, 'lighter: 600 kg')
-T.near(jobs.basePay(water, 80, 5), 2640, 1e-6, 'a full tank of water pays $2,640 over 5 km')
-T.near(jobs.basePay(fuel, 80, 5), 2880, 1e-6, 'fuel $2,880')
-T.check(jobs.basePay(water, 1, 5) / water.kg > 1.2 * bricks.pay / bricks.kg, 'water pays over 20% more than bricks a kg')
-T.check(jobs.basePay(water, 1, 5) / water.kg < 1.3 * bricks.pay / bricks.kg, 'and under 30% more')
+T.near(jobs.basePay(water, 80, 5), 2000 * (800 / 300) ^ 0.46, 1e-6, 'a full tank of water (800 kg) pays about $3,140 over 5 km')
+T.near(jobs.basePay(fuel, 80, 5), 2000 * 2 ^ 0.46, 1e-6, 'fuel (600 kg) about $2,750')
 T.check(goods.get('food').retired and not goods.ofKind('parcel')[3], 'food is no longer posted, but still known')
 local fluidsSeen = {}
 for _, n in ipairs(places.nearest(penrith, 40)) do fluidsSeen[jobs.fluid(n.place).id] = true end
@@ -156,7 +164,7 @@ do
   T.near(q.pay, jobs.basePay(goods.get(j.good), 10, j.km) * q.factor * q.road, 5, 'pay is the base times the bonuses')
   T.eq(jobs.quote(j, 0, {}, 5000).pay, 0, 'nothing for an empty car')
   local bigger = jobs.quote(j, 20, {}, 5000).pay
-  T.check(bigger > q.pay * 1.9, 'a bigger car earns more')
+  T.check(bigger > q.pay * 1.3, 'a bigger car earns more')
 end
 -- The off-road drop: any good, fixed for a seed, paying like a 5 km job times the steep-ground bonus.
 do
