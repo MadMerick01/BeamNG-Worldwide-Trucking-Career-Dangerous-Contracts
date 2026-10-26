@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 37 · 26 Oct 2026
+
 - **Jobs now pay by the weight of the load.** A full 300 kg load pays $2,000 over 5 km, and heavier loads pay more but less for each kilogram: about $3,300 for the starter car's 6 bricks (900 kg), $5,800 for 3 tonnes and $10,900 for 12 tonnes. Distance, town need, shortages, jackpots and rough roads still raise the pay as before, and the load slider still pays its share of the job. Loads under 300 kg pay their share by weight, such as $200 for 2 parts in a car boot. The goods are the same: parts and bricks in cargo boxes, and water or fuel in a tank.
 - A job you were already carrying pays what it showed when you took it. Your saves still work.
 
