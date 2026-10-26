@@ -36,6 +36,13 @@ do
   T.check(c:manualSave(), 'saved'); T.eq(io.files[A].atStart, nil, 'the save is no longer at the start')
   local r = F.controller({ io = io })
   T.eq(r.mode, 'resume', 'a reload resumes'); T.eq(r:view().balance, Core.STARTING_MONEY, 'money kept')
+  r.adapter = F.adapter(F.position(-33.9, 151.2)); r:tick(0.1)
+  T.eq(r:view().stateLabel, 'GO TO YOUR LAST SAVE', 'a reload asks to go back to the save')
+  T.eq(r:view().resume.latitude, F.PENRITH.latitude, 'with its coordinates')
+  T.check(not r:manualSave(), 'save locked until back at the save')
+  r.adapter.pose = F.copy(F.PENRITH); r:tick(0.1)
+  T.check(r:view().arrived, 'back at the save'); T.eq(r:view().flash.title, 'WELCOME BACK', 'welcomed back')
+  T.check(r:manualSave(), 'saving works again')
 end
 
 -- Cargo space comes from the cargo boxes fitted; with none it is the boot.
