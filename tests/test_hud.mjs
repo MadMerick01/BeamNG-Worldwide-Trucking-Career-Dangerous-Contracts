@@ -122,7 +122,7 @@ test('the off-road drop delivers from the Route tab only when Lua allows it, wit
   assert.equal(a.scope.tabAlert('route'), true, 'the Route tab asks for attention')
   assert.equal(a.scope.arrowStyle(drop).transform, 'rotate(90deg)', 'the arrow turns right for a spot to the right')
   assert.equal(a.scope.arrowStyle({}).transform, 'rotate(0deg)', 'and points ahead without a heading')
-  assert.ok(html.includes('ng-if="data.load.drop"') && html.includes('ng-style="arrowStyle(data.load.drop)"'), 'the Route tab shows the arrow')
+  assert.ok(html.includes('ng-if="data.load.drop && (!data.load.contract || data.load.contract.started)"') && html.includes('ng-style="arrowStyle(data.load.drop)"'), 'the Route tab shows the arrow')
   assert.ok(html.includes('off-road drop'), 'the board names the drop')
 })
 test('a fluid job shows litres, or that it needs a tank', () => {
@@ -390,4 +390,18 @@ test('the Garage tab card has Buy parts and Buy new car buttons, and no shortcut
   assert.doesNotMatch(html, /Ctrl\+[WE]/)
   a.scope.openCarMenu()
   assert.match(a.commands.at(-1), /ChangeState.*menu\.vehicles'/)
+})
+test('a dangerous contract shows on the board and teleports to its start only when Lua allows it', () => {
+  assert.match(html, /Dangerous contract/)
+  assert.match(html, /ng-click="teleportToContract\(\)"/)
+  const a = app()
+  const contract = { name: 'Death Road', started: false, start: { latitude: -16.287, longitude: -67.815 }, insurance: 4000 }
+  a.state({ state: 'READY', load: { contract, drop: { delivery: { allowed: false } } } })
+  let count = a.commands.length
+  a.scope.teleportToContract()
+  assert.equal(a.commands.length, count, 'refused when not allowed')
+  a.state({ state: 'READY', load: { contract: { ...contract, teleportAllowed: true }, drop: { delivery: { allowed: false } } } })
+  a.scope.teleportToContract()
+  assert.equal(a.commands.at(-1), fixed('teleportToContract()'))
+  assert.equal(a.scope.coordinates(contract.start), '-16.28700000, -67.81500000')
 })

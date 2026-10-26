@@ -253,6 +253,11 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       }
       // Earth Freight asks BeamNG.Earth to teleport the player to the last save (or the start town).
       scope.teleportToResume = function () { if (scope.data && scope.data.teleportAllowed) core('teleportToResume()') }
+      // ...and to the start of a dangerous contract just taken.
+      scope.teleportToContract = function () {
+        var load = scope.data && scope.data.load
+        if (load && load.contract && load.contract.teleportAllowed) core('teleportToContract()')
+      }
       scope.copyCoordinates = function (position) {
         var text = scope.coordinates(position)
         if (text) call('setClipboard("' + text + '")')

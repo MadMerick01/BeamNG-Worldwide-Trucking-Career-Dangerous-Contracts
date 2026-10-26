@@ -3,6 +3,7 @@ local places = require('earthFreight/places')
 local goods = require('earthFreight/goods')
 local config = require('earthFreight/config')
 local location = require('earthFreight/location')
+local contracts = require('earthFreight/contracts')
 
 -- The generated list: the Sydney region around Penrith, about 4 km apart.
 T.check(#places.list > 30, 'a useful number of places'); T.eq(places.list[1].id:sub(1, 2), 'gn', 'GeoNames ids')
@@ -134,6 +135,11 @@ do
   for _, n in ipairs(places.nearest(penrith, 20)) do
     for seed = 0, 9 do
       local board = jobs.board(n.place, seed, {}, 5000)
+      local contract = table.remove(board)
+      T.check(contract.contract ~= nil and contract.drop ~= nil and contract.to == n.place.id, n.place.name .. ' ends its board with a dangerous contract')
+      local section = contracts.get(contract.contract)
+      T.near(contract.drop.latitude, section.finish.latitude, 1e-12, 'delivered at the section finish')
+      T.eq(jobs.quote(contract, 10, {}, 5000).pay, math.floor(jobs.basePay(goods.get(contract.good), 10, 5) * contracts.PAY / 10 + 0.5) * 10, 'paid 8 times a 5 km job')
       local drop = table.remove(board)
       T.check(drop.drop ~= nil and drop.to == n.place.id and drop.id:match('^drop_%l+_[%w_]+$') ~= nil, n.place.name .. ' ends its board with an off-road drop')
       local metres = location.distance(n.place, drop.drop)

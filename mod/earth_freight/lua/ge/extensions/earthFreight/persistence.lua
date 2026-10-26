@@ -79,8 +79,9 @@ end
 -- was taken at and the place it goes to (place ids) and the distance driven with it. Saves from
 -- before the job board carry bought cargo instead: no pay, but what was paid for it, which the
 -- controller refunds. Saves from before cargo damage was removed carry a condition, which is
--- ignored. An off-road drop carries its spot: { latitude, longitude }. The
--- controller drops a job whose good or places it does not know.
+-- ignored. An off-road drop carries its spot: { latitude, longitude }. A dangerous contract also
+-- carries its section's id, whether it has started and the relocation fee paid. The
+-- controller drops a job whose good, places or section it does not know.
 local function drop(d)
   if type(d) ~= 'table' or not location.valid(d) then return nil end
   return { latitude = d.latitude, longitude = d.longitude }
@@ -93,8 +94,11 @@ local function load(l)
   if (l.pay ~= nil and not integer(l.pay, 0)) or (l.paid ~= nil and not integer(l.paid, 0))
       or (l.pay == nil and l.paid == nil) or (l.units ~= nil and not integer(l.units, 1)) then return nil end
   if l.drop ~= nil and not drop(l.drop) then return nil end
+  if l.contract ~= nil and (type(l.contract) ~= 'string' or not optionalString(l.contract) or l.drop == nil
+      or (l.started ~= nil and type(l.started) ~= 'boolean') or (l.fee ~= nil and not integer(l.fee, 0))) then return nil end
   return { good = l.good, units = l.units, slots = l.slots, kg = l.kg or 0, pay = l.pay, paid = l.paid,
-    from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop) }
+    from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
+    contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil }
 end
 
 -- Recent deliveries, which lower what a town pays for that good for a while: a list of

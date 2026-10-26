@@ -391,6 +391,18 @@ Decided by Rowan on 25 Oct: one job on every board goes to a spot off the roads 
 - **Water and cliffs:** not checked (Rowan, 25 Oct). With a 100 m zone the spot is usually reachable; when it is not, that is the risk the player takes, and they can abandon the job.
 - **Needs checking in game:** that the arrow turns the right way (`getDirectionVector` in Earth's world frame, where +y is north).
 
+## Dangerous contracts as built
+
+Decided by Rowan on 26 Oct: a big-pay job over about 2 km of a treacherous Earth Enduro stage, always on the board.
+
+- **The sections** (`contracts.lua`): Death Road below Chuspipata, Fairy Meadows Road up from Raikot Bridge, the last Sani Pass hairpins, the run down to Skippers Bridge, the south climb to Atigun Pass, the Transfăgărășan hairpins to Bâlea Lac and the Zoji La shelf above Baltal. Start and finish coordinates are estimates, not yet checked in game.
+- **On the board:** every town's board ends with one contract, after the off-road drop. Which section is fixed for the town and moves on after every job, so the next town usually offers a different one. The good is parts or bricks, and the Load slider works as usual.
+- **Pay:** 8 times what the same load pays at the base rate over a 5 km job, with no town need, shortage, jackpot or road bonus.
+- **Relocation:** taking it costs a flat $2,000, and Earth is asked to teleport the car to the start (or the player pastes the start coordinates from the Route tab). A teleport landing within 1 km of the start starts the contract and does not lose the load; driving distance counts from there. Any other teleport cancels it as on any job. Abandoning before the start pays the $2,000 back; the $1,000 abandon fee still applies.
+- **Delivering:** stopped within 100 m of the finish, once 70% of the straight line from the start has been driven, from the Route tab as for an off-road drop.
+- **Insurance:** a claim on a contract costs $4,000 instead of $1,000, and as on any job the contract and its cargo are lost.
+- **Saves:** the load keeps the section id, whether it has started and the fee paid. Older saves load unchanged.
+
 ## Fluids as built
 
 Decided by Rowan on 25 Oct: the board is four jobs, parts (light), bricks (heavy), one fluid and the off-road drop (parts or bricks). Food is no longer posted.

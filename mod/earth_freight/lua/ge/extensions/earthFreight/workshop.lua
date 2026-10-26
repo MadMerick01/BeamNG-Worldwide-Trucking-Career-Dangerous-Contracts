@@ -8,6 +8,7 @@ local persistence = require('earthFreight/persistence')
 local pricing = require('earthFreight/pricing')
 local cargo = require('earthFreight/cargo')
 local goods = require('earthFreight/goods')
+local contracts = require('earthFreight/contracts')
 local M = {}
 
 -- Driving this far from where the parts were changed, without paying, puts the paid parts back.
@@ -133,8 +134,10 @@ function M.attach(c)
     return d ~= nil and owned ~= nil and d.id == owned.id and d.damage >= M.SERIOUS_DAMAGE
   end
 
+  -- On a dangerous contract a claim costs contracts.INSURANCE_FEE instead.
   function c:insuranceFee()
-    return math.min(M.INSURANCE_FEE, self.profile and self.profile.progression.balance or 0)
+    local fee = self.load and self.load.contract and contracts.INSURANCE_FEE or M.INSURANCE_FEE
+    return math.min(fee, self.profile and self.profile.progression.balance or 0)
   end
 
   function c:insuranceAllowed()

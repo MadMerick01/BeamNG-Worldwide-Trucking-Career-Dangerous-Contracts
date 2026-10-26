@@ -117,14 +117,26 @@
           </div>
           <div ng-if="data.stranded.distanceMetres != null" style="margin-top:4px;">You are {{km(data.stranded.distanceMetres)}} km away.</div>
         </div>
-        <div ng-if="data.load.drop" style="margin:0 0 8px;padding:10px;border:1px solid #f2c94c;border-radius:6px;">
-          <div style="font-weight:bold;color:#f2c94c;">Off-road drop</div>
+        <div ng-if="data.load.contract && !data.load.contract.started" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">
+          <div style="font-weight:bold;color:#eb5757;">Dangerous contract: {{data.load.contract.name}}</div>
+          <div style="font-size:13px;">Your relocation to the start is paid. Teleport there, then drive the section to the finish with your load.</div>
+          <button type="button" ng-click="teleportToContract()" ng-disabled="!data.load.contract.teleportAllowed" style="margin-top:6px;padding:7px 12px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">Teleport to the start</button>
+          <div ng-if="data.load.contract.teleporting" style="margin-top:4px;color:#c9d6d2;">Teleporting. The terrain takes a few seconds to load.</div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <input aria-label="Start coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.load.contract.start)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+            <button type="button" aria-label="Copy start coordinates" ng-click="copyCoordinates(data.load.contract.start)">Copy</button>
+          </div>
+        </div>
+        <div ng-if="data.load.drop && (!data.load.contract || data.load.contract.started)" style="margin:0 0 8px;padding:10px;border:1px solid #f2c94c;border-radius:6px;">
+          <div ng-if="!data.load.contract" style="font-weight:bold;color:#f2c94c;">Off-road drop</div>
+          <div ng-if="data.load.contract" style="font-weight:bold;color:#eb5757;">Dangerous contract: {{data.load.contract.name}}</div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
             <div ng-if="data.load.drop.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.load.drop)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#f2c94c;">&#9650;</div>
             <div style="flex:1;min-width:0;">
               <div ng-if="!data.load.drop.inZone" style="font-size:18px;font-weight:bold;"><span ng-if="data.load.drop.distanceMetres >= 1000">{{km(data.load.drop.distanceMetres)}} km</span><span ng-if="data.load.drop.distanceMetres < 1000">{{data.load.drop.distanceMetres | number:0}} m</span><span ng-if="data.load.direction"> {{data.load.direction}}</span></div>
-              <div ng-if="data.load.drop.inZone" style="font-size:18px;font-weight:bold;color:#6fcf97;">In the drop zone</div>
-              <div style="font-size:12px;color:#c9d6d2;">No GPS route: head off road and follow the arrow. Stop within {{data.load.drop.radiusMetres}} m of the spot to deliver.</div>
+              <div ng-if="data.load.drop.inZone" style="font-size:18px;font-weight:bold;color:#6fcf97;">{{data.load.contract ? 'At the finish' : 'In the drop zone'}}</div>
+              <div ng-if="data.load.contract" style="font-size:12px;color:#c9d6d2;">Follow the road and the arrow to the finish. Stop within {{data.load.drop.radiusMetres}} m of it to deliver. A crash ends the contract, and insurance costs ${{data.load.contract.insurance | number:0}}.</div>
+              <div ng-if="!data.load.contract" style="font-size:12px;color:#c9d6d2;">No GPS route: head off road and follow the arrow. Stop within {{data.load.drop.radiusMetres}} m of the spot to deliver.</div>
             </div>
           </div>
           <div ng-if="data.load.drop.delivery.problem && data.load.drop.inZone" style="margin-top:4px;color:#c9d6d2;">{{data.load.drop.delivery.problem}}</div>
@@ -190,9 +202,12 @@
             <div ng-repeat="j in data.town.jobs" style="padding:5px 0;border-bottom:1px solid rgba(86,141,122,.3);">
              <div style="display:flex;align-items:center;gap:8px;">
               <div style="flex:1;min-width:0;">
-                <div ng-if="!j.drop"><span ng-style="{background: dotColor(j.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> <b>{{j.good}}</b> to {{j.to}} <span style="color:#7d8b88;font-size:12px;">&asymp; {{km(j.distanceMetres)}} km</span></div>
+                <div ng-if="j.contract" style="color:#eb5757;font-weight:bold;">Dangerous contract</div>
+                <div ng-if="j.contract"><b>{{j.good}}</b> over {{j.to}} <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km, {{j.contract.region}}</span></div>
+                <div ng-if="j.contract" style="font-size:12px;color:#c9d6d2;">{{j.contract.summary}} Pays {{j.contract.pays}} times a normal job. You pay ${{j.contract.fee | number:0}} to be relocated to the start; a crash ends it, and insurance costs ${{j.contract.insurance | number:0}}.</div>
+                <div ng-if="!j.drop && !j.contract"><span ng-style="{background: dotColor(j.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> <b>{{j.good}}</b> to {{j.to}} <span style="color:#7d8b88;font-size:12px;">&asymp; {{km(j.distanceMetres)}} km</span></div>
                 <div ng-if="j.drop"><span ng-style="{background: dotColor(j.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> <b>{{j.good}}</b>, off-road drop <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km {{j.direction}}, no roads</span></div>
-                <div style="font-size:12px;color:#c9d6d2;"><span ng-if="j.units > 0 && !j.fluid">{{taken(j).units}} {{j.good | lowercase}}, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units > 0 && j.fluid">{{taken(j).units * j.unitLitres | number:0}} L, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units === 0 && j.fluid" style="color:#eb5757;">Needs a tank</span><span ng-if="j.units === 0 && !j.fluid" style="color:#eb5757;">Needs {{j.unitSlots}} {{j.unitSlots === 1 ? 'slot' : 'slots'}} and {{j.unitKg}} kg: fit a cargo box</span><span ng-if="j.shortage" style="color:#f2c94c;"> &middot; shortage &times;2</span><span ng-if="j.jackpot" style="color:#f2c94c;"> &middot; jackpot &times;{{j.jackpot | number:1}}</span><span ng-if="j.road && !j.drop"> &middot; rough road &times;{{j.road | number:1}}</span><span ng-if="j.road && j.drop"> &middot; steep ground &times;{{j.road | number:1}}</span></div>
+                <div style="font-size:12px;color:#c9d6d2;"><span ng-if="j.units > 0 && !j.fluid">{{taken(j).units}} {{j.good | lowercase}}, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units > 0 && j.fluid">{{taken(j).units * j.unitLitres | number:0}} L, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units === 0 && j.fluid" style="color:#eb5757;">Needs a tank</span><span ng-if="j.units === 0 && !j.fluid" style="color:#eb5757;">Needs {{j.unitSlots}} {{j.unitSlots === 1 ? 'slot' : 'slots'}} and {{j.unitKg}} kg: fit a cargo box</span><span ng-if="j.shortage" style="color:#f2c94c;"> &middot; shortage &times;2</span><span ng-if="j.jackpot" style="color:#f2c94c;"> &middot; jackpot &times;{{j.jackpot | number:1}}</span><span ng-if="j.road && !j.drop && !j.contract"> &middot; rough road &times;{{j.road | number:1}}</span><span ng-if="j.road && j.drop"> &middot; steep ground &times;{{j.road | number:1}}</span></div>
               </div>
               <div ng-if="j.units > 0" ng-style="{color: dotColor(j.level)}" style="font-weight:bold;text-align:right;" title="Usually ${{j.base | number:0}} for a full load">${{taken(j).pay | number:0}}</div>
               <button type="button" ng-click="takeJob(j)" ng-disabled="!j.allowed" style="padding:4px 8px;">Take job</button>

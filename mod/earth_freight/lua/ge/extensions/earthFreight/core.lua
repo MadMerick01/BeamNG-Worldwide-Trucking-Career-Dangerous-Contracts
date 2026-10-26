@@ -17,6 +17,7 @@ local cargo = require('earthFreight/cargo')
 local fuel = require('earthFreight/fuel')
 local workshop = require('earthFreight/workshop')
 local shipping = require('earthFreight/shipping')
+local contracts = require('earthFreight/contracts')
 local M = {}
 -- Money a new game starts with, and the amount the HUD test button adds.
 local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and some fuel
@@ -108,10 +109,11 @@ function M.new(deps)
   end
 
   -- A saved job is kept only when its good and both its towns are known to this version, and an
-  -- off-road drop's spot is a real position.
+  -- off-road drop's spot is a real position, and a dangerous contract's section is known.
   local function knownLoad(l)
     if type(l) ~= 'table' or not l.pay or not goods.get(l.good) or not places.get(l.from) or not places.get(l.to) then return nil end
     if l.drop ~= nil and not location.valid(l.drop) then return nil end
+    if l.contract ~= nil and not contracts.get(l.contract) then return nil end
     local out = copy(l)
     out.paid = nil
     return out
@@ -132,7 +134,7 @@ function M.new(deps)
     self.partsFeedback, self.carFeedback, self.tradeFeedback = nil, nil, nil
     self.vehicleProvided, self.arrivingModel, self.arrivingValue, self.arrived = false, nil, nil, false
     self.newGameArmed, self.flash, self.refunded = false, nil, nil
-    self.teleportAskedAt, self.teleportFeedback = nil, nil
+    self.teleportAskedAt, self.teleportFeedback, self.contractTeleportAt = nil, nil, nil
     -- Shipping booked and not yet used, and where an unbooked teleport left from. Neither is saved:
     -- Save waits until both are settled.
     self.booking, self.stranded, self.shippingFeedback, self.lastDriven = nil, nil, nil, nil
@@ -370,8 +372,18 @@ function M.new(deps)
 
   -- A long teleport. Any load on board is lost, with the money paid for it. A booked one that lands
   -- at the destination is shipping; a jump back to where an unbooked one left from undoes it;
-  -- anything else strands the player until they go back or book shipping.
+  -- anything else strands the player until they go back or book shipping. A dangerous contract not
+  -- yet started is relocated to its start by a teleport that lands there, and starts.
   function c:teleported(from, to)
+    local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
+    if section and contracts.atStart(to, section) then
+      self.load.started, self.load.drivenKm, self.stranded = true, 0, nil
+      self.contractTeleportAt = nil
+      self:showFlash('delivered', 'DANGEROUS CONTRACT: ' .. section.name:upper(), section.summary
+        .. ' Follow the arrow on the Route tab to the finish and stop there to deliver. A crash ends the contract.')
+      self.diag:event('contract_started', section.id)
+      return
+    end
     local lost = ''
     if self.load then
       local fee = self:dropJob('teleport')
@@ -609,6 +621,9 @@ function M.new(deps)
       problem = 'Not enough cargo space or payload for ' .. good.name:lower() .. ': one unit takes ' .. good.slots
         .. (good.slots == 1 and ' slot' or ' slots') .. ' and ' .. good.kg .. ' kg. Fit a cargo box in the parts menu.'
     end
+    if not problem and job.contract and not self:canAfford(contracts.FEE) then
+      problem = 'Not enough money. The relocation to the start of a dangerous contract costs ' .. dollars(contracts.FEE) .. '.'
+    end
     if problem then
       self.tradeFeedback = problem
       return false
@@ -619,6 +634,7 @@ function M.new(deps)
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
       from = place.id, to = destination.id, drivenKm = 0, drop = location.copy(job.drop) }
     self.abandonArmed = false
+    if job.contract then return self:takeContract(job, good, quote) end
     self:applyWeight()
     if job.drop then
       -- No GPS: an off-road drop is found by the arrow on the Route tab.
@@ -641,6 +657,34 @@ function M.new(deps)
     return true
   end
 
+  -- Takes a dangerous contract: pays the relocation and asks Earth to teleport the car to the start.
+  function c:takeContract(job, good, quote)
+    local section = contracts.get(job.contract)
+    self:spend(contracts.FEE, 'contract')
+    self.load.contract, self.load.started, self.load.fee = section.id, false, contracts.FEE
+    self:applyWeight()
+    self.diag:event('job_taken', string.format('%s x%d %s -> contract %s for %d', good.id, quote.units, job.from, section.id, quote.pay))
+    local teleported = self:teleportToContract()
+    self.tradeFeedback = 'Loaded ' .. amount(good, quote.units) .. ' (' .. quote.kg .. ' kg) for the dangerous contract on '
+      .. section.name .. '. You paid ' .. dollars(contracts.FEE) .. ' to be relocated to the start'
+      .. (teleported and '. Teleporting now.' or ': press Teleport to the start on the Route tab, or copy its coordinates into the BeamNG.Earth map.')
+      .. ' It pays ' .. dollars(quote.pay) .. ' at the finish.'
+    return true
+  end
+
+  -- Asks Earth to take the car to the start of the dangerous contract on board.
+  function c:teleportToContract()
+    local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
+    if not section or self.error or self.state ~= 'READY' or not self.adapter.teleport then return false end
+    local ok, why, detail = self.adapter:teleport(section.start, 'Earth Freight: ' .. section.name)
+    self.diag:event('teleport_to_contract', ok and section.id or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
+    self.contractTeleportAt = ok and self.clock or nil
+    if not ok then
+      self.tradeFeedback = 'BeamNG.Earth did not take the teleport. Copy the start coordinates on the Route tab into its map instead.'
+    end
+    return ok == true
+  end
+
   -- Why the job cannot be delivered here (nil when it can).
   function c:deliveryProblem(place)
     if not self.load or not place then return 'You have no job to deliver.' end
@@ -659,13 +703,18 @@ function M.new(deps)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then
       return 'Deliveries are unavailable right now.'
     end
+    local section = load.contract and contracts.get(load.contract)
+    if section and not load.started then return 'Teleport to the start of ' .. section.name .. ' first.' end
     local away = location.distance(sample, load.drop)
+    if section and (not away or away > contracts.FINISH_RADIUS) then
+      return 'Drive to the finish and stop within ' .. contracts.FINISH_RADIUS .. ' m of it.'
+    end
     if not away or away > jobs.DROP_RADIUS then
       return 'Drive to the drop spot and stop within ' .. jobs.DROP_RADIUS .. ' m of it.'
     end
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-    local needed = jobs.drivenNeeded(places.get(load.from), load.drop)
+    local needed = jobs.drivenNeeded(section and section.start or places.get(load.from), load.drop)
     if load.drivenKm * 1000 < needed then
       return 'Drive it here: you have driven ' .. string.format('%.1f', load.drivenKm) .. ' km of the '
         .. string.format('%.1f', needed / 1000) .. ' km this job needs.'
@@ -691,8 +740,10 @@ function M.new(deps)
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
-    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' dropped off road. '
-      .. self:named('Nice driving') .. '.' .. refund .. ' Save to keep it.')
+    local section = load.contract and contracts.get(load.contract)
+    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units)
+      .. (section and (' over ' .. section.name .. '. ' .. self:named('You made it') .. '.') or (' dropped off road. ' .. self:named('Nice driving') .. '.'))
+      .. refund .. ' Save to keep it.')
     self.tradeFeedback = nil
     self.diag:event('job_delivered', string.format('%s x%d -> drop for %d', good.id, load.units, load.pay))
     return true
@@ -737,7 +788,10 @@ function M.new(deps)
   end
 
   -- Cancels the job: the abandon fee is charged, or all the money if there is less. Returns the fee.
+  -- A dangerous contract abandoned before its start gives back the relocation fee first.
   function c:dropJob(why)
+    local load = self.load
+    if why == 'abandoned' and load.contract and not load.started and (load.fee or 0) > 0 then self:addMoney(load.fee) end
     local fee = math.min(jobs.ABANDON_FEE, self.profile.progression.balance)
     if fee > 0 then self:spend(fee, 'abandon') end
     self.diag:event('job_abandoned', tostring(why) .. ':' .. self.load.good .. ':' .. fee)
@@ -750,7 +804,9 @@ function M.new(deps)
     if not self.load or not self.profile or self.error then return false end
     if not self.abandonArmed then
       self.abandonArmed = true
-      self.tradeFeedback = 'Press Confirm abandon to give up this job. It costs ' .. dollars(jobs.ABANDON_FEE) .. '.'
+      local refund = self.load.contract and not self.load.started and (self.load.fee or 0) > 0
+      self.tradeFeedback = 'Press Confirm abandon to give up this job. It costs ' .. dollars(jobs.ABANDON_FEE)
+        .. (refund and (', and your ' .. dollars(self.load.fee) .. ' relocation is paid back.') or '.')
       return false
     end
     local fee = self:dropJob('abandoned')
@@ -881,14 +937,18 @@ function M.new(deps)
     local out = {}
     for _, job in ipairs(self:board(place)) do
       local q, good, to = self:jobQuote(job), goods.get(job.good), places.get(job.to)
-      out[#out + 1] = { id = job.id, good = good.name, goodId = good.id, to = job.drop and 'Off-road drop' or to.name, toId = to.id,
-        size = not job.drop and to.size or nil, drop = job.drop ~= nil or nil,
-        direction = job.drop and location.compassPoint(location.bearing(place, job.drop)) or nil,
+      local section = job.contract and contracts.get(job.contract)
+      out[#out + 1] = { id = job.id, good = good.name, goodId = good.id,
+        to = section and section.name or job.drop and 'Off-road drop' or to.name, toId = to.id,
+        size = not job.drop and to.size or nil, drop = job.drop ~= nil and not section or nil,
+        contract = section and { name = section.name, region = section.region, summary = section.summary,
+          fee = contracts.FEE, insurance = contracts.INSURANCE_FEE, pays = contracts.PAY } or nil,
+        direction = job.drop and not section and location.compassPoint(location.bearing(place, job.drop)) or nil,
         distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
         units = q.units, kg = q.kg, unitSlots = good.slots, unitKg = good.kg,
         fluid = good.kind == 'fluid' or nil, unitLitres = good.litres, litres = good.litres and q.units * good.litres or nil,
         shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road > 1.005 and q.road or nil,
-        allowed = allowed and q.units > 0 }
+        allowed = allowed and q.units > 0 and (not section or self:canAfford(contracts.FEE)) }
     end
     return out
   end
@@ -897,7 +957,7 @@ function M.new(deps)
   function c:bestJob(place)
     local best
     for _, j in ipairs(self:boardView(place, true)) do
-      if j.units > 0 and (not best or j.pay > best.pay) then best = j end
+      if j.units > 0 and not j.contract and (not best or j.pay > best.pay) then best = j end
     end
     return best and { good = best.good, from = place.name, to = best.to, pay = best.pay, distanceMetres = best.distanceMetres } or nil
   end
@@ -941,15 +1001,24 @@ function M.new(deps)
       local heading = self.lastSample and location.finite(self.lastSample.heading) and self.lastSample.heading or self.heading
       local away = current and location.distance(current, drop)
       local problem = self:dropProblem()
+      local section = self.load.contract and contracts.get(self.load.contract)
+      local radius = section and contracts.FINISH_RADIUS or jobs.DROP_RADIUS
+      local teleporting = self.contractTeleportAt ~= nil and self.clock - self.contractTeleportAt < TELEPORT_WAIT_SECONDS
       loadView = {
         good = good.name, goodId = good.id, units = self.load.units or self.load.slots, slots = self.load.slots,
-        kg = self.load.kg, pay = self.load.pay, drivenKm = self.load.drivenKm, from = from.name, to = 'off-road drop',
+        kg = self.load.kg, pay = self.load.pay, drivenKm = self.load.drivenKm, from = from.name,
+        to = section and section.name or 'off-road drop',
+        contract = section and { name = section.name, region = section.region, summary = section.summary,
+          started = self.load.started == true, start = location.copy(section.start),
+          startMetres = current and location.distance(current, section.start) or nil,
+          teleportAllowed = not self.load.started and self.adapter.teleport ~= nil and not teleporting,
+          teleporting = not self.load.started and teleporting or nil, insurance = contracts.INSURANCE_FEE } or nil,
         distanceMetres = away, direction = bearing and location.compassPoint(bearing) or nil,
         drop = {
           distanceMetres = away, bearing = bearing,
           -- Which way to turn: the spot's bearing from the way the car points (or last went), 0 is straight ahead.
           arrow = bearing and heading and (bearing - heading) % 360 or nil,
-          inZone = away ~= nil and away <= jobs.DROP_RADIUS, radiusMetres = jobs.DROP_RADIUS,
+          inZone = away ~= nil and away <= radius, radiusMetres = radius,
           delivery = { allowed = problem == nil, problem = problem },
         },
       }
@@ -1305,6 +1374,7 @@ function M.revertCar() return safely(function() return ensure():revertCar(false)
 function M.newGame() return safely(function() return ensure():newGame() end) end
 function M.cancelNewGame() return safely(function() return ensure():cancelNewGame() end) end
 function M.teleportToResume() return safely(function() return ensure():teleportToResume() end) end
+function M.teleportToContract() return safely(function() return ensure():teleportToContract() end) end
 -- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
 -- share is the slider's percentage of a full load: 10 to 100 in steps of 10; anything else takes it all.
 function M.takeJob(job, share)
