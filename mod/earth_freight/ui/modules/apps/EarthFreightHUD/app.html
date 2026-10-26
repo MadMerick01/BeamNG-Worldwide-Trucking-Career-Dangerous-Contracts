@@ -1,11 +1,16 @@
 <div class="bngApp" style="height:100%;width:100%;overflow:auto;box-sizing:border-box;padding:14px;background:rgba(12,19,24,.9);color:#f2f6f5;font:14px/1.4 sans-serif;border:1px solid #568d7a;border-radius:8px;">
-  <div style="display:flex;align-items:center;gap:8px;">
+  <div ng-if="!intro.open" style="display:flex;align-items:center;gap:8px;">
     <div style="flex:1;font-size:16px;font-weight:bold;letter-spacing:1px;">Earth Freight Sim</div>
-    <button type="button" ng-if="!intro.open" ng-click="openIntro()" title="Your name and how to play" style="padding:2px 9px;border:1px solid #568d7a;border-radius:4px;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{data.playerName || 'Profile'}}</button>
+    <button type="button" ng-click="openIntro()" title="Your name, how to play and new game" style="padding:2px 9px;border:1px solid #568d7a;border-radius:4px;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{data.playerName || 'Profile'}}</button>
   </div>
-  <div ng-if="intro.open" style="margin-top:2px;color:#c9d6d2;">From rust bucket to rig: haul freight between real towns anywhere on Earth.</div>
-  <div ng-if="intro.open" style="padding-top:10px;">
-    <form ng-submit="closeIntro()">
+  <div ng-if="intro.open">
+    <div style="padding:4px 0 12px;border-bottom:1px solid rgba(86,141,122,.5);">
+      <div style="font-size:11px;font-weight:bold;letter-spacing:3px;color:#7fbfa6;">BEAMNG.EARTH</div>
+      <h1 style="margin:2px 0 0;font-size:30px;font-weight:900;letter-spacing:1px;line-height:1.05;">EARTH<br><span style="color:#a7e5c9;">FREIGHT</span> SIM</h1>
+      <div style="margin-top:6px;color:#c9d6d2;">Haul freight between real towns anywhere on Earth.</div>
+      <div aria-hidden="true" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:bold;color:#f2c94c;">RUST BUCKET <span style="flex:1;border-top:2px dashed rgba(242,201,76,.6);"></span> &#9654; <span style="flex:1;border-top:2px dashed rgba(242,201,76,.6);"></span> RIG</div>
+    </div>
+    <form ng-submit="closeIntro()" style="margin-top:12px;">
       <label style="display:block;font-weight:bold;color:#a7e5c9;" for="earthFreightName">Your name</label>
       <div style="display:flex;gap:6px;margin-top:4px;">
         <input id="earthFreightName" type="text" ng-model="intro.name" maxlength="20" placeholder="What should we call you?" autocomplete="off" ng-focus="typing(true)" ng-blur="typing(false)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
@@ -13,21 +18,37 @@
       </div>
     </form>
     <div style="margin-top:2px;font-size:12px;color:#7d8b88;">Kept with your game when you press Save.</div>
+    <div ng-if="!firstLaunch(data)" style="margin-top:12px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+      <div style="font-weight:bold;color:#a7e5c9;">Your game</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:4px;color:#c9d6d2;">
+        <div><div style="font-weight:bold;font-size:16px;color:#f2f6f5;">${{data.balance | number:0}}</div>money</div>
+        <div><div style="font-weight:bold;font-size:16px;color:#f2f6f5;">{{data.vehicle.model || 'Starter car'}}</div>car</div>
+        <div><div style="font-weight:bold;font-size:16px;color:#f2f6f5;">{{data.totalDistanceKm | number:0}} km</div>driven</div>
+      </div>
+    </div>
     <div style="margin-top:12px;font-weight:bold;color:#a7e5c9;">How to play</div>
-    <ol style="margin:4px 0 0;padding-left:20px;">
-      <li style="margin-bottom:4px;">Go to {{data.startTown}}: copy the coordinates, paste them into the BeamNG.Earth map and teleport there. Your starter car is waiting.
-        <div ng-if="data.resume && data.mode === 'start'" style="display:flex;gap:6px;margin-top:4px;">
-          <input aria-label="Coordinates to go to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
-          <button type="button" aria-label="Copy coordinates" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
+    <button type="button" ng-if="!firstLaunch(data)" ng-click="intro.steps = !intro.steps" aria-expanded="{{!!intro.steps}}" style="margin-top:4px;padding:2px 8px;">{{intro.steps ? 'Hide the steps' : 'Show the steps'}}</button>
+    <ol ng-if="firstLaunch(data) || intro.steps" style="margin:6px 0 0;padding:0;list-style:none;">
+      <li ng-repeat="step in introSteps" style="display:flex;gap:8px;margin-bottom:6px;">
+        <span aria-hidden="true" style="flex:none;width:20px;height:20px;border-radius:50%;background:#568d7a;color:#0c1318;font-weight:bold;font-size:12px;text-align:center;line-height:20px;">{{$index + 1}}</span>
+        <div style="flex:1;min-width:0;"><span ng-if="$first">Go to {{data.startTown}}: </span>{{step}}
+          <div ng-if="$first && data.resume && data.mode === 'start'" style="display:flex;gap:6px;margin-top:4px;">
+            <input aria-label="Coordinates to go to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+            <button type="button" aria-label="Copy coordinates" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
+          </div>
         </div>
       </li>
-      <li style="margin-bottom:4px;">Fit a radiator first: the starter car needs one. Use the parts menu (Ctrl+W) and pay on the Garage tab.</li>
-      <li style="margin-bottom:4px;">Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.</li>
-      <li style="margin-bottom:4px;">Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.</li>
-      <li style="margin-bottom:4px;">Refuel on the Town tab. Repairs, parts and bigger cars are on the Garage tab.</li>
-      <li style="margin-bottom:4px;">To go far, book shipping on the Garage tab.</li>
-      <li>Press Save often. Anything since your last Save is lost when you exit.</li>
     </ol>
+    <div ng-if="firstLaunch(data) || intro.steps" style="font-size:13px;color:#7fbfa6;">More on the Tips tab.</div>
+    <div ng-if="!firstLaunch(data)" ng-style="data.newGameArmed ? {border:'2px solid #eb5757',background:'rgba(235,87,87,.1)'} : {border:'1px solid rgba(235,87,87,.6)'}" style="margin-top:14px;padding:10px;border-radius:6px;">
+      <div style="font-weight:bold;color:#eb5757;">{{data.newGameArmed ? 'Start over for real?' : 'Start over'}}</div>
+      <div ng-if="!data.newGameArmed" style="margin-top:2px;font-size:13px;">Wipes this game and starts again in {{data.startTown}} in the starter car.</div>
+      <div ng-if="data.newGameArmed" role="alert" style="margin-top:2px;font-size:13px;">You lose your {{data.vehicle.model || 'car'}}<span ng-if="data.load">, your job</span> and all ${{data.balance | number:0}}. You restart in {{data.startTown}} with ${{data.startingMoney | number:0}} in the starter car. This cannot be undone.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+        <button type="button" ng-click="newGame()" ng-disabled="!data.newGameAllowed" ng-style="data.newGameArmed ? {background:'#eb5757',color:'#0c1318',borderColor:'#eb5757'} : {background:'transparent',color:'#eb5757',borderColor:'#eb5757'}" style="padding:5px 12px;font-weight:bold;border:1px solid;border-radius:4px;">{{data.newGameArmed ? 'Yes, start over' : 'New game…'}}</button>
+        <button type="button" ng-if="data.newGameArmed" ng-click="cancelNewGame()" style="padding:5px 12px;">Keep my game</button>
+      </div>
+    </div>
   </div>
   <div ng-if="!intro.open">
   <div style="margin-top:2px;color:#c9d6d2;">{{data.here ? 'In ' + data.here.name : 'A world freight economy for BeamNG.Earth'}}<span ng-if="data.region" title="Rough roads: jobs here pay this much more than on flat, busy ground"> &middot; {{data.region.name}} <span ng-style="{color: data.region.boost > 1.05 ? '#f2c94c' : '#c9d6d2', fontWeight: data.region.boost > 1.05 ? 'bold' : 'normal'}">&times;{{data.region.boost | number:1}}</span></span></div>
@@ -277,7 +298,7 @@
       <p role="status" ng-repeat="text in [data.carChange ? null : data.carFeedback, data.partsChange ? null : data.partsFeedback, data.repairFeedback] track by $index" ng-if="text" style="margin:0 0 6px;">{{text}}</p>
     </div>
     <div ng-if="tab === 'tips'">
-      <button type="button" ng-click="openIntro()" style="margin-bottom:10px;padding:5px 10px;">Your name and how to play</button>
+      <button type="button" ng-click="openIntro()" style="margin-bottom:10px;padding:5px 10px;">Profile and new game</button>
       <div style="font-weight:bold;color:#a7e5c9;">Tips</div>
       <ul style="margin:4px 0 0;padding-left:18px;">
         <li>Take a job in one town and deliver it to another. A job fills all your cargo slots, so bigger boxes and vehicles earn more. Parts take 1 slot (15 kg) each and bricks 3 slots (150 kg).</li>
@@ -297,11 +318,6 @@
       <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
         <div style="font-weight:bold;color:#a7e5c9;">Testing</div>
         <button type="button" ng-click="addTestMoney()" ng-disabled="!data.testMoneyAllowed" style="margin-top:4px;padding:5px 10px;">+$10,000 test money</button>
-      </div>
-      <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
-        <div style="font-weight:bold;color:#a7e5c9;">Start over</div>
-        <div style="font-size:13px;">New game wipes everything and starts again in {{data.startTown}} in the starter car. It cannot be undone.</div>
-        <button type="button" ng-click="newGame()" ng-disabled="!data.newGameAllowed" ng-style="data.newGameArmed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="margin-top:6px;padding:7px 12px;">{{data.newGameArmed ? 'Confirm new game' : 'New game'}}</button>
       </div>
       <div style="margin-top:10px;font-size:12px;color:#7d8b88;">Place data &copy; GeoNames (geonames.org), CC BY 4.0. Elevation: Mapzen terrain tiles (SRTM and others).</div>
     </div>

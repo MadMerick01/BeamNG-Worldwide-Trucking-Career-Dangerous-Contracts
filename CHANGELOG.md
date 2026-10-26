@@ -6,6 +6,9 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The start page has a new look.** The title is much bigger, the How to play steps are numbered, and when you reopen the page with the Profile button it shows your money, car and kilometres driven. The steps fold away there behind a Show the steps button.
+- **New game has moved from the Tips tab to the start page.** Press your name (or Profile) at the top of the HUD, then New game… at the bottom. It asks once more and says exactly what you will lose. Press Yes, start over to go ahead, or Keep my game to back out. Closing the page also backs out. Your saves still work.
+
 ## Build 23 · 25 Oct 2026
 
 - **Water and fuel now slosh in the tank.** A fluid load is poured into the Cargo Load fluid tank itself, the same way BeamNG fills it, so it moves around when you brake, corner or climb instead of sitting still like a solid weight. Please try it and say how it feels.

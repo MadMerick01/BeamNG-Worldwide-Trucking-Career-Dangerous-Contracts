@@ -3,7 +3,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
   // What the player was looking at. BeamNG rebuilds the app each time the parts menu or the map
   // closes, so this is kept out here and the new app carries on where the old one was.
   var kept = {
-    tab: 'route', introShown: false, intro: { open: false, name: '' }, shares: {},
+    tab: 'route', introShown: false, intro: { open: false, name: '', steps: false }, shares: {},
     ship: { query: '', coords: '', error: null }, last: null
   }
   return {
@@ -75,7 +75,17 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         if (name !== ((scope.data && scope.data.playerName) || '')) core('setPlayerName("' + name + '")')
         scope.typing(false)
         scope.intro.open = false
+        scope.cancelNewGame()
       }
+      // A new game that has not reached the start town yet: nothing to show or start over.
+      scope.firstLaunch = function (d) { return !!d && d.mode === 'start' && !d.arrived }
+      scope.introSteps = [
+        'copy the coordinates, paste them into the BeamNG.Earth map and teleport there. Your starter car is waiting.',
+        'Fit a radiator first: the starter car needs one. Use the parts menu (Ctrl+W) and pay on the Garage tab.',
+        'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
+        'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
+        'Press Save often. Anything since your last Save is lost when you exit.'
+      ]
       // While a text box has focus the game's keys are off, so typing does not drive the car.
       var typingNow = false
       scope.typing = function (on) {
@@ -190,6 +200,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
       // The first press asks Lua to confirm; the second wipes the save.
       scope.newGame = function () { if (scope.data.newGameAllowed) core('newGame()') }
+      scope.cancelNewGame = function () { if (scope.data && scope.data.newGameArmed) core('cancelNewGame()') }
       scope.coordinates = function (position) {
         if (!position || typeof position.latitude !== 'number' || typeof position.longitude !== 'number' ||
             !isFinite(position.latitude) || !isFinite(position.longitude) ||

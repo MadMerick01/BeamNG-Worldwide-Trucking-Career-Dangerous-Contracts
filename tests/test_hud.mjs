@@ -202,7 +202,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
   }
   for (const id of ['route', 'town', 'garage', 'tips']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
   for (const action of ['cancelPay(); buyParts()', 'revertParts()', 'cancelPay(); buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
-    'newGame()', 'addTestMoney()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()']) {
+    'newGame()', 'cancelNewGame()', 'addTestMoney()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
   }
   assert.ok(html.includes('GeoNames'), 'GeoNames credit')
@@ -224,6 +224,27 @@ test('the start page opens once on a new game, and again after the next new game
   b.scope.openIntro()
   assert.equal(b.scope.intro.open, true, 'opens from the Profile button')
   assert.ok(html.includes('ng-click="openIntro()"'), 'Profile button and Tips link')
+})
+test('starting over lives on the start page behind a confirm, and closing the page cancels it', () => {
+  const a = app()
+  a.state({ state: 'READY', mode: 'start', arrived: false, newGameAllowed: true })
+  assert.equal(a.scope.firstLaunch(a.scope.data), true, 'nothing to start over before reaching the start town')
+  a.state({ state: 'READY', mode: 'resume', arrived: true, newGameAllowed: true })
+  assert.equal(a.scope.firstLaunch(a.scope.data), false)
+  let count = a.commands.length
+  a.scope.cancelNewGame()
+  assert.equal(a.commands.length, count, 'nothing to cancel until it asks to confirm')
+  a.scope.openIntro(); a.scope.closeIntro()
+  assert.equal(a.commands.length, count, 'closing the page sends nothing when not asking')
+  a.state({ state: 'READY', mode: 'resume', arrived: true, newGameAllowed: true, newGameArmed: true })
+  a.scope.cancelNewGame()
+  assert.equal(a.commands.at(-1), fixed('cancelNewGame()'), 'Keep my game')
+  a.scope.openIntro(); count = a.commands.length; a.scope.closeIntro()
+  assert.equal(a.commands.at(-1), fixed('cancelNewGame()'), 'closing the page keeps the game')
+  assert.ok(a.commands.length > count)
+  const tips = html.slice(html.indexOf(`ng-if="tab === 'tips'"`))
+  assert.ok(!tips.includes('newGame()'), 'no new game button on the Tips tab')
+  assert.ok(html.indexOf('ng-click="newGame()"') < html.indexOf('role="tabpanel"'), 'it is on the start page')
 })
 test('closing the parts menu or the map keeps the tab and does not reopen the start page', () => {
   const a = app()
