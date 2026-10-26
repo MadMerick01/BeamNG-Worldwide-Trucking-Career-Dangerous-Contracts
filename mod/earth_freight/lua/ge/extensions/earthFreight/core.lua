@@ -1014,6 +1014,7 @@ function M.new(deps)
       resumeDistanceMetres = current and resume and location.distance(current, resume) or nil,
       resumeRadiusMetres = self.configuration and self.configuration.resumeRadiusMetres or nil,
       startTown = config.START_TOWN,
+      startingMoney = STARTING_MONEY,
       playerName = self.playerName,
       nameUnsaved = self.playerName ~= self.savedName,
       newGameAllowed = self:newGameAllowed(),
@@ -1156,7 +1157,7 @@ function M.new(deps)
     end
     if not self.newGameArmed then
       self.newGameArmed = true
-      self.feedback = 'Press Confirm new game to start over in ' .. config.START_TOWN .. ' in the starter car with '
+      self.feedback = 'Press Yes, start over to start over in ' .. config.START_TOWN .. ' in the starter car with '
         .. dollars(STARTING_MONEY) .. '. Your car, job and every dollar you have now are lost.'
       return false
     end
@@ -1174,6 +1175,13 @@ function M.new(deps)
     self:reload()
     self.feedback = string.format('New game started. Teleport to %s at %.8f, %.8f (Copy is just below) to get your starter car.',
       config.START_TOWN, start.latitude, start.longitude)
+    return true
+  end
+
+  -- Keep my game: drops the request to start over, so the next press asks again.
+  function c:cancelNewGame()
+    if not self.newGameArmed then return false end
+    self.newGameArmed, self.feedback = false, nil
     return true
   end
 
@@ -1260,6 +1268,7 @@ function M.revertParts() return safely(function() return ensure():revertParts(fa
 function M.buyCar() return safely(function() return ensure():buyCar() end) end
 function M.revertCar() return safely(function() return ensure():revertCar(false) end) end
 function M.newGame() return safely(function() return ensure():newGame() end) end
+function M.cancelNewGame() return safely(function() return ensure():cancelNewGame() end) end
 -- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
 -- share is the slider's percentage of a full load: 10 to 100 in steps of 10; anything else takes it all.
 function M.takeJob(job, share)

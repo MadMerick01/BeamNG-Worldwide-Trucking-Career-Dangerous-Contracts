@@ -362,7 +362,11 @@ end
 do
   local c, io = F.controller()
   c:tick(0.1); c:addTestMoney(); T.check(c:manualSave(), 'saved')
-  T.check(not c:newGame(), 'asks first'); T.check(c:newGame(), 'confirmed')
+  T.check(not c:cancelNewGame(), 'nothing to cancel yet')
+  T.check(not c:newGame(), 'asks first'); T.eq(c:view().newGameArmed, true, 'asking')
+  T.check(c:cancelNewGame(), 'Keep my game'); T.eq(c:view().newGameArmed, false, 'no longer asking')
+  T.check(not c:newGame(), 'asks again after a cancel'); T.check(c:newGame(), 'confirmed')
+  T.eq(c:view().startingMoney, Core.STARTING_MONEY, 'the HUD knows the starting money')
   T.eq(c:view().balance, Core.STARTING_MONEY, 'starting money'); T.eq(c.mode, 'start', 'back to the start')
   T.eq(io.files[B].atStart, true, 'saved at the start')
   local v = c:view()

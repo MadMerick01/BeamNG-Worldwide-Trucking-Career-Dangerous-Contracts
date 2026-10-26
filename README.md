@@ -12,7 +12,7 @@ Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. 
 
 ## Play
 
-1. Load the BeamNG.Earth Freeroam level. A new game opens the start page: type your name and read the short how-to (the **Profile** button at the top of the HUD opens it again). The HUD shows Penrith's coordinates: copy them, paste them into the BeamNG.Earth map and teleport there. You get the starter car, a rusty Burnside, and $2,500. The car needs a radiator straight away, so fit one first in the parts menu.
+1. Load the BeamNG.Earth Freeroam level. A new game opens the start page: type your name and read the short how-to (the **Profile** button at the top of the HUD opens it again, and that is where you start a new game). The HUD shows Penrith's coordinates: copy them, paste them into the BeamNG.Earth map and teleport there. You get the starter car, a rusty Burnside, and $2,500. The car needs a radiator straight away, so fit one first in the parts menu.
 2. Stop inside a town. The **Town** tab lists 3 to 5 jobs, each with one total pay for your car. Nothing to buy and no timers. The **Best job** line on the Route tab names the best one nearby.
 3. Press **Take job**. It fills every cargo slot you have with that good, so a bigger box or vehicle earns more. BeamNG.Earth's GPS is set to the drop-off, so the route and road arrows appear on their own.
 4. Drive there. The load's weight is added to the car, so it is slower and burns more fuel. Rough driving damages the car, which costs money to repair, and tyres can puncture (more often off road). The job itself always pays in full.
