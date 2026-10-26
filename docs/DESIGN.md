@@ -230,7 +230,7 @@ Vehicles are bought through the garage as in Enduro: a car's game Value sets its
 The point of the game is to take your vehicle all over the world, so moving it should be **cheap**. What you cannot do is teleport with goods.
 
 1. **Book shipping.** A small, minimal screen: pick a destination (a place from the list, or coordinates), see the price, pay. The price is low, scaling a little with distance and vehicle size. You can only book with an **empty** vehicle; sell or drop your load first.
-2. **Teleport.** Once paid, the HUD gives the destination coordinates with a Copy button, to paste into the BeamNG.Earth map, as Enduro does. The mod never teleports the player itself.
+2. **Teleport.** Once paid, the HUD gives the destination coordinates with a Copy button, to paste into the BeamNG.Earth map, as Enduro does. The mod never teleports the player for shipping. Its one teleport is **Teleport to last save** (or to Penrith in a new game), before arrival, through BeamNG.Earth's own `beamngEarth_core.teleport`: nothing is driven, carried or paid until the player is within 50 m of the save, so it is the same as pasting the save's coordinates.
 3. **Arrive.** A jump that lands near the booked destination is accepted and the booking is used up.
 
 **A teleport without a booking.** The mod detects the jump (Enduro treats movement faster than 150 m/s between two readings as a teleport). Any cargo on board is cancelled and the money paid for it is lost. A message tells the player where they left from, with the coordinates to return to, and no driving pay or deliveries count until they are back there (or book shipping from where they are).

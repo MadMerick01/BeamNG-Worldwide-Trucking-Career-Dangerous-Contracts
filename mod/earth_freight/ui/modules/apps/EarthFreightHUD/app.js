@@ -105,7 +105,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       // A new game that has not reached the start town yet: nothing to show or start over.
       scope.firstLaunch = function (d) { return !!d && d.mode === 'start' && !d.arrived }
       scope.introSteps = [
-        'copy the coordinates, paste them into the BeamNG.Earth map and teleport there. Your starter car is waiting.',
+        'press Teleport, or copy the coordinates into the BeamNG.Earth map and teleport there. Your starter car is waiting.',
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
         'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
@@ -251,6 +251,8 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
             Math.abs(position.latitude) > 90 || Math.abs(position.longitude) > 180) return ''
         return position.latitude.toFixed(8) + ', ' + position.longitude.toFixed(8)
       }
+      // Earth Freight asks BeamNG.Earth to teleport the player to the last save (or the start town).
+      scope.teleportToResume = function () { if (scope.data && scope.data.teleportAllowed) core('teleportToResume()') }
       scope.copyCoordinates = function (position) {
         var text = scope.coordinates(position)
         if (text) call('setClipboard("' + text + '")')

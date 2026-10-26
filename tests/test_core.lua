@@ -45,6 +45,39 @@ do
   T.check(r:manualSave(), 'saving works again')
 end
 
+-- Teleport there: Earth is asked to take the player to the save, or to the start town.
+do
+  local c, io, a = F.controller()
+  a.pose = F.position(-33.9, 151.2)
+  T.check(not c:teleportToResume(), 'nothing to teleport to before Earth is ready')
+  c:tick(0.1)
+  T.check(c:view().teleportAllowed, 'offered on the way to Penrith')
+  T.check(c:teleportToResume(), 'asked'); T.eq(#a.teleports, 1, 'one teleport asked of Earth')
+  T.eq(a.teleports[1].latitude, F.PENRITH.latitude, 'to Penrith'); T.eq(a.teleports[1].name, 'Earth Freight: Penrith', 'named for Earth')
+  T.check(not c:view().teleportAllowed, 'the button rests while Earth loads')
+  T.check(c:view().teleportFeedback:find('Teleporting') ~= nil, 'the player is told it is on its way')
+  c:tick(31)
+  T.check(c:view().teleportAllowed, 'offered again if the car never got there')
+  T.check(c:view().teleportFeedback:find('Not there yet') ~= nil, 'and told to try again')
+  a.pose = F.copy(F.PENRITH); c:tick(0.1)
+  T.check(c:view().arrived, 'arriving works as after pasting the coordinates')
+  T.check(not c:view().teleportAllowed and c:view().teleportFeedback == nil, 'no button once there')
+  T.check(not c:teleportToResume(), 'no teleport once there'); T.eq(#a.teleports, 1, 'nothing more asked')
+  c:manualSave()
+  local r = F.controller({ io = io })
+  local ra = F.adapter(F.position(-33.9, 151.2)); r.adapter = ra; r:tick(0.1)
+  T.check(r:teleportToResume(), 'a reload offers the teleport to the save')
+  T.eq(ra.teleports[1].name, 'Earth Freight: last save', 'named as the last save')
+  T.near(ra.teleports[1].latitude, io.files[A].resume.latitude, 1e-12, 'to where it was saved')
+  local f = F.controller({ io = io })
+  local fa = F.adapter(F.position(-33.9, 151.2)); fa.teleportRefused = true; f.adapter = fa; f:tick(0.1)
+  T.check(not f:teleportToResume(), 'Earth refusing is reported')
+  T.check(f:view().teleportAllowed, 'the button stays')
+  T.check(f:view().teleportFeedback:find('did not take') ~= nil, 'the player is told to copy the coordinates')
+  local n = F.controller({ io = io }); n.adapter = F.adapter(F.position(-33.9, 151.2)); n.adapter.teleport = nil; n:tick(0.1)
+  T.check(not n:view().teleportAllowed, 'no button without Earth\'s teleport')
+end
+
 -- Cargo space comes from the cargo boxes fitted; with none it is the boot.
 do
   local cargo = require('earthFreight/cargo')

@@ -1,6 +1,7 @@
--- The only Earth Freight module permitted to touch BeamNG.Earth. It never calls teleport,
--- loads/enables Earth, or replaces any upstream function. It asks where the player vehicle is
--- geographically and which way it points, and its one write is setting Earth's GPS destination when a job is taken.
+-- The only Earth Freight module permitted to touch BeamNG.Earth. It never loads/enables Earth or
+-- replaces any upstream function. It asks where the player vehicle is geographically and which way
+-- it points. Its writes are setting Earth's GPS destination when a job is taken and, when the player
+-- presses the button, teleporting back to where they last saved (Earth's own teleport, as its map's Go).
 -- Not tied to an Earth version: each position source is tried in turn and any missing or
 -- changed one is skipped, so Earth updates only break Earth Freight if every source changes.
 local location = require('earthFreight/location')
@@ -121,6 +122,22 @@ function M.new(environment)
     if type(gps) ~= 'table' or type(gps.setDestination) ~= 'function' then return false, 'gps_missing' end
     local ok, why = pcall(gps.setDestination, point.latitude, point.longitude, type(name) == 'string' and name or nil)
     if not ok then return false, 'gps_failed', tostring(why) end
+    return true
+  end
+
+  -- Asks Earth to teleport the player to this point, exactly as its map's Go button does, so the
+  -- place also shows in Earth's recent places under this name. Guarded like the reads. True only
+  -- means Earth took the request: the terrain loads and the car is placed some seconds later, and
+  -- arriving is seen from the position.
+  function a:teleport(point, name)
+    if not location.valid(point) then return false, 'invalid_destination' end
+    local okCore, core = pcall(env.core)
+    if not okCore or type(core) ~= 'table' then return false, 'earth_missing' end
+    if type(core.teleport) ~= 'function' then return false, 'teleport_missing' end
+    local ok, sent, why = pcall(core.teleport, point.latitude, point.longitude, type(name) == 'string' and name or nil)
+    if not ok then return false, 'teleport_failed', tostring(sent) end
+    -- Earth answers false when it cannot, such as with its companion server not connected.
+    if sent == false then return false, 'teleport_refused', why ~= nil and tostring(why) or nil end
     return true
   end
   return a
