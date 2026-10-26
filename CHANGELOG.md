@@ -6,6 +6,9 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **You can minimise the HUD.** Press the – button at the top right of the HUD and it shrinks to a small Earth Freight button. Press that button to open the full HUD again, on the tab you were on. It stays minimised until you open it, even after you restart the game.
+- While the HUD is minimised, a dot on the Earth Freight button tells you something is waiting: gold for a shortage, a job or a delivery you can make, red for bad news such as a cancelled load or a puncture. The HUD opens by itself for a garage bill, an insurance offer, being stranded or the start page. Your saves still work.
+
 ## Build 38 · 26 Oct 2026
 
 - **The load slider on the Town tab no longer jumps when you drag it down from 100%.** The "full load" price that used to pop up beside it is gone, so the slider keeps the same size the whole time you drag. The pay for the share you pick still shows next to Take job. Your saves still work.
