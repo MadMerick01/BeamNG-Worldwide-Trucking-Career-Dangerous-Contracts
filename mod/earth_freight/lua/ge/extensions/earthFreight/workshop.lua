@@ -22,6 +22,8 @@ M.STARTER_CONFIG = 'vehicles/burnside/earth_freight_starter.pc'
 M.SERIOUS_DAMAGE = 15000
 M.INSURANCE_FEE = 1000
 M.ROAD_SECONDS, M.GRACE_SECONDS = 1.5, 10
+-- A drop in the car's damage bigger than this, with no repair or respawn, is the game resetting it.
+M.RESET_DAMAGE_DROP = 1
 
 local dollars = pricing.dollars
 
@@ -217,6 +219,38 @@ function M.attach(c)
     self.partsCheckDue, self.respawned = true, true
   end
 
+  -- Insert, and the game's own recovery, put the car back as new without a respawn: the tank is
+  -- filled and the load's weight drops off, so both are put back as after a respawn. The damage it
+  -- had stays owed (see watchResets).
+  function c:vehicleReset(vehicleId)
+    local owned = self.ownedParts
+    if not owned or vehicleId ~= owned.id then return end
+    if self.fuel and self.fuel.vehicleId == owned.id then self.fuel.restore = true end
+    self.appliedWeight, self.respawned = nil, true
+  end
+
+  -- Called every tick: when the car's damage drops with no repair or respawn of ours going on, the
+  -- game has reset it. The car looks new, but, as after a reload, the repair it needed is still
+  -- owed, so the repair bill and the insurance offer stay as they were.
+  function c:watchResets()
+    local raw, owned = self.garage:inspect(), self.ownedParts
+    if not raw or not owned or raw.id ~= owned.id or self.ourRespawn or self.insurancePending then
+      self.rawDamage = nil
+      return
+    end
+    local before = self.rawDamage
+    self.rawDamage = raw
+    if not before or before.id ~= raw.id or before.damage - raw.damage <= M.RESET_DAMAGE_DROP then return end
+    self.owedDamage = self.owedDamage + before.damage - raw.damage
+    self.quote = nil
+    self.diag:event('reset_owed', string.format('%.1f damage', before.damage - raw.damage))
+    local owed = pricing.repairCost(self.owedDamage, owned.value)
+    if owed > 0 then
+      self:showFlash('cancelled', 'REPAIR STILL OWED', 'Resetting the car does not fix it for free. '
+        .. dollars(owed) .. ' is still owed on the Garage tab.')
+    end
+  end
+
   -- Adopts the fitted parts as paid for, when there is nothing to charge against.
   function c:adoptParts(snapshot)
     self.ownedParts, self.pendingParts, self.pendingCar = snapshot, nil, nil
@@ -247,7 +281,19 @@ function M.attach(c)
     end
     local diff = pricing.partsDiff(owned, snapshot)
     if not diff then
-      if self.pendingParts then self.partsFeedback = 'Part changes undone. Nothing to pay.' end
+      if self.pendingParts then
+        self.partsFeedback = 'Part changes undone. Nothing to pay.'
+        -- Undoing them in the parts menu respawned the car again: the bill's repair is still owed.
+        local pending = self.pendingParts
+        if not self.ourRespawn then
+          self.owedDamage = (pending.damage or 0) + math.max(0, self.owedDamage - (pending.owedBefore or self.owedDamage))
+          self.punctureDamage = 0
+        end
+      elseif self.respawned and not self.ourRespawn then
+        -- The game reloaded the car with the same parts, which mends it: its repair is still owed.
+        local d = self.lastDamage
+        if d and d.id == snapshot.id then self.owedDamage, self.punctureDamage = d.damage, 0 end
+      end
       self.pendingParts = nil
       return true
     end
@@ -260,6 +306,8 @@ function M.attach(c)
     self.pendingParts = {
       id = snapshot.id, added = diff.added, removed = diff.removed, partsCost = diff.cost,
       repair = repair, damage = damage, cost = diff.cost + repair, position = position,
+      -- What was owed when the bill opened, which its repair covers; a reset since adds to it.
+      owedBefore = previous and previous.owedBefore or self.owedDamage,
     }
     self.quote = nil
     -- The bill on the HUD shows the total, what the player is short and what to press.
@@ -379,9 +427,10 @@ function M.attach(c)
     if not self.ownedParts then self.partsCheckDue = true end
     if self.partsCheckDue then
       -- Damage is frozen until the check: the respawn has already reset it.
-      if self:checkParts() then self.partsCheckDue = false end
+      if self:checkParts() then self.partsCheckDue, self.ourRespawn, self.rawDamage = false, nil, nil end
       return
     end
+    self:watchResets()
     local inspected = self:inspectDamage()
     if inspected then self.lastDamage = inspected end
     local pending = self.pendingCar or self.pendingParts
@@ -448,7 +497,8 @@ function M.attach(c)
       return false
     end
     self:adoptParts(self.fittedParts)
-    self.owedDamage, self.punctureDamage = 0, 0
+    -- The bill paid the repair owed when it opened; a reset since then is still owed.
+    self.owedDamage, self.punctureDamage = math.max(0, self.owedDamage - (pending.owedBefore or self.owedDamage)), 0
     self.partsFeedback = 'Bought for ' .. dollars(pending.cost) .. '. Save to keep the new balance.'
     return true
   end
@@ -470,7 +520,8 @@ function M.attach(c)
       return false
     end
     -- The bill's damage already includes what was owed before the change.
-    self.pendingParts, self.owedDamage, self.punctureDamage = nil, pending.damage or 0, 0
+    self.pendingParts, self.punctureDamage = nil, 0
+    self.owedDamage = (pending.damage or 0) + math.max(0, self.owedDamage - (pending.owedBefore or self.owedDamage))
     self.partsFeedback = (droveOff and 'You drove off without paying, so the paid parts were put back.'
       or 'Changes undone: your paid parts are back.') .. (pending.repair > 0 and ' Its repair is still owed.' or '')
     return true
@@ -496,9 +547,10 @@ function M.attach(c)
     self.arrivingModel = model
     -- A car respawned from a saved config may not know its .pc file, so its price is looked up here.
     self.arrivingValue = self.garage.carValue and (self.garage:carValue(model, configFile)) or nil
+    self.ourRespawn = true
     local ok, why, detail = self.garage:spawnConfig(model, config)
     if not ok then
-      self.arrivingModel = nil
+      self.arrivingModel, self.ourRespawn = nil, nil
       self.diag:event(label .. '_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
       return
     end
