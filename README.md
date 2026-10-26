@@ -5,20 +5,20 @@ A WORLD FREIGHT ECONOMY CAREER for [BeamNG.Earth](https://github.com/TecnaGamer/
 
 <img width="1500" height="1000" alt="earthFSim1" src="https://github.com/user-attachments/assets/16ebfab6-b37f-4b85-9aca-34cd8a8b4370" />
 
-What’s built so far
+## What's built so far
 
-A freight career anywhere on Earth: start in a rusty Burnside and earn your way up.
-A job board in every real town: light parts, heavy bricks, one fluid (water or fuel) and an off-road drop.
-Off-road drops: deliver to a spot in the bush about 2 km out, with only an arrow to guide you.
-Fluids that slosh: buy a tank to unlock fluid jobs.
-Pay by weight and distance: heavier loads pay more, and bigger vehicles earn more per run.
-A living economy: pay moves with town demand, repeat runs pay less, and shortages and jackpots pay 2 to 3x.
-Load slider: take anything from 10% to 100% of a job.
-Cargo slots card: see how much space you have, with a button to buy more.
-Garage: buy parts, cargo boxes and new vehicles.
-Insurance: after a big crash, pay $1,000 to get back on the road. The Insert reset loophole is closed.
-Relocate tab: move to a new region.
-Start page and minimise button: a welcome-back page for your save, and the HUD shrinks to a small button.
+- **A freight career anywhere on Earth:** start in a rusty Burnside and earn your way up.
+- **A job board in every real town:** light parts, heavy bricks, one fluid (water or fuel) and an off-road drop.
+- **Off-road drops:** deliver to a spot in the bush about 2 km out, with only an arrow to guide you.
+- **Fluids that slosh:** buy a tank to unlock fluid jobs.
+- **Pay by weight and distance:** heavier loads pay more, and bigger vehicles earn more per run.
+- **A living economy:** pay moves with town demand, repeat runs pay less, and shortages and jackpots pay 2 to 3x.
+- **Load slider:** take anything from 10% to 100% of a job.
+- **Cargo slots card:** see how much space you have, with a button to buy more.
+- **Garage:** buy parts, cargo boxes and new vehicles.
+- **Insurance:** after a big crash, pay $1,000 to get back on the road. The Insert reset loophole is closed.
+- **Relocate tab:** move to a new region.
+- **Start page and minimise button:** a welcome-back page for your save, and the HUD shrinks to a small button.
 
 ## Install
 
