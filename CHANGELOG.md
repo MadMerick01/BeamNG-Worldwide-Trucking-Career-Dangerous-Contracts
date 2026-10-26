@@ -6,6 +6,7 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Town tab now shows your cargo slots in a card above the jobs.** It shows how many slots your cargo boxes give you, how many your load takes and how many are free, with your weight limit. It explains that a Cargo Load box S adds 1 slot, M adds 4, L adds 16 and XL adds 128, and its Buy more cargo space button takes you to the Garage tab, where you pay for boxes you fit in the parts menu (Ctrl+W). Your saves still work.
 - **Shipping is now called Relocation and has its own Relocate tab.** The Relocation paid offer (was Shipping paid) and the Book relocation card (was Book shipping) have moved from the Garage tab to the new Relocate tab, next to Garage. A gold dot marks it while you have a booking waiting. Messages in the game say relocation too, such as "Relocated to Coroico". It works exactly as before, and a refund you are owed from an earlier paid offer still comes through.
 - **The Tips tab is gone.** The +$10,000 test money button and the map data credits are now at the bottom of the start page (press your name or Profile at the top of the HUD). Your saves still work.
 
