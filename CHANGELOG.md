@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 51 · 26 Oct 2026
+
 - **The Town tab is shorter.** The Refuel button has moved to the Garage tab, next to Repair. It still only works when you are stopped in a town, and it shows the litres and the price as before.
 - The Cargo slots card and its Buy more cargo space button are gone from the Town tab. To add cargo room, press Buy parts on the Garage tab and fit a Cargo Load box, as before. Your saves still work.
 
