@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 47 · 26 Oct 2026
+
 - **Job pay is now scaled for a starter car with 52 cargo slots.** A full 52 slots of parts (780 kg) pays $2,000 over 5 km, and heavier loads pay more but less for each kilogram: about $2,600 for the 1,200 kg of bricks that fit in 52 slots, $8,700 for 8 tonnes and $11,200 for 12 tonnes. Smaller loads pay their share by weight, so the starter car's own 20 slots of parts now pays about $770 over 5 km instead of $2,000, and fitting more cargo boxes before your first run pays off.
 - **Cargo boxes carry less weight.** Cargo box L now takes up to 400 kg instead of 600 kg, and Cargo box M 130 kg instead of 200 kg; their slots are unchanged. The starter car's own boxes now take 650 kg, which is 20 parts or 4 bricks, and a single box M is too small for a brick. A job you were already carrying pays what it showed when you took it. Your saves still work.
 
