@@ -7,18 +7,15 @@ A WORLD FREIGHT ECONOMY CAREER for [BeamNG.Earth](https://github.com/TecnaGamer/
 
 ## What's built so far
 
-- **A freight career anywhere on Earth:** start in a rusty Burnside and earn your way up.
-- **A job board in every real town:** light parts, heavy bricks, one fluid (water or fuel) and an off-road drop.
-- **Off-road drops:** deliver to a spot in the bush about 2 km out, with only an arrow to guide you.
-- **Fluids that slosh:** buy a tank to unlock fluid jobs.
+- **A freight career anywhere on Earth:** start in a rusty Burnside and earn your way up to a Semi.
+- **A job board in every real earth town:** light parts, heavy bricks, fluids (water and fuel).
+- **Off-road drops:** deliver to a remote offroad location, with only an arrow to guide you.
 - **Pay by weight and distance:** heavier loads pay more, and bigger vehicles earn more per run.
-- **A living economy:** pay moves with town demand, repeat runs pay less, and shortages and jackpots pay 2 to 3x.
-- **Load slider:** take anything from 10% to 100% of a job.
-- **Cargo slots card:** see how much space you have, with a button to buy more.
+- **Dynamic Economy (v1):** pay moves with town demand, repeat runs pay less, and shortages and jackpots pay 2 to 3x.
+- **Trecherous Deliveries:** pay increase in dangerous, mountainous or difficult regions (each region on earth is graded for difficulty)
 - **Garage:** buy parts, cargo boxes and new vehicles.
 - **Insurance:** after a big crash, pay $1,000 to get back on the road. The Insert reset loophole is closed.
-- **Relocate tab:** move to a new region.
-- **Start page and minimise button:** a welcome-back page for your save, and the HUD shrinks to a small button.
+- **Relocate:** move to a new region. Villages will pay your relocation to move to a dangerous region
 
 ## Install
 
