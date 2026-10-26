@@ -82,7 +82,7 @@ Known data problems to handle in the generator:
 - Some well-known towns drop out because their GeoNames entries are thin (Penrith, Bowral, Kiama). Rank by importance instead of raw population, using Wikipedia or OpenStreetMap `place=town/city` tags, and keep a small **hand-edited override list** for towns that must be in or out.
 - Some populations are wrong (Campbelltown shows ~13k against a real ~170k). Pay and demand should lean on the importance rank, not population.
 
-GeoNames is CC BY 4.0, so the mod needs a credit line (README and the HUD's Tips/about screen).
+GeoNames is CC BY 4.0, so the mod needs a credit line (README and the foot of the HUD's start page).
 
 ### Rural pickup points
 
@@ -365,7 +365,7 @@ The total is capped at 3×. With these settings: Sydney, Parramatta and Penrith 
 **In game:** the boost multiplies every price at a place (what you pay to buy and what a delivery pays) and a run's freight pay at the average of its two ends. A run within a steep region pays that much more, a run up into one pays more again, and a run back down to the flat loses money. The HUD shows the region and its boost next to the town name, like "Death Road ×3.0", and each drop-off's boost on the Town tab.
 ## Shipping as built
 
-- **Book shipping** on the Garage tab: a list of eight destinations in `shipping.lua` (Penrith, Katoomba, La Paz at the top of Death Road, Coroico at the bottom, Bormio for the Stelvio, Zermatt, Gilgit on the Karakoram Highway, Leh). The fee is $100 plus 2 cents a km, so Sydney to Bolivia is about $360. You can only book with no load on board and no garage bill open. Booking shows the coordinates with a Copy button, and Cancel refunds the fee.
+- **Book shipping** on the Shipping tab: a list of eight destinations in `shipping.lua` (Penrith, Katoomba, La Paz at the top of Death Road, Coroico at the bottom, Bormio for the Stelvio, Zermatt, Gilgit on the Karakoram Highway, Leh). The fee is $100 plus 2 cents a km, so Sydney to Bolivia is about $360. You can only book with no load on board and no garage bill open. Booking shows the coordinates with a Copy button, and Cancel refunds the fee.
 - **Anywhere:** below the list, a search box finds any of the 100,125 towns by the start of its name (case and accents ignored, so "zurich" finds Zürich; exact names and bigger towns first), and a coordinates box books any latitude, longitude. The search reads `placesNames.lua` (2.2 MB, one folded name, id and tile a line, sorted) the first time, and loads the tiles of the towns it shows.
 - **Paid-shipping offer:** a card above the list reads "The town of Coroico (Death Road, pays ×3.0) will pay your shipping if you come and deliver in its difficult region", with a Book button and the time left. Every 5 minutes (wall clock, a hash of the 5-minute window) it picks another of the 403 places paying 2.3× or more that have another place within 7 km by road (the delivery list's estimate, 1.3× the straight line), so the offer never sends you somewhere with nothing close to deliver to. `make_places.py` lists in `placesIndex.lua`. The fee is paid when booking, as usual; arriving on that booking sets up the refund, and the first delivery within 50 km of the town pays it back. The pending refund is kept in the save (an optional `offer` field), and it still counts after the card has moved on.
 - **Arriving:** a teleport (a jump over 2 km) that lands within 5 km of the booked destination uses the booking up. The mod also catches a teleport made while Earth paused (the last place driven to is kept across the pause).

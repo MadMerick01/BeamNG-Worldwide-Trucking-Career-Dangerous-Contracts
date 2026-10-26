@@ -370,7 +370,7 @@ function M.new(deps)
     else
       self.stranded = self.stranded or from
       self:showFlash('cancelled', 'SHIPPING NOT BOOKED', 'Deliveries and driving do not count until you go back to '
-        .. coordinates(self.stranded) .. ' (copy them on the Route tab), or book shipping on the Garage tab.' .. lost)
+        .. coordinates(self.stranded) .. ' (copy them on the Route tab), or book shipping on the Shipping tab.' .. lost)
       self.diag:event('stranded', coordinates(self.stranded), 'W')
     end
   end
@@ -546,7 +546,7 @@ function M.new(deps)
     if not place then return 'Drive into a town to find a job.' end
     if not self.odometer:stopped() then return 'Stop the car to take or deliver a job.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-    if self.stranded then return 'You teleported without booking shipping. Go back to where you left from, or book shipping on the Garage tab.' end
+    if self.stranded then return 'You teleported without booking shipping. Go back to where you left from, or book shipping on the Shipping tab.' end
     return nil
   end
 
@@ -638,7 +638,7 @@ function M.new(deps)
     if not away or away > jobs.DROP_RADIUS then
       return 'Drive to the drop spot and stop within ' .. jobs.DROP_RADIUS .. ' m of it.'
     end
-    if self.stranded then return 'You teleported without booking shipping. Go back to where you left from, or book shipping on the Garage tab.' end
+    if self.stranded then return 'You teleported without booking shipping. Go back to where you left from, or book shipping on the Shipping tab.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     local needed = jobs.drivenNeeded(places.get(load.from), load.drop)
     if load.drivenKm * 1000 < needed then

@@ -21,7 +21,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       var mount = function (on) { core('uiMounted(' + (on ? 'true' : 'false') + ')') }
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
-        { id: 'tips', label: 'Tips' }]
+        { id: 'shipping', label: 'Shipping' }]
       scope.tab = kept.tab
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
@@ -37,9 +37,9 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
           return !d.load && (t.jobs || []).some(function (j) { return j.allowed })
         },
         garage: function (d) {
-          return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!d.insurance ||
-            !!(d.shipping && d.shipping.booking)
-        }
+          return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!d.insurance
+        },
+        shipping: function (d) { return !!(d.shipping && d.shipping.booking) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
