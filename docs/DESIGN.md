@@ -225,6 +225,8 @@ Vehicles are bought through the garage as in Enduro: a car's game Value sets its
 
 **Decided (Q9): there is no forced ladder.** The player can buy any vanilla BeamNG vehicle they can afford. The sedan → ute → truck → semi tiers above describe the usual path, not a rule; money does the gating.
 
+A proposed ladder with vanilla prices and a payload limit per vehicle class is in [VEHICLE_LADDER.md](VEHICLE_LADDER.md). It is planned, not built.
+
 ## Teleporting: book shipping (decided, Q10 and Q11)
 
 The point of the game is to take your vehicle all over the world, so moving it should be **cheap**. What you cannot do is teleport with goods.

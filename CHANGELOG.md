@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- No changes in the game. The design notes now include a planned ladder of vehicles from the starter Burnside up to semis, with their prices.
+
 ## Build 47 · 26 Oct 2026
 
 - **Job pay is now scaled for a starter car with 52 cargo slots.** A full 52 slots of parts (780 kg) pays $2,000 over 5 km, and heavier loads pay more but less for each kilogram: about $2,600 for the 1,200 kg of bricks that fit in 52 slots, $8,700 for 8 tonnes and $11,200 for 12 tonnes. Smaller loads pay their share by weight, so the starter car's own 20 slots of parts now pays about $770 over 5 km instead of $2,000, and fitting more cargo boxes before your first run pays off.
