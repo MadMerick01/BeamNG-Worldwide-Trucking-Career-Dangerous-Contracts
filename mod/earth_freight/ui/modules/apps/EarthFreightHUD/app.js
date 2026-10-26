@@ -13,7 +13,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
   return {
     templateUrl: '/ui/modules/apps/EarthFreightHUD/app.html',
     replace: true,
-    link: function (scope) {
+    link: function (scope, element) {
       'use strict'
       var disposed = false
       var lastMessage = Date.now()
@@ -50,7 +50,22 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       // tab marks, so the player can tell from the button alone that the HUD has something for them.
       if (!kept.hud) kept.hud = { minimised: stored() }
       scope.hud = kept.hud
-      scope.setMinimised = function (on) { scope.hud.minimised = !!on; store(!!on) }
+      // BeamNG keeps the app's box at its full layout size and outlines it, so a minimised HUD
+      // would leave an empty frame. The box shrinks to the button, and gets its size back on open.
+      var box = element && element[0] && element[0].parentElement
+      var boxSize = null
+      var fitBox = function (small) {
+        if (!box || !box.style) return
+        if (small && !boxSize) {
+          boxSize = { width: box.style.width, height: box.style.height }
+          box.style.width = 'auto'; box.style.height = 'auto'
+        } else if (!small && boxSize) {
+          box.style.width = boxSize.width; box.style.height = boxSize.height
+          boxSize = null
+        }
+      }
+      scope.setMinimised = function (on) { scope.hud.minimised = !!on; store(!!on); fitBox(!!on) }
+      fitBox(scope.hud.minimised)
       scope.hudAlert = function (d) {
         d = d || scope.data || {}
         if (d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) return 'bad'
@@ -283,6 +298,7 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       }, 3000)
       scope.$on('$destroy', function () {
         disposed = true
+        fitBox(false)
         scope.typing(false)
         clearInterval(heartbeat)
         mount(false)

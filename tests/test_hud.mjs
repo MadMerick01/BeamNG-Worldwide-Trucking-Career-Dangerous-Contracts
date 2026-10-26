@@ -7,7 +7,7 @@ const APP = '../mod/earth_freight/ui/modules/apps/EarthFreightHUD/'
 const source = readFileSync(new URL(APP + 'app.js', import.meta.url), 'utf8')
 const html = readFileSync(new URL(APP + 'app.html', import.meta.url), 'utf8')
 const fixed = body => 'if earthFreight_core then earthFreight_core.' + body + ' end'
-function app(storage) {
+function app(storage, element) {
   const commands = [], handlers = {}, timers = new Map()
   let definition, clock = 0
   const scope = { $on: (name, fn) => { handlers[name] = fn }, $evalAsync: fn => fn() }
@@ -21,14 +21,14 @@ function app(storage) {
     clearInterval: id => timers.delete(id), Date: { now: () => clock },
     window: storage ? { localStorage: storage } : {}
   })
-  definition.link(scope)
+  definition.link(scope, element)
   const state = data => handlers.EarthFreightState({}, data)
   const a = { scope, commands, handlers, timers, state, advance: ms => { clock += ms; for (const tick of timers.values()) tick() } }
   // BeamNG rebuilds the app when a menu closes: the old one is destroyed and a new one linked.
   a.remount = () => {
     handlers.$destroy()
     a.scope = { $on: (name, fn) => { handlers[name] = fn }, $evalAsync: fn => fn() }
-    definition.link(a.scope)
+    definition.link(a.scope, element)
     return a
   }
   return a
@@ -352,6 +352,19 @@ test('the HUD minimises to an Earth Freight button, and stays that way after a r
   assert.ok(/ng-style="hud\.minimised \? \{[^}]*\} : \{height:'100%'[^}]*background:'rgba/.test(html), 'the full HUD gets its look back when reopened')
   assert.ok(html.indexOf('ng-click="setMinimised(true)"') > html.indexOf('ng-if="!intro.open"') &&
     html.indexOf('ng-click="setMinimised(true)"') < html.indexOf('ng-if="intro.open"'), 'hidden while the start page is open')
+})
+test('a minimised HUD shrinks its box to the button, so no empty outline is left behind', () => {
+  const box = { style: { width: '380px', height: '620px' } }
+  const a = app(undefined, [{ parentElement: box }])
+  a.scope.setMinimised(true)
+  assert.deepEqual(box.style, { width: 'auto', height: 'auto' }, 'shrinks to the button')
+  a.remount()
+  assert.deepEqual(box.style, { width: 'auto', height: 'auto' }, 'still small after BeamNG rebuilds the app')
+  a.scope.setMinimised(false)
+  assert.deepEqual(box.style, { width: '380px', height: '620px' }, 'the full size comes back on open')
+  a.scope.setMinimised(true); a.handlers.$destroy()
+  assert.deepEqual(box.style, { width: '380px', height: '620px' }, 'a removed app hands its box back full size')
+  app().scope.setMinimised(true)
 })
 test('a minimised HUD lights its dot for anything waiting and opens only for what needs the player', () => {
   const a = app()
