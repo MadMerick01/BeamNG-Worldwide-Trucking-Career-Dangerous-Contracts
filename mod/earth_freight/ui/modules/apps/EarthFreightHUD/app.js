@@ -49,9 +49,11 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.stranded }]
       ]
       var follow = function (previous, next) {
-        // The start page opens once on a new game, until the player has been somewhere.
-        if (next.mode === 'start' && !kept.introShown) { kept.introShown = true; scope.openIntro(next) }
-        if (next.mode !== 'start') kept.introShown = false
+        // The start page opens once on a new game or on loading a save, until the player is there.
+        if (next.arrived || (previous.mode && previous.mode !== next.mode)) kept.introShown = false
+        if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
+          kept.introShown = true; scope.openIntro(next)
+        }
         for (var i = 0; i < autoOpen.length; i++) {
           if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) { scope.setTab(autoOpen[i][0]); return }
         }
@@ -77,6 +79,8 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         scope.intro.open = false
         scope.cancelNewGame()
       }
+      // Loaded from a save and not back at it yet: the start page shows where to go.
+      scope.returning = function (d) { return !!d && d.mode === 'resume' && !d.arrived && !!d.resume }
       // A new game that has not reached the start town yet: nothing to show or start over.
       scope.firstLaunch = function (d) { return !!d && d.mode === 'start' && !d.arrived }
       scope.introSteps = [

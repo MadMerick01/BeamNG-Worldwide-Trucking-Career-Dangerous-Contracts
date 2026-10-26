@@ -10,11 +10,21 @@
       <div style="margin-top:6px;color:#c9d6d2;">Haul freight between real towns anywhere on Earth.</div>
       <div aria-hidden="true" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:bold;color:#f2c94c;">RUST BUCKET <span style="flex:1;border-top:2px dashed rgba(242,201,76,.6);"></span> &#9654; <span style="flex:1;border-top:2px dashed rgba(242,201,76,.6);"></span> RIG</div>
     </div>
+    <div ng-if="returning(data)" style="margin-top:12px;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
+      <div style="font-weight:bold;font-size:16px;color:#a7e5c9;">Welcome back<span ng-if="data.playerName">, {{data.playerName}}</span></div>
+      <label style="display:block;margin-top:4px;">Go back to your last save: copy the coordinates, paste them into the BeamNG.Earth map and teleport there.
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <input aria-label="Coordinates of your last save (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+          <button type="button" aria-label="Copy coordinates of your last save" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
+        </div>
+      </label>
+      <div ng-if="data.resumeDistanceMetres != null" style="margin-top:4px;font-size:13px;color:#c9d6d2;">You are {{km(data.resumeDistanceMetres)}} km away.<span ng-if="data.resumeDistanceMetres < 5000"> Close by? You can drive there instead.</span></div>
+    </div>
     <form ng-submit="closeIntro()" style="margin-top:12px;">
       <label style="display:block;font-weight:bold;color:#a7e5c9;" for="earthFreightName">Your name</label>
       <div style="display:flex;gap:6px;margin-top:4px;">
         <input id="earthFreightName" type="text" ng-model="intro.name" maxlength="20" placeholder="What should we call you?" autocomplete="off" ng-focus="typing(true)" ng-blur="typing(false)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
-        <button type="submit" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{data.arrived ? 'Done' : 'Let’s go'}}</button>
+        <button type="submit" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{firstLaunch(data) ? 'Let’s go' : 'Continue'}}</button>
       </div>
     </form>
     <div style="margin-top:2px;font-size:12px;color:#7d8b88;">Kept with your game when you press Save.</div>
@@ -22,7 +32,7 @@
       <div style="font-weight:bold;color:#a7e5c9;">Your game</div>
       <div style="display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:4px;color:#c9d6d2;">
         <div><div style="font-weight:bold;font-size:16px;color:#f2f6f5;">${{data.balance | number:0}}</div>money</div>
-        <div><div style="font-weight:bold;font-size:16px;color:#f2f6f5;">{{data.vehicle.model || 'Starter car'}}</div>car</div>
+        <div ng-if="data.arrived && data.vehicle.model"><div style="font-weight:bold;font-size:16px;color:#f2f6f5;">{{data.vehicle.model}}</div>car</div>
         <div><div style="font-weight:bold;font-size:16px;color:#f2f6f5;">{{data.totalDistanceKm | number:0}} km</div>driven</div>
       </div>
     </div>
