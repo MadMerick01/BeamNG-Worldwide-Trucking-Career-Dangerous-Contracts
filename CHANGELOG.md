@@ -6,6 +6,9 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Town tab is shorter.** The Refuel button has moved to the Garage tab, next to Repair. It still only works when you are stopped in a town, and it shows the litres and the price as before.
+- The Cargo slots card and its Buy more cargo space button are gone from the Town tab. To add cargo room, press Buy parts on the Garage tab and fit a Cargo Load box, as before. Your saves still work.
+
 ## Build 50 · 26 Oct 2026
 
 - **When Earth Freight Sim hits a problem and shows FREIGHT PAUSED, the notice now tells you where to look:** search `beamng.log` for `internal_error`. That line now names exactly where the problem happened and how the game got there, so sending it along is all it takes to get it fixed. Nothing else changes, and your saves still work.

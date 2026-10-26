@@ -353,10 +353,11 @@ do
   T.near(quote.litres, 30, 1e-9, 'fills the tank'); T.eq(quote.cost, fuel.cost(30), 'priced per litre')
   T.check(c:view().town.refuelAllowed, 'Refuel offered in town')
   T.check(c:refuel(), 'refuel sent'); T.near(f.sets[1].litres, 50, 1e-9, 'tank set to full')
-  T.check(not c:refuel(), 'one refuel at a time')
+  T.check(not c:refuel(), 'one refuel at a time'); T.eq(c:view().fuelFeedback, 'Refuelling...', 'told on the Garage tab')
   local before = c:view().balance
   c:fuelSet(1, f.sets[1].serial, 20, 50, 50)
   T.eq(c:view().balance, before - fuel.cost(30), 'charged for 30 L')
+  T.check(c:view().fuelFeedback:find('Refuelled 30.0 L'), 'told what it cost'); T.eq(c:view().tradeFeedback, nil, 'not on the Town tab')
   T.check(c:view().town.refuel.full, 'tank now full'); T.check(not c:view().town.refuelAllowed, 'nothing to fill')
   c:fuelSet(1, f.sets[1].serial, 20, 50, 50); T.eq(c:view().balance, before - fuel.cost(30), 'a repeated answer is not charged twice')
   -- Short of money: fills as far as it goes.

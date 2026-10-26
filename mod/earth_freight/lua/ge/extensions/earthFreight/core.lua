@@ -135,7 +135,7 @@ function M.new(deps)
     self.odometer:reset()
     self.sessionVerified, self.lastSample, self.error = false, nil, nil
     self.quote, self.repairFeedback = nil, nil
-    self.partsFeedback, self.carFeedback, self.tradeFeedback = nil, nil, nil
+    self.partsFeedback, self.carFeedback, self.tradeFeedback, self.fuelFeedback = nil, nil, nil, nil
     self.vehicleProvided, self.arrivingModel, self.arrivingValue, self.arrived = false, nil, nil, false
     self.newGameArmed, self.flash, self.refunded = false, nil, nil
     self.teleportAskedAt, self.teleportFeedback, self.contractTeleportAt = nil, nil, nil
@@ -884,7 +884,7 @@ function M.new(deps)
     if not problem and quote.litres <= 0 then problem = 'Not enough money for fuel: ' .. string.format('$%.2f', fuel.PRICE_PER_LITRE) .. ' a litre.' end
     if not problem and self.refuelPending then problem = 'Refuelling...' end
     if problem then
-      self.tradeFeedback = problem
+      self.fuelFeedback = problem
       return false
     end
     self.refuelSerial = self.refuelSerial + 1
@@ -892,11 +892,11 @@ function M.new(deps)
     local ok, why = self.fuelTank:set(self.fuel.litres + quote.litres, self.refuelSerial)
     if not ok then
       self.refuelPending = nil
-      self.tradeFeedback = 'Could not refuel. You have not been charged.'
+      self.fuelFeedback = 'Could not refuel. You have not been charged.'
       self.diag:event('refuel_failed', tostring(why), 'E')
       return false
     end
-    self.tradeFeedback = 'Refuelling...'
+    self.fuelFeedback = 'Refuelling...'
     return true
   end
 
@@ -909,7 +909,7 @@ function M.new(deps)
       local litres = math.max(0, after - before)
       local cost = math.min(fuel.cost(litres), self.profile and self.profile.progression.balance or 0)
       if cost > 0 then self:spend(cost, 'fuel') end
-      self.tradeFeedback = 'Refuelled ' .. string.format('%.1f', litres) .. ' L for ' .. dollars(cost) .. '.'
+      self.fuelFeedback = 'Refuelled ' .. string.format('%.1f', litres) .. ' L for ' .. dollars(cost) .. '.'
       self.diag:event('refuelled', string.format('%.1f L, %d', litres, cost))
     end
     if capacity > 0 then self.fuel = { vehicleId = vehicleId, litres = math.min(after, capacity), capacity = capacity, at = self.clock } end
@@ -927,7 +927,7 @@ function M.new(deps)
     self:watchTestGps()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
-      self.refuelPending, self.tradeFeedback = nil, 'Refuelling did not go through. You have not been charged.'
+      self.refuelPending, self.fuelFeedback = nil, 'Refuelling did not go through. You have not been charged.'
     end
     self.ui:publish(self:view(), self.clock)
   end
@@ -1168,6 +1168,7 @@ function M.new(deps)
       shortages = trade.shortages,
       abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee,
       tradeFeedback = self.tradeFeedback,
+      fuelFeedback = self.fuelFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
       testMoneyAllowed = active,
       testTeleportAllowed = self.profile ~= nil and not self.error and self.state == 'READY' and self.adapter.teleport ~= nil,
