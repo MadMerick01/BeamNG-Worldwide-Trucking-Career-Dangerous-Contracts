@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 56 · 26 Oct 2026
+
 - **The dangerous contract test picker on the start page now works for every road.** The drop-down list wouldn't open in game, so it only ever offered Death Road. Each road now has its own row with Start and Finish buttons. Your saves still work.
 
 ## Build 55 · 26 Oct 2026
