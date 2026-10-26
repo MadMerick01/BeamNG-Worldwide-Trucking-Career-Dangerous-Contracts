@@ -135,6 +135,7 @@ function M.new(deps)
     -- A puncture not yet repaired; a reload respawns the car, so its tyre repair is owed instead.
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
+    self.ourRespawn, self.rawDamage = nil, nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
@@ -277,10 +278,13 @@ function M.new(deps)
   function c:beforeRespawn()
     if self.fuel and self.ownedParts and self.fuel.vehicleId == self.ownedParts.id then self.fuel.restore = true end
     self.appliedWeight, self.tankReading = nil, nil
+    -- Its damage drops as it respawns, which is not the game resetting it.
+    self.ourRespawn = true
   end
 
   -- The respawn did not happen, so the car keeps its fuel and weight.
   function c:respawnFailed()
+    self.ourRespawn = nil
     if self.fuel then self.fuel.restore = nil end
     self:applyWeight()
   end
@@ -1303,6 +1307,7 @@ function M.tanksRead(vehicleId, litres)
   return safely(function() if active then active:tanksRead(vehicleId, litres) end end)
 end
 function M.onVehicleSpawned() return safely(function() if active then active:vehicleSpawned() end end) end
+function M.onVehicleResetted(vehicleId) return safely(function() if active then active:vehicleReset(vehicleId) end end) end
 function M.reload() return safely(function() ensure():reload() end) end
 function M.uiMounted(on) return safely(function() ensure():mount(on == true) end) end
 function M.getState() return safely(function() return ensure():view() end) end

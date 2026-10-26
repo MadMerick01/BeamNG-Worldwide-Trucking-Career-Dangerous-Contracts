@@ -252,6 +252,52 @@ do
   c:requestRepairQuote(); T.check(c:repairVehicle(), 'repaired instead'); T.check(c.load ~= nil, 'the job is kept')
 end
 
+-- Insert, or the game's recovery, puts the car back as new: the repair it needed is still owed,
+-- a serious crash still offers insurance, and the fuel and the load's weight are put back.
+do
+  local c, io, a, g, cargo, f = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a job')
+  c:fuelReading(1, 12, 50)
+  g.damage = 30000; c:tick(0.1)
+  local owed = c:view().insurance.repair
+  T.check(owed > 0, 'a serious crash')
+  local weights = #cargo.weights
+  c:vehicleReset(1); g.damage = 0; c:tick(0.1); c:tick(0.1)
+  T.eq(c.owedDamage, 30000, 'the damage is still owed')
+  T.eq(c:view().repairOwed, owed, 'shown as repair still owed')
+  T.eq(c:view().flash.title, 'REPAIR STILL OWED', 'told so')
+  T.check(c:view().insurance ~= nil, 'insurance still offered'); T.eq(c:view().insurance.repair, owed, 'for the same repair')
+  T.near(f.sets[#f.sets].litres, 12, 1e-9, 'the fuel it had is put back')
+  T.eq(#cargo.weights, weights + 1, 'the load weight is put back on')
+  -- A second crash and reset adds to it; a repair pays the lot.
+  g.damage = 1000; c:tick(0.1); c:vehicleReset(1); g.damage = 0; c:tick(0.1)
+  T.eq(c.owedDamage, 31000, 'both crashes owed')
+  c.profile.progression.balance = 100000; c:requestRepairQuote()
+  T.eq(c.quote.cost, require('earthFreight/pricing').repairCost(31000, c:carValueOf(1)), 'the quote covers both')
+  T.check(c:repairVehicle(), 'repaired'); T.eq(c.owedDamage, 0, 'nothing owed')
+  c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
+  T.eq(c.owedDamage, 0, 'our own respawn is not a reset')
+  -- A reset with no damage owes nothing; one saved keeps it.
+  c:vehicleReset(1); c:tick(0.1); T.eq(c.owedDamage, 0, 'nothing to owe')
+  g.damage = 4000; c:tick(0.1); g.damage = 0; c:tick(0.1)
+  T.check(c:manualSave(), 'saved'); T.eq(io.files[A].vehicle.damage, 4000, 'saved as owed')
+  -- The game reloading the car with the same parts mends it too; the repair is still owed.
+  g.damage = 2000; c:tick(0.1); g.damage = 0; c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
+  T.eq(c.owedDamage, 6000, 'a reload is not a free repair')
+  -- So does undoing part changes in the parts menu.
+  c:abandonJob(); c:addTestMoney()
+  g.damage = 1000; c:tick(0.1); g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
+  T.eq(c.pendingParts.damage, 7000, 'the bill holds the repair')
+  g.damage = 500; c:tick(0.1); c:vehicleReset(1); g.damage = 0; c:tick(0.1)
+  g:fit('turbo', nil); c:vehicleSpawned(); c:tick(0.1)
+  T.eq(c.pendingParts, nil, 'changes undone'); T.eq(c.owedDamage, 7500, 'the repair and the later crash are still owed')
+  -- Paying a parts bill pays the repair in it, not a crash reset since.
+  g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
+  g.damage = 800; c:tick(0.1); c:vehicleReset(1); g.damage = 0; c:tick(0.1)
+  T.check(c:buyParts(), 'parts paid'); T.eq(c.owedDamage, 800, 'the later crash is still owed')
+end
+
 -- Fuel: read from the car, Refuel fills it in a town, charged for what went in.
 do
   local c, io, a, g, _, f = F.controller()
