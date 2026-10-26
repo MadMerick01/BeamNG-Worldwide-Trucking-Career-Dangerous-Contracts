@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 44 · 26 Oct 2026
+
 - **The Garage tab has Buy parts and Buy new car buttons.** Buy parts opens the parts menu and Buy new car opens the car selector, so you no longer need Ctrl+W or Ctrl+E. The bill still shows up on the Garage tab to pay or undo as before. Your saves still work.
 
 ## Build 39 · 26 Oct 2026
