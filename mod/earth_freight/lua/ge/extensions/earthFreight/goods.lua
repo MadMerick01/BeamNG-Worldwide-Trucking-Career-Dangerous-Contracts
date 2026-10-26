@@ -7,8 +7,8 @@ local M = {}
 -- (its slots are those litres too, so a load's slots are its litres) of this many kg. Pay goes by
 -- the load's weight (jobs.weightPay); rate is a good's pay against that, 1 being the curve as is.
 -- A job fills every slot or litre the vehicle has, so a Burnside with 52 slots of boxes carries
--- 780 kg of parts for $2,000 over 5 km, or about 2,000 kg of bricks (13 units with 3 L boxes and
--- an M) for about $3,600; a full 800 L tank is 800 kg of water for about $2,030, or 600 kg of
+-- 780 kg of parts for $2,000 over 5 km, or 1,350 kg of bricks (9 units with 3 L boxes and an
+-- M: the weight runs out first) for about $2,830; a full 800 L tank is 800 kg of water for about $2,030, or 600 kg of
 -- fuel for about $1,540. Parcels are heavy for their slots (bricks 50 kg
 -- a slot), so a big box runs out of weight before space. Food is no longer posted; it stays known
 -- so a food job in an older save still delivers.

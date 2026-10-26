@@ -14,7 +14,7 @@ M.BOOT = { slots = 2, kg = 60 }
 -- parcel slots for the Cargo Load boxes; the weight limits are ours. The first size that matches wins.
 M.BOXES = {
   { size = 'xl', label = 'Cargo box XL', slots = 128, kg = 2500 },
-  { size = 'l', label = 'Cargo box L', slots = 16, kg = 600 },
+  { size = 'l', label = 'Cargo box L', slots = 16, kg = 400 },
   { size = 'm', label = 'Cargo box M', slots = 4, kg = 200 },
   { size = 's', label = 'Cargo box S', slots = 1, kg = 50 },
 }
