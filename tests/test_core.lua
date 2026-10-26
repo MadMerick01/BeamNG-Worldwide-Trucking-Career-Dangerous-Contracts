@@ -389,6 +389,22 @@ do
   T.near(rf.sets[#rf.sets].litres, 12, 1e-9, 'with the fuel it was saved with')
 end
 
+-- Saved in a town with fuel: until the car reports its tank, the saved fuel is only waiting to go
+-- back in, so the town shows no refuel and the game does not pause.
+do
+  local c, io, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c:fuelReading(1, 12, 50)
+  T.check(c:manualSave(), 'saved in town with fuel'); T.near(io.files[A].vehicle.fuelLitres, 12, 1e-9, 'fuel saved')
+  local r, _, ra = F.controller({ io = io })
+  ra.pose = F.copy(io.files[A].resume); r:tick(0.1); r:tick(0.6); r:tick(0.6)
+  local v = r:view()
+  T.eq(v.state, 'READY', 'not paused'); T.check(v.town ~= nil, 'back in town')
+  T.eq(v.town.refuel, nil, 'no refuel quote before a tank reading')
+  r:vehicleSpawned(); r:tick(0.1); r:tick(0.1); r:fuelReading(1, 12, 50)
+  T.check(r:view().town.refuel ~= nil, 'a reading brings the refuel quote back')
+end
+
 -- The GPS is optional: with Earth's GPS missing, or turned off, the delivery still works.
 do
   local a = F.adapter(); a.gpsMissing = true

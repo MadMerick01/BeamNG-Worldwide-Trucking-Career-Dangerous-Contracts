@@ -866,9 +866,11 @@ function M.new(deps)
     self.fuel = { vehicleId = vehicleId, litres = math.min(litres, capacity), capacity = capacity, at = self.clock }
   end
 
+  -- Nil until the car has reported its tank: fuel from a save is only litres to put back, with no
+  -- capacity or reading time.
   function c:refuelQuote()
     local f = self.fuel
-    if not f or self.clock - f.at > fuel.STALE_SECONDS then return nil end
+    if not f or not f.at or not f.capacity or self.clock - f.at > fuel.STALE_SECONDS then return nil end
     local wanted = math.max(0, f.capacity - f.litres)
     local balance = self.profile and self.profile.progression.balance or 0
     local litres = math.min(wanted, math.floor(balance / fuel.PRICE_PER_LITRE))
