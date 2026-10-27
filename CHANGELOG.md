@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 63 · 27 Oct 2026
+
 - **The parts bill is now a bold box near the top of the screen while you're in the parts menu.** It has a gold border, or red when you can't afford the bill, and shows the total so far, how it splits into parts and repair, and how much you're short. It stays up as you change parts, updating each time, until you press Close, pay, undo the changes or leave the parts menu. If the box can't show, you get the corner pop-up as before. Your saves still work.
 
 ## Build 62 · 27 Oct 2026
