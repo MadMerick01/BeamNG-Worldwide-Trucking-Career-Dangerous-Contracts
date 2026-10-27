@@ -6,6 +6,9 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **You can now buy second-hand cars.** Press **Buy second hand** on the Garage tab to see two used cars for sale in the town you're in, or the nearest town. They can be any BeamNG car in any version, except trailers and props, and cost between 70% and 105% of the new price. Each card shows the car's picture, its kilometres, its price, a "Good deal" tag when it's under 80% of new, and what you'd pay after your trade-in. Each town always sells the same two cars, so drive to another town to see different ones. **Buy this one** puts the car in place of yours and opens the usual car bill at the second-hand price: buy it or press **Get my car back**, as with a new car.
+- Second-hand cars look worn, with faded paint and the kilometres on the clock, but they drive like new. A second-hand car is worth what you paid for it, so that's what its trade-in and repairs are based on, and it stays that way after part changes and after you save and load. Your saves still work.
+
 ## Build 63 · 27 Oct 2026
 
 - **The parts bill is now a bold box near the top of the screen while you're in the parts menu.** It has a gold border, or red when you can't afford the bill, and shows the total so far, how it splits into parts and repair, and how much you're short. It stays up as you change parts, updating each time, until you press Close, pay, undo the changes or leave the parts menu. If the box can't show, you get the corner pop-up as before. Your saves still work.

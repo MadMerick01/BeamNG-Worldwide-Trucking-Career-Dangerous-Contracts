@@ -99,11 +99,24 @@ function F.garage()
     self.spawns[#self.spawns + 1] = { model = model, config = F.copy(config) }
     if type(config) == 'table' then
       self.model, self.fitted, self.damage = model, F.copy(config.parts), 0
+    elseif self.configParts[config] then
+      self.model, self.fitted, self.damage = model, F.copy(self.configParts[config]), 0
     elseif self.starter then
       self.model, self.fitted, self.damage = model, F.copy(self.starter), 0
     end
     return true
   end
+  -- The game's car list, as garage:configs() gives it, and the parts each .pc file fits.
+  g.configList = {
+    { model = 'sport', key = 'gt', config = 'vehicles/sport/gt.pc', name = 'Sport GT', value = 40000, type = 'Car', source = 'BeamNG - Official' },
+    { model = 'pickup', key = 'd15', config = 'vehicles/pickup/d15.pc', name = 'Pickup D15', value = 20000, type = 'Truck', source = 'BeamNG - Official' },
+    { model = 'flatbed', key = 'long', config = 'vehicles/flatbed/long.pc', name = 'Flatbed', value = 5000, type = 'Trailer', source = 'BeamNG - Official' },
+    { model = 'modcar', key = 'x', config = 'vehicles/modcar/x.pc', name = 'Mod car', value = 1000, type = 'Car', source = 'Mod' },
+  }
+  g.configParts = { ['vehicles/sport/gt.pc'] = { engine = 'sport_engine' }, ['vehicles/pickup/d15.pc'] = { engine = 'pickup_engine_v8' } }
+  function g:configs() return self.configList end
+  g.wears = {}
+  function g:wear(km, look) self.wears[#self.wears + 1] = { km = km, look = look, model = self.model }; return true end
   -- The recovery menu's teleport to the last road: moves the car back to the road it was on.
   g.roadTrips = 0
   function g:toRoad()

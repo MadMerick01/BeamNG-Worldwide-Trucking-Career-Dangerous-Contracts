@@ -69,6 +69,17 @@ test('buttons only send fixed commands when Lua enabled them', () => {
     assert.equal(a.commands.at(-1), fixed(body), name)
   }
 })
+test('Buy second hand opens the list, and a car is only bought by its slot when Lua allows it', () => {
+  const a = app()
+  a.scope.openUsedCars(true); assert.equal(a.commands.at(-1), fixed('openUsedCars(true)'))
+  a.scope.openUsedCars(false); assert.equal(a.commands.at(-1), fixed('openUsedCars(false)'))
+  const count = a.commands.length
+  a.scope.buyUsedCar({ slot: 1, allowed: false }); a.scope.buyUsedCar({ slot: '1); x(', allowed: true })
+  a.scope.buyUsedCar({ slot: 1.5, allowed: true }); a.scope.buyUsedCar(null)
+  assert.equal(a.commands.length, count, 'refused unless allowed, with a whole slot')
+  a.scope.buyUsedCar({ slot: 2, allowed: true }); assert.equal(a.commands.at(-1), fixed('buyUsedCar(2)'))
+})
+
 test('paying a bill asks to confirm that total, and a new total asks again', () => {
   const a = app()
   a.state({ state: 'READY', partsChange: { cost: 500 }, buyPartsAllowed: true })

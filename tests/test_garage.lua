@@ -106,4 +106,29 @@ local enterEnv = env({ objectById = function(id) return id == 3 and vehicle(3) o
 T.check(G.new(enterEnv):enter(3), 'enters a parked car'); T.eq(entered, 3, 'player put in that car')
 ok, why = G.new(enterEnv):enter(4)
 T.check(not ok, 'missing car not entered'); T.eq(why, 'vehicle_gone', 'reason given')
+-- The game's car list, read once, with each config's .pc path, full name and price.
+local listCalls = 0
+local listEnv = env({ vehicles = function() return { getConfigList = function()
+  listCalls = listCalls + 1
+  return { configs = {
+    pickup_d15 = { model_key = 'pickup', key = 'd15', Name = 'D-Series', Brand = 'Gavril', Configuration = 'D15', Value = 33000,
+      Type = 'Truck', Source = 'BeamNG - Official', preview = '/vehicles/pickup/d15.jpg' },
+    broken = { model_key = 'pickup' },
+    junk = 'not a config',
+  } }
+end } end })
+local lg = G.new(listEnv)
+local configs = lg:configs()
+T.eq(#configs, 1, 'only whole configs listed'); T.eq(configs[1].config, 'vehicles/pickup/d15.pc', 'its .pc path')
+T.eq(configs[1].name, 'Gavril D-Series D15', 'brand, name and configuration'); T.eq(configs[1].value, 33000, 'its price')
+T.eq(configs[1].type, 'Truck', 'its type'); T.eq(configs[1].preview, '/vehicles/pickup/d15.jpg', 'its picture')
+lg:configs(); T.eq(listCalls, 1, 'read once')
+T.eq(#G.new(env({ vehicles = function() return { getConfigList = function() error('changed') end } end })):configs(), 0, 'list errors contained')
+-- Worn looks: the game's part condition, queued on the player vehicle.
+local queued
+local wearEnv = env({ vehicle = function() local v = vehicle(7); v.queueLuaCommand = function(_, cmd) queued = cmd end; return v end })
+T.check(G.new(wearEnv):wear(120000, 0.92), 'wear queued')
+T.check(queued:find('partCondition.initConditions(nil, 120000000, nil, 0.920)', 1, true), 'odometer in metres and the look')
+T.check(queued:find('if partCondition and partCondition.initConditions then', 1, true), 'guarded in the car')
+T.check(not G.new(env({ vehicle = function() return nil end })):wear(1, 1), 'no vehicle, no wear')
 T.done('garage')
