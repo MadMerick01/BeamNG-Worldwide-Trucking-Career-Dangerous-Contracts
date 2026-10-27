@@ -18,8 +18,9 @@ M.FINISH_RADIUS = 100
 M.START_RADIUS = 1000
 
 -- The sections: the most dramatic ~2 km of each treacherous Enduro stage. Coordinates are
--- estimates, not yet checked in game, except Death Road's and Sani Pass's. km is the road length, shown on the
--- board. Fairy Meadows Road is left out until a dangerous 2 km of it is found in game.
+-- estimates, not yet checked in game, except Death Road's and Sani Pass's. km is the road length,
+-- shown on the board. Left out after checking in game: Fairy Meadows Road (no dangerous 2 km found)
+-- and Skippers Canyon (not dangerous enough).
 M.LIST = {
   { id = 'death_road', name = 'Death Road', region = 'North Yungas Road, Bolivia', km = 2,
     summary = 'One-lane cliff shelf below Chuspipata, with drops of 400 m and waterfalls over the road.',
@@ -27,9 +28,6 @@ M.LIST = {
   { id = 'sani_pass', name = 'Sani Pass', region = 'South Africa and Lesotho', km = 2,
     summary = 'The last stack of loose, steep hairpins up to Sani Top.',
     start = { latitude = -29.589268, longitude = 29.294417 }, finish = { latitude = -29.584964, longitude = 29.287562 } },
-  { id = 'skippers_canyon', name = 'Skippers Canyon', region = 'Otago, New Zealand', km = 2,
-    summary = 'One-lane rock-cut road down to the Skippers Bridge, high above the Shotover.',
-    start = { latitude = -44.8580, longitude = 168.6950 }, finish = { latitude = -44.8444, longitude = 168.6868 } },
   { id = 'atigun_pass', name = 'Atigun Pass', region = 'Dalton Highway, Alaska', km = 2,
     summary = 'The steepest climb on the Arctic haul road, under avalanche chutes.',
     start = { latitude = 68.1180, longitude = -149.5000 }, finish = { latitude = 68.1300, longitude = -149.4790 } },
