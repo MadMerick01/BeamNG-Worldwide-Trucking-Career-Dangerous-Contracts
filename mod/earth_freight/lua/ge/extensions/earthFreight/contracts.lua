@@ -18,7 +18,7 @@ M.FINISH_RADIUS = 100
 M.START_RADIUS = 1000
 
 -- The sections: the most dramatic ~2 km of each treacherous Enduro stage. Coordinates are
--- estimates, not yet checked in game, except Death Road's. km is the road length, shown on the
+-- estimates, not yet checked in game, except Death Road's and Sani Pass's. km is the road length, shown on the
 -- board. Fairy Meadows Road is left out until a dangerous 2 km of it is found in game.
 M.LIST = {
   { id = 'death_road', name = 'Death Road', region = 'North Yungas Road, Bolivia', km = 2,
@@ -26,7 +26,7 @@ M.LIST = {
     start = { latitude = -16.2900, longitude = -67.8100 }, finish = { latitude = -16.276316, longitude = -67.794078 } },
   { id = 'sani_pass', name = 'Sani Pass', region = 'South Africa and Lesotho', km = 2,
     summary = 'The last stack of loose, steep hairpins up to Sani Top.',
-    start = { latitude = -29.5900, longitude = 29.2960 }, finish = { latitude = -29.5847, longitude = 29.2856 } },
+    start = { latitude = -29.589268, longitude = 29.294417 }, finish = { latitude = -29.584964, longitude = 29.287562 } },
   { id = 'skippers_canyon', name = 'Skippers Canyon', region = 'Otago, New Zealand', km = 2,
     summary = 'One-lane rock-cut road down to the Skippers Bridge, high above the Shotover.',
     start = { latitude = -44.8580, longitude = 168.6950 }, finish = { latitude = -44.8444, longitude = 168.6868 } },
