@@ -401,7 +401,7 @@ Decided by Rowan on 26 Oct: a big-pay job over about 2 km of a treacherous Earth
 - **Pay:** a multiple, set per road, of what the same load pays at the base rate over a 5 km job: Death Road and Carhuaz 8 times, Zoji La 4 times, Sani Pass 3 times (Rowan, 27 Oct). No town need, shortage, jackpot or road bonus.
 - **Least distance driven:** normally 70% of the straight line from start to finish. Carhuaz's finish is only about 50 m from its start as the crow flies (hairpins stacked up the slope, and the 100 m finish circle covers the start), so its section sets `driveKm = 1.5`: the load delivers only after 1.5 km driven.
 - **Relocation:** taking it costs a flat $200, and Earth is asked to teleport the car to the start (or the player pastes the start coordinates from the Route tab). A teleport landing within 1 km of the start starts the contract and does not lose the load; driving distance counts from there. Any other teleport cancels it as on any job. Abandoning before the start pays the $200 back; the $1,000 abandon fee still applies.
-- **GPS:** set to the finish when the contract starts (and when the start page's test teleport lands at a start). The Route tab's arrow shows the way too.
+- **GPS:** set to the finish when the contract starts. The Route tab's arrow shows the way too.
 - **Delivering:** stopped within 100 m of the finish, once 70% of the straight line from the start has been driven, from the Route tab as for an off-road drop.
 - **Insurance:** a claim on a contract costs $4,000 instead of $1,000, and as on any job the contract and its cargo are lost.
 - **Saves:** the load keeps the section id, whether it has started and the fee paid. Older saves load unchanged.

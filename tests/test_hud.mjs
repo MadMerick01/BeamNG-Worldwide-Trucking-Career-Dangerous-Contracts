@@ -44,7 +44,7 @@ test('app mounts and resynchronizes', () => {
 test('buttons only send fixed commands when Lua enabled them', () => {
   const a = app()
   const buttons = {
-    save: ['saveAllowed', 'save()'], addTestMoney: ['testMoneyAllowed', 'addTestMoney()'],
+    save: ['saveAllowed', 'save()'],
     requestRepairQuote: ['repairQuoteAllowed', 'requestRepairQuote()'], repairVehicle: ['repairAllowed', 'repairVehicle()'],
     buyParts: ['buyPartsAllowed', 'buyParts()'], revertParts: ['revertPartsAllowed', 'revertParts()'],
     buyCar: ['buyCarAllowed', 'buyCar()'], revertCar: ['revertCarAllowed', 'revertCar()'],
@@ -204,7 +204,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
   }
   for (const id of ['route', 'town', 'garage', 'relocate']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
   for (const action of ['cancelPay(); buyParts()', 'revertParts()', 'cancelPay(); buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
-    'newGame()', 'cancelNewGame()', 'addTestMoney()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()', 'teleportToResume()']) {
+    'newGame()', 'cancelNewGame()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()', 'teleportToResume()']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
   }
   assert.ok(html.includes('GeoNames'), 'GeoNames credit')
@@ -222,7 +222,8 @@ test('the Tips tab is gone and shipping has its own Relocate tab', () => {
   assert.equal(a.scope.tabAlert('relocate'), true, 'a booking marks the Relocate tab')
   assert.equal(a.scope.tabAlert('garage'), false, 'and not the Garage tab')
   const start = html.slice(0, html.indexOf('role="tabpanel"'))
-  assert.ok(start.includes('ng-click="addTestMoney()"') && start.includes('GeoNames'), 'test money and credit on the start page')
+  assert.ok(start.includes('GeoNames'), 'credit on the start page')
+  for (const gone of ['addTestMoney', 'test money', 'testContracts', 'testTeleport']) assert.ok(!html.includes(gone), gone + ' is gone')
 })
 test('the start page opens once on a new game, and again after the next new game', () => {
   const a = app()
@@ -414,25 +415,6 @@ test('a dangerous contract shows on the board and teleports to its start only wh
   assert.equal(a.commands.at(-1), fixed('teleportToContract()'))
   assert.equal(a.scope.coordinates(contract.start), '-16.28700000, -67.81500000')
 })
-test('the start page lists every contract road with Start and Finish buttons, sent only when Lua allows it', () => {
-  assert.doesNotMatch(html, /<select/, 'no select box: BeamNG does not open its list')
-  assert.match(html, /ng-repeat="t in data.testContracts"/)
-  assert.match(html, /Start \{\{coordinates\(t.start\)\}\}/, 'each road shows its start')
-  assert.match(html, /Finish \{\{coordinates\(t.finish\)\}\}/, 'and its finish')
-  assert.match(html, /ng-click="testTeleport\(t.id, 'start'\)"/)
-  assert.match(html, /ng-click="testTeleport\(t.id, 'finish'\)"/)
-  const a = app()
-  const testContracts = [{ id: 'death_road', name: 'Death Road' }, { id: 'sani_pass', name: 'Sani Pass' }]
-  a.state({ state: 'READY', testContracts })
-  let count = a.commands.length
-  a.scope.testTeleport('death_road', 'start')
-  assert.equal(a.commands.length, count, 'refused when not allowed')
-  a.state({ state: 'READY', testContracts, testTeleportAllowed: true })
-  a.scope.testTeleport('death_road', 'start')
-  assert.equal(a.commands.at(-1), fixed("testTeleport('death_road', 'start')"))
-  a.scope.testTeleport('sani_pass', 'finish')
-  assert.equal(a.commands.at(-1), fixed("testTeleport('sani_pass', 'finish')"), 'any road')
-  count = a.commands.length
-  a.scope.testTeleport('sani_pass', 'middle'); a.scope.testTeleport("x') os.exit() --", 'start')
-  assert.equal(a.commands.length, count, 'odd input refused')
+test('the HUD has no select box: BeamNG does not open its list', () => {
+  assert.doesNotMatch(html, /<select/)
 })

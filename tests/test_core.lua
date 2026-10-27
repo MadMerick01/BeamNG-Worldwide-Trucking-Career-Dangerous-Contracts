@@ -330,7 +330,7 @@ do
   g.damage = 2000; c:tick(0.1); g.damage = 0; c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
   T.eq(c.owedDamage, 6000, 'a reload is not a free repair')
   -- So does undoing part changes in the parts menu.
-  c:abandonJob(); c:addTestMoney()
+  c:abandonJob(); c:addMoney(10000)
   g.damage = 1000; c:tick(0.1); g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
   T.eq(c.pendingParts.damage, 7000, 'the bill holds the repair')
   g.damage = 500; c:tick(0.1); c:vehicleReset(1); g.damage = 0; c:tick(0.1)
@@ -468,7 +468,7 @@ end
 -- New game: asks once, then starts over in Penrith with the starting money.
 do
   local c, io = F.controller()
-  c:tick(0.1); c:addTestMoney(); T.check(c:manualSave(), 'saved')
+  c:tick(0.1); c:addMoney(10000); T.check(c:manualSave(), 'saved')
   T.check(not c:cancelNewGame(), 'nothing to cancel yet')
   T.check(not c:newGame(), 'asks first'); T.eq(c:view().newGameArmed, true, 'asking')
   T.check(c:cancelNewGame(), 'Keep my game'); T.eq(c:view().newGameArmed, false, 'no longer asking')
@@ -487,7 +487,7 @@ do
   local c, io, a, g = F.controller()
   g.starter = { engine = 'burnside_engine_i6' }
   a.pose = F.copy(F.PENRITH); c:tick(0.1); c:vehicleSpawned(); c:tick(0.1)
-  c:addTestMoney(); g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
+  c:addMoney(10000); g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
   T.check(c:buyParts(), 'turbo paid for'); c:tick(0.1); T.eq(c.ownedParts.parts.turbo, 'pickup_turbo', 'turbo owned')
   T.check(c:manualSave(), 'saved'); c:newGame(); T.check(c:newGame(), 'new game')
   c:tick(0.1)
@@ -879,27 +879,6 @@ do
   local job = jobs.contractJob(penrith, 0)
   job.good, job.contract = 'parts', 'sani_pass'
   T.eq(jobs.quote(job, 10, {}, 0).pay, math.floor(jobs.basePay(goods.get('parts'), 10, 5) * 3 / 10 + 0.5) * 10, 'a Sani Pass job pays 3 times')
-end
-
--- Testing aid: the start page teleports to each contract road's start or finish, losing nothing.
-do
-  local c, io, a = F.controller()
-  c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  T.eq(#c:view().testContracts, #contracts.LIST, 'every road is listed'); T.check(c:view().testTeleportAllowed, 'allowed')
-  T.near(c:view().testContracts[1].start.latitude, contracts.LIST[1].start.latitude, 1e-12, 'with its start')
-  T.near(c:view().testContracts[1].finish.longitude, contracts.LIST[1].finish.longitude, 1e-12, 'and its finish')
-  T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a job on board')
-  local section = contracts.LIST[1]
-  T.check(not c:testTeleport('nowhere', 'start'), 'an unknown road is refused'); T.check(not c:testTeleport(section.id, 'middle'), 'so is an odd end')
-  T.check(c:testTeleport(section.id, 'finish'), 'teleported'); T.near(a.teleports[#a.teleports].latitude, section.finish.latitude, 1e-12, 'to the finish')
-  a.pose = F.copy(section.finish); c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  T.check(c.load ~= nil, 'the job is kept'); T.eq(c.stranded, nil, 'not stranded')
-  T.check(c:testTeleport(section.id, 'start'), 'and to the start'); T.near(a.teleports[#a.teleports].latitude, section.start.latitude, 1e-12, 'there')
-  a.pose = F.copy(section.start); c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  T.near(a.gps[#a.gps].latitude, section.finish.latitude, 1e-12, 'landing at the start sets the GPS to the finish')
-  T.check(c:view().testFeedback:find('GPS', 1, true), 'and says so'); T.check(c.load ~= nil, 'the job is still kept')
-  local n = F.controller(); n:tick(0.1); n.adapter.teleport = nil
-  T.check(not n:testTeleport(section.id, 'start'), 'not without Earth\'s teleport')
 end
 
 T.done('Earth Freight controller')

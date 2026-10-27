@@ -225,13 +225,6 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
       }
       scope.cancelShipping = function () { if (scope.data.shipping && scope.data.shipping.booking) core('cancelShipping()') }
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
-      scope.addTestMoney = function () { if (scope.data.testMoneyAllowed) core('addTestMoney()') }
-      // Testing aid: teleports to a dangerous contract road's start or finish. A row of buttons per
-      // road, as BeamNG's UI does not open a select box's list.
-      scope.testTeleport = function (id, which) {
-        if (!scope.data.testTeleportAllowed || !plainId(id) || (which !== 'start' && which !== 'finish')) return
-        core("testTeleport('" + id + "', '" + which + "')")
-      }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
       // Paying for a bill takes two presses: the first asks to confirm that total, and a changed
