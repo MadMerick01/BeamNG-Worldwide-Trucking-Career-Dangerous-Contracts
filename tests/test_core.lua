@@ -876,6 +876,12 @@ end
 do
   T.eq(contracts.get('death_road').pay, 8, 'Death Road pays 8 times'); T.eq(contracts.get('zoji_la').pay, 4, 'Zoji La 4 times')
   T.eq(contracts.get('sani_pass').pay, 3, 'Sani Pass 3 times')
+  T.eq(contracts.get('grimsel_pass').pay, 2.5, 'Grimsel Pass 2.5 times')
+  local start, finish = contracts.get('grimsel_pass').start, contracts.get('grimsel_pass').finish
+  T.check(location.distance(start, finish) > contracts.FINISH_RADIUS, 'its start is outside the finish circle')
+  local grimsel = jobs.contractJob(penrith, 0)
+  grimsel.good, grimsel.contract = 'parts', 'grimsel_pass'
+  T.eq(jobs.quote(grimsel, 10, {}, 0).pay, math.floor(jobs.basePay(goods.get('parts'), 10, 5) * 2.5 / 10 + 0.5) * 10, 'a Grimsel Pass job pays 2.5 times')
   local job = jobs.contractJob(penrith, 0)
   job.good, job.contract = 'parts', 'sani_pass'
   T.eq(jobs.quote(job, 10, {}, 0).pay, math.floor(jobs.basePay(goods.get('parts'), 10, 5) * 3 / 10 + 0.5) * 10, 'a Sani Pass job pays 3 times')
