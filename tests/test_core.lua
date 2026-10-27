@@ -780,6 +780,17 @@ do
   local pay = c.load.pay
   T.check(c:deliver(), 'delivered'); T.eq(c:view().balance, 10000 - contracts.FEE + pay, 'paid in full')
   T.check(c:view().flash.text:find(section.name, 1, true), 'over the section')
+  -- A delivered road is not offered again in this game, even after a save and reload.
+  T.eq(c.profile.progression.contractsDone[1], section.id, 'the road is marked done')
+  c.board = nil
+  for seed = 0, 20 do
+    local last = jobs.board(penrith, seed, {}, 0, c.profile.progression.contractsDone)
+    last = last[#last]
+    T.check(last.contract ~= section.id, 'not on the board again (seed ' .. seed .. ')')
+  end
+  T.check(c:manualSave(), 'saved'); T.eq(io.files[B].progression.contractsDone[1], section.id, 'kept in the save')
+  local r2 = F.controller({ io = io })
+  T.eq(r2.profile.progression.contractsDone[1], section.id, 'and after a reload')
   -- A lift to the finish does not deliver.
   local d, da = F.controller()
   d:tick(0.1); d:tick(0.6); d:tick(0.6)
@@ -818,6 +829,25 @@ do
   c.profile.progression.balance = 100
   T.check(not c:view().town.jobs[#c:view().town.jobs].allowed, 'the contract needs the relocation fee')
   T.check(not c:takeJob(job.id), 'refused'); T.check(c:view().tradeFeedback:find('relocation'), 'told why')
+end
+
+-- With every road delivered, boards carry no dangerous contract; a new game offers them all again.
+do
+  local done = {}
+  for _, sec in ipairs(contracts.LIST) do done[#done + 1] = sec.id end
+  local board = jobs.board(penrith, 0, {}, 0, done)
+  T.check(board[#board].contract == nil and board[#board].drop ~= nil, 'the board ends with the drop')
+  local keep = { contracts.LIST[1].id, contracts.LIST[2].id }
+  for seed = 0, 10 do
+    local b = jobs.board(penrith, seed, {}, 0, keep)
+    T.eq(b[#b].contract, contracts.LIST[3].id, 'only the road left is offered')
+  end
+  local c, io = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.contractsDone = done; T.check(c:manualSave(), 'saved with every road done')
+  local n = F.controller({ io = io }); n:tick(0.1); n:tick(0.6); n:tick(0.6)
+  n:newGame(); T.check(n:newGame(), 'a new game')
+  T.eq(n.profile.progression.contractsDone, nil, 'starts with no roads done')
 end
 
 -- Each checked road pays its own multiple: Death Road 8, Zoji La 4, Sani Pass 3.

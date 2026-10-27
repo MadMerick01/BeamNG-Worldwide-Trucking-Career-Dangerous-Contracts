@@ -39,10 +39,15 @@ function M.get(id) return byId[id] end
 
 -- The section a town's board offers for a seed (the controller's count of jobs done), from a number
 -- in [0, 1) fixed for the town: neighbouring towns land on different sections, and each job done
--- moves every board on to the next one.
-function M.pick(h, seed)
-  local turn = math.floor(h * #M.LIST) + (tonumber(seed) or 0)
-  return M.LIST[turn % #M.LIST + 1]
+-- moves every board on to the next one. Sections already delivered (done, a list of ids) are not
+-- offered again; with all of them done there is none.
+function M.pick(h, seed, done)
+  local left, skip = {}, {}
+  for _, id in ipairs(done or {}) do skip[id] = true end
+  for _, s in ipairs(M.LIST) do if not skip[s.id] then left[#left + 1] = s end end
+  if #left == 0 then return nil end
+  local turn = math.floor(h * #left) + (tonumber(seed) or 0)
+  return left[turn % #left + 1]
 end
 
 -- Whether a point is at a section's start.

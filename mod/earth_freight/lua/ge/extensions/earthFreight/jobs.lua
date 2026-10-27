@@ -244,7 +244,7 @@ end
 -- controller's count of jobs done), so it changes after every delivery or abandoned job. A good
 -- short in a town close by goes there; otherwise each job goes to a town in its distance band. At
 -- least one job is decent: if none pays its base rate, the best one is raised to it.
-function M.board(from, seed, needs, now)
+function M.board(from, seed, needs, now, contractsDone)
   local list = M.destinations(from)
   local wanted = M.boardGoods(from)
   if #list == 0 or #wanted == 0 then return {} end
@@ -270,15 +270,17 @@ function M.board(from, seed, needs, now)
   end
   if bestFactor < 1 then best.decent = true end
   out[#out + 1] = M.dropJob(from, seed)
-  out[#out + 1] = M.contractJob(from, seed)
+  out[#out + 1] = M.contractJob(from, seed, contractsDone)
   return out
 end
 
 -- A board's dangerous contract: parts or bricks over a treacherous section far from town. It is
 -- taken here, then the player is relocated to its start and delivers at its finish, like a drop.
-function M.contractJob(from, seed)
+-- None once every section is in contractsDone.
+function M.contractJob(from, seed, contractsDone)
   seed = tostring(seed or 0)
-  local section = contracts.pick(hash01(from.id .. ':contract'), seed)
+  local section = contracts.pick(hash01(from.id .. ':contract'), seed, contractsDone)
+  if not section then return nil end
   local carried = goods.ofKind('parcel')
   local good = carried[math.floor(hash01(from.id .. ':' .. seed .. ':contract:good') * #carried) + 1]
   return { id = 'contract_' .. good.id .. '_' .. section.id, good = good.id, from = from.id, to = from.id,

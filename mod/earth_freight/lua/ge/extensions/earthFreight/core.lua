@@ -603,7 +603,8 @@ function M.new(deps)
 
   -- The job board of a place: its jobs, seeded by how many jobs the player has done.
   function c:board(place)
-    return jobs.board(place, self.profile and self.profile.progression.jobsDone or 0, self.needs, self.now())
+    local progression = self.profile and self.profile.progression
+    return jobs.board(place, progression and progression.jobsDone or 0, self.needs, self.now(), progression and progression.contractsDone)
   end
 
   -- What a job on the board pays the player's car now: how many units of its good fit, and the pay.
@@ -763,6 +764,14 @@ function M.new(deps)
     end
     local load, good = self.load, goods.get(self.load.good)
     self:addMoney(load.pay)
+    -- A delivered dangerous contract's road is not offered again in this game.
+    if load.contract then
+      local progression = self.profile.progression
+      progression.contractsDone = progression.contractsDone or {}
+      local listed = false
+      for _, id in ipairs(progression.contractsDone) do listed = listed or id == load.contract end
+      if not listed then table.insert(progression.contractsDone, load.contract) end
+    end
     self:finishJob()
     local refund = ''
     if self.offer and shipping.offerPays(load.drop, self.offer) then
@@ -1269,7 +1278,7 @@ function M.new(deps)
     local saved, why = self:record({
       base = self.profile.base, resume = location.copy(fresh),
       progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm,
-        jobsDone = progression.jobsDone },
+        jobsDone = progression.jobsDone, contractsDone = copy(progression.contractsDone) },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
