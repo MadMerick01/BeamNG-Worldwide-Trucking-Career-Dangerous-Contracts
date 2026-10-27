@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 58 · 27 Oct 2026
+
 - **New dangerous contract: Carhuaz, Peru.** A steep, tight climb of never-ending hairpins in the Cordillera Blanca, paying 8 times the base rate. The finish sits almost straight above the start, so the load only delivers once you have driven at least 1.5 km of the climb. Your saves still work.
 - **The testing tools are gone from the start page.** The +$10,000 test money button and the dangerous contract road list with its Start and Finish teleport buttons have been removed, now that every road has been checked. Money you already added stays in your saves, and your saves still work.
 
