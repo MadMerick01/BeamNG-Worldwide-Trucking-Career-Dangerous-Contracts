@@ -242,7 +242,11 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
         call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
           "elseif guihooks then guihooks.trigger('ChangeState', {state = 'menu.vehicleconfig.parts'}) end")
       }
-      scope.openCarMenu = function () { call("if guihooks then guihooks.trigger('ChangeState', {state = 'menu.vehicles'}) end") }
+      // Runs the game's own Ctrl+E action: changing the UI state to the old menu.vehicles route hides
+      // the whole UI in this game version instead of opening the car selector.
+      scope.openCarMenu = function () {
+        call("if core_input_actions and core_input_actions.triggerDownUp then core_input_actions.triggerDownUp('vehicle_selector') end")
+      }
       // The first press asks Lua to confirm; the second wipes the save.
       scope.newGame = function () { if (scope.data.newGameAllowed) core('newGame()') }
       scope.cancelNewGame = function () { if (scope.data && scope.data.newGameArmed) core('cancelNewGame()') }

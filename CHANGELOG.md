@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Buy new car button on the Garage tab now opens the car selector.** Before, it hid the whole game screen, including the map and compass. It now does exactly what Ctrl+E does. Your saves still work.
+
 ## Build 58 · 27 Oct 2026
 
 - **New dangerous contract: Carhuaz, Peru.** A steep, tight climb of never-ending hairpins in the Cordillera Blanca, paying 8 times the base rate. The finish sits almost straight above the start, so the load only delivers once you have driven at least 1.5 km of the climb. Your saves still work.
