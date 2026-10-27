@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 61 · 27 Oct 2026
+
 - **You can now see the parts bill while you're still in the parts menu.** Each time you change a part with Ctrl+W, a pop-up in the corner shows the bill so far, split into parts and repair, and says how much you're short if you can't afford it. Undoing every change in the parts menu pops up "Nothing to pay". You still pay or undo on the Garage tab as before. Your saves still work.
 
 ## Build 60 · 27 Oct 2026
