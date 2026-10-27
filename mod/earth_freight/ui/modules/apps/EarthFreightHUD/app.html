@@ -68,18 +68,7 @@
         </div>
       </div>
       <div style="margin-top:12px;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
-        <button type="button" ng-click="addTestMoney()" ng-disabled="!data.testMoneyAllowed" style="padding:3px 8px;font-size:12px;">+$10,000 test money</button>
-        <div style="margin-top:8px;font-size:12px;">
-          <div style="font-weight:bold;color:#7d8b88;">Test: dangerous contract roads</div>
-          <div style="font-size:12px;color:#7d8b88;">Teleport to the start sets the GPS to the finish.</div>
-          <div ng-repeat="t in data.testContracts" style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(86,141,122,.3);">
-            <div style="flex:1;min-width:0;">{{t.name}}<div style="font-size:11px;color:#7d8b88;user-select:text;">Start {{coordinates(t.start)}}<br>Finish {{coordinates(t.finish)}}</div></div>
-            <button type="button" ng-click="testTeleport(t.id, 'start')" ng-disabled="!data.testTeleportAllowed" aria-label="Teleport to the start of {{t.name}}" style="padding:3px 8px;font-size:12px;">Start</button>
-            <button type="button" ng-click="testTeleport(t.id, 'finish')" ng-disabled="!data.testTeleportAllowed" aria-label="Teleport to the finish of {{t.name}}" style="padding:3px 8px;font-size:12px;">Finish</button>
-          </div>
-          <div ng-if="data.testFeedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.testFeedback}}</div>
-        </div>
-        <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Place data &copy; GeoNames (geonames.org), CC BY 4.0. Elevation: Mapzen terrain tiles (SRTM and others).</div>
+        <div style="font-size:12px;color:#7d8b88;">Place data &copy; GeoNames (geonames.org), CC BY 4.0. Elevation: Mapzen terrain tiles (SRTM and others).</div>
       </div>
     </div>
     <div ng-if="!intro.open">

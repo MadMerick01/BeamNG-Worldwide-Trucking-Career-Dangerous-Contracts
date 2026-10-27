@@ -19,9 +19,8 @@ local workshop = require('earthFreight/workshop')
 local shipping = require('earthFreight/shipping')
 local contracts = require('earthFreight/contracts')
 local M = {}
--- Money a new game starts with, and the amount the HUD test button adds.
+-- Money a new game starts with.
 local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and some fuel
-local TEST_MONEY = 10000
 local MAX_BALANCE = 9007199254740991
 M.STARTING_MONEY = STARTING_MONEY
 M.STARTER_MODEL, M.STARTER_CONFIG = workshop.STARTER_MODEL, workshop.STARTER_CONFIG
@@ -35,11 +34,6 @@ local TELEPORT_WAIT_SECONDS = 30
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
 local PUNCTURE_DAMAGE = punctures.TYRE_REPAIR_COST / pricing.REPAIR_COST_PER_DAMAGE
 local dollars = pricing.dollars
--- The dangerous contracts the start page's test picker lists.
-local testContracts = {}
-for _, s in ipairs(contracts.LIST) do
-  testContracts[#testContracts + 1] = { id = s.id, name = s.name, start = location.copy(s.start), finish = location.copy(s.finish) }
-end
 
 local labels = {
   CONFIG_REQUIRED = 'BASE CONFIGURATION REQUIRED', EARTH_UNAVAILABLE = 'EARTH UNAVAILABLE',
@@ -392,12 +386,6 @@ function M.new(deps)
       self.diag:event('contract_started', section.id)
       return
     end
-    -- A test teleport (from the start page) loses nothing and strands no one.
-    if self.testTeleportUntil and self.clock <= self.testTeleportUntil then
-      self.testTeleportUntil = nil
-      self.diag:event('test_teleported', coordinates(to))
-      return
-    end
     local lost = ''
     if self.load then
       local fee = self:dropJob('teleport')
@@ -695,15 +683,6 @@ function M.new(deps)
     return ok == true
   end
 
-  -- After a test teleport to a start: once the car is there, the GPS is set to the finish.
-  function c:watchTestGps()
-    local section, sample = self.testGpsFor, self.lastSample
-    if not section or not sample or not sample.valid or not contracts.atStart(sample, section) then return end
-    self.testGpsFor = nil
-    self.testFeedback = 'At the start of ' .. section.name
-      .. (self:gpsToFinish(section) and '. The GPS is set to the finish.' or '. The GPS could not be set.')
-  end
-
   -- Asks Earth to take the car to the start of the dangerous contract on board.
   function c:teleportToContract()
     local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
@@ -747,6 +726,7 @@ function M.new(deps)
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     local needed = jobs.drivenNeeded(section and section.start or places.get(load.from), load.drop)
+    if section and section.driveKm then needed = math.max(needed, section.driveKm * 1000) end
     if load.drivenKm * 1000 < needed then
       return 'Drive it here: you have driven ' .. string.format('%.1f', load.drivenKm) .. ' km of the '
         .. string.format('%.1f', needed / 1000) .. ' km this job needs.'
@@ -937,7 +917,6 @@ function M.new(deps)
     self:afterRespawn()
     self:watchFuel()
     self:watchInsurance()
-    self:watchTestGps()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
       self.refuelPending, self.fuelFeedback = nil, 'Refuelling did not go through. You have not been charged.'
@@ -1183,9 +1162,6 @@ function M.new(deps)
       tradeFeedback = self.tradeFeedback,
       fuelFeedback = self.fuelFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
-      testMoneyAllowed = active,
-      testTeleportAllowed = self.profile ~= nil and not self.error and self.state == 'READY' and self.adapter.teleport ~= nil,
-      testContracts = testContracts, testFeedback = self.testFeedback,
       repairQuoteAllowed = active and self.garage ~= nil,
       repairQuote = quote and quote.cost or nil,
       repairOwed = self.owedDamage > 0 and pricing.repairCost(self.owedDamage, self:carValueOf(self.ownedParts and self.ownedParts.id)) or nil,
@@ -1335,39 +1311,6 @@ function M.new(deps)
     return true
   end
 
-  -- Testing aid: adds money to the in-memory balance. Like earnings, it is kept by Save.
-  function c:addTestMoney()
-    if not self.profile or self.error then
-      self.diag:event('test_money_rejected', tostring(self.state), 'W')
-      return false
-    end
-    self:addMoney(TEST_MONEY)
-    self.diag:event('test_money_added', tostring(TEST_MONEY))
-    return true
-  end
-
-  -- Testing aid: teleports to a dangerous contract's start or finish (which is 'start' or
-  -- 'finish'), so each one can be checked in game. Like test money, it is not part of the game: the
-  -- jump loses no job and strands no one.
-  function c:testTeleport(contractId, which)
-    local section = contracts.get(contractId)
-    if not section or (which ~= 'start' and which ~= 'finish') or not self.profile or self.error
-        or self.state ~= 'READY' or not self.adapter.teleport then
-      self.testFeedback = 'Test teleport is not available right now.'
-      return false
-    end
-    local ok, why = self.adapter:teleport(section[which], 'Earth Freight test: ' .. section.name .. ' ' .. which)
-    self.diag:event('test_teleport', section.id .. ':' .. which .. (ok and '' or (':' .. tostring(why))), ok and 'I' or 'W')
-    if not ok then
-      self.testFeedback = 'BeamNG.Earth did not take the teleport.'
-      return false
-    end
-    self.testTeleportUntil = self.clock + TELEPORT_WAIT_SECONDS
-    self.testGpsFor = which == 'start' and section or nil
-    self.testFeedback = 'Test teleport to the ' .. which .. ' of ' .. section.name .. '.'
-    return true
-  end
-
   function c:mount(on)
     if self.ui:mount(on, self.clock) then
       self.diag:clear('ui_initialised'); self.diag:event('ui_initialised', 'Earth Freight HUD')
@@ -1436,7 +1379,6 @@ function M.onPreRender(dtReal)
   return safely(function() ensure():tick(dtReal) end)
 end
 function M.save() return safely(function() return ensure():manualSave() end) end
-function M.addTestMoney() return safely(function() return ensure():addTestMoney() end) end
 function M.requestRepairQuote() return safely(function() return ensure():requestRepairQuote() end) end
 function M.repairVehicle() return safely(function() return ensure():repairVehicle() end) end
 function M.buyParts() return safely(function() return ensure():buyParts() end) end
@@ -1447,11 +1389,6 @@ function M.newGame() return safely(function() return ensure():newGame() end) end
 function M.cancelNewGame() return safely(function() return ensure():cancelNewGame() end) end
 function M.teleportToResume() return safely(function() return ensure():teleportToResume() end) end
 function M.teleportToContract() return safely(function() return ensure():teleportToContract() end) end
--- which is 'start' or 'finish'.
-function M.testTeleport(contract, which)
-  if which ~= 'start' and which ~= 'finish' then return false end
-  return safely(function() return ensure():testTeleport(id(contract), which) end)
-end
 -- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
 -- share is the slider's percentage of a full load: 10 to 100 in steps of 10; anything else takes it all.
 function M.takeJob(job, share)
