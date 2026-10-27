@@ -417,6 +417,8 @@ test('a dangerous contract shows on the board and teleports to its start only wh
 test('the start page lists every contract road with Start and Finish buttons, sent only when Lua allows it', () => {
   assert.doesNotMatch(html, /<select/, 'no select box: BeamNG does not open its list')
   assert.match(html, /ng-repeat="t in data.testContracts"/)
+  assert.match(html, /Start \{\{coordinates\(t.start\)\}\}/, 'each road shows its start')
+  assert.match(html, /Finish \{\{coordinates\(t.finish\)\}\}/, 'and its finish')
   assert.match(html, /ng-click="testTeleport\(t.id, 'start'\)"/)
   assert.match(html, /ng-click="testTeleport\(t.id, 'finish'\)"/)
   const a = app()

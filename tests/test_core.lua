@@ -825,6 +825,8 @@ do
   local c, io, a = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.eq(#c:view().testContracts, #contracts.LIST, 'every road is listed'); T.check(c:view().testTeleportAllowed, 'allowed')
+  T.near(c:view().testContracts[1].start.latitude, contracts.LIST[1].start.latitude, 1e-12, 'with its start')
+  T.near(c:view().testContracts[1].finish.longitude, contracts.LIST[1].finish.longitude, 1e-12, 'and its finish')
   T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a job on board')
   local section = contracts.LIST[1]
   T.check(not c:testTeleport('nowhere', 'start'), 'an unknown road is refused'); T.check(not c:testTeleport(section.id, 'middle'), 'so is an odd end')

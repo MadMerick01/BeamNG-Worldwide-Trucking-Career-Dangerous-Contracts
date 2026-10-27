@@ -17,10 +17,10 @@ M.FINISH_RADIUS = 100
 -- Arriving within this many metres of the start (by the teleport) starts the contract.
 M.START_RADIUS = 1000
 
--- The sections: the most dramatic ~2 km of each treacherous Enduro stage. Coordinates are
--- estimates, not yet checked in game, except Death Road's, Sani Pass's and Zoji La's. km is the road length,
--- shown on the board. Left out after checking in game: Fairy Meadows Road (no dangerous 2 km found)
--- Skippers Canyon (not dangerous enough) and Atigun Pass.
+-- The sections: the most dramatic ~2 km of a treacherous Enduro stage, with start and finish
+-- checked in game. km is the road length, shown on the board. Only checked roads are offered: left
+-- out for now are Fairy Meadows Road (no dangerous 2 km found), Skippers Canyon (not dangerous
+-- enough), Atigun Pass and Transfăgărășan (not checked).
 M.LIST = {
   { id = 'death_road', name = 'Death Road', region = 'North Yungas Road, Bolivia', km = 2,
     summary = 'One-lane cliff shelf below Chuspipata, with drops of 400 m and waterfalls over the road.',
@@ -28,9 +28,6 @@ M.LIST = {
   { id = 'sani_pass', name = 'Sani Pass', region = 'South Africa and Lesotho', km = 2,
     summary = 'The last stack of loose, steep hairpins up to Sani Top.',
     start = { latitude = -29.589268, longitude = 29.294417 }, finish = { latitude = -29.584964, longitude = 29.287562 } },
-  { id = 'transfagarasan', name = 'Transfăgărășan', region = 'Făgăraș Mountains, Romania', km = 2,
-    summary = 'The hairpin ladder up to the glacial lake at Bâlea Lac.',
-    start = { latitude = 45.6150, longitude = 24.6110 }, finish = { latitude = 45.6033, longitude = 24.6172 } },
   { id = 'zoji_la', name = 'Zoji La', region = 'Kashmir and Ladakh, India', km = 2,
     summary = 'Muddy one-lane ledge climbing out of Baltal over the Sind valley.',
     start = { latitude = 34.261686, longitude = 75.423010 }, finish = { latitude = 34.261200, longitude = 75.442761 } },

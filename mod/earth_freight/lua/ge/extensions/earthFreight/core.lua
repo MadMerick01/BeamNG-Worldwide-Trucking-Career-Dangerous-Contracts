@@ -37,7 +37,9 @@ local PUNCTURE_DAMAGE = punctures.TYRE_REPAIR_COST / pricing.REPAIR_COST_PER_DAM
 local dollars = pricing.dollars
 -- The dangerous contracts the start page's test picker lists.
 local testContracts = {}
-for _, s in ipairs(contracts.LIST) do testContracts[#testContracts + 1] = { id = s.id, name = s.name } end
+for _, s in ipairs(contracts.LIST) do
+  testContracts[#testContracts + 1] = { id = s.id, name = s.name, start = location.copy(s.start), finish = location.copy(s.finish) }
+end
 
 local labels = {
   CONFIG_REQUIRED = 'BASE CONFIGURATION REQUIRED', EARTH_UNAVAILABLE = 'EARTH UNAVAILABLE',
