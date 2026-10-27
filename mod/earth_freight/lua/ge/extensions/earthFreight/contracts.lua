@@ -18,14 +18,12 @@ M.FINISH_RADIUS = 100
 M.START_RADIUS = 1000
 
 -- The sections: the most dramatic ~2 km of each treacherous Enduro stage. Coordinates are
--- estimates, not yet checked in game. km is the road length, shown on the board.
+-- estimates, not yet checked in game, except Death Road's. km is the road length, shown on the
+-- board. Fairy Meadows Road is left out until a dangerous 2 km of it is found in game.
 M.LIST = {
   { id = 'death_road', name = 'Death Road', region = 'North Yungas Road, Bolivia', km = 2,
     summary = 'One-lane cliff shelf below Chuspipata, with drops of 400 m and waterfalls over the road.',
     start = { latitude = -16.2900, longitude = -67.8100 }, finish = { latitude = -16.276316, longitude = -67.794078 } },
-  { id = 'fairy_meadows', name = 'Fairy Meadows Road', region = 'Gilgit-Baltistan, Pakistan', km = 2,
-    summary = 'Gravel shelf cut into the cliff above the Indus, with no guardrails.',
-    start = { latitude = 35.4926, longitude = 74.5918 }, finish = { latitude = 35.4800, longitude = 74.5940 } },
   { id = 'sani_pass', name = 'Sani Pass', region = 'South Africa and Lesotho', km = 2,
     summary = 'The last stack of loose, steep hairpins up to Sani Top.',
     start = { latitude = -29.5900, longitude = 29.2960 }, finish = { latitude = -29.5847, longitude = 29.2856 } },

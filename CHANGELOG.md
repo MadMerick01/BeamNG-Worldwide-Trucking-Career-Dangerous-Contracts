@@ -7,6 +7,7 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **The Death Road dangerous contract now starts and finishes on the road.** Its start and finish have been checked in game and moved to the right spots, so the teleport puts you on the track and the GPS leads to the real finish. A Death Road contract you already started keeps going. Your saves still work.
+- **Fairy Meadows Road is no longer a dangerous contract**, for now, so there are six roads. If you saved partway through a Fairy Meadows contract, that job is gone when you load. Your saves otherwise still work.
 
 ## Build 56 · 26 Oct 2026
 
