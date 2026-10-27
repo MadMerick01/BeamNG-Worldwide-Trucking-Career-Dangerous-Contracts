@@ -14,7 +14,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 - **Dangerous highly paid contracts.** Death Road, Carhuaz, Zoji La, Sani Pass and Grimsel, for up to **8x the pay**.
 - **Dynamic economy** Towns want different goods, repeat runs pay less, shortages pay double.
 - Steep, remote and famous roads pay up to 3x. Regions are graded for difficulty. Cargo weighs the car down, fluids slosh in the tank, tyres puncture and repairs cost money.
-- **Relocate.** Pay to move to any town or coordinates on Earth. Some of the world's hardest regions will pay your way if you come and deliver.
+- **Relocate.** Pay to move to any town or coordinates on Earth. Some of the world's hardest regions will pay your way if you come and deliver their wares.
 
 ## Install
 
@@ -22,15 +22,15 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 2. Drop it, **still zipped**, into the `mods` folder of your BeamNG user folder. If an older `earth_freight.zip` is there, delete it. Your saves carry over.
 3. In game, turn on the **Earth Freight Sim** UI app.
 
-## Get going
+## How to Start
 
-1. Load the BeamNG.Earth Freeroam level, type your name and press **Teleport to Penrith**. You start with a rusty Burnside and $2,500.
+1. Load the BeamNG.Earth Freeroam level, type your name and press **Teleport to the suburb Penrith of Sydney, Australia**. You start with a rusty Burnside and $2,500.
 2. Fit a radiator first: **Buy parts** on the Garage tab. The starter car needs one.
 3. Stop in any town, open the **Town** tab, pick a job and press **Take job**. The GPS is set for you.
 4. Drive it there in one piece and press **Deliver**.
 5. Press **Save** often. Next time, **Teleport to last save** puts you right back.
 
-**Good to know:** insurance after a big crash costs $1,000 (the load is lost), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
+**insurance** after a big crash costs $1,000 (the load is lost), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
 
 ## What's new
 
