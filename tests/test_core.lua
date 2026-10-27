@@ -837,10 +837,11 @@ do
   for _, sec in ipairs(contracts.LIST) do done[#done + 1] = sec.id end
   local board = jobs.board(penrith, 0, {}, 0, done)
   T.check(board[#board].contract == nil and board[#board].drop ~= nil, 'the board ends with the drop')
-  local keep = { contracts.LIST[1].id, contracts.LIST[2].id }
+  local keep = {}
+  for i = 1, #contracts.LIST - 1 do keep[i] = contracts.LIST[i].id end
   for seed = 0, 10 do
     local b = jobs.board(penrith, seed, {}, 0, keep)
-    T.eq(b[#b].contract, contracts.LIST[3].id, 'only the road left is offered')
+    T.eq(b[#b].contract, contracts.LIST[#contracts.LIST].id, 'only the road left is offered')
   end
   local c, io = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
