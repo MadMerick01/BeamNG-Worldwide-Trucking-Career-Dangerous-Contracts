@@ -18,7 +18,7 @@ M.FINISH_RADIUS = 100
 M.START_RADIUS = 1000
 
 -- The sections: the most dramatic ~2 km of each treacherous Enduro stage. Coordinates are
--- estimates, not yet checked in game, except Death Road's and Sani Pass's. km is the road length,
+-- estimates, not yet checked in game, except Death Road's, Sani Pass's and Zoji La's. km is the road length,
 -- shown on the board. Left out after checking in game: Fairy Meadows Road (no dangerous 2 km found)
 -- Skippers Canyon (not dangerous enough) and Atigun Pass.
 M.LIST = {
@@ -33,7 +33,7 @@ M.LIST = {
     start = { latitude = 45.6150, longitude = 24.6110 }, finish = { latitude = 45.6033, longitude = 24.6172 } },
   { id = 'zoji_la', name = 'Zoji La', region = 'Kashmir and Ladakh, India', km = 2,
     summary = 'Muddy one-lane ledge climbing out of Baltal over the Sind valley.',
-    start = { latitude = 34.2620, longitude = 75.4250 }, finish = { latitude = 34.2700, longitude = 75.4400 } },
+    start = { latitude = 34.261686, longitude = 75.423010 }, finish = { latitude = 34.261200, longitude = 75.442761 } },
 }
 
 local byId = {}
