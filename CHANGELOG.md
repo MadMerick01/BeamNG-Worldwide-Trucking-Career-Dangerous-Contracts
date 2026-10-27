@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New dangerous contract: Grimsel Pass, Switzerland.** It runs from the lakes by the Grimsel Hospiz over the top of the pass and down the tight Alpine switchbacks to Gletsch, paying 2.5 times the base rate. Your saves still work.
+
 ## Build 59 · 27 Oct 2026
 
 - **The Buy new car button on the Garage tab now opens the car selector.** Before, it hid the whole game screen, including the map and compass. It now does exactly what Ctrl+E does. Your saves still work.

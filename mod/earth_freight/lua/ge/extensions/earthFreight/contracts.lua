@@ -35,6 +35,9 @@ M.LIST = {
   { id = 'carhuaz', name = 'Carhuaz', region = 'Cordillera Blanca, Ancash, Peru', km = 2, pay = 8, driveKm = 1.5,
     summary = 'Steep, tight hairpins stacked one above the other up the mountainside above Carhuaz, climbing on and on with no end in sight.',
     start = { latitude = -9.33159, longitude = -77.63108 }, finish = { latitude = -9.33145, longitude = -77.63152 } },
+  { id = 'grimsel_pass', name = 'Grimsel Pass', region = 'Obergoms, Switzerland', km = 8, pay = 2.5,
+    summary = 'Over the top from the Grimsel Hospiz lakes, then down the tight stack of Alpine switchbacks to Gletsch, with bare granite and long drops beside the road.',
+    start = { latitude = 46.579575, longitude = 8.334592 }, finish = { latitude = 46.561997, longitude = 8.361186 } },
 }
 
 local byId = {}
