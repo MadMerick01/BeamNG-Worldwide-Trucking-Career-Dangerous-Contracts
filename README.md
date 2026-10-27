@@ -8,12 +8,12 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 ## Features
 
-- **Dynamic economy, 130,000+ real towns, each with a job board.** Parts, bricks, water and fuel, wherever you are on Earth.
+- **130,000+ real towns, each with a job board.** Parts, bricks, water and fuel, wherever you are on Earth.
+- **Garage - Build your Rig.** Upgrade parts, buy and sell new and second hand vehicles. More freight per trip means more Pay.
 - **Off-road drops.** No GPS
-- **Dangerous contracts.** Death Road, Carhuaz, Zoji La, Sani Pass and Grimsel Pass, for up to **8x the pay**.
-- Towns want different goods, repeat runs pay less, shortages pay double and the odd jackpot pays up to triple.
+- **Dangerous highly paid contracts.** Death Road, Carhuaz, Zoji La, Sani Pass and Grimsel, for up to **8x the pay**.
+- **Dynamic economy** Towns want different goods, repeat runs pay less, shortages pay double.
 - Steep, remote and famous roads pay up to 3x. Regions are graded for difficulty. Cargo weighs the car down, fluids slosh in the tank, tyres puncture and repairs cost money.
-- **Build your rig.** Buy parts, bolt on bigger cargo boxes and tanks, or buy a whole new vehicle. Every upgrade means bigger loads and better pay.
 - **Relocate.** Pay to move to any town or coordinates on Earth. Some of the world's hardest regions will pay your way if you come and deliver.
 
 ## Install
