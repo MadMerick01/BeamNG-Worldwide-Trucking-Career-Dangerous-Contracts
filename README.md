@@ -1,6 +1,6 @@
 # Earth Freight Sim
 
-**Haul cargo anywhere on Earth. Start in a rust bucket. Finish in a semi.**
+**Haul cargo anywhere on Earth. Start in a rust bucket with no radiator or front brakes**
 
 A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive.
 
