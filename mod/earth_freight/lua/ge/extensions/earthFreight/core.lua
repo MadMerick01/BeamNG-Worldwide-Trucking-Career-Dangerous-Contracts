@@ -37,7 +37,9 @@ local PUNCTURE_DAMAGE = punctures.TYRE_REPAIR_COST / pricing.REPAIR_COST_PER_DAM
 local dollars = pricing.dollars
 -- The dangerous contracts the start page's test picker lists.
 local testContracts = {}
-for _, s in ipairs(contracts.LIST) do testContracts[#testContracts + 1] = { id = s.id, name = s.name } end
+for _, s in ipairs(contracts.LIST) do
+  testContracts[#testContracts + 1] = { id = s.id, name = s.name, start = location.copy(s.start), finish = location.copy(s.finish) }
+end
 
 local labels = {
   CONFIG_REQUIRED = 'BASE CONFIGURATION REQUIRED', EARTH_UNAVAILABLE = 'EARTH UNAVAILABLE',
@@ -601,7 +603,8 @@ function M.new(deps)
 
   -- The job board of a place: its jobs, seeded by how many jobs the player has done.
   function c:board(place)
-    return jobs.board(place, self.profile and self.profile.progression.jobsDone or 0, self.needs, self.now())
+    local progression = self.profile and self.profile.progression
+    return jobs.board(place, progression and progression.jobsDone or 0, self.needs, self.now(), progression and progression.contractsDone)
   end
 
   -- What a job on the board pays the player's car now: how many units of its good fit, and the pay.
@@ -761,6 +764,14 @@ function M.new(deps)
     end
     local load, good = self.load, goods.get(self.load.good)
     self:addMoney(load.pay)
+    -- A delivered dangerous contract's road is not offered again in this game.
+    if load.contract then
+      local progression = self.profile.progression
+      progression.contractsDone = progression.contractsDone or {}
+      local listed = false
+      for _, id in ipairs(progression.contractsDone) do listed = listed or id == load.contract end
+      if not listed then table.insert(progression.contractsDone, load.contract) end
+    end
     self:finishJob()
     local refund = ''
     if self.offer and shipping.offerPays(load.drop, self.offer) then
@@ -974,7 +985,7 @@ function M.new(deps)
         to = section and section.name or job.drop and 'Off-road drop' or to.name, toId = to.id,
         size = not job.drop and to.size or nil, drop = job.drop ~= nil and not section or nil,
         contract = section and { name = section.name, region = section.region, summary = section.summary,
-          fee = contracts.FEE, insurance = contracts.INSURANCE_FEE, pays = contracts.PAY } or nil,
+          fee = contracts.FEE, insurance = contracts.INSURANCE_FEE, pays = section.pay } or nil,
         direction = job.drop and not section and location.compassPoint(location.bearing(place, job.drop)) or nil,
         distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
         units = q.units, kg = q.kg, unitSlots = good.slots, unitKg = good.kg,
@@ -1267,7 +1278,7 @@ function M.new(deps)
     local saved, why = self:record({
       base = self.profile.base, resume = location.copy(fresh),
       progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm,
-        jobsDone = progression.jobsDone },
+        jobsDone = progression.jobsDone, contractsDone = copy(progression.contractsDone) },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),

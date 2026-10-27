@@ -6,9 +6,16 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Death Road dangerous contract now starts and finishes on the road.** Its start and finish have been checked in game and moved to the right spots, so the teleport puts you on the track and the GPS leads to the real finish. A Death Road contract you already started keeps going. Your saves still work.
+- The Sani Pass and Zoji La dangerous contracts' starts and finishes have also been checked in game and moved onto the road.
+- **Dangerous contracts now use only the three roads checked in game: Death Road, Sani Pass and Zoji La.** Fairy Meadows Road, Skippers Canyon, Atigun Pass and Transfăgărășan are gone for now. If you saved partway through one of their contracts, that job is gone when you load. Your saves otherwise still work.
+- **Each dangerous road now pays its own rate.** Death Road pays 8 times a normal 5 km job for the same load, Zoji La 4 times and Sani Pass 3 times. The job board shows the rate on each contract. A contract you already took keeps the pay it showed.
+- **Each dangerous road can only be done once per game.** When you deliver a dangerous contract, that road comes off every job board until you start a new game. Once you've done all three, the job boards have no dangerous contract. Your saves still work.
+- For testing, the dangerous contract list on the start page now shows each road's start and finish coordinates under its name, and lists only the three checked roads.
+
 ## Build 56 · 26 Oct 2026
 
-- **The dangerous contract test picker on the start page now works for every road.** The drop-down list wouldn't open in game, so it only ever offered Death Road. Each road now has its own row with Start and Finish buttons. Your saves still work.
+- **The dangerous contract test picker on the start page now works for every road.** The drop-down list wouldn't open in game, so it only ever offered Death Road. Each road now has its own row with Start and Finish buttons. Each row also shows the road's start and finish coordinates. Your saves still work.
 
 ## Build 55 · 26 Oct 2026
 

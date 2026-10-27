@@ -733,7 +733,7 @@ do
   T.check(not d:deliver(), 'a lift to the spot does not deliver')
 end
 
--- Dangerous contracts: on every board, relocated to the start for the fee, paid 8 times a 5 km job
+-- Dangerous contracts: on every board, relocated to the start for the fee, paid the road's multiple of a 5 km job
 -- at the finish once the section is driven. A claim costs $4,000; abandoning before the start pays
 -- the relocation back.
 local function onContract(c)
@@ -750,10 +750,10 @@ do
   local job, section = onContract(c)
   local row = c:view().town.jobs[#c:view().town.jobs]
   T.check(row.contract ~= nil and not row.drop, 'the board ends with a dangerous contract'); T.eq(row.to, section.name, 'named for its section')
-  T.eq(row.contract.fee, contracts.FEE, 'with its relocation fee'); T.eq(row.contract.insurance, 4000, 'and its $4,000 insurance')
+  T.eq(row.contract.fee, contracts.FEE, 'with its relocation fee'); T.eq(row.contract.pays, section.pay, 'and its pay multiple'); T.eq(row.contract.insurance, 4000, 'and its $4,000 insurance')
   T.eq(row.distanceMetres, 2000, 'about 2 km'); T.check(row.allowed, 'can be taken')
   local q = c:jobQuote(job)
-  T.eq(q.pay, math.floor(jobs.basePay(goods.get('parts'), q.units, 5) * 8 / 10 + 0.5) * 10, '8 times a 5 km job')
+  T.eq(q.pay, math.floor(jobs.basePay(goods.get('parts'), q.units, 5) * section.pay / 10 + 0.5) * 10, 'its multiple of a 5 km job')
   T.eq(c:bestJob(penrith).to ~= section.name, true, 'not suggested as the best job on the Route tab')
   T.check(c:takeJob(job.id, 50), 'taken at half load'); T.eq(c.load.units, math.floor(q.units / 2 + 0.5), 'half the load')
   T.eq(c:view().balance, 10000 - contracts.FEE, 'the relocation is paid')
@@ -780,6 +780,17 @@ do
   local pay = c.load.pay
   T.check(c:deliver(), 'delivered'); T.eq(c:view().balance, 10000 - contracts.FEE + pay, 'paid in full')
   T.check(c:view().flash.text:find(section.name, 1, true), 'over the section')
+  -- A delivered road is not offered again in this game, even after a save and reload.
+  T.eq(c.profile.progression.contractsDone[1], section.id, 'the road is marked done')
+  c.board = nil
+  for seed = 0, 20 do
+    local last = jobs.board(penrith, seed, {}, 0, c.profile.progression.contractsDone)
+    last = last[#last]
+    T.check(last.contract ~= section.id, 'not on the board again (seed ' .. seed .. ')')
+  end
+  T.check(c:manualSave(), 'saved'); T.eq(io.files[B].progression.contractsDone[1], section.id, 'kept in the save')
+  local r2 = F.controller({ io = io })
+  T.eq(r2.profile.progression.contractsDone[1], section.id, 'and after a reload')
   -- A lift to the finish does not deliver.
   local d, da = F.controller()
   d:tick(0.1); d:tick(0.6); d:tick(0.6)
@@ -820,11 +831,41 @@ do
   T.check(not c:takeJob(job.id), 'refused'); T.check(c:view().tradeFeedback:find('relocation'), 'told why')
 end
 
+-- With every road delivered, boards carry no dangerous contract; a new game offers them all again.
+do
+  local done = {}
+  for _, sec in ipairs(contracts.LIST) do done[#done + 1] = sec.id end
+  local board = jobs.board(penrith, 0, {}, 0, done)
+  T.check(board[#board].contract == nil and board[#board].drop ~= nil, 'the board ends with the drop')
+  local keep = { contracts.LIST[1].id, contracts.LIST[2].id }
+  for seed = 0, 10 do
+    local b = jobs.board(penrith, seed, {}, 0, keep)
+    T.eq(b[#b].contract, contracts.LIST[3].id, 'only the road left is offered')
+  end
+  local c, io = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.contractsDone = done; T.check(c:manualSave(), 'saved with every road done')
+  local n = F.controller({ io = io }); n:tick(0.1); n:tick(0.6); n:tick(0.6)
+  n:newGame(); T.check(n:newGame(), 'a new game')
+  T.eq(n.profile.progression.contractsDone, nil, 'starts with no roads done')
+end
+
+-- Each checked road pays its own multiple: Death Road 8, Zoji La 4, Sani Pass 3.
+do
+  T.eq(contracts.get('death_road').pay, 8, 'Death Road pays 8 times'); T.eq(contracts.get('zoji_la').pay, 4, 'Zoji La 4 times')
+  T.eq(contracts.get('sani_pass').pay, 3, 'Sani Pass 3 times')
+  local job = jobs.contractJob(penrith, 0)
+  job.good, job.contract = 'parts', 'sani_pass'
+  T.eq(jobs.quote(job, 10, {}, 0).pay, math.floor(jobs.basePay(goods.get('parts'), 10, 5) * 3 / 10 + 0.5) * 10, 'a Sani Pass job pays 3 times')
+end
+
 -- Testing aid: the start page teleports to each contract road's start or finish, losing nothing.
 do
   local c, io, a = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.eq(#c:view().testContracts, #contracts.LIST, 'every road is listed'); T.check(c:view().testTeleportAllowed, 'allowed')
+  T.near(c:view().testContracts[1].start.latitude, contracts.LIST[1].start.latitude, 1e-12, 'with its start')
+  T.near(c:view().testContracts[1].finish.longitude, contracts.LIST[1].finish.longitude, 1e-12, 'and its finish')
   T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a job on board')
   local section = contracts.LIST[1]
   T.check(not c:testTeleport('nowhere', 'start'), 'an unknown road is refused'); T.check(not c:testTeleport(section.id, 'middle'), 'so is an odd end')

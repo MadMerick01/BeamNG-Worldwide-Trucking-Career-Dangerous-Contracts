@@ -175,13 +175,13 @@ end
 -- What a job pays for this many units, now. Returns { pay, base, factor, need, road, shortage,
 -- jackpot, level }: factor is the need, shortage and jackpot together, which the colour is from.
 -- An off-road drop goes to no town, so it has no need or shortage: road is its steep-ground bonus.
--- A dangerous contract pays contracts.PAY times a 5 km job at the base rate, and nothing else.
+-- A dangerous contract pays its section's pay times a 5 km job at the base rate, and nothing else.
 function M.quote(job, units, needs, now)
   local good, from, to = goods.get(job.good), places.get(job.from), places.get(job.to)
   if job.contract then
-    local base = M.basePay(good, units, M.BASE_KM)
-    return { pay = units > 0 and math.max(10, round10(base * contracts.PAY)) or 0, base = round10(base),
-      factor = contracts.PAY, need = 1, road = 1, shortage = false, level = 'sweet' }
+    local base, times = M.basePay(good, units, M.BASE_KM), contracts.get(job.contract).pay
+    return { pay = units > 0 and math.max(10, round10(base * times)) or 0, base = round10(base),
+      factor = times, need = 1, road = 1, shortage = false, level = 'sweet' }
   end
   if job.drop then
     local factor, road = job.jackpot or 1, M.steepBonus(from)
@@ -244,7 +244,7 @@ end
 -- controller's count of jobs done), so it changes after every delivery or abandoned job. A good
 -- short in a town close by goes there; otherwise each job goes to a town in its distance band. At
 -- least one job is decent: if none pays its base rate, the best one is raised to it.
-function M.board(from, seed, needs, now)
+function M.board(from, seed, needs, now, contractsDone)
   local list = M.destinations(from)
   local wanted = M.boardGoods(from)
   if #list == 0 or #wanted == 0 then return {} end
@@ -270,15 +270,17 @@ function M.board(from, seed, needs, now)
   end
   if bestFactor < 1 then best.decent = true end
   out[#out + 1] = M.dropJob(from, seed)
-  out[#out + 1] = M.contractJob(from, seed)
+  out[#out + 1] = M.contractJob(from, seed, contractsDone)
   return out
 end
 
 -- A board's dangerous contract: parts or bricks over a treacherous section far from town. It is
 -- taken here, then the player is relocated to its start and delivers at its finish, like a drop.
-function M.contractJob(from, seed)
+-- None once every section is in contractsDone.
+function M.contractJob(from, seed, contractsDone)
   seed = tostring(seed or 0)
-  local section = contracts.pick(hash01(from.id .. ':contract'), seed)
+  local section = contracts.pick(hash01(from.id .. ':contract'), seed, contractsDone)
+  if not section then return nil end
   local carried = goods.ofKind('parcel')
   local good = carried[math.floor(hash01(from.id .. ':' .. seed .. ':contract:good') * #carried) + 1]
   return { id = 'contract_' .. good.id .. '_' .. section.id, good = good.id, from = from.id, to = from.id,
