@@ -452,6 +452,25 @@ do
   T.eq(Core.STARTER_MODEL, 'burnside', 'starter model')
 end
 
+-- The HUD is hidden in the game's parts menu, so each change to the parts bill pops up over it.
+do
+  local c, _, _, g = F.controller()
+  local toasts = {}
+  c.trigger = function(name, data) if name == 'toastrMsg' then toasts[#toasts + 1] = data end end
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
+  T.eq(#toasts, 1, 'a part change pops up the bill')
+  T.check(toasts[1].msg:find('Parts bill so far: $600 (parts $600, repair $0).', 1, true), 'with its total and split')
+  c:vehicleSpawned(); c:tick(0.1)
+  T.eq(#toasts, 1, 'the same bill again does not pop up twice')
+  c.profile.progression.balance = 100
+  g:fit('box', 'pickup_cargo_load_box_l'); c:vehicleSpawned(); c:tick(0.1)
+  T.eq(#toasts, 2, 'another change pops up the new bill'); T.eq(toasts[2].type, 'warning', 'a warning when short')
+  T.check(toasts[2].msg:find(' short.', 1, true), 'says how much is missing')
+  g:fit('box', ''); c:vehicleSpawned(); c:tick(0.1)
+  T.eq(#toasts, 3, 'undoing in the parts menu pops up too'); T.check(toasts[3].msg:find('Nothing to pay'), 'nothing to pay')
+end
+
 -- Repairs are priced by the car's Value, as in Enduro.
 do
   local pricing = require('earthFreight/pricing')

@@ -98,6 +98,8 @@ function M.new(deps)
     -- weight and there is no Refuel.
     cargo = deps.cargo, fuelTank = deps.fuel,
     odometer = odometer.new(),
+    -- Sends game UI events, such as the pop-ups that show over the game's own menus.
+    trigger = deps.trigger,
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
@@ -241,6 +243,11 @@ function M.new(deps)
 
   function c:showFlash(kind, title, text)
     self.flash = { kind = kind, title = title, text = text, at = self.clock }
+  end
+
+  -- A pop-up in the corner of the screen. Unlike the HUD it shows over the game's own menus.
+  function c:toast(kind, title, text)
+    if self.trigger then pcall(self.trigger, 'toastrMsg', { type = kind, title = title, msg = text, config = { timeOut = 6000 } }) end
   end
 
   -- Adds the player's name to a greeting: "Welcome back" becomes "Welcome back, Sam".

@@ -28,6 +28,14 @@ M.RESET_DAMAGE_DROP = 1
 
 local dollars = pricing.dollars
 
+-- What a parts bill charges for, so the same bill priced again does not pop up twice.
+local function billKey(bill)
+  local names = {}
+  for _, part in ipairs(bill.added) do names[#names + 1] = '+' .. part.name end
+  for _, part in ipairs(bill.removed) do names[#names + 1] = '-' .. part.name end
+  return table.concat(names, '|') .. '=' .. bill.cost
+end
+
 function M.attach(c)
   function c:inspectDamage()
     local vehicle, why = self.garage:inspect()
@@ -286,6 +294,8 @@ function M.attach(c)
     if not diff then
       if self.pendingParts then
         self.partsFeedback = 'Part changes undone. Nothing to pay.'
+        -- Undone in the parts menu, where the HUD is hidden; Undo on the HUD says so itself.
+        if not self.ourRespawn then self:toast('info', 'Parts bill', 'Part changes undone. Nothing to pay.') end
         -- Undoing them in the parts menu respawned the car again: the bill's repair is still owed.
         local pending = self.pendingParts
         if not self.ourRespawn then
@@ -316,7 +326,20 @@ function M.attach(c)
     -- The bill on the HUD shows the total, what the player is short and what to press.
     self.partsFeedback = nil
     self.diag:event('parts_quote', string.format('%d parts, %d repair', diff.cost, repair))
+    if not previous or billKey(previous) ~= billKey(self.pendingParts) then self:showPartsBill() end
     return true
+  end
+
+  -- The HUD is hidden while the game's parts menu is open, so each change to the bill also pops up
+  -- over the menu: the total so far, how it splits, and what the player is short.
+  function c:showPartsBill()
+    local bill = self.pendingParts
+    local parts = bill.partsCost < 0 and ('parts refund ' .. dollars(-bill.partsCost)) or ('parts ' .. dollars(bill.partsCost))
+    local text = (bill.cost < 0 and ('You get back ' .. dollars(-bill.cost)) or ('Parts bill so far: ' .. dollars(bill.cost)))
+      .. ' (' .. parts .. ', repair ' .. dollars(bill.repair) .. ').'
+    local short = self.profile and bill.cost - self.profile.progression.balance
+    if short and short > 0 then text = text .. ' You are ' .. dollars(short) .. ' short.' end
+    self:toast(short and short > 0 and 'warning' or 'info', 'Parts bill', text .. ' Pay or undo on the Garage tab.')
   end
 
   -- Cars. Picking a car in the game's vehicle selector, or getting into any car that is not the
