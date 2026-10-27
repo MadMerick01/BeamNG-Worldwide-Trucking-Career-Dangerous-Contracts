@@ -20,7 +20,7 @@ M.START_RADIUS = 1000
 -- The sections: the most dramatic ~2 km of each treacherous Enduro stage. Coordinates are
 -- estimates, not yet checked in game, except Death Road's and Sani Pass's. km is the road length,
 -- shown on the board. Left out after checking in game: Fairy Meadows Road (no dangerous 2 km found)
--- and Skippers Canyon (not dangerous enough).
+-- Skippers Canyon (not dangerous enough) and Atigun Pass.
 M.LIST = {
   { id = 'death_road', name = 'Death Road', region = 'North Yungas Road, Bolivia', km = 2,
     summary = 'One-lane cliff shelf below Chuspipata, with drops of 400 m and waterfalls over the road.',
@@ -28,9 +28,6 @@ M.LIST = {
   { id = 'sani_pass', name = 'Sani Pass', region = 'South Africa and Lesotho', km = 2,
     summary = 'The last stack of loose, steep hairpins up to Sani Top.',
     start = { latitude = -29.589268, longitude = 29.294417 }, finish = { latitude = -29.584964, longitude = 29.287562 } },
-  { id = 'atigun_pass', name = 'Atigun Pass', region = 'Dalton Highway, Alaska', km = 2,
-    summary = 'The steepest climb on the Arctic haul road, under avalanche chutes.',
-    start = { latitude = 68.1180, longitude = -149.5000 }, finish = { latitude = 68.1300, longitude = -149.4790 } },
   { id = 'transfagarasan', name = 'Transfăgărășan', region = 'Făgăraș Mountains, Romania', km = 2,
     summary = 'The hairpin ladder up to the glacial lake at Bâlea Lac.',
     start = { latitude = 45.6150, longitude = 24.6110 }, finish = { latitude = 45.6033, longitude = 24.6172 } },

@@ -8,7 +8,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **The Death Road dangerous contract now starts and finishes on the road.** Its start and finish have been checked in game and moved to the right spots, so the teleport puts you on the track and the GPS leads to the real finish. A Death Road contract you already started keeps going. Your saves still work.
 - The Sani Pass dangerous contract's start and finish have also been checked in game and moved onto the road.
-- **Fairy Meadows Road and Skippers Canyon are no longer dangerous contracts**, for now, so there are five roads. If you saved partway through one of their contracts, that job is gone when you load. Your saves otherwise still work.
+- **Fairy Meadows Road, Skippers Canyon and Atigun Pass are no longer dangerous contracts**, for now, so there are four roads. If you saved partway through one of their contracts, that job is gone when you load. Your saves otherwise still work.
 
 ## Build 56 · 26 Oct 2026
 
