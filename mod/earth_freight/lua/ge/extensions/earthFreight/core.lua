@@ -976,7 +976,7 @@ function M.new(deps)
         to = section and section.name or job.drop and 'Off-road drop' or to.name, toId = to.id,
         size = not job.drop and to.size or nil, drop = job.drop ~= nil and not section or nil,
         contract = section and { name = section.name, region = section.region, summary = section.summary,
-          fee = contracts.FEE, insurance = contracts.INSURANCE_FEE, pays = contracts.PAY } or nil,
+          fee = contracts.FEE, insurance = contracts.INSURANCE_FEE, pays = section.pay } or nil,
         direction = job.drop and not section and location.compassPoint(location.bearing(place, job.drop)) or nil,
         distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
         units = q.units, kg = q.kg, unitSlots = good.slots, unitKg = good.kg,

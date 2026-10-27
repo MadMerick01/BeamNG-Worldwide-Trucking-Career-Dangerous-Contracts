@@ -11,7 +11,7 @@ A WORLD FREIGHT ECONOMY CAREER for [BeamNG.Earth](https://github.com/TecnaGamer/
 - **A freight career anywhere on Earth:** start in a rusty Burnside and earn your way up to a Semi.
 - **A job board in every real earth town:** light parts, heavy bricks, fluids (water and fuel).
 - **Off-road drops:** deliver to a remote offroad location, with only an arrow to guide you.
-- **Dangerous contracts:** haul a load over 2 km of the world's most treacherous roads, such as Death Road, for 8 times the pay.
+- **Dangerous contracts:** haul a load over 2 km of the world's most treacherous roads, such as Death Road, for up to 8 times the pay.
 - **Pay by weight and distance:** heavier loads pay more, and bigger vehicles earn more per run.
 - **Dynamic Economy (v1):** pay moves with town demand, repeat runs pay less, and shortages and jackpots pay 2 to 3x.
 - **Trecherous Deliveries:** pay increase in dangerous, mountainous or difficult regions (each region on earth is graded for difficulty)

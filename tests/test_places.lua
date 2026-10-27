@@ -139,7 +139,7 @@ do
       T.check(contract.contract ~= nil and contract.drop ~= nil and contract.to == n.place.id, n.place.name .. ' ends its board with a dangerous contract')
       local section = contracts.get(contract.contract)
       T.near(contract.drop.latitude, section.finish.latitude, 1e-12, 'delivered at the section finish')
-      T.eq(jobs.quote(contract, 10, {}, 5000).pay, math.floor(jobs.basePay(goods.get(contract.good), 10, 5) * contracts.PAY / 10 + 0.5) * 10, 'paid 8 times a 5 km job')
+      T.eq(jobs.quote(contract, 10, {}, 5000).pay, math.floor(jobs.basePay(goods.get(contract.good), 10, 5) * section.pay / 10 + 0.5) * 10, 'paid its multiple of a 5 km job')
       local drop = table.remove(board)
       T.check(drop.drop ~= nil and drop.to == n.place.id and drop.id:match('^drop_%l+_[%w_]+$') ~= nil, n.place.name .. ' ends its board with an off-road drop')
       local metres = location.distance(n.place, drop.drop)

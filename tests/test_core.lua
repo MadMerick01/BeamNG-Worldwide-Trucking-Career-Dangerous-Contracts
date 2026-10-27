@@ -733,7 +733,7 @@ do
   T.check(not d:deliver(), 'a lift to the spot does not deliver')
 end
 
--- Dangerous contracts: on every board, relocated to the start for the fee, paid 8 times a 5 km job
+-- Dangerous contracts: on every board, relocated to the start for the fee, paid the road's multiple of a 5 km job
 -- at the finish once the section is driven. A claim costs $4,000; abandoning before the start pays
 -- the relocation back.
 local function onContract(c)
@@ -750,10 +750,10 @@ do
   local job, section = onContract(c)
   local row = c:view().town.jobs[#c:view().town.jobs]
   T.check(row.contract ~= nil and not row.drop, 'the board ends with a dangerous contract'); T.eq(row.to, section.name, 'named for its section')
-  T.eq(row.contract.fee, contracts.FEE, 'with its relocation fee'); T.eq(row.contract.insurance, 4000, 'and its $4,000 insurance')
+  T.eq(row.contract.fee, contracts.FEE, 'with its relocation fee'); T.eq(row.contract.pays, section.pay, 'and its pay multiple'); T.eq(row.contract.insurance, 4000, 'and its $4,000 insurance')
   T.eq(row.distanceMetres, 2000, 'about 2 km'); T.check(row.allowed, 'can be taken')
   local q = c:jobQuote(job)
-  T.eq(q.pay, math.floor(jobs.basePay(goods.get('parts'), q.units, 5) * 8 / 10 + 0.5) * 10, '8 times a 5 km job')
+  T.eq(q.pay, math.floor(jobs.basePay(goods.get('parts'), q.units, 5) * section.pay / 10 + 0.5) * 10, 'its multiple of a 5 km job')
   T.eq(c:bestJob(penrith).to ~= section.name, true, 'not suggested as the best job on the Route tab')
   T.check(c:takeJob(job.id, 50), 'taken at half load'); T.eq(c.load.units, math.floor(q.units / 2 + 0.5), 'half the load')
   T.eq(c:view().balance, 10000 - contracts.FEE, 'the relocation is paid')
@@ -818,6 +818,15 @@ do
   c.profile.progression.balance = 100
   T.check(not c:view().town.jobs[#c:view().town.jobs].allowed, 'the contract needs the relocation fee')
   T.check(not c:takeJob(job.id), 'refused'); T.check(c:view().tradeFeedback:find('relocation'), 'told why')
+end
+
+-- Each checked road pays its own multiple: Death Road 8, Zoji La 4, Sani Pass 3.
+do
+  T.eq(contracts.get('death_road').pay, 8, 'Death Road pays 8 times'); T.eq(contracts.get('zoji_la').pay, 4, 'Zoji La 4 times')
+  T.eq(contracts.get('sani_pass').pay, 3, 'Sani Pass 3 times')
+  local job = jobs.contractJob(penrith, 0)
+  job.good, job.contract = 'parts', 'sani_pass'
+  T.eq(jobs.quote(job, 10, {}, 0).pay, math.floor(jobs.basePay(goods.get('parts'), 10, 5) * 3 / 10 + 0.5) * 10, 'a Sani Pass job pays 3 times')
 end
 
 -- Testing aid: the start page teleports to each contract road's start or finish, losing nothing.

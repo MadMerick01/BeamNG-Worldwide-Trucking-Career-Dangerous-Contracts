@@ -175,13 +175,13 @@ end
 -- What a job pays for this many units, now. Returns { pay, base, factor, need, road, shortage,
 -- jackpot, level }: factor is the need, shortage and jackpot together, which the colour is from.
 -- An off-road drop goes to no town, so it has no need or shortage: road is its steep-ground bonus.
--- A dangerous contract pays contracts.PAY times a 5 km job at the base rate, and nothing else.
+-- A dangerous contract pays its section's pay times a 5 km job at the base rate, and nothing else.
 function M.quote(job, units, needs, now)
   local good, from, to = goods.get(job.good), places.get(job.from), places.get(job.to)
   if job.contract then
-    local base = M.basePay(good, units, M.BASE_KM)
-    return { pay = units > 0 and math.max(10, round10(base * contracts.PAY)) or 0, base = round10(base),
-      factor = contracts.PAY, need = 1, road = 1, shortage = false, level = 'sweet' }
+    local base, times = M.basePay(good, units, M.BASE_KM), contracts.get(job.contract).pay
+    return { pay = units > 0 and math.max(10, round10(base * times)) or 0, base = round10(base),
+      factor = times, need = 1, road = 1, shortage = false, level = 'sweet' }
   end
   if job.drop then
     local factor, road = job.jackpot or 1, M.steepBonus(from)

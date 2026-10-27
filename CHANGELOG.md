@@ -9,6 +9,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - **The Death Road dangerous contract now starts and finishes on the road.** Its start and finish have been checked in game and moved to the right spots, so the teleport puts you on the track and the GPS leads to the real finish. A Death Road contract you already started keeps going. Your saves still work.
 - The Sani Pass and Zoji La dangerous contracts' starts and finishes have also been checked in game and moved onto the road.
 - **Dangerous contracts now use only the three roads checked in game: Death Road, Sani Pass and Zoji La.** Fairy Meadows Road, Skippers Canyon, Atigun Pass and Transfăgărășan are gone for now. If you saved partway through one of their contracts, that job is gone when you load. Your saves otherwise still work.
+- **Each dangerous road now pays its own rate.** Death Road pays 8 times a normal 5 km job for the same load, Zoji La 4 times and Sani Pass 3 times. The job board shows the rate on each contract. A contract you already took keeps the pay it showed.
 - For testing, the dangerous contract list on the start page now shows each road's start and finish coordinates under its name, and lists only the three checked roads.
 
 ## Build 56 · 26 Oct 2026
