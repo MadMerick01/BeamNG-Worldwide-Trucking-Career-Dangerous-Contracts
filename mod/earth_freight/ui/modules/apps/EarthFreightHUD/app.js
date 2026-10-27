@@ -1,5 +1,5 @@
 /* global angular, bngApi */
-angular.module('beamng.apps').directive('earthFreightHud', [function () {
+angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', function ($rootScope) {
   // What the player was looking at. BeamNG rebuilds the app each time the parts menu or the map
   // closes, so this is kept out here and the new app carries on where the old one was.
   var kept = {
@@ -10,21 +10,59 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
   var STORE = 'earthFreight.hudMinimised'
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
-  // Earth Freight's pop-ups, such as the parts bill, sit in the middle of the screen rather than the
-  // game's corner. The style goes on the page itself, so it stays while the parts menu hides the app.
-  if (typeof document !== 'undefined' && document.head && !document.getElementById('earth-freight-toast-style')) {
-    var style = document.createElement('style')
-    style.id = 'earth-freight-toast-style'
-    style.textContent = '#toast-container > .toast.earth-freight-toast { position: fixed !important; top: 40% !important;' +
-      ' left: 50% !important; right: auto !important; bottom: auto !important; margin: 0 !important;' +
-      ' transform: translate(-50%, -50%); width: 420px; max-width: 80vw; }'
-    document.head.appendChild(style)
+  // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
+  // bill here and the box goes on the page itself, over the menu. It stays until the player closes
+  // it, Lua says the bill was paid or undone, or the menu closes and the HUD is built again.
+  var bill = null
+  var closeBill = function () {
+    if (bill && bill.parentNode) bill.parentNode.removeChild(bill)
+    bill = null
   }
+  var line = function (box, text, css) {
+    var div = document.createElement('div')
+    div.textContent = text
+    div.style.cssText = css
+    box.appendChild(div)
+  }
+  var showBill = function (data) {
+    closeBill()
+    if (typeof document === 'undefined' || !document.body) return
+    var gold = data.short ? '#eb5757' : '#f2c94c'
+    var box = document.createElement('div')
+    box.setAttribute('role', 'alert')
+    box.style.cssText = 'position:fixed;top:12%;left:50%;transform:translateX(-50%);z-index:2147483647;' +
+      'width:440px;max-width:80vw;padding:14px 18px;background:rgba(12,19,24,.96);color:#f2f6f5;' +
+      'border:3px solid ' + gold + ';border-radius:10px;box-shadow:0 0 24px rgba(0,0,0,.7);' +
+      'font:15px/1.4 sans-serif;pointer-events:auto;'
+    var close = document.createElement('button')
+    close.type = 'button'
+    close.textContent = 'Close'
+    close.style.cssText = 'float:right;margin-left:10px;padding:5px 12px;background:' + gold + ';color:#0c1318;' +
+      'font-weight:bold;border:none;border-radius:4px;cursor:pointer;'
+    close.onclick = closeBill
+    box.appendChild(close)
+    line(box, 'PARTS BILL', 'font-weight:bold;letter-spacing:1px;font-size:13px;color:' + gold + ';')
+    line(box, String(data.total || ''), 'font-weight:bold;font-size:22px;color:' + gold + ';margin-top:2px;')
+    line(box, String(data.detail || ''), 'margin-top:4px;')
+    if (data.short) line(box, String(data.short), 'font-weight:bold;color:#eb5757;margin-top:4px;')
+    line(box, String(data.hint || ''), 'margin-top:6px;color:#c9d6d2;font-size:13px;')
+    document.body.appendChild(box)
+    bill = box
+    var serial = parseInt(data.serial, 10)
+    if (serial > 0 && typeof bngApi !== 'undefined' && bngApi.engineLua) {
+      bngApi.engineLua('if earthFreight_core then earthFreight_core.partsBillShown(' + serial + ') end')
+    }
+  }
+  $rootScope.$on('EarthFreightPartsBill', function (event, data) {
+    if (data && data.open) showBill(data); else closeBill()
+  })
   return {
     templateUrl: '/ui/modules/apps/EarthFreightHUD/app.html',
     replace: true,
     link: function (scope, element) {
       'use strict'
+      // Built again once the game's menus close: the HUD shows the bill from here.
+      closeBill()
       var disposed = false
       var lastMessage = Date.now()
       scope.data = { state: 'EARTH_UNAVAILABLE', stateLabel: 'WAITING FOR EARTH FREIGHT SIM', saveAllowed: false }

@@ -25,6 +25,8 @@ M.INSURANCE_FEE = 1000
 M.ROAD_SECONDS, M.GRACE_SECONDS = 1.5, 10
 -- A drop in the car's damage bigger than this, with no repair or respawn, is the game resetting it.
 M.RESET_DAMAGE_DROP = 1
+-- How long the HUD app has to show the parts bill box before a corner pop-up shows it instead.
+M.BILL_FALLBACK_SECONDS = 1.5
 
 local dollars = pricing.dollars
 
@@ -330,16 +332,47 @@ function M.attach(c)
     return true
   end
 
-  -- The HUD is hidden while the game's parts menu is open, so each change to the bill also pops up
-  -- over the menu: the total so far, how it splits, and what the player is short.
+  -- The HUD is hidden while the game's parts menu is open, so each change to the bill also opens a
+  -- box over the menu: the total so far, how it splits, and what the player is short. It stays until
+  -- the player closes it, the bill is paid or undone, or the menu closes and the HUD is back. The
+  -- HUD app shows the box and says so; if it has not within BILL_FALLBACK_SECONDS, a corner pop-up
+  -- shows the bill instead.
   function c:showPartsBill()
     local bill = self.pendingParts
-    local parts = bill.partsCost < 0 and ('parts refund ' .. dollars(-bill.partsCost)) or ('parts ' .. dollars(bill.partsCost))
-    local text = (bill.cost < 0 and ('You get back ' .. dollars(-bill.cost)) or ('Parts bill so far: ' .. dollars(bill.cost)))
-      .. ' (' .. parts .. ', repair ' .. dollars(bill.repair) .. ').'
     local short = self.profile and bill.cost - self.profile.progression.balance
-    if short and short > 0 then text = text .. ' You are ' .. dollars(short) .. ' short.' end
-    self:toast(short and short > 0 and 'warning' or 'info', 'Parts bill', text .. ' Pay or undo on the Garage tab.')
+    short = short and short > 0 and short or nil
+    self.partsBillSerial = (self.partsBillSerial or 0) + 1
+    local popup = {
+      open = true, serial = self.partsBillSerial,
+      total = bill.cost < 0 and ('You get back ' .. dollars(-bill.cost)) or ('Parts bill so far: ' .. dollars(bill.cost)),
+      detail = (bill.partsCost < 0 and ('Parts refund ' .. dollars(-bill.partsCost)) or ('Parts ' .. dollars(bill.partsCost)))
+        .. ', repair ' .. dollars(bill.repair) .. '.',
+      short = short and ('You are ' .. dollars(short) .. ' short.') or nil,
+      hint = 'Pay or undo on the Garage tab.',
+    }
+    self.partsBill = { serial = popup.serial, at = self.clock, popup = popup }
+    if self.trigger then pcall(self.trigger, 'EarthFreightPartsBill', popup) end
+  end
+
+  -- The HUD app showed the parts bill box.
+  function c:partsBillShown(serial)
+    if self.partsBill and self.partsBill.serial == serial then self.partsBill.shown = true end
+  end
+
+  -- Called every tick: closes the parts bill box once the bill is paid or undone, and falls back to
+  -- a corner pop-up when the box did not show.
+  function c:watchPartsBill()
+    local open = self.partsBill
+    if not open then return end
+    if not self.pendingParts then
+      self.partsBill = nil
+      if self.trigger then pcall(self.trigger, 'EarthFreightPartsBill', { open = false }) end
+    elseif not open.shown and not open.fellBack and self.clock - open.at >= M.BILL_FALLBACK_SECONDS then
+      open.fellBack = true
+      local p = open.popup
+      self:toast(p.short and 'warning' or 'info', 'Parts bill',
+        p.total .. ' (' .. p.detail:gsub('%.$', ''):lower() .. ').' .. (p.short and (' ' .. p.short) or '') .. ' ' .. p.hint)
+    end
   end
 
   -- Cars. Picking a car in the game's vehicle selector, or getting into any car that is not the

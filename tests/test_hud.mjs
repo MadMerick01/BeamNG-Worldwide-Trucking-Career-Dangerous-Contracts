@@ -7,23 +7,33 @@ const APP = '../mod/earth_freight/ui/modules/apps/EarthFreightHUD/'
 const source = readFileSync(new URL(APP + 'app.js', import.meta.url), 'utf8')
 const html = readFileSync(new URL(APP + 'app.html', import.meta.url), 'utf8')
 const fixed = body => 'if earthFreight_core then earthFreight_core.' + body + ' end'
+// Just enough of a page for the parts bill box: elements with text, style, children and a click.
+function page() {
+  const make = tag => ({
+    tag, children: [], style: {}, attributes: {}, textContent: '', parentNode: null,
+    setAttribute(k, v) { this.attributes[k] = v },
+    appendChild(child) { child.parentNode = this; this.children.push(child); return child },
+    removeChild(child) { this.children = this.children.filter(c => c !== child); child.parentNode = null; return child }
+  })
+  return { body: make('body'), createElement: make }
+}
 function app(storage, element) {
-  const commands = [], handlers = {}, timers = new Map()
+  const commands = [], handlers = {}, root = {}, timers = new Map(), document = page()
   let definition, clock = 0
   const scope = { $on: (name, fn) => { handlers[name] = fn }, $evalAsync: fn => fn() }
   vm.runInNewContext(source, {
     angular: { module(name) {
       assert.equal(name, 'beamng.apps')
-      return { directive(id, factory) { assert.equal(id, 'earthFreightHud'); definition = factory.at(-1)() } }
+      return { directive(id, factory) { assert.equal(id, 'earthFreightHud'); definition = factory.at(-1)({ $on: (name, fn) => { root[name] = fn } }) } }
     } },
     bngApi: { engineLua: command => commands.push(command) },
     setInterval: fn => { timers.set(1, fn); return 1 },
     clearInterval: id => timers.delete(id), Date: { now: () => clock },
-    window: storage ? { localStorage: storage } : {}
+    window: storage ? { localStorage: storage } : {}, document
   })
   definition.link(scope, element)
   const state = data => handlers.EarthFreightState({}, data)
-  const a = { scope, commands, handlers, timers, state, advance: ms => { clock += ms; for (const tick of timers.values()) tick() } }
+  const a = { scope, commands, handlers, root, document, timers, state, advance: ms => { clock += ms; for (const tick of timers.values()) tick() } }
   // BeamNG rebuilds the app when a menu closes: the old one is destroyed and a new one linked.
   a.remount = () => {
     handlers.$destroy()
@@ -418,4 +428,29 @@ test('a dangerous contract shows on the board and teleports to its start only wh
 })
 test('the HUD has no select box: BeamNG does not open its list', () => {
   assert.doesNotMatch(html, /<select/)
+})
+test('the parts bill box shows over the parts menu until closed, paid or the menu closes', () => {
+  const a = app()
+  const bill = { open: true, serial: 3, total: 'Parts bill so far: $600', detail: 'Parts $600, repair $0.', hint: 'Pay or undo on the Garage tab.' }
+  const box = () => a.document.body.children[0]
+  const text = () => box().children.map(c => c.textContent).join(' ')
+  a.handlers.$destroy() // the parts menu hides the HUD; the box does not need it
+  a.root.EarthFreightPartsBill({}, bill)
+  assert.equal(a.document.body.children.length, 1, 'box shown')
+  assert.match(text(), /Parts bill so far: \$600/); assert.match(text(), /Parts \$600, repair \$0\./)
+  assert.equal(a.commands.at(-1), fixed('partsBillShown(3)'), 'tells Lua it showed')
+  a.root.EarthFreightPartsBill({}, { ...bill, serial: 4, total: 'Parts bill so far: $1,500', short: 'You are $1,400 short.' })
+  assert.equal(a.document.body.children.length, 1, 'a new bill replaces the box')
+  assert.match(text(), /\$1,400 short/)
+  box().children[0].onclick()
+  assert.equal(a.document.body.children.length, 0, 'Close closes it')
+  a.root.EarthFreightPartsBill({}, bill)
+  a.root.EarthFreightPartsBill({}, { open: false })
+  assert.equal(a.document.body.children.length, 0, 'paid or undone closes it')
+  a.root.EarthFreightPartsBill({}, bill)
+  a.remount()
+  assert.equal(a.document.body.children.length, 0, 'the menu closing, which builds the HUD again, closes it')
+  a.root.EarthFreightPartsBill({}, { ...bill, serial: 'x); os.exit(' })
+  assert.notEqual(a.commands.at(-1), fixed('partsBillShown(NaN)'), 'only a plain number goes back to Lua')
+  assert.doesNotMatch(a.commands.at(-1), /os\.exit/)
 })

@@ -245,12 +245,10 @@ function M.new(deps)
     self.flash = { kind = kind, title = title, text = text, at = self.clock }
   end
 
-  -- A pop-up in the middle of the screen. Unlike the HUD it shows over the game's own menus; the
-  -- HUD app's stylesheet centres the earth-freight-toast class.
+  -- A pop-up in the corner of the screen. Unlike the HUD it shows over the game's own menus.
   function c:toast(kind, title, text)
     if self.trigger then
-      pcall(self.trigger, 'toastrMsg', { type = kind, title = title, msg = text,
-        config = { timeOut = 12000, toastClass = 'toast earth-freight-toast' } })
+      pcall(self.trigger, 'toastrMsg', { type = kind, title = title, msg = text, config = { timeOut = 12000 } })
     end
   end
 
@@ -925,6 +923,7 @@ function M.new(deps)
     self:observe(self.adapter:sample(), dt)
     self:provideVehicle()
     self:watchParts()
+    self:watchPartsBill()
     self:afterRespawn()
     self:watchFuel()
     self:watchInsurance()
@@ -1436,6 +1435,7 @@ end
 function M.onVehicleSpawned() return safely(function() if active then active:vehicleSpawned() end end) end
 function M.onVehicleResetted(vehicleId) return safely(function() if active then active:vehicleReset(vehicleId) end end) end
 function M.reload() return safely(function() ensure():reload() end) end
+function M.partsBillShown(serial) return safely(function() if active then active:partsBillShown(serial) end end) end
 function M.uiMounted(on) return safely(function() ensure():mount(on == true) end) end
 function M.getState() return safely(function() return ensure():view() end) end
 function M.onClientStartMission() return M.reload() end
