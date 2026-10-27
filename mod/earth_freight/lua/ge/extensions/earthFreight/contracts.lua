@@ -17,7 +17,9 @@ M.START_RADIUS = 1000
 
 -- The sections: the most dramatic ~2 km of a treacherous Enduro stage, with start and finish
 -- checked in game. km is the road length, shown on the board. pay is how many times what the same
--- load pays at the base rate over a normal 5 km job. Only checked roads are offered: left
+-- load pays at the base rate over a normal 5 km job. driveKm, where set, is the least distance
+-- driven before the load delivers, for a road whose finish is close to its start as the crow
+-- flies (a stack of hairpins). Only checked roads are offered: left
 -- out for now are Fairy Meadows Road (no dangerous 2 km found), Skippers Canyon (not dangerous
 -- enough), Atigun Pass and Transfăgărășan (not checked).
 M.LIST = {
@@ -30,6 +32,9 @@ M.LIST = {
   { id = 'zoji_la', name = 'Zoji La', region = 'Kashmir and Ladakh, India', km = 2, pay = 4,
     summary = 'Muddy one-lane ledge climbing out of Baltal over the Sind valley.',
     start = { latitude = 34.261686, longitude = 75.423010 }, finish = { latitude = 34.261200, longitude = 75.442761 } },
+  { id = 'carhuaz', name = 'Carhuaz', region = 'Cordillera Blanca, Ancash, Peru', km = 2, pay = 8, driveKm = 1.5,
+    summary = 'Steep, tight hairpins stacked one above the other up the mountainside above Carhuaz, climbing on and on with no end in sight.',
+    start = { latitude = -9.33159, longitude = -77.63108 }, finish = { latitude = -9.33145, longitude = -77.63152 } },
 }
 
 local byId = {}

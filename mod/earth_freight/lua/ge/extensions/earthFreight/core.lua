@@ -747,6 +747,7 @@ function M.new(deps)
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     local needed = jobs.drivenNeeded(section and section.start or places.get(load.from), load.drop)
+    if section and section.driveKm then needed = math.max(needed, section.driveKm * 1000) end
     if load.drivenKm * 1000 < needed then
       return 'Drive it here: you have driven ' .. string.format('%.1f', load.drivenKm) .. ' km of the '
         .. string.format('%.1f', needed / 1000) .. ' km this job needs.'

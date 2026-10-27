@@ -850,6 +850,27 @@ do
   T.eq(n.profile.progression.contractsDone, nil, 'starts with no roads done')
 end
 
+-- Carhuaz's finish is about 50 m from its start: it delivers only after its 1.5 km climb.
+do
+  local c, io, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 10000
+  local section = contracts.get('carhuaz')
+  T.eq(section.pay, 8, 'Carhuaz pays 8 times'); T.eq(section.driveKm, 1.5, 'and needs 1.5 km driven')
+  local job = onContract(c)
+  job.contract, job.drop, job.id = section.id, F.copy(section.finish), 'contract_parts_carhuaz'
+  local board = c.board
+  c.board = function(self, place) local list = board(self, place); list[#list] = F.copy(job); return list end
+  T.check(c:takeJob(job.id), 'taken')
+  a.pose = F.copy(section.start); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c.load and c.load.started, 'started')
+  T.check(c:view().load.drop.inZone, 'the start is inside the finish circle')
+  T.check(not c:deliver(), 'but it does not deliver from the start')
+  T.check(c:view().tradeFeedback:find('1.5 km', 1, true), 'told the 1.5 km it needs')
+  c.load.drivenKm = 1.6; c:tick(0.6)
+  T.check(c:deliver(), 'delivers once the climb is driven')
+end
+
 -- Each checked road pays its own multiple: Death Road 8, Zoji La 4, Sani Pass 3.
 do
   T.eq(contracts.get('death_road').pay, 8, 'Death Road pays 8 times'); T.eq(contracts.get('zoji_la').pay, 4, 'Zoji La 4 times')

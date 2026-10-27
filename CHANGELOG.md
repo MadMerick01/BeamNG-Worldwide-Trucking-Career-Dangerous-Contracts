@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New dangerous contract: Carhuaz, Peru.** A steep, tight climb of never-ending hairpins in the Cordillera Blanca, paying 8 times the base rate. The finish sits almost straight above the start, so the load only delivers once you have driven at least 1.5 km of the climb. It's also on the start page test list. Your saves still work.
+
 ## Build 57 · 27 Oct 2026
 
 - **The Death Road dangerous contract now starts and finishes on the road.** Its start and finish have been checked in game and moved to the right spots, so the teleport puts you on the track and the GPS leads to the real finish. A Death Road contract you already started keeps going. Your saves still work.
