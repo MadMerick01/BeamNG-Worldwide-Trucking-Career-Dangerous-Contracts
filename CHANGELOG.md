@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 62 · 27 Oct 2026
+
 - **The parts bill pop-up now shows in the middle of the screen and stays twice as long**, 12 seconds instead of 6, so it's easier to read while you're in the parts menu. Your saves still work.
 
 ## Build 61 · 27 Oct 2026
