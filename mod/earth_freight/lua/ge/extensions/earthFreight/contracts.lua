@@ -22,7 +22,7 @@ M.START_RADIUS = 1000
 M.LIST = {
   { id = 'death_road', name = 'Death Road', region = 'North Yungas Road, Bolivia', km = 2,
     summary = 'One-lane cliff shelf below Chuspipata, with drops of 400 m and waterfalls over the road.',
-    start = { latitude = -16.2870, longitude = -67.8150 }, finish = { latitude = -16.2770, longitude = -67.8040 } },
+    start = { latitude = -16.2900, longitude = -67.8100 }, finish = { latitude = -16.2770, longitude = -67.8040 } },
   { id = 'fairy_meadows', name = 'Fairy Meadows Road', region = 'Gilgit-Baltistan, Pakistan', km = 2,
     summary = 'Gravel shelf cut into the cliff above the Indus, with no guardrails.',
     start = { latitude = 35.4926, longitude = 74.5918 }, finish = { latitude = 35.4800, longitude = 74.5940 } },
