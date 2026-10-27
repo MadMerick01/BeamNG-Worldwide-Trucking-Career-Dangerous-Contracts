@@ -399,7 +399,8 @@ test('the Garage tab card has Buy parts and Buy new car buttons, and no shortcut
   assert.ok(inside.includes('ng-click="openCarMenu()"') && inside.includes('>Buy new car</button>'), 'Buy new car is in the card')
   assert.doesNotMatch(html, /Ctrl\+[WE]/)
   a.scope.openCarMenu()
-  assert.match(a.commands.at(-1), /ChangeState.*menu\.vehicles'/)
+  assert.match(a.commands.at(-1), /core_input_actions\.triggerDownUp\('vehicle_selector'\)/, 'the same action as Ctrl+E')
+  assert.doesNotMatch(a.commands.at(-1), /menu\.vehicles/, 'not the old route, which hides the UI')
 })
 test('a dangerous contract shows on the board and teleports to its start only when Lua allows it', () => {
   assert.match(html, /Dangerous contract/)
