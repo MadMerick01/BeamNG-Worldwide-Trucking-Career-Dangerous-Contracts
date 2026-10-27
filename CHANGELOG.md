@@ -6,6 +6,8 @@ Every change to Earth Freight Sim, in plain English, newest first. Each build is
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 64 · 27 Oct 2026
+
 - No changes in the game. **The README has been rewritten for players**: a short list of what the game offers, how to install it and how to get started.
 
 ## Build 63 · 27 Oct 2026
