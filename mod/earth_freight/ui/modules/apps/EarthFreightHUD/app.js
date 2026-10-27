@@ -10,6 +10,16 @@ angular.module('beamng.apps').directive('earthFreightHud', [function () {
   var STORE = 'earthFreight.hudMinimised'
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
+  // Earth Freight's pop-ups, such as the parts bill, sit in the middle of the screen rather than the
+  // game's corner. The style goes on the page itself, so it stays while the parts menu hides the app.
+  if (typeof document !== 'undefined' && document.head && !document.getElementById('earth-freight-toast-style')) {
+    var style = document.createElement('style')
+    style.id = 'earth-freight-toast-style'
+    style.textContent = '#toast-container > .toast.earth-freight-toast { position: fixed !important; top: 40% !important;' +
+      ' left: 50% !important; right: auto !important; bottom: auto !important; margin: 0 !important;' +
+      ' transform: translate(-50%, -50%); width: 420px; max-width: 80vw; }'
+    document.head.appendChild(style)
+  }
   return {
     templateUrl: '/ui/modules/apps/EarthFreightHUD/app.html',
     replace: true,
