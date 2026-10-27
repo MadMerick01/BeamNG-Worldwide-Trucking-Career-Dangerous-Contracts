@@ -452,23 +452,38 @@ do
   T.eq(Core.STARTER_MODEL, 'burnside', 'starter model')
 end
 
--- The HUD is hidden in the game's parts menu, so each change to the parts bill pops up over it.
+-- The HUD is hidden in the game's parts menu, so each change to the parts bill opens a box over it.
 do
+  local Workshop = require('earthFreight/workshop')
   local c, _, _, g = F.controller()
-  local toasts = {}
-  c.trigger = function(name, data) if name == 'toastrMsg' then toasts[#toasts + 1] = data end end
+  local bills, toasts = {}, {}
+  c.trigger = function(name, data)
+    if name == 'EarthFreightPartsBill' then bills[#bills + 1] = data end
+    if name == 'toastrMsg' then toasts[#toasts + 1] = data end
+  end
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
-  T.eq(#toasts, 1, 'a part change pops up the bill')
-  T.check(toasts[1].msg:find('Parts bill so far: $600 (parts $600, repair $0).', 1, true), 'with its total and split')
+  T.eq(#bills, 1, 'a part change opens the box'); T.check(bills[1].open, 'open')
+  T.eq(bills[1].total, 'Parts bill so far: $600', 'with its total'); T.eq(bills[1].detail, 'Parts $600, repair $0.', 'and split')
+  T.eq(bills[1].short, nil, 'not short')
+  c:partsBillShown(bills[1].serial); F.advance(c, 3)
+  T.eq(#toasts, 0, 'no corner pop-up once the box showed'); T.eq(#bills, 1, 'and the box stays open')
   c:vehicleSpawned(); c:tick(0.1)
-  T.eq(#toasts, 1, 'the same bill again does not pop up twice')
+  T.eq(#bills, 1, 'the same bill again does not open it twice')
   c.profile.progression.balance = 100
   g:fit('box', 'pickup_cargo_load_box_l'); c:vehicleSpawned(); c:tick(0.1)
-  T.eq(#toasts, 2, 'another change pops up the new bill'); T.eq(toasts[2].type, 'warning', 'a warning when short')
-  T.check(toasts[2].msg:find(' short.', 1, true), 'says how much is missing')
+  T.eq(#bills, 2, 'another change shows the new bill'); T.eq(bills[2].short, 'You are $1,400 short.', 'says how much is missing')
+  F.advance(c, Workshop.BILL_FALLBACK_SECONDS + 0.2)
+  T.eq(#toasts, 1, 'a corner pop-up when the box did not show'); T.eq(toasts[1].type, 'warning', 'a warning when short')
+  T.check(toasts[1].msg:find('Parts bill so far: $1,500 (parts $1,500, repair $0). You are $1,400 short.', 1, true), 'with the same bill')
+  F.advance(c, 3); T.eq(#toasts, 1, 'only once')
   g:fit('box', ''); c:vehicleSpawned(); c:tick(0.1)
-  T.eq(#toasts, 3, 'undoing in the parts menu pops up too'); T.check(toasts[3].msg:find('Nothing to pay'), 'nothing to pay')
+  T.eq(bills[#bills].open, false, 'undoing in the parts menu closes the box'); T.check(toasts[2].msg:find('Nothing to pay'), 'and says nothing to pay')
+  g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
+  c.profile.progression.balance = 5000
+  local count = #bills
+  T.check(c:buyParts(), 'paid'); F.advance(c, 1)
+  T.eq(#bills, count + 1, 'paying closes the box'); T.eq(bills[#bills].open, false, 'closed')
 end
 
 -- Repairs are priced by the car's Value, as in Enduro.
