@@ -245,9 +245,13 @@ function M.new(deps)
     self.flash = { kind = kind, title = title, text = text, at = self.clock }
   end
 
-  -- A pop-up in the corner of the screen. Unlike the HUD it shows over the game's own menus.
+  -- A pop-up in the middle of the screen. Unlike the HUD it shows over the game's own menus; the
+  -- HUD app's stylesheet centres the earth-freight-toast class.
   function c:toast(kind, title, text)
-    if self.trigger then pcall(self.trigger, 'toastrMsg', { type = kind, title = title, msg = text, config = { timeOut = 6000 } }) end
+    if self.trigger then
+      pcall(self.trigger, 'toastrMsg', { type = kind, title = title, msg = text,
+        config = { timeOut = 12000, toastClass = 'toast earth-freight-toast' } })
+    end
   end
 
   -- Adds the player's name to a greeting: "Welcome back" becomes "Welcome back, Sam".
