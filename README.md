@@ -24,7 +24,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 - **Steep, remote and notorious roads** pay up to 3x. Regions are graded for difficulty.
 - **Relocate.** Pay to move to any town or coordinates on Earth. Some of the world's hardest regions will pay your way if you come and deliver their wares.
 - **Fuel, punctures and breakdowns.** Refuel in towns, repair burst tyres, use **Tow to road** when you're stuck, or take a short term loan when money runs out.
-- **Heli flights.** Hire a Bell 407 for $1,000 and fly loads of up to 1,000 kg on its tow hook over the world. Needs the [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) mod by stefan750.
+- **Heli flights.** Hire a Bell 407 for $1,000 to fly over the world and scout towns, terrain and job boards. Every 5 minutes up high there's a chance of a signal beacon for a "don't ask questions" job: a package with no weight, driven off road for $12,000. Needs the [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) mod by stefan750.
 
 ## Install
 

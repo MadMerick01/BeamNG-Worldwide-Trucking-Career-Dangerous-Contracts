@@ -424,19 +424,25 @@ Decided by Rowan on 25 Oct: the board is four jobs, parts (light), bricks (heavy
 
 ## Heli flights as built
 
-Decided by Rowan on 28 Oct: a fun, hire-anytime way to fly over the world, never a rival to the trucks.
+Decided by Rowan on 28 Oct: a fun, hire-anytime way to fly over the world, never a rival to the trucks. First built with loads on the tow hook (Build 90); Rowan found the sling load far too hard to fly, so on 28 Oct it became a sightseeing hire with "don't ask questions" jobs.
 
 - **The helicopter:** stefan750's Revamped Bell 407, a mod the player installs; it is not bundled (Rowan, 28 Oct). It is found in the game's config list by a model or name with "Bell" and "407" (`heli.lua`), preferring a config without weapons, one with a hook first, then the cheapest. Without it the Heli tab names the mod and opens its page.
-- **Hire:** $1,000 on the Heli tab, asked twice, in the player's own car, stopped, with no garage bill, booking or tow going on. It lasts until Back to my car; hiring again costs $1,000 again. A job on board is allowed: it waits in the car.
+- **Hire:** $1,000 on the Heli tab, asked twice, in the player's own car, stopped, with no garage bill, booking or tow going on. It lasts, unlimited, until Back to my car; hiring again costs $1,000 again. A job on board is allowed: it waits in the car. The hire earns nothing by itself.
 - **The swap:** the helicopter takes the car's place where it stands (`replaceVehicle`, as a car from the vehicle selector). The car's parts, damage owed, fuel and second-hand value are kept in memory. While hired, the garage leaves the helicopter alone (no car bill, repairs, insurance or tow), the load's weight stays off, and nothing counts as driving or as a teleport. Save, jobs, refuelling and relocation wait for the car.
-- **Back to my car:** within 150 m of the car's spot and landed (under 3 m up), the car takes the helicopter's place there. Farther away, Earth teleports the helicopter to the spot first and the swap follows 2 s after landing there. With no teleport, the player flies back. The car looks new after the respawn, but its repair is still owed, as with a reverted car.
-- **Loads:** one at a time, put down 25 m in front of the helicopter (`aircraft.lua`, `spawnNewVehicle` without entering it), 4 s after the last. It is the first of `boxutility` (a trailer: its tow hitch should couple to the hook), `woodcrate`, `metal_box` and `haybale` the game has; its whole mass is set to 250 to 1,000 kg by spreading the difference over its nodes, and it reports what it weighs. A drop-off is a town 4 to 40 km away (a spot in open country where there is none), never the last one.
-- **Delivering:** the load must have been flown at least 1 km from where it was picked up, then rest inside 40 m of the drop-off, on the ground (under 3 m), let go of (the game's coupler hooks say when the hook holds it), and still for 3 s. The load is taken away and the next one turns up.
-- **Pay:** $3 a kg, in full from 10 km (a share of it below), capped at $3,000 for 1,000 kg. No town need, shortage, jackpot or road bonus. A hire makes at most $2,000 on its first load; a truck carrying 1,000 kg makes about $2,300 over 5 km and about $14,000 over 20 km. Rowan, 28 Oct: as many loads as you like per hire, to be tuned after testing.
-- **Lost loads:** a load with 5,000 damage hit the ground too hard and pays nothing; a new one turns up.
-- **Crash:** 15,000 damage on the helicopter, as for a car. It costs $1,000 insurance (or all the money, if less), the load and the hire are lost, and the player goes back to their car as above.
-- **Saves:** nothing about a hire is saved. A reload takes the load away, and the saved car comes back on arrival as usual.
-- **Needs checking in game:** the Bell 407's model name and configs, which load the hook couples to, the crash and smash damage levels, and the load's height reading.
+- **Scouting:** the Heli tab shows the nearest town (its region and rough-road pay boost), the height above the ground, the car's distance with an arrow, the 5 nearest towns, and the nearest town's job board as it would pay the car, read-only (Rowan, 28 Oct).
+- **Back to my car:** only when pressed and confirmed, never by landing (Rowan, 28 Oct: an accidental hop must not end the hire). Within 150 m of the car's spot and landed (under 3 m up), the car takes the helicopter's place there. Farther away, Earth teleports the helicopter to the spot first and the swap follows 2 s after landing there. With no teleport, the player flies back. The car looks new after the respawn, but its repair is still owed, as with a reverted car.
+- **Crash:** 15,000 damage on the helicopter, as for a car. It costs $1,000 insurance (or all the money, if less), the hire is lost, and the player goes back to their car as above.
+- **Saves:** nothing about a hire is saved.
+
+## Don't ask questions jobs as built
+
+Decided by Rowan on 28 Oct (`beacons.lua`).
+
+- **Finding one:** every 5 minutes of flying at least 30 m above the ground there is a 50% chance of a signal beacon, unless one is waiting or on board (one at a time). The pickup is 0.5 to 3 km from the helicopter, and must be within 15 km of the car so it can be driven to (8 directions are tried; otherwise nothing this time). A centre-screen box, like the parts bill's, says so and closes by itself after 10 s or on a click, since a click is awkward on the flight controls.
+- **What it is:** one of 19 lines (what is at the pickup), random and never the same twice running; Rowan cut the school bag. A package of no weight (`goods.lua` "package", never posted on a board).
+- **Waiting:** shown on the Route tab with its distance, an arrow, coordinates and Copy, on the Town tab's job list, and on the Heli tab. It goes quiet after 1 hour of play, counted while the game runs. Ignoring it is free (asked twice). It is kept by Save (`beacon` in the save: pickup, drop, line, seconds left); older saves load unchanged.
+- **The run:** stop within 100 m of the pickup in the car, with no other job, and press Pick it up. It is then a job like an off-road drop: no GPS, the arrow on the Route tab, delivered stopped within 100 m of a drop 2 to 5 km away, once 70% of the straight line from the pickup has been driven. It pays $12,000 (Rowan, 28 Oct, down from $25,000). An insurance claim costs $4,000 and loses it, as on a dangerous contract; a teleport without a booking cancels it, and abandoning costs the usual $1,000.
+- **Needs checking in game:** the beacon rate and pay against trucking, and the 15 km reach.
 
 ## Open questions
 

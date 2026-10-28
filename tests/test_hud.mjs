@@ -18,7 +18,7 @@ function page() {
   return { body: make('body'), createElement: make }
 }
 function app(storage, element) {
-  const commands = [], handlers = {}, root = {}, timers = new Map(), document = page()
+  const commands = [], handlers = {}, root = {}, timers = new Map(), timeouts = [], document = page()
   let definition, clock = 0
   const scope = { $on: (name, fn) => { handlers[name] = fn }, $evalAsync: fn => fn() }
   vm.runInNewContext(source, {
@@ -29,11 +29,12 @@ function app(storage, element) {
     bngApi: { engineLua: command => commands.push(command) },
     setInterval: fn => { timers.set(1, fn); return 1 },
     clearInterval: id => timers.delete(id), Date: { now: () => clock },
+    setTimeout: (fn, ms) => { timeouts.push({ fn, ms }); return timeouts.length },
     window: storage ? { localStorage: storage } : {}, document
   })
   definition.link(scope, element)
   const state = data => handlers.EarthFreightState({}, data)
-  const a = { scope, commands, handlers, root, document, timers, state, advance: ms => { clock += ms; for (const tick of timers.values()) tick() } }
+  const a = { scope, commands, handlers, root, document, timers, timeouts, state, advance: ms => { clock += ms; for (const tick of timers.values()) tick() } }
   // BeamNG rebuilds the app when a menu closes: the old one is destroyed and a new one linked.
   a.remount = () => {
     handlers.$destroy()
@@ -540,11 +541,37 @@ test('the Heli tab hires, goes back to the car, and opens when a hire starts', (
   a.scope.backToCar()
   assert.ok(a.commands.includes(fixed('backToCar()')), 'back to the car sent')
   assert.equal(a.scope.tabAlert('heli'), false)
-  a.state({ state: 'READY', arrived: true, heli: { hired: { stage: 'flying', car: {}, load: { inZone: true } } } })
-  assert.equal(a.scope.tabAlert('heli'), true, 'a load in the drop zone marks the tab')
+  a.state({ state: 'READY', arrived: true, heli: { hired: { stage: 'flying', car: {} } }, beacon: { pickup: {} } })
+  assert.equal(a.scope.tabAlert('heli'), true, 'a beacon found in flight marks the tab')
+  assert.ok(heli.includes('Towns around you') && heli.includes('Jobs from {{data.heli.hired.here.name}}'), 'scouting: towns and a board')
+  assert.ok(!heli.includes('data.heli.hired.load'), 'no loads any more')
   a.state({ state: 'READY', arrived: true, heli: { modPage: 'https://www.beamng.com/threads/x.1/' } })
   a.scope.openHeliMod()
   assert.ok(a.commands.some(c => c.includes('openWebBrowser("https://www.beamng.com/threads/x.1/")')), 'the mod page opens')
   const route = html.slice(html.indexOf(`ng-if="tab === 'route'"`), html.indexOf(`ng-if="tab === 'town'"`))
   assert.ok(route.includes('Heli hired.'), 'the Route tab says a heli is hired')
+})
+
+test('a signal beacon shows in the middle of the screen, closes by itself, and is picked up or ignored', () => {
+  const a = app()
+  a.root.EarthFreightBeacon({}, { title: 'SIGNAL BEACON PICKED UP', text: 'Coordinates for a job.' })
+  const box = a.document.body.children[0]
+  assert.ok(box, 'box shown'); assert.equal(box.children[0].textContent, 'SIGNAL BEACON PICKED UP')
+  assert.equal(a.timeouts.at(-1).ms, 10000, 'closes after 10 seconds')
+  a.timeouts.at(-1).fn()
+  assert.equal(a.document.body.children.length, 0, 'closed by itself')
+  a.root.EarthFreightBeacon({}, { title: 'X', text: 'Y' })
+  a.document.body.children[0].onclick()
+  assert.equal(a.document.body.children.length, 0, 'a click closes it')
+  const count = a.commands.length
+  a.state({ state: 'READY', beacon: { pickUpAllowed: false } }); a.scope.pickUpBeacon()
+  assert.equal(a.commands.length, count, 'no pickup until Lua allows it')
+  a.state({ state: 'READY', beacon: { pickUpAllowed: true } }); a.scope.pickUpBeacon()
+  assert.equal(a.commands.at(-1), fixed('pickUpBeacon()'))
+  assert.equal(a.scope.tabAlert('route'), true, 'the Route tab is marked at the beacon')
+  a.scope.ignoreBeacon(); assert.equal(a.commands.at(-1), fixed('ignoreBeacon()'))
+  const route = html.slice(html.indexOf(`ng-if="tab === 'route'"`), html.indexOf(`ng-if="tab === 'town'"`))
+  for (const part of ['ng-click="pickUpBeacon()"', 'ng-click="ignoreBeacon()"', 'copyCoordinates(data.beacon.pickup)', "Don't ask questions"]) {
+    assert.ok(route.includes(part), part)
+  }
 })

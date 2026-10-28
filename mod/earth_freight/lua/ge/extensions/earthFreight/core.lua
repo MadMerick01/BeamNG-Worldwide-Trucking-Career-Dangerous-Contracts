@@ -18,6 +18,7 @@ local fuel = require('earthFreight/fuel')
 local workshop = require('earthFreight/workshop')
 local shipping = require('earthFreight/shipping')
 local contracts = require('earthFreight/contracts')
+local beacons = require('earthFreight/beacons')
 local flights = require('earthFreight/flights')
 local aircraft = require('earthFreight/aircraft')
 local M = {}
@@ -119,7 +120,7 @@ function M.new(deps)
     -- Adds the load's weight to the car, and reads and sets its fuel; without them the load has no
     -- weight and there is no Refuel.
     cargo = deps.cargo, fuelTank = deps.fuel,
-    -- Puts heli loads down and reads where they are; without it there are no heli flights.
+    -- Reads where the hired helicopter is and how high; without it there are no heli flights.
     aircraft = deps.aircraft,
     odometer = odometer.new(),
     -- Sends game UI events, such as the pop-ups that show over the game's own menus.
@@ -141,6 +142,7 @@ function M.new(deps)
     if type(l) ~= 'table' or not l.pay or not goods.get(l.good) or not places.get(l.from) or not places.get(l.to) then return nil end
     if l.drop ~= nil and not location.valid(l.drop) then return nil end
     if l.contract ~= nil and not contracts.get(l.contract) then return nil end
+    if l.pickup ~= nil and not location.valid(l.pickup) then return nil end
     local out = copy(l)
     out.paid = nil
     return out
@@ -184,9 +186,10 @@ function M.new(deps)
     self.needs = needsFrom(self.profile and self.profile.needs)
     self.abandonArmed, self.insuranceArmed, self.insurancePending, self.insuredUntil = false, false, nil, nil
     self.towArmed, self.towPending = false, nil
-    -- A heli hire is not saved: its load is taken away and the saved car comes back on arrival.
-    if self.hire and self.hire.load and self.aircraft then pcall(self.aircraft.remove, self.aircraft, self.hire.load.id) end
+    -- A heli hire is not saved: the saved car comes back on arrival. A beacon found and not yet
+    -- picked up is, by Save, like money.
     self.hire, self.heliArmed, self.backArmed, self.heliFeedback = nil, false, false, nil
+    self.beacon, self.beaconArmed = copy(self.profile and self.profile.beacon), false
     local oldLoad = self.profile and self.profile.load
     if oldLoad and not self.load then
       self.diag:event('load_dropped', tostring(oldLoad.good), 'W')
@@ -864,12 +867,13 @@ function M.new(deps)
     if section and (not away or away > contracts.FINISH_RADIUS) then
       return 'Drive to the finish and stop within ' .. contracts.FINISH_RADIUS .. ' m of it.'
     end
-    if not away or away > jobs.DROP_RADIUS then
-      return 'Drive to the drop spot and stop within ' .. jobs.DROP_RADIUS .. ' m of it.'
+    local radius = load.beacon and beacons.RADIUS or jobs.DROP_RADIUS
+    if not away or away > radius then
+      return 'Drive to the drop spot and stop within ' .. radius .. ' m of it.'
     end
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-    local needed = jobs.drivenNeeded(section and section.start or places.get(load.from), load.drop)
+    local needed = jobs.drivenNeeded(section and section.start or load.pickup or places.get(load.from), load.drop)
     if section and section.driveKm then needed = math.max(needed, section.driveKm * 1000) end
     if load.drivenKm * 1000 < needed then
       return 'Drive it here: you have driven ' .. string.format('%.1f', load.drivenKm) .. ' km of the '
@@ -905,6 +909,13 @@ function M.new(deps)
       self.offer = nil
     end
     local section = load.contract and contracts.get(load.contract)
+    if load.beacon then
+      self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), 'Dropped off. Nobody saw a thing, and nobody asked.'
+        .. refund .. ' Save to keep it.')
+      self.tradeFeedback = nil
+      self.diag:event('job_delivered', 'beacon for ' .. load.pay)
+      return true
+    end
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units)
       .. (section and (' over ' .. section.name .. '. ' .. self:named('You made it') .. '.') or (' dropped off road. ' .. self:named('Nice driving') .. '.'))
       .. refund .. ' Save to keep it.')
@@ -976,6 +987,90 @@ function M.new(deps)
     local fee = self:dropJob('abandoned')
     self.tradeFeedback = 'Job abandoned' .. (fee > 0 and (' for ' .. dollars(fee)) or '') .. '.'
     return true
+  end
+
+  -- Why the beacon's package cannot be picked up now, or nil when it can.
+  function c:beaconProblem()
+    local sample, b = self.lastSample, self.beacon
+    if not b then return 'There is no beacon.' end
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then
+      return 'Pickups are unavailable right now.'
+    end
+    if self.hire then return FLYING end
+    if self.load then return 'Deliver or abandon your job first. The package will wait until the beacon goes quiet.' end
+    local away = location.distance(sample, b.pickup)
+    if not away or away > beacons.RADIUS then return 'Drive to the beacon and stop within ' .. beacons.RADIUS .. ' m of it.' end
+    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+    if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if not self.odometer:stopped() then return 'Stop the car to pick it up.' end
+    return nil
+  end
+
+  -- Picks up the beacon's package: a job with no weight, delivered off road at the beacon's drop
+  -- like an off-road drop, for beacons.PAY. Its towns are the nearest one, as for a saved job.
+  function c:pickUpBeacon()
+    local problem = self:beaconProblem()
+    local b = self.beacon
+    local nearest = not problem and places.nearest(b.pickup, 1)[1]
+    if not problem and not nearest then problem = 'Pickups are unavailable right now.' end
+    if problem then
+      self.tradeFeedback = problem
+      return false
+    end
+    local away = location.distance(b.pickup, b.drop)
+    self.load = { good = 'package', units = 1, slots = 1, kg = 0, pay = beacons.PAY, from = nearest.place.id,
+      to = nearest.place.id, drivenKm = 0, drop = location.copy(b.drop), pickup = location.copy(b.pickup), beacon = true }
+    self.beacon, self.beaconArmed, self.abandonArmed = nil, false, false
+    self:applyWeight()
+    self.tradeFeedback = 'Picked up: ' .. beacons.line(b.line):lower():gsub('%.$', '') .. '. Take it '
+      .. string.format('%.1f', away / 1000) .. ' km to the ' .. location.compassPoint(location.bearing(b.pickup, b.drop))
+      .. ', off road: follow the arrow and stop within ' .. beacons.RADIUS .. ' m of the drop. It pays ' .. dollars(beacons.PAY)
+      .. '. A crash costs ' .. dollars(beacons.INSURANCE_FEE) .. ' insurance and loses it.'
+    self.diag:event('beacon_picked_up', string.format('%.5f,%.5f', b.drop.latitude, b.drop.longitude))
+    return true
+  end
+
+  -- Ignores the beacon: it goes, for nothing. Asks once first.
+  function c:ignoreBeacon()
+    if not self.beacon then return false end
+    if not self.beaconArmed then
+      self.beaconArmed = true
+      self.tradeFeedback = 'Press Confirm to ignore the beacon. It costs nothing, and it is gone for good.'
+      return false
+    end
+    self.beacon, self.beaconArmed = nil, false
+    self.tradeFeedback = 'Beacon ignored.'
+    self.diag:event('beacon_ignored', '')
+    return true
+  end
+
+  -- Counts down a waiting beacon while the game runs; it goes quiet when its time is up.
+  function c:watchBeacon(dt)
+    local b = self.beacon
+    if not b or self.state ~= 'READY' or not self.arrived or self.paused() then return end
+    b.left = math.max(0, b.left - dt)
+    if b.left > 0 then return end
+    self.beacon, self.beaconArmed = nil, false
+    self:showFlash('cancelled', 'BEACON WENT QUIET', 'Nobody picked up the package in time. Keep flying to find another.')
+    self.diag:event('beacon_expired', '')
+  end
+
+  -- The beacon waiting, as the HUD shows it from where the player is.
+  function c:beaconView(current)
+    local b = self.beacon
+    if not b or self.state ~= 'READY' or not self.arrived then return nil end
+    local away = current and location.distance(current, b.pickup)
+    local bearing = away and away > 0 and location.bearing(current, b.pickup) or nil
+    local heading = self.lastSample and location.finite(self.lastSample.heading) and self.lastSample.heading or self.heading
+    local problem = self:beaconProblem()
+    return {
+      line = beacons.line(b.line), pay = beacons.PAY, insurance = beacons.INSURANCE_FEE, secondsLeft = math.ceil(b.left),
+      pickup = location.copy(b.pickup), distanceMetres = away, direction = bearing and location.compassPoint(bearing) or nil,
+      arrow = bearing and heading and (bearing - heading) % 360 or nil,
+      dropMetres = location.distance(b.pickup, b.drop), radiusMetres = beacons.RADIUS,
+      inZone = away ~= nil and away <= beacons.RADIUS, problem = problem, pickUpAllowed = problem == nil,
+      ignoreArmed = self.beaconArmed,
+    }
   end
 
   -- Fuel. The car is asked for its tank every READ_EVERY_SECONDS once arrived; the answer comes back
@@ -1058,6 +1153,7 @@ function M.new(deps)
     self:observe(self.adapter:sample(), dt)
     self:provideVehicle()
     self:watchHire()
+    self:watchBeacon(dt)
     self:watchParts()
     self:watchPartsBill()
     self:afterRespawn()
@@ -1171,12 +1267,13 @@ function M.new(deps)
       local away = current and location.distance(current, drop)
       local problem = self:dropProblem()
       local section = self.load.contract and contracts.get(self.load.contract)
-      local radius = section and contracts.FINISH_RADIUS or jobs.DROP_RADIUS
+      local radius = section and contracts.FINISH_RADIUS or self.load.beacon and beacons.RADIUS or jobs.DROP_RADIUS
       local teleporting = self.contractTeleportAt ~= nil and self.clock - self.contractTeleportAt < TELEPORT_WAIT_SECONDS
       loadView = {
         good = good.name, goodId = good.id, units = self.load.units or self.load.slots, slots = self.load.slots,
         kg = self.load.kg, pay = self.load.pay, drivenKm = self.load.drivenKm, from = from.name,
-        to = section and section.name or 'off-road drop',
+        to = section and section.name or 'off-road drop', beacon = self.load.beacon or nil,
+        insurance = self.load.beacon and beacons.INSURANCE_FEE or nil,
         contract = section and { name = section.name, region = section.region, summary = section.summary,
           started = self.load.started == true, start = location.copy(section.start),
           startMetres = current and location.distance(current, section.start) or nil,
@@ -1347,7 +1444,7 @@ function M.new(deps)
       revertCarAllowed = self.pendingCar ~= nil,
       carFeedback = self.carFeedback,
       saveAllowed = self.state == 'READY' and self.arrived and not self.stranded and not self.booking and not self.hire,
-      heli = self:heliView(current),
+      heli = self:heliView(current), beacon = self:beaconView(current),
       shipping = self:shippingView(current),
       stranded = self.stranded and current and {
         latitude = self.stranded.latitude, longitude = self.stranded.longitude,
@@ -1428,6 +1525,8 @@ function M.new(deps)
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres,
         value = self:savedVehicleUsed() and self.ownedParts.value or nil, km = self:savedVehicleUsed() and self.ownedParts.km or nil },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
+      beacon = self.beacon and { pickup = location.copy(self.beacon.pickup), drop = location.copy(self.beacon.drop),
+        line = self.beacon.line, left = math.ceil(self.beacon.left) } or nil,
     })
     if not saved then
       -- Nothing is lost: the last save is untouched and the session carries on, so Save can be tried again.
@@ -1589,12 +1688,8 @@ function M.refuel() return safely(function() return ensure():refuel() end) end
 function M.hireHeli() return safely(function() return ensure():hireHeli() end) end
 function M.backToCar() return safely(function() return ensure():backToCar(false) end) end
 -- A heli load's answer: what it weighs once its mass is set.
-function M.loadMass(id, kg)
-  return safely(function() if active and type(id) == 'number' and type(kg) == 'number' then active:loadMass(id, kg) end end)
-end
--- The game's coupler hooks: the helicopter's hook taking hold of a load, or letting it go.
-function M.onCouplerAttached(a, b) return safely(function() if active then active:couplerChanged(a, b, true) end end) end
-function M.onCouplerDetached(a, b) return safely(function() if active then active:couplerChanged(a, b, false) end end) end
+function M.pickUpBeacon() return safely(function() return ensure():pickUpBeacon() end) end
+function M.ignoreBeacon() return safely(function() return ensure():ignoreBeacon() end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
 -- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.
 function M.bookShippingTo(latitude, longitude)
