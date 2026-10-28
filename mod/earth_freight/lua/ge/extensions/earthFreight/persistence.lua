@@ -145,6 +145,8 @@ function M.validate(s)
   end
   -- Damage the saved car had and nobody has paid to repair, and the fuel in its tank.
   if not amount(s.vehicle.damage) or not amount(s.vehicle.fuelLitres) then return nil, 'invalid_vehicle' end
+  -- A second-hand car keeps what was paid for it (its value) and the kilometres it came with.
+  if not amount(s.vehicle.value) or not amount(s.vehicle.km) then return nil, 'invalid_vehicle' end
   local resume, poseWhy = pose(s.resume)
   if not resume then return nil, poseWhy end
   -- atStart marks a new game the player has not reached the start of yet.
@@ -172,7 +174,7 @@ function M.validate(s)
     schemaVersion = M.SCHEMA, profileId = 'default', generation = s.generation,
     base = location.copy(s.base), resume = resume, progression = p,
     vehicle = { model = s.vehicle.model, configuration = s.vehicle.configuration, config = vehicleConfig,
-      damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres },
+      damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres, value = s.vehicle.value, km = s.vehicle.km },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent,
   }
 end

@@ -1269,7 +1269,9 @@ function M.new(deps)
         name = self.pendingCar.name, price = self.pendingCar.price, extras = self.pendingCar.extras,
         tradeIn = self.pendingCar.tradeIn, repair = self.pendingCar.repair, cost = self.pendingCar.cost,
         oldName = self.ownedParts and self.ownedParts.name or nil,
+        used = self.pendingCar.used and { km = self.pendingCar.used.km, newPrice = self.pendingCar.used.newPrice } or nil,
       } or nil,
+      usedCars = self:usedCarsView(),
       buyCarAllowed = self:buyCarAllowed(),
       revertCarAllowed = self.pendingCar ~= nil,
       carFeedback = self.carFeedback,
@@ -1346,7 +1348,8 @@ function M.new(deps)
       progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm,
         jobsDone = progression.jobsDone, contractsDone = copy(progression.contractsDone) },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
-        damage = self:savedVehicleDamage(), fuelLitres = fuelLitres },
+        damage = self:savedVehicleDamage(), fuelLitres = fuelLitres,
+        value = self:savedVehicleUsed() and self.ownedParts.value or nil, km = self:savedVehicleUsed() and self.ownedParts.km or nil },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
     })
     if not saved then
@@ -1481,6 +1484,12 @@ function M.buyParts() return safely(function() return ensure():buyParts() end) e
 function M.revertParts() return safely(function() return ensure():revertParts(false) end) end
 function M.buyCar() return safely(function() return ensure():buyCar() end) end
 function M.revertCar() return safely(function() return ensure():revertCar(false) end) end
+function M.openUsedCars(open) return safely(function() return ensure():openUsedCars(open == true) end) end
+-- slot is the car's place in the Buy second hand list, from 1.
+function M.buyUsedCar(slot)
+  if type(slot) ~= 'number' or slot ~= math.floor(slot) or slot < 1 or slot > 9 then return false end
+  return safely(function() return ensure():buyUsedCar(slot) end)
+end
 function M.newGame() return safely(function() return ensure():newGame() end) end
 function M.cancelNewGame() return safely(function() return ensure():cancelNewGame() end) end
 function M.startHere() return safely(function() return ensure():startHere() end) end

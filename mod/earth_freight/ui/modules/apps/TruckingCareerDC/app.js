@@ -315,6 +315,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
       scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar()') }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
+      // Buy second hand: opens or closes the town's list; a car is picked by its place in it.
+      scope.openUsedCars = function (open) { core('openUsedCars(' + (open ? 'true' : 'false') + ')') }
+      scope.buyUsedCar = function (offer) {
+        if (offer && offer.allowed && [1, 2, 3, 4, 5, 6, 7, 8, 9].indexOf(offer.slot) >= 0) core('buyUsedCar(' + offer.slot + ')')
+      }
       // Open the game's own parts menu (Ctrl+W) and car selector (Ctrl+E); the bill then shows up on the Garage tab.
       scope.openPartsMenu = function () {
         call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +

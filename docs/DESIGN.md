@@ -227,6 +227,8 @@ Vehicles are bought through the garage as in Enduro: a car's game Value sets its
 
 **Decided (Q9): there is no forced ladder.** The player can buy any vanilla BeamNG vehicle they can afford. The sedan → ute → truck → semi tiers above describe the usual path, not a rule; money does the gating.
 
+**Decided (Rowan, 27 Oct): second-hand cars.** Buy second hand on the Garage tab lists two cars for sale in the town the player is in, or the nearest town (`usedCars.lua`). They are picked from the game's whole config list (official BeamNG configs with a Value, no trailers or props) by a hash of the town's id, so each town always has the same two and the player drives on to see others. The price is 70% to 105% of the config's Value; cheaper cars have more kilometres (20,000 to 300,000). Buying spawns the car in place of the player's and opens the normal car bill at that price. The car is made to look worn through the game's part condition (mileage and faded paint) and is otherwise like new. Its value is the price paid, kept through part changes and in the save, so it cannot be traded in for more than it cost. The idea comes from RLS Career Overhaul's dealerships; none of its code is used.
+
 ## Teleporting: book shipping (decided, Q10 and Q11)
 
 The point of the game is to take your vehicle all over the world, so moving it should be **cheap**. What you cannot do is teleport with goods.

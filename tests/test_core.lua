@@ -986,4 +986,99 @@ do
   T.eq(jobs.quote(job, 10, {}, 0).pay, math.floor(jobs.basePay(goods.get('parts'), 10, 5) * 3 / 10 + 0.5) * 10, 'a Sani Pass job pays 3 times')
 end
 
+-- Second-hand cars: the town's cars, spawned worn in place of the player's and billed at their price.
+do
+  local UsedCars = require('earthFreight/usedCars')
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 100000
+  T.eq(c:view().usedCars, nil, 'the list is closed until Buy second hand')
+  c:openUsedCars(true)
+  local list = c:view().usedCars
+  T.eq(#list.offers, 2, 'two cars for sale'); T.eq(list.tradeIn, 10000, 'trade-in is half the car')
+  local seen = {}
+  for _, o in ipairs(list.offers) do
+    seen[o.name] = true
+    T.check(o.price >= 0.7 * o.newPrice - 50 and o.price <= 1.05 * o.newPrice + 50, 'priced at 70% to 105% of new')
+    T.eq(o.cost, o.price - 10000, 'less the trade-in'); T.check(o.allowed, 'affordable')
+  end
+  T.check(seen['Sport GT'] and seen['Pickup D15'], 'no trailers and no mod cars')
+  T.check(c:view().usedCars.offers[1].price == list.offers[1].price, 'the same town keeps its cars')
+  local slot, offer
+  for i, o in ipairs(list.offers) do if o.name == 'Sport GT' then slot, offer = i, o end end
+  -- Not with a job on board.
+  c.load = { good = 'food' }
+  T.check(not c:buyUsedCar(slot), 'refused with a job'); T.check(c:usedCarProblem():find('job'), 'told why')
+  c.load = nil
+  T.check(c:buyUsedCar(slot), 'car brought out'); T.eq(g.spawns[#g.spawns].config, 'vehicles/sport/gt.pc', 'its config')
+  T.eq(c:view().usedCars, nil, 'the list closes')
+  c:vehicleSpawned(); c:tick(0.1)
+  local bill = c:view().carChange
+  T.eq(bill.price, offer.price, 'billed at the second-hand price'); T.eq(bill.used.km, offer.km, 'with its km')
+  T.eq(bill.cost, offer.cost, 'as the card said')
+  T.eq(#g.wears, 1, 'made to look worn'); T.eq(g.wears[1].km, offer.km, 'by its km'); T.eq(g.wears[1].model, 'sport', 'on the new car')
+  T.check(g.wears[1].look < 1, 'faded')
+  T.check(c:buyCar(), 'bought'); T.eq(c.ownedParts.value, offer.price, 'worth what was paid')
+  T.eq(c:view().balance, 100000 - offer.cost, 'paid')
+  c:openUsedCars(true)
+  T.check(c:view().usedCars.offers[slot].sold, 'shown as bought'); T.check(not c:buyUsedCar(slot), 'not twice')
+  -- A part change keeps its value and its wear.
+  g:fit('engine', 'sport_engine_race'); g.values.sport_engine_race = 9000; c:vehicleSpawned(); c:tick(0.1)
+  T.eq(#g.wears, 2, 'worn again after the respawn'); T.check(c:buyParts(), 'parts paid')
+  T.eq(c.ownedParts.value, offer.price, 'still worth what was paid'); T.eq(c.ownedParts.km, offer.km, 'and keeps its km')
+  -- Save keeps the price and km; a reload brings the car back at that value, worn.
+  c:tick(0.6); c:tick(0.6)
+  T.check(c:manualSave(), 'saved'); T.eq(io.files[A].vehicle.value, offer.price, 'value saved'); T.eq(io.files[A].vehicle.km, offer.km, 'km saved')
+  local r, _, ra, rg = F.controller({ io = io })
+  ra.pose = F.copy(io.files[A].resume); r:tick(0.1)
+  r:vehicleSpawned(); r:tick(0.1)
+  T.eq(r.ownedParts.value, offer.price, 'reloaded at what was paid'); T.check(r.ownedParts.used, 'still second-hand')
+  T.eq(rg.wears[#rg.wears].km, offer.km, 'and worn again')
+end
+
+-- Getting your own car back drops the second-hand sale.
+do
+  local c, _, _, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 100000
+  c:openUsedCars(true)
+  T.check(c:buyUsedCar(1), 'car brought out'); c:vehicleSpawned(); c:tick(0.1)
+  T.check(c:view().carChange.used ~= nil, 'billed as second-hand')
+  T.check(c:revertCar(false), 'own car back'); c:vehicleSpawned(); c:tick(0.1)
+  T.eq(c.secondHand, nil, 'sale dropped'); T.eq(c:view().carChange, nil, 'no bill'); T.eq(c.ownedParts.model, 'pickup', 'own car')
+  -- A car that never spawns is dropped after a few seconds.
+  local before = #g.spawns
+  g.configParts['vehicles/pickup/d15.pc'] = nil
+  c:openUsedCars(true); T.check(c:buyUsedCar(2), 'asked'); T.eq(#g.spawns, before + 1, 'spawn asked')
+  F.advance(c, 6)
+  T.eq(c.secondHand, nil, 'dropped'); T.eq(c:view().carChange, nil, 'nothing billed')
+end
+
+-- The offers themselves: fixed per town, never the same car twice, cheaper ones have more km.
+do
+  local U = require('earthFreight/usedCars')
+  local list = {}
+  for i = 1, 50 do list[i] = { model = 'm' .. i, key = 'k', value = 10000 + i * 1000, source = 'BeamNG - Official', type = 'Car' } end
+  list[51] = { model = 'tr', key = 'k', value = 1, type = 'Trailer' }
+  list[52] = { model = 'prop', key = 'k', value = 1, type = 'Prop' }
+  list[53] = { model = 'free', key = 'k', value = 0, type = 'Car' }
+  local cands = U.candidates(list)
+  T.eq(#cands, 50, 'trailers, props and priceless configs left out')
+  local a1, a2 = U.offers('penrith', cands), U.offers('penrith', U.candidates(list))
+  T.eq(a1[1].model, a2[1].model, 'same town, same cars'); T.eq(a1[2].price, a2[2].price, 'same price')
+  local differs = false
+  for _, town in ipairs({ 'katoomba', 'lithgow', 'bathurst', 'orange' }) do
+    local o = U.offers(town, cands)
+    T.check(o[1].model ~= o[2].model, 'two different cars')
+    if o[1].model ~= a1[1].model then differs = true end
+    for _, x in ipairs(o) do
+      T.check(x.km >= U.KM_LOW and x.km <= U.KM_HIGH, 'km in range')
+      T.eq(x.price % 100, 0, 'rounded to $100')
+    end
+  end
+  T.check(differs, 'other towns sell other cars')
+  T.eq(U.look(0), 1, 'new looks new'); T.near(U.look(U.KM_HIGH), U.LOOK_WORN, 1e-9, 'high km looks worn')
+  T.eq(#U.offers('x', {}), 0, 'nothing to sell, no offers')
+end
+
 T.done('Earth Freight controller')

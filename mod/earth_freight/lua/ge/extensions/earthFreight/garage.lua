@@ -96,6 +96,46 @@ function M.new(environment)
     return value, name
   end
 
+  -- Every car config the game has, read once: a list of { model, key, config (its .pc path), name,
+  -- value, type, source, preview }. Empty when the game's list is unreadable.
+  local configList
+  function g:configs()
+    if configList then return configList end
+    local vehicles = env.vehicles()
+    if type(vehicles) ~= 'table' or type(vehicles.getConfigList) ~= 'function' then return {} end
+    local ok, result = pcall(vehicles.getConfigList)
+    if not ok or type(result) ~= 'table' then return {} end
+    local out = {}
+    for _, info in pairs(type(result.configs) == 'table' and result.configs or result) do
+      local model, key = type(info) == 'table' and info.model_key, type(info) == 'table' and info.key
+      if type(model) == 'string' and model ~= '' and type(key) == 'string' and key ~= '' then
+        local name = type(info.Name) == 'string' and info.Name or model
+        if type(info.Brand) == 'string' and info.Brand ~= '' and name:sub(1, #info.Brand) ~= info.Brand then
+          name = info.Brand .. ' ' .. name
+        end
+        if type(info.Configuration) == 'string' then name = name .. ' ' .. info.Configuration end
+        out[#out + 1] = { model = model, key = key, config = 'vehicles/' .. model .. '/' .. key .. '.pc', name = name,
+          value = tonumber(info.Value), type = type(info.Type) == 'string' and info.Type or nil,
+          source = type(info.Source) == 'string' and info.Source or nil,
+          preview = type(info.preview) == 'string' and info.preview or nil }
+      end
+    end
+    if #out > 0 then configList = out end
+    return out
+  end
+
+  -- Makes the player vehicle look used: the game's part condition is set to this many kilometres,
+  -- with the paint faded to look (1 is new). Only the looks change. Returns true once queued.
+  function g:wear(km, look)
+    local vehicle = current()
+    if not vehicle then return false, 'vehicle_required' end
+    local command = string.format('if partCondition and partCondition.initConditions then '
+      .. 'partCondition.initConditions(nil, %d, nil, %.3f) end', math.floor((km or 0) * 1000), look or 1)
+    local ok, why = pcall(function() vehicle:queueLuaCommand(command) end)
+    if not ok then return false, 'wear_failed', tostring(why) end
+    return true
+  end
+
   -- Returns the player vehicle's fitted parts:
   -- { id, model, config, parts = { [slot] = part }, values = { [part] = price or nil }, names = { [part] = name },
   --   configFile, value, name } where value is the car's own price from carValue.

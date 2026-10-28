@@ -227,8 +227,9 @@
           <button type="button" ng-click="claimInsurance()" ng-disabled="!data.insurance.allowed" ng-style="data.insurance.armed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="margin-top:6px;padding:7px 12px;">{{data.insurance.pending ? 'Towing to the road...' : (data.insurance.armed ? 'Confirm claim' : 'Claim insurance')}}</button>
         </div>
         <div ng-if="data.carChange" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
-          <div style="font-weight:bold;color:#f2c94c;">New car bill &middot; not paid yet</div>
+          <div style="font-weight:bold;color:#f2c94c;">{{data.carChange.used ? 'Second-hand car bill' : 'New car bill'}} &middot; not paid yet</div>
           <div style="display:flex;gap:8px;margin-top:4px;"><span style="flex:1;min-width:0;">{{data.carChange.name}}</span><span>${{data.carChange.price | number:0}}</span></div>
+          <div ng-if="data.carChange.used" style="font-size:13px;color:#c9d6d2;">Second-hand, {{data.carChange.used.km | number:0}} km. New it costs ${{data.carChange.used.newPrice | number:0}}.</div>
           <div ng-if="data.carChange.extras > 0" style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">Parts changed on it</span><span>${{data.carChange.extras | number:0}}</span></div>
           <div style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">Trade-in<span ng-if="data.carChange.oldName">: {{data.carChange.oldName}}</span><span ng-if="data.carChange.repair > 0" style="color:#c9d6d2;font-size:12px;"> (less ${{data.carChange.repair | number:0}} for its damage)</span></span><span>&minus;${{data.carChange.tradeIn | number:0}}</span></div>
           <div style="display:flex;gap:8px;margin-top:4px;padding-top:4px;border-top:1px solid rgba(242,201,76,.5);font-weight:bold;"><span style="flex:1;">Total</span><span>${{data.carChange.cost | number:0}}</span></div>
@@ -267,16 +268,36 @@
           <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Drive off without paying and the changes are undone.</div>
           <div ng-if="data.partsFeedback" role="status" style="margin-top:4px;">{{data.partsFeedback}}</div>
         </div>
-        <div ng-if="!data.carChange && !data.partsChange" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+        <div ng-if="!data.carChange && !data.partsChange && data.usedCars" style="margin:0 0 8px;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
+          <div style="display:flex;gap:8px;align-items:baseline;"><span style="flex:1;min-width:0;font-weight:bold;color:#a7e5c9;">Second-hand cars<span ng-if="data.usedCars.town"> in {{data.usedCars.town}}</span></span><button type="button" ng-click="openUsedCars(false)" style="padding:3px 10px;">Close</button></div>
+          <div style="font-size:12px;color:#7d8b88;">Every town has its own. Drive to another town to see different cars.</div>
+          <div ng-if="data.usedCars.offers.length === 0" style="margin-top:6px;color:#c9d6d2;">No second-hand cars here right now.</div>
+          <div ng-repeat="offer in data.usedCars.offers track by offer.slot" style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(167,229,201,.3);">
+            <img ng-if="offer.preview" ng-src="{{offer.preview}}" alt="" style="width:96px;height:54px;object-fit:cover;border-radius:4px;flex:none;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:bold;overflow-wrap:anywhere;">{{offer.name}}</div>
+              <div style="font-size:13px;color:#c9d6d2;">{{offer.km | number:0}} km &middot; ${{offer.price | number:0}} <span>({{offer.share}}% of new)</span> <span ng-if="offer.share < 80" style="padding:0 5px;border-radius:3px;background:#6fcf97;color:#0c1318;font-weight:bold;font-size:12px;">Good deal</span></div>
+              <div style="font-size:13px;">You pay ${{offer.cost | number:0}} after your trade-in.</div>
+              <div ng-if="offer.short && !offer.sold" style="font-size:13px;color:#eb5757;">${{offer.short | number:0}} short.</div>
+              <button type="button" ng-click="buyUsedCar(offer)" ng-disabled="!offer.allowed" ng-style="offer.allowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="margin-top:4px;padding:5px 12px;border:1px solid #568d7a;border-radius:4px;">{{offer.sold ? 'Bought' : 'Buy this one'}}</button>
+            </div>
+          </div>
+          <div ng-if="data.usedCars.oldName" style="margin-top:8px;font-size:13px;color:#c9d6d2;">Your {{data.usedCars.oldName}} trades in for ${{data.usedCars.tradeIn | number:0}}.</div>
+          <div style="font-size:12px;color:#7d8b88;">Buy this one brings the car out in place of yours and shows its bill. They look worn but drive like new.</div>
+          <div ng-if="data.usedCars.problem" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.usedCars.problem}}</div>
+          <div ng-if="data.carFeedback" role="status" style="margin-top:4px;">{{data.carFeedback}}</div>
+        </div>
+        <div ng-if="!data.carChange && !data.partsChange && !data.usedCars" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
           <div style="font-weight:bold;color:#a7e5c9;">Change parts or buy a car</div>
           <ol style="margin:4px 0 0;padding-left:20px;">
-            <li>Press Buy parts to change parts, or Buy new car to pick a car. Nothing is paid yet.</li>
+            <li>Press Buy parts to change parts, Buy new car to pick any car, or Buy second hand for this town's used cars. Nothing is paid yet.</li>
             <li>The bill shows up here, less what you trade in.</li>
             <li>Pay to keep it, or undo it.</li>
           </ol>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
             <button type="button" ng-click="openPartsMenu()" style="flex:1;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy parts</button>
             <button type="button" ng-click="openCarMenu()" style="flex:1;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy new car</button>
+            <button type="button" ng-click="openUsedCars(true)" style="flex:1;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy second hand</button>
           </div>
           <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Cargo: <span ng-if="data.space.boot">boot only</span><span ng-if="!data.space.boot">{{data.space.boxes.length}} {{data.space.boxes.length === 1 ? 'box' : 'boxes'}}</span> &middot; {{data.space.slots}} slots &middot; {{data.space.kg | number:0}} kg max<span ng-if="data.space.boot">. A Cargo Load box adds room.</span></div>
           <div style="font-size:13px;color:#c9d6d2;">Tank: <span ng-if="data.space.litres > 0">{{data.space.tanks.join(', ')}} &middot; {{data.space.litres | number:0}} L</span><span ng-if="!(data.space.litres > 0)">none. Press Buy parts, fit a Cargo Load fluid tank and pay for it here to take water and fuel jobs.</span></div>
@@ -302,7 +323,7 @@
           <button type="button" ng-click="refuel()" ng-disabled="!(data.town && data.town.refuelAllowed)" style="margin-top:4px;padding:7px 12px;">Refuel</button>
           <div ng-if="data.fuelFeedback" role="status" style="margin-top:4px;">{{data.fuelFeedback}}</div>
         </div>
-        <p role="status" ng-repeat="text in [data.carChange ? null : data.carFeedback, data.partsChange ? null : data.partsFeedback, data.repairFeedback] track by $index" ng-if="text" style="margin:0 0 6px;">{{text}}</p>
+        <p role="status" ng-repeat="text in [data.carChange || data.usedCars ? null : data.carFeedback, data.partsChange ? null : data.partsFeedback, data.repairFeedback] track by $index" ng-if="text" style="margin:0 0 6px;">{{text}}</p>
       </div>
       <div ng-if="tab === 'relocate'">
         <div ng-if="data.shipping.offer && !data.shipping.booking" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
