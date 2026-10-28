@@ -32,12 +32,12 @@ cfg=F.config(); cfg.resumeRadiusMetres=nil; cfg.stabilitySeconds=3
 local clean=C.validate(cfg); T.eq(clean.resumeRadiusMetres,50,'default radius'); T.eq(clean.stabilitySeconds,nil,'legacy stability setting ignored')
 local io=F.io()
 local defaults=C.load(io)
-T.eq(defaults.base.latitude,-33.75,'missing config uses approved default latitude')
-T.eq(defaults.base.longitude,150.7,'missing config uses approved default longitude')
+T.eq(defaults.base,nil,'missing config has no fixed start: the player chooses one')
 T.eq(defaults.resumeRadiusMetres,50,'built-in radius')
 T.eq(io.writes,0,'loading defaults does not create configuration')
-defaults.base.latitude=0
-T.eq(C.load(io).base.latitude,-33.75,'defaults are detached per load')
+defaults.resumeRadiusMetres=1
+T.eq(C.load(io).resumeRadiusMetres,50,'defaults are detached per load')
+cfg=F.config(); cfg.base=nil; T.eq(C.validate(cfg).base,nil,'a config without a base is valid')
 io=F.io({[C.FILE]=F.config(F.position(0,0))})
 T.eq(C.load(io).base.latitude,0,'existing override wins over defaults')
 T.eq(io.writes,0,'existing override never overwritten')

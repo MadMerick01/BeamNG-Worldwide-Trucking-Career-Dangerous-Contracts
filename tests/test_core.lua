@@ -46,6 +46,53 @@ do
   T.check(r:manualSave(), 'saving works again')
 end
 
+-- Start here: with no fixed start, the player teleports anywhere, such as Leeds, and starts there.
+-- A new game later starts there again, or wherever Start here is pressed next.
+do
+  local io = F.io()
+  local leeds = F.position(53.7997, -1.5492)
+  local c, _, a, g = F.controller({ io = io, adapter = F.adapter(F.copy(leeds)) })
+  T.eq(c.startupTarget, nil, 'no fixed start without a base in config.json')
+  T.check(not c:startHere(), 'nothing to start before Earth is ready')
+  c:tick(0.1)
+  local v = c:view()
+  T.eq(v.stateLabel, 'CHOOSE WHERE YOU START', 'the player is asked to choose a start')
+  T.eq(v.resume, nil, 'no coordinates to go to'); T.check(not v.teleportAllowed, 'nothing to teleport to')
+  T.check(v.sessionStatus:find('Start here') ~= nil, 'told to press Start here')
+  T.check(v.startHereAllowed, 'Start here offered'); T.check(not c:newGame(), 'no new game before starting')
+  T.check(not c:manualSave(), 'no save before starting'); T.eq(#g.spawns, 0, 'no starter car yet')
+  T.check(c:startHere(), 'started in Leeds')
+  v = c:view()
+  T.check(v.arrived, 'arrived'); T.eq(v.flash.title, 'WELCOME TO LEEDS', 'welcomed to Leeds')
+  T.eq(v.startTown, 'Leeds', 'the start is Leeds'); T.check(not v.startHereAllowed, 'Start here is used up')
+  T.check(not c:startHere(), 'only once')
+  c:tick(0.1); T.eq(#g.spawns, 1, 'the starter car is given in Leeds')
+  c:vehicleSpawned(); c:tick(0.6); c:tick(0.6)
+  T.check(c:manualSave(), 'saved'); T.near(io.files[A].base.latitude, leeds.latitude, 1e-9, 'Leeds is saved as the start')
+  -- A new game, pressed in York, goes back to Leeds.
+  F.drive(c, a, F.position(53.9590, -1.0815))
+  c:addMoney(1000); c:newGame()
+  T.check(c:view().saveFeedback:find('Leeds') ~= nil, 'the warning names Leeds')
+  T.check(c:newGame(), 'new game'); c:tick(0.1)
+  v = c:view()
+  T.eq(v.stateLabel, 'GO TO LEEDS', 'a new game goes back to Leeds')
+  T.near(v.resume.latitude, leeds.latitude, 1e-9, 'with its coordinates')
+  T.check(v.startHereAllowed, 'or Start here somewhere else')
+  -- Start here in York instead makes York the start.
+  T.check(not c:view().arrived, 'not at the start yet')
+  T.check(c:startHere(), 'started in York'); T.eq(c:view().startTown, 'York', 'the start is York')
+  c:tick(0.1); c:vehicleSpawned(); c:tick(0.6); c:tick(0.6)
+  T.check(c:manualSave(), 'saved'); T.near(io.files[A].base.latitude, 53.9590, 1e-9, 'York is saved as the start')
+  -- Not saved: a reload offers the spot pressed again, and Start here still works.
+  local u = F.controller({ io = F.io(), adapter = F.adapter(F.copy(leeds)) })
+  u:tick(0.1); T.check(u:startHere(), 'started'); u:reload(); u.adapter.pose = F.position(53.9590, -1.0815); u:tick(0.1)
+  T.eq(u:view().stateLabel, 'GO TO LEEDS', 'an unsaved start is offered again after a reload')
+  -- Far from every town, in the Sahara: the start is not named after a town far away.
+  local sahara = F.controller({ io = F.io(), adapter = F.adapter(F.position(23.0, 2.0)) })
+  sahara:tick(0.1); T.check(sahara:startHere(), 'started in the desert')
+  T.eq(sahara:view().startTown, nil, 'no town name'); T.eq(sahara:view().flash.title, 'WELCOME TO YOUR START', 'welcomed to the start')
+end
+
 -- Teleport there: Earth is asked to take the player to the save, or to the start town.
 do
   local c, io, a = F.controller()

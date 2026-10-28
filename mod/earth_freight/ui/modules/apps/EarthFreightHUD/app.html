@@ -47,22 +47,25 @@
       <ol ng-if="firstLaunch(data) || intro.steps" style="margin:6px 0 0;padding:0;list-style:none;">
         <li ng-repeat="step in introSteps" style="display:flex;gap:8px;margin-bottom:6px;">
           <span aria-hidden="true" style="flex:none;width:20px;height:20px;border-radius:50%;background:#568d7a;color:#0c1318;font-weight:bold;font-size:12px;text-align:center;line-height:20px;">{{$index + 1}}</span>
-          <div style="flex:1;min-width:0;"><span ng-if="$first">Go to {{data.startTown}}: </span>{{step}}
-            <div ng-if="$first && data.resume && data.mode === 'start'">
-              <button type="button" ng-click="teleportToResume()" ng-disabled="!data.teleportAllowed" ng-style="{opacity: data.teleportAllowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Teleport to {{data.startTown}}</button>
-              <div ng-if="data.teleportFeedback" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.teleportFeedback}}</div>
+          <div style="flex:1;min-width:0;"><span ng-if="$first">Choose where you start: </span>{{step}}
+            <div ng-if="$first && data.mode === 'start' && !data.arrived">
+              <button type="button" ng-click="startHere()" ng-disabled="!data.startHereAllowed" ng-style="{opacity: data.startHereAllowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Start here</button>
             </div>
-            <div ng-if="$first && data.resume && data.mode === 'start'" style="display:flex;gap:6px;margin-top:4px;">
-              <input aria-label="Coordinates to go to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
-              <button type="button" aria-label="Copy coordinates" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
+            <div ng-if="$first && data.resume && data.mode === 'start'" style="margin-top:8px;font-size:13px;">Or go back to where you started last time<span ng-if="data.startTown">, in {{data.startTown}}</span>:
+              <div><button type="button" ng-click="teleportToResume()" ng-disabled="!data.teleportAllowed" ng-style="{opacity: data.teleportAllowed ? 1 : 0.5}" style="margin-top:4px;padding:5px 12px;">Teleport to {{data.startTown || 'your start'}}</button></div>
+              <div ng-if="data.teleportFeedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.teleportFeedback}}</div>
+              <div style="display:flex;gap:6px;margin-top:4px;">
+                <input aria-label="Coordinates to go to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.resume)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+                <button type="button" aria-label="Copy coordinates" ng-click="copyCoordinates(data.resume)" ng-disabled="!coordinates(data.resume)">Copy</button>
+              </div>
             </div>
           </div>
         </li>
       </ol>
       <div ng-if="!firstLaunch(data)" ng-style="data.newGameArmed ? {border:'2px solid #eb5757',background:'rgba(235,87,87,.1)'} : {border:'1px solid rgba(235,87,87,.6)'}" style="margin-top:14px;padding:10px;border-radius:6px;">
         <div style="font-weight:bold;color:#eb5757;">{{data.newGameArmed ? 'Start over for real?' : 'Start over'}}</div>
-        <div ng-if="!data.newGameArmed" style="margin-top:2px;font-size:13px;">Wipes this game and starts again in {{data.startTown}} in the starter car.</div>
-        <div ng-if="data.newGameArmed" role="alert" style="margin-top:2px;font-size:13px;">You lose your {{data.vehicle.model || 'car'}}<span ng-if="data.load">, your job</span> and all ${{data.balance | number:0}}. You restart in {{data.startTown}} with ${{data.startingMoney | number:0}} in the starter car. This cannot be undone.</div>
+        <div ng-if="!data.newGameArmed" style="margin-top:2px;font-size:13px;">Wipes this game and starts again in {{data.startTown || 'your start'}} in the starter car, or anywhere else you press Start here.</div>
+        <div ng-if="data.newGameArmed" role="alert" style="margin-top:2px;font-size:13px;">You lose your {{data.vehicle.model || 'car'}}<span ng-if="data.load">, your job</span> and all ${{data.balance | number:0}}. You restart in {{data.startTown || 'your start'}}, or wherever you press Start here, with ${{data.startingMoney | number:0}} in the starter car. This cannot be undone.</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
           <button type="button" ng-click="newGame()" ng-disabled="!data.newGameAllowed" ng-style="data.newGameArmed ? {background:'#eb5757',color:'#0c1318',borderColor:'#eb5757'} : {background:'transparent',color:'#eb5757',borderColor:'#eb5757'}" style="padding:5px 12px;font-weight:bold;border:1px solid;border-radius:4px;">{{data.newGameArmed ? 'Yes, start over' : 'New game…'}}</button>
           <button type="button" ng-if="data.newGameArmed" ng-click="cancelNewGame()" style="padding:5px 12px;">Keep my game</button>
@@ -86,9 +89,14 @@
       <button type="button" ng-click="save()" ng-disabled="!data.saveAllowed" ng-style="unsaved(data) && data.saveAllowed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:5px 12px;margin-left:auto;border:1px solid #568d7a;border-radius:4px;">Save<span ng-if="data.unsavedBalance > 0"> &middot; ${{data.unsavedBalance | number:0}} unsaved</span><span ng-if="!(data.unsavedBalance > 0) && data.unsavedSpending > 0"> &middot; ${{data.unsavedSpending | number:0}} spent</span></button>
     </div>
     <div ng-if="data.saveFeedback" style="margin:-4px 0 8px;color:#c9d6d2;font-size:12px;">{{data.saveFeedback}}</div>
+    <div ng-if="data.mode === 'start' && data.startHereAllowed" style="margin:0 0 8px;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
+      <div style="font-weight:bold;color:#a7e5c9;">Choose where you start</div>
+      <div style="margin-top:2px;font-size:13px;">Where you are now becomes your start. A new game brings you back here, or you can choose somewhere else then.</div>
+      <button type="button" ng-click="startHere()" ng-disabled="!data.startHereAllowed" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Start here</button>
+    </div>
     <div ng-if="data.resume" style="margin:0 0 8px;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
-      <div style="font-weight:bold;color:#a7e5c9;">{{data.mode === 'start' ? 'Go to ' + data.startTown : 'Go back to your last save'}}</div>
-      <button type="button" ng-click="teleportToResume()" ng-disabled="!data.teleportAllowed" ng-style="{opacity: data.teleportAllowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{data.mode === 'start' ? 'Teleport to ' + data.startTown : 'Teleport to last save'}}</button>
+      <div style="font-weight:bold;color:#a7e5c9;">{{data.mode === 'start' ? 'Or go back to ' + (data.startTown || 'your start') : 'Go back to your last save'}}</div>
+      <button type="button" ng-click="teleportToResume()" ng-disabled="!data.teleportAllowed" ng-style="{opacity: data.teleportAllowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{data.mode === 'start' ? 'Teleport to ' + (data.startTown || 'your start') : 'Teleport to last save'}}</button>
       <div ng-if="data.teleportFeedback" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.teleportFeedback}}</div>
       <label style="display:block;margin-top:6px;">Or copy the coordinates into the BeamNG.Earth map.
         <div style="display:flex;gap:6px;margin-top:4px;">
