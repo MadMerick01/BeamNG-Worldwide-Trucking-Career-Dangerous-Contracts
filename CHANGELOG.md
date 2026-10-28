@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 77 · 28 Oct 2026
+
 - **You can now pay for your parts straight from the parts bill box.** The box that pops up in the parts menu now lists each part you've added or sold back with its price, as the Garage tab does, and shows how much money you have. Press Pay, then Yes, pay, to buy the parts without leaving the menu. The Pay button only shows when you can afford the bill. You can still pay or undo on the Garage tab. Your saves still work.
 
 ## Build 74 · 28 Oct 2026
