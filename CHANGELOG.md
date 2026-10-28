@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 84 · 28 Oct 2026
+
 - **You can now take a short term loan.** The Repair card on the Garage tab has a **Short term loan** button: press it and then **Yes, borrow** to get $1,000 straight away. You owe $1,350 for it, shown on the same card. Once you have $1,350, press **Repay $1,350** there to pay it off in one go. Nothing is taken from your delivery pay, and you can't take another loan until this one is repaid. The Repair card also shows up while a parts or car bill is waiting and you're short of money, so you can borrow to pay it.
 - A loan is kept when you save, like your money. Your saves still work, and an old save starts with no loan.
 
