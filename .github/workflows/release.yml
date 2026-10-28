@@ -83,7 +83,7 @@ jobs:
           } > notes.md
           gh release create "$TAG" dist/earth-freight-sim.zip \
             --target "$GITHUB_SHA" \
-            --title "Earth Freight Sim build ${{ github.run_number }} ($short_sha)" \
+            --title "Worldwide Trucking Career build ${{ github.run_number }} ($short_sha)" \
             --notes-file notes.md \
             --latest
 

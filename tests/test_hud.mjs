@@ -345,7 +345,7 @@ test('Refuel sits on the Garage tab, and the Town tab has no cargo slots card', 
   assert.match(a.commands.at(-1), /core_vehicles\.openPartsSelectorUI\(\)/)
   assert.match(a.commands.at(-1), /menu\.vehicleconfig\.parts/)
 })
-test('the HUD minimises to an Earth Freight button, and stays that way after a rebuild or a restart', () => {
+test('the HUD minimises to a Worldwide Trucking button, and stays that way after a rebuild or a restart', () => {
   const saved = {}
   const storage = { getItem: k => (k in saved ? saved[k] : null), setItem: (k, v) => { saved[k] = String(v) } }
   const a = app(storage)
@@ -358,7 +358,7 @@ test('the HUD minimises to an Earth Freight button, and stays that way after a r
   a.scope.setMinimised(false)
   assert.equal(app(storage).scope.hud.minimised, false)
   assert.equal(app().scope.hud.minimised, false, 'starts open without storage')
-  assert.ok(html.includes('ng-if="hud.minimised" ng-click="setMinimised(false)"') && html.includes('>Earth Freight<'))
+  assert.ok(html.includes('ng-if="hud.minimised" ng-click="setMinimised(false)"') && html.includes('>Worldwide Trucking<'))
   assert.ok(html.includes('ng-click="setMinimised(true)"'), 'the header has a minimise button')
   assert.ok(/ng-style="hud\.minimised \? \{[^}]*\} : \{height:'100%'[^}]*background:'rgba/.test(html), 'the full HUD gets its look back when reopened')
   assert.ok(html.indexOf('ng-click="setMinimised(true)"') > html.indexOf('ng-if="!intro.open"') &&

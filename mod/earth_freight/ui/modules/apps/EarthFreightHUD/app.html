@@ -1,15 +1,16 @@
 <div class="bngApp" ng-style="hud.minimised ? {height:'auto',overflow:'visible',padding:'0',background:'none',border:'none',pointerEvents:'none'} : {height:'100%',overflow:'auto',padding:'14px',background:'rgba(12,19,24,.9)',border:'1px solid #568d7a',pointerEvents:'auto'}" style="width:100%;box-sizing:border-box;color:#f2f6f5;font:14px/1.4 sans-serif;border-radius:8px;">
-  <button type="button" ng-if="hud.minimised" ng-click="setMinimised(false)" title="Open the Earth Freight HUD" style="pointer-events:auto;padding:6px 12px;background:rgba(12,19,24,.9);color:#f2f6f5;font:bold 14px/1.4 sans-serif;letter-spacing:1px;border:1px solid #568d7a;border-radius:8px;">Earth Freight<span ng-if="hudAlert(data)" ng-style="{color: hudAlert(data) === 'bad' ? '#eb5757' : '#f2c94c'}" aria-label="needs attention"> &#9679;</span></button>
+  <button type="button" ng-if="hud.minimised" ng-click="setMinimised(false)" title="Open the Worldwide Trucking HUD" style="pointer-events:auto;padding:6px 12px;background:rgba(12,19,24,.9);color:#f2f6f5;font:bold 14px/1.4 sans-serif;letter-spacing:1px;border:1px solid #568d7a;border-radius:8px;">Worldwide Trucking<span ng-if="hudAlert(data)" ng-style="{color: hudAlert(data) === 'bad' ? '#eb5757' : '#f2c94c'}" aria-label="needs attention"> &#9679;</span></button>
   <div ng-if="!hud.minimised">
     <div ng-if="!intro.open" style="display:flex;align-items:center;gap:8px;">
-      <div style="flex:1;font-size:16px;font-weight:bold;letter-spacing:1px;">Earth Freight Sim</div>
+      <div style="flex:1;font-size:16px;font-weight:bold;letter-spacing:1px;">Worldwide Trucking Career</div>
       <button type="button" ng-click="openIntro()" title="Your name, how to play and new game" style="padding:2px 9px;border:1px solid #568d7a;border-radius:4px;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{data.playerName || 'Profile'}}</button>
-      <button type="button" ng-click="setMinimised(true)" title="Minimise to an Earth Freight button" aria-label="Minimise" style="padding:2px 9px;border:1px solid #568d7a;border-radius:4px;">&#8211;</button>
+      <button type="button" ng-click="setMinimised(true)" title="Minimise to a Worldwide Trucking button" aria-label="Minimise" style="padding:2px 9px;border:1px solid #568d7a;border-radius:4px;">&#8211;</button>
     </div>
     <div ng-if="intro.open">
       <div style="padding:4px 0 12px;border-bottom:1px solid rgba(86,141,122,.5);">
-        <div style="font-size:11px;font-weight:bold;letter-spacing:3px;color:#7fbfa6;">BEAMNG.EARTH</div>
-        <h1 style="margin:2px 0 0;font-size:30px;font-weight:900;letter-spacing:1px;line-height:1.05;">EARTH<br><span style="color:#a7e5c9;">FREIGHT</span> SIM</h1>
+        <div style="font-size:11px;font-weight:bold;letter-spacing:3px;color:#7fbfa6;">BEAMNG</div>
+        <h1 style="margin:2px 0 0;font-size:30px;font-weight:900;letter-spacing:1px;line-height:1.05;">WORLDWIDE<br><span style="color:#a7e5c9;">TRUCKING</span> CAREER</h1>
+        <div style="margin-top:4px;font-size:13px;font-weight:bold;letter-spacing:3px;color:#eb5757;">DANGEROUS CONTRACTS</div>
         <div style="margin-top:6px;color:#c9d6d2;">Haul freight between real towns anywhere on Earth.</div>
         <div aria-hidden="true" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:bold;color:#f2c94c;">RUST BUCKET <span style="flex:1;border-top:2px dashed rgba(242,201,76,.6);"></span> &#9654; <span style="flex:1;border-top:2px dashed rgba(242,201,76,.6);"></span> RIG</div>
       </div>

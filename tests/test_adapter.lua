@@ -85,8 +85,8 @@ do
   local g = Adapter.new({ core = function() return tcore end, module = function() end, vehicle = function() return vehicle end })
   T.eq(select(2, g:teleport({ latitude = 1, longitude = 2 })), 'teleport_missing', 'an Earth without teleport is skipped')
   tcore.teleport = function(lat, lon, name, opts) sent = { lat, lon, name, opts }; return true end
-  T.check(g:teleport({ latitude = -33.7, longitude = 150.8 }, 'Earth Freight: last save'), 'teleport asked')
-  T.eq(sent[1], -33.7, 'latitude'); T.eq(sent[2], 150.8, 'longitude'); T.eq(sent[3], 'Earth Freight: last save', 'name')
+  T.check(g:teleport({ latitude = -33.7, longitude = 150.8 }, 'Worldwide Trucking: last save'), 'teleport asked')
+  T.eq(sent[1], -33.7, 'latitude'); T.eq(sent[2], 150.8, 'longitude'); T.eq(sent[3], 'Worldwide Trucking: last save', 'name')
   T.eq(sent[4], nil, 'as Earth\'s map Go button')
   T.eq(select(2, g:teleport({ latitude = 91, longitude = 0 })), 'invalid_destination', 'invalid point refused')
   tcore.teleport = function() return false end
