@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Relocating no longer fixes your car for free.** Teleporting to a relocation you booked on the Relocate tab, to the start of a dangerous contract, or anywhere with the BeamNG.Earth map puts the car down as new, just like pressing Insert. The repair it needed now always stays owed on the Garage tab, even when the car's damage could not be read while the new area was loading, which could let it slip through before. Your saves still work.
+
 ## Build 78 · 28 Oct 2026
 
 - **The HUD is now called TruckingCareerDC in the app list.** When you open Edit Layout (or the UI apps menu) to add or move the HUD, look for TruckingCareerDC instead of EarthFreightHUD. Because the HUD has a new name, the game may drop it from a layout you saved before this build. If the HUD is missing after you update, open Edit Layout, add TruckingCareerDC again and save your layout. Delete the old ZIP from your mods folder so you don't end up with two copies. Your saves still work.
