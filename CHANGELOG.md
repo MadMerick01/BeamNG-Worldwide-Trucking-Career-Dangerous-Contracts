@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 87 · 28 Oct 2026
+
 - **The Ko-fi line at the bottom of the start page now reads "Keep me awake behind the wheel: ko-fi.com/madmerick".** Pressing the link works as before: it opens the page in your browser and copies the link. Your saves still work.
 
 ## Build 85 · 28 Oct 2026
