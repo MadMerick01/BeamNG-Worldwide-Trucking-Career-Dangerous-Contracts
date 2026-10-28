@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **You can now support the mod on Ko-fi.** At the very bottom of the start page (open it with your name button at the top of the HUD), **Support the mod on Ko-fi** opens ko-fi.com/madmerick in your browser and copies the link, so you can paste it yourself if the browser doesn't open. The mod stays free, and nothing about Ko-fi shows up while you drive, deliver or use the Garage. Your saves still work.
+
 ## Build 84 · 28 Oct 2026
 
 - **You can now take a short term loan.** The Repair card on the Garage tab has a **Short term loan** button: press it and then **Yes, borrow** to get $1,000 straight away. You owe $1,350 for it, shown on the same card. Once you have $1,350, press **Repay $1,350** there to pay it off in one go. Nothing is taken from your delivery pay, and you can't take another loan until this one is repaid. The Repair card also shows up while a parts or car bill is waiting and you're short of money, so you can borrow to pay it.

@@ -75,6 +75,8 @@ jobs:
             echo
             echo 'Every change so far is in [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).'
             echo
+            echo 'Thanks for playing! Tips help keep updates coming: [ko-fi.com/madmerick](https://ko-fi.com/madmerick)'
+            echo
             echo "## Install"
             echo
             echo 'Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. Do not extract it.'

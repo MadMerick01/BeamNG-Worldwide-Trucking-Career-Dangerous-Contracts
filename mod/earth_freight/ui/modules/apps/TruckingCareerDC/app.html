@@ -72,7 +72,9 @@
         </div>
       </div>
       <div style="margin-top:12px;padding-top:8px;border-top:1px solid rgba(86,141,122,.4);">
-        <div style="font-size:12px;color:#7d8b88;">Place data &copy; GeoNames (geonames.org), CC BY 4.0. Elevation: Mapzen terrain tiles (SRTM and others).</div>
+        <div style="font-size:12px;color:#c9d6d2;">Enjoying it? <button type="button" ng-click="openKofi()" title="Opens ko-fi.com/madmerick in your browser and copies the link" style="padding:0;background:none;border:none;color:#f2c94c;font-size:12px;text-decoration:underline;cursor:pointer;">Support the mod on Ko-fi</button></div>
+        <div ng-if="intro.kofiOpened" role="status" style="font-size:12px;color:#7d8b88;">The link ko-fi.com/madmerick is copied too, in case your browser didn't open.</div>
+        <div style="margin-top:4px;font-size:12px;color:#7d8b88;">Place data &copy; GeoNames (geonames.org), CC BY 4.0. Elevation: Mapzen terrain tiles (SRTM and others).</div>
       </div>
     </div>
     <div ng-if="!intro.open">
