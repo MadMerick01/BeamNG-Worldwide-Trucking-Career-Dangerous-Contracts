@@ -99,11 +99,24 @@ function F.garage()
     self.spawns[#self.spawns + 1] = { model = model, config = F.copy(config) }
     if type(config) == 'table' then
       self.model, self.fitted, self.damage = model, F.copy(config.parts), 0
+    elseif self.configParts[config] then
+      self.model, self.fitted, self.damage = model, F.copy(self.configParts[config]), 0
     elseif self.starter then
       self.model, self.fitted, self.damage = model, F.copy(self.starter), 0
     end
     return true
   end
+  -- The game's car list, as garage:configs() gives it, and the parts each .pc file fits.
+  g.configList = {
+    { model = 'sport', key = 'gt', config = 'vehicles/sport/gt.pc', name = 'Sport GT', value = 40000, type = 'Car', source = 'BeamNG - Official' },
+    { model = 'pickup', key = 'd15', config = 'vehicles/pickup/d15.pc', name = 'Pickup D15', value = 20000, type = 'Truck', source = 'BeamNG - Official' },
+    { model = 'flatbed', key = 'long', config = 'vehicles/flatbed/long.pc', name = 'Flatbed', value = 5000, type = 'Trailer', source = 'BeamNG - Official' },
+    { model = 'modcar', key = 'x', config = 'vehicles/modcar/x.pc', name = 'Mod car', value = 1000, type = 'Car', source = 'Mod' },
+  }
+  g.configParts = { ['vehicles/sport/gt.pc'] = { engine = 'sport_engine' }, ['vehicles/pickup/d15.pc'] = { engine = 'pickup_engine_v8' } }
+  function g:configs() return self.configList end
+  g.wears = {}
+  function g:wear(km, look) self.wears[#self.wears + 1] = { km = km, look = look, model = self.model }; return true end
   -- The recovery menu's teleport to the last road: moves the car back to the road it was on.
   g.roadTrips = 0
   function g:toRoad()
@@ -146,6 +159,32 @@ function F.fuel()
   function f:set(litres, serial) self.sets[#self.sets + 1] = { litres = litres, serial = serial }; return true end
   return f
 end
+-- Stand-in for the heli loads: each load is a world position and damage by id; the player's
+-- vehicle stands at player. Tests move them and answer through the controller's loadMass.
+function F.aircraft()
+  local a = { player = { x = 0, y = 0, z = 0 }, loads = {}, spawned = {}, masses = {}, removed = {}, nextId = 100, ground = 0 }
+  function a:where(id)
+    if id == nil then return F.copy(self.player) end
+    local load = self.loads[id]
+    return load and F.copy(load.pos) or nil
+  end
+  function a:height(id)
+    if id == nil then return self.ground end
+    return self.loads[id] and (self.loads[id].height or 0) or nil
+  end
+  function a:damage(id) return self.loads[id] and self.loads[id].damage or nil end
+  function a:spawnLoad(model, config, ahead)
+    if self.fails then return nil, 'spawn_failed' end
+    self.nextId = self.nextId + 1
+    self.loads[self.nextId] = { model = model, config = config, damage = 0,
+      pos = { x = self.player.x, y = self.player.y + ahead, z = 0 } }
+    self.spawned[#self.spawned + 1] = self.nextId
+    return self.nextId
+  end
+  function a:setMass(id, kg) self.masses[#self.masses + 1] = { id = id, kg = kg }; return true end
+  function a:remove(id) self.loads[id] = nil; self.removed[#self.removed + 1] = id; return true end
+  return a
+end
 function F.controller(options)
   local Core = require('earthFreight/core')
   options = options or {}
@@ -156,7 +195,7 @@ function F.controller(options)
   local fuel = options.fuel or F.fuel()
   local events, logs = {}, {}
   local c = Core.new({ io = io, adapter = adapter, garage = garage, paused = options.paused, random = options.random,
-    punctures = options.punctures, cargo = cargo, fuel = fuel,
+    punctures = options.punctures, cargo = cargo, fuel = fuel, aircraft = options.aircraft,
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
   return c, io, adapter, garage, cargo, fuel, logs

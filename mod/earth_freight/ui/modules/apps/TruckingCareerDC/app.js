@@ -8,6 +8,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   }
   // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
   var STORE = 'earthFreight.hudMinimised'
+  var KOFI = 'https://ko-fi.com/madmerick'
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
   // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
@@ -43,21 +44,51 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     box.appendChild(close)
     line(box, 'PARTS BILL', 'font-weight:bold;letter-spacing:1px;font-size:13px;color:' + gold + ';')
     line(box, String(data.total || ''), 'font-weight:bold;font-size:22px;color:' + gold + ';margin-top:2px;')
-    line(box, String(data.detail || ''), 'margin-top:4px;')
+    // Each part, as on the Garage tab's bill; just the split when there is no list.
+    var lines = Array.isArray(data.lines) ? data.lines : []
+    if (!lines.length) line(box, String(data.detail || ''), 'margin-top:4px;')
+    lines.forEach(function (l) {
+      var row = document.createElement('div')
+      row.style.cssText = 'display:flex;gap:8px;margin-top:2px;'
+      line(row, String(l.label || ''), 'flex:1;min-width:0;')
+      line(row, String(l.amount || ''), '')
+      box.appendChild(row)
+    })
+    if (data.money) line(box, String(data.money), 'font-weight:bold;margin-top:6px;')
     if (data.short) line(box, String(data.short), 'font-weight:bold;color:#eb5757;margin-top:4px;')
+    if (data.payWhy) line(box, String(data.payWhy), 'color:#eb5757;margin-top:4px;')
+    var serial = parseInt(data.serial, 10)
+    var lua = function (body) {
+      if (typeof bngApi !== 'undefined' && bngApi.engineLua) bngApi.engineLua('if earthFreight_core then earthFreight_core.' + body + ' end')
+    }
+    // Pay asks once more, as on the Garage tab, then pays this bill.
+    var cost = typeof data.cost === 'number' && isFinite(data.cost) ? data.cost : null
+    if (data.payAllowed && serial > 0 && cost !== null) {
+      var amount = '$' + Math.round(cost).toLocaleString('en-US')
+      var pay = document.createElement('button')
+      pay.type = 'button'
+      pay.textContent = 'Pay ' + amount
+      pay.style.cssText = 'margin-top:10px;padding:7px 14px;background:#f2c94c;color:#0c1318;font-weight:bold;' +
+        'border:none;border-radius:4px;cursor:pointer;'
+      var asked = false
+      pay.onclick = function () {
+        if (!asked) { asked = true; pay.textContent = 'Yes, pay ' + amount; return }
+        pay.disabled = true
+        pay.textContent = 'Paying...'
+        lua('payPartsBill(' + serial + ')')
+      }
+      box.appendChild(pay)
+    }
     line(box, String(data.hint || ''), 'margin-top:6px;color:#c9d6d2;font-size:13px;')
     document.body.appendChild(box)
     bill = box
-    var serial = parseInt(data.serial, 10)
-    if (serial > 0 && typeof bngApi !== 'undefined' && bngApi.engineLua) {
-      bngApi.engineLua('if earthFreight_core then earthFreight_core.partsBillShown(' + serial + ') end')
-    }
+    if (serial > 0) lua('partsBillShown(' + serial + ')')
   }
   $rootScope.$on('EarthFreightPartsBill', function (event, data) {
     if (data && data.open) showBill(data); else closeBill()
   })
   return {
-    templateUrl: '/ui/modules/apps/EarthFreightHUD/app.html',
+    templateUrl: '/ui/modules/apps/TruckingCareerDC/app.html',
     replace: true,
     link: function (scope, element) {
       'use strict'
@@ -73,7 +104,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var mount = function (on) { core('uiMounted(' + (on ? 'true' : 'false') + ')') }
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
-        { id: 'relocate', label: 'Relocate' }]
+        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }]
       scope.tab = kept.tab
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
@@ -91,7 +122,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         garage: function (d) {
           return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!d.insurance
         },
-        relocate: function (d) { return !!(d.shipping && d.shipping.booking) }
+        relocate: function (d) { return !!(d.shipping && d.shipping.booking) },
+        heli: function (d) { return !!(d.heli && d.heli.hired && d.heli.hired.load && d.heli.hired.load.inZone) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
       // The HUD shrinks to a Worldwide Trucking button. Its dot is red for bad news, gold for anything a
@@ -124,6 +156,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
         ['garage', function (d) { return !!d.insurance }],
+        ['heli', function (d) { return !!(d.heli && d.heli.hired) }],
         ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.startHereAllowed || !!d.stranded }]
       ]
       var follow = function (previous, next) {
@@ -243,6 +276,19 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }
       scope.abandonJob = function () { if (scope.data.abandonAllowed) core('abandonJob()') }
+      // Heli flights: hire asks Lua to confirm, and so does Back to my car.
+      scope.hireHeli = function () { if (scope.data.heli && scope.data.heli.hireAllowed) core('hireHeli()') }
+      scope.backToCar = function () {
+        var hired = scope.data.heli && scope.data.heli.hired
+        if (hired && hired.backAllowed) core('backToCar()')
+      }
+      // The mod's page: opened in the browser where the game can, and copied in case it can't.
+      scope.openHeliMod = function () {
+        var page = scope.data.heli && scope.data.heli.modPage
+        if (typeof page === 'string' && /^https:\/\/[A-Za-z0-9./_-]+$/.test(page)) {
+          call('if openWebBrowser then openWebBrowser("' + page + '") end setClipboard("' + page + '")')
+        }
+      }
       scope.claimInsurance = function () { if (scope.data.insurance && scope.data.insurance.allowed) core('claimInsurance()') }
       scope.bookShipping = function (destination) {
         if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")
@@ -275,6 +321,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
+      scope.takeLoan = function () { if (scope.data.loan && scope.data.loan.takeAllowed) core('takeLoan()') }
+      scope.repayLoan = function () { if (scope.data.loan && scope.data.loan.repayAllowed) core('repayLoan()') }
+      scope.towToRoad = function () { if (scope.data.tow && scope.data.tow.allowed) core('towToRoad()') }
       // Paying for a bill takes two presses: the first asks to confirm that total, and a changed
       // total asks again.
       scope.confirming = { kind: null, cost: null }
@@ -285,6 +334,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
       scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar()') }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
+      // Buy second hand: opens or closes the town's list; a car is picked by its place in it.
+      scope.openUsedCars = function (open) { core('openUsedCars(' + (open ? 'true' : 'false') + ')') }
+      scope.buyUsedCar = function (offer) {
+        if (offer && offer.allowed && [1, 2, 3, 4, 5, 6, 7, 8, 9].indexOf(offer.slot) >= 0) core('buyUsedCar(' + offer.slot + ')')
+      }
       // Open the game's own parts menu (Ctrl+W) and car selector (Ctrl+E); the bill then shows up on the Garage tab.
       scope.openPartsMenu = function () {
         call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
@@ -317,9 +371,18 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var load = scope.data && scope.data.load
         if (load && load.contract && load.contract.teleportAllowed) core('teleportToContract()')
       }
+      scope.teleportToBooking = function () {
+        var booking = scope.data && scope.data.shipping && scope.data.shipping.booking
+        if (booking && booking.teleportAllowed) core('teleportToBooking()')
+      }
       scope.copyCoordinates = function (position) {
         var text = scope.coordinates(position)
         if (text) call('setClipboard("' + text + '")')
+      }
+      // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
+      scope.openKofi = function () {
+        call('if openWebBrowser then openWebBrowser("' + KOFI + '") end setClipboard("' + KOFI + '")')
+        scope.intro.kofiOpened = true
       }
       scope.$on('EarthFreightState', function (event, data) {
         if (disposed || !data || typeof data.state !== 'string') return

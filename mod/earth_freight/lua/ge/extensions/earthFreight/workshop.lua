@@ -9,6 +9,8 @@ local pricing = require('earthFreight/pricing')
 local cargo = require('earthFreight/cargo')
 local goods = require('earthFreight/goods')
 local contracts = require('earthFreight/contracts')
+local places = require('earthFreight/places')
+local usedCars = require('earthFreight/usedCars')
 local M = {}
 
 -- Driving this far from where the parts were changed, without paying, puts the paid parts back.
@@ -23,10 +25,16 @@ M.STARTER_CONFIG = 'vehicles/burnside/earth_freight_starter.pc'
 M.SERIOUS_DAMAGE = 15000
 M.INSURANCE_FEE = 1000
 M.ROAD_SECONDS, M.GRACE_SECONDS = 1.5, 10
+-- Tow to road: BeamNG's "teleport to last road" for a flat fee, charged once the car has moved
+-- further than TOW_MOVED_METRES; a car that has not moved in TOW_SECONDS is not charged.
+M.TOW_FEE = 500
+M.TOW_SECONDS, M.TOW_MOVED_METRES = 5, 0.5
 -- A drop in the car's damage bigger than this, with no repair or respawn, is the game resetting it.
 M.RESET_DAMAGE_DROP = 1
 -- How long the HUD app has to show the parts bill box before a corner pop-up shows it instead.
 M.BILL_FALLBACK_SECONDS = 1.5
+-- How long a second-hand car has to spawn before its sale is dropped.
+M.USED_SPAWN_SECONDS = 5
 
 local dollars = pricing.dollars
 
@@ -55,6 +63,7 @@ function M.attach(c)
   function c:priceRepair()
     if not self.profile or self.error then return nil, 'unavailable' end
     if not self.garage then return nil, 'repair_unavailable' end
+    if self.hire then return nil, 'heli' end
     local vehicle, why = self:inspectDamage()
     if not vehicle then return nil, why end
     return vehicle, pricing.repairCost(vehicle.damage, self:carValueOf(vehicle.id))
@@ -62,6 +71,7 @@ function M.attach(c)
 
   local repairMessages = {
     unavailable = 'Repairs are unavailable right now. Check the status above.',
+    heli = 'Repairs are for your own car. Press Back to my car on the Heli tab first.',
     vehicle_required = 'Enter a vehicle to get a repair quote.',
   }
   local function repairProblem(why)
@@ -152,7 +162,7 @@ function M.attach(c)
 
   function c:insuranceAllowed()
     return self.profile ~= nil and not self.error and self.garage ~= nil and self.arrived and self:seriousCrash()
-      and not self.pendingParts and not self.pendingCar and not self.insurancePending
+      and not self.hire and not self.pendingParts and not self.pendingCar and not self.insurancePending
   end
 
   -- Claims: the first press asks to confirm. The car goes back to the road (BeamNG's own "teleport
@@ -224,12 +234,85 @@ function M.attach(c)
       repair = d and pricing.repairCost(d.damage, self:carValueOf(d.id)) or nil }
   end
 
+  -- Tow to road, on the Garage tab's Repair card: the car goes back to the road it was last on
+  -- for M.TOW_FEE. Towing fixes nothing: if the game resets the car on the way, watchResets keeps
+  -- the damage owed, as after Insert.
+  function c:towAllowed()
+    return self.profile ~= nil and not self.error and self.garage ~= nil and self.arrived and not self.hire
+      and not self.pendingParts and not self.pendingCar and not self.insurancePending and not self.towPending
+  end
+
+  -- The first press asks to confirm; the fee is taken once the car has moved.
+  function c:towToRoad()
+    if not self:towAllowed() then
+      self.towArmed = false
+      self.repairFeedback = self.towPending and 'Your car is being towed.'
+        or ((self.pendingParts or self.pendingCar) and 'Pay for your changes or undo them first.' or 'Towing is unavailable right now.')
+      return false
+    end
+    if not self:canAfford(M.TOW_FEE) then
+      self.towArmed = false
+      self.repairFeedback = 'Not enough money. A tow to the road costs ' .. dollars(M.TOW_FEE) .. '.'
+      return false
+    end
+    if not self.towArmed then
+      self.towArmed = true
+      self.repairFeedback = 'Press Confirm tow: your car is put back on the road for ' .. dollars(M.TOW_FEE)
+        .. '. Towing does not fix any damage.'
+      return false
+    end
+    self.towArmed = false
+    local from = self.lastSample and location.valid(self.lastSample) and location.copy(self.lastSample) or nil
+    local moved, why, detail = false, 'road_unavailable', nil
+    if self.garage.toRoad then moved, why, detail = self.garage:toRoad() end
+    if not moved then
+      self.repairFeedback = 'There is no road to tow your car to. You have not been charged.'
+      self.diag:event('tow_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
+      return false
+    end
+    -- The move back to the road is a jump, but not a teleport.
+    self.insuredUntil = self.clock + M.GRACE_SECONDS
+    self.towPending = { at = self.clock, from = from }
+    self.repairFeedback = 'Towing your car back to the road...'
+    self.diag:event('tow_requested', 'to road')
+    return true
+  end
+
+  -- Called every tick: charges for the tow once the car has moved, or gives up uncharged.
+  function c:watchTow()
+    if self.towArmed and not self:towAllowed() then self.towArmed = false end
+    local pending = self.towPending
+    if not pending then return end
+    local here = self.lastSample
+    local gap = pending.from and here and location.valid(here) and location.distance(pending.from, here) or nil
+    if gap and gap > M.TOW_MOVED_METRES then
+      self.towPending = nil
+      self.insuredUntil = self.clock + M.GRACE_SECONDS
+      self:spend(M.TOW_FEE, 'tow')
+      self.repairFeedback = nil
+      self.diag:event('towed', string.format('%.0f m', gap))
+      self:showFlash('delivered', 'TOWED TO THE ROAD', 'Your car is back on the road for ' .. dollars(M.TOW_FEE)
+        .. '. Towing does not fix damage: repair it on the Garage tab. Save to keep the new balance.')
+    elseif self.clock - pending.at >= M.TOW_SECONDS then
+      self.towPending = nil
+      self.repairFeedback = 'The game could not find a road to tow your car to. You have not been charged.'
+      self.diag:event('tow_failed', 'not_moved', 'W')
+    end
+  end
+
+  -- The Tow to road button on the Repair card.
+  function c:towView()
+    if not self.garage or not self.arrived then return nil end
+    return { fee = M.TOW_FEE, armed = self.towArmed, pending = self.towPending ~= nil, allowed = self:towAllowed() }
+  end
+
   -- Parts. The parts menu is BeamNG's own and changes parts for free; every change respawns the
   -- vehicle, so the HUD compares the fitted parts with the ones paid for after each spawn. The
   -- difference is billed on Pay, or the paid parts are put back on Undo. The respawn also mends
   -- all damage, so the bill includes the repair the car needed just before its first change.
   function c:vehicleSpawned()
-    self.partsCheckDue, self.respawned = true, true
+    self.partsCheckDue, self.respawned, self.wearDue = true, true, true
+    if self.secondHand then self.secondHand.spawned = true end
   end
 
   -- Insert, and the game's own recovery, put the car back as new without a respawn: the tank is
@@ -273,12 +356,23 @@ function M.attach(c)
   function c:checkParts()
     local snapshot = self.garage:parts()
     if not snapshot then return false end
+    -- A second-hand car is priced once it has spawned (watchParts drops one that never does).
+    -- Another car picked since is billed at its own price.
+    local used = self.secondHand
+    if used and not used.spawned then return false
+    elseif used and snapshot.model ~= used.model then
+      self.secondHand, used = nil, nil
+    end
     self.fittedParts = snapshot
     local owned = self.ownedParts
+    self:applyWear(snapshot)
     -- The starter or saved car comes as paid for, even when it replaced a car of the same model.
     if self.arrivingModel and snapshot.model == self.arrivingModel then
       snapshot.value = snapshot.value or self.arrivingValue
-      self.arrivingModel, self.arrivingValue = nil, nil
+      -- A second-hand car is worth what was paid for it, not the price of a new one.
+      local arriving = self.arrivingUsed
+      if arriving then snapshot.value, snapshot.used, snapshot.km = arriving.value, true, arriving.km end
+      self.arrivingModel, self.arrivingValue, self.arrivingUsed = nil, nil, nil
       self:adoptParts(snapshot)
       return true
     end
@@ -287,7 +381,9 @@ function M.attach(c)
       return true
     end
     -- A different vehicle, or a different model in place of this one, is a car the player is buying.
-    if owned.id ~= snapshot.id or owned.model ~= snapshot.model then return self:quoteCar(snapshot) end
+    if used or owned.id ~= snapshot.id or owned.model ~= snapshot.model then return self:quoteCar(snapshot) end
+    -- Part changes keep a second-hand car's value and kilometres.
+    if owned.used then snapshot.value, snapshot.used, snapshot.km = owned.value, true, owned.km end
     if self.pendingCar then
       self.pendingCar = nil
       self.carFeedback = 'Back in your own car. Nothing to pay.'
@@ -333,13 +429,14 @@ function M.attach(c)
   end
 
   -- The HUD is hidden while the game's parts menu is open, so each change to the bill also opens a
-  -- box over the menu: the total so far, how it splits, and what the player is short. It stays until
+  -- box over the menu: the total so far, how it splits, the player's money and what they are short. It stays until
   -- the player closes it, the bill is paid or undone, or the menu closes and the HUD is back. The
   -- HUD app shows the box and says so; if it has not within BILL_FALLBACK_SECONDS, a corner pop-up
   -- shows the bill instead.
   function c:showPartsBill()
     local bill = self.pendingParts
-    local short = self.profile and bill.cost - self.profile.progression.balance
+    local balance = self.profile and self.profile.progression.balance
+    local short = balance and bill.cost - balance
     short = short and short > 0 and short or nil
     self.partsBillSerial = (self.partsBillSerial or 0) + 1
     local popup = {
@@ -347,11 +444,31 @@ function M.attach(c)
       total = bill.cost < 0 and ('You get back ' .. dollars(-bill.cost)) or ('Parts bill so far: ' .. dollars(bill.cost)),
       detail = (bill.partsCost < 0 and ('Parts refund ' .. dollars(-bill.partsCost)) or ('Parts ' .. dollars(bill.partsCost)))
         .. ', repair ' .. dollars(bill.repair) .. '.',
+      money = balance and ('You have ' .. dollars(balance) .. '.') or nil,
       short = short and ('You are ' .. dollars(short) .. ' short.') or nil,
-      hint = 'Pay or undo on the Garage tab.',
+      hint = 'You can also pay or undo on the Garage tab.',
+      lines = {}, cost = bill.cost, payAllowed = self:buyPartsAllowed() and true or false,
     }
+    -- The same lines as the bill on the Garage tab.
+    for _, part in ipairs(bill.added) do popup.lines[#popup.lines + 1] = { label = '+ ' .. part.name, amount = dollars(part.price) } end
+    for _, part in ipairs(bill.removed) do
+      popup.lines[#popup.lines + 1] = { label = '- ' .. part.name .. ' (sold back)', amount = '-' .. dollars(part.refund) }
+    end
+    if bill.repair > 0 then popup.lines[#popup.lines + 1] = { label = 'Repair (damage before the change)', amount = dollars(bill.repair) } end
+    if not popup.payAllowed and not short then popup.payWhy = 'Your job would not fit with these parts. Deliver it first, or undo the changes.' end
     self.partsBill = { serial = popup.serial, at = self.clock, popup = popup }
     if self.trigger then pcall(self.trigger, 'EarthFreightPartsBill', popup) end
+  end
+
+  -- Pay on the parts bill box. Only pays the bill the box showed; says how it went in a corner pop-up.
+  function c:payPartsBill(serial)
+    if not self.partsBill or self.partsBill.serial ~= serial then
+      self:toast('warning', 'Parts bill', 'The bill changed. Check the new one and pay again.')
+      return false
+    end
+    local ok = self:buyParts()
+    self:toast(ok and 'success' or 'warning', 'Parts bill', self.partsFeedback or 'Could not pay. Try again on the Garage tab.')
+    return ok
   end
 
   -- The HUD app showed the parts bill box.
@@ -371,28 +488,43 @@ function M.attach(c)
       open.fellBack = true
       local p = open.popup
       self:toast(p.short and 'warning' or 'info', 'Parts bill',
-        p.total .. ' (' .. p.detail:gsub('%.$', ''):lower() .. ').' .. (p.short and (' ' .. p.short) or '') .. ' ' .. p.hint)
+        p.total .. ' (' .. p.detail:gsub('%.$', ''):lower() .. ').' .. (p.money and (' ' .. p.money) or '')
+          .. (p.short and (' ' .. p.short) or '') .. ' ' .. p.hint)
     end
   end
 
   -- Cars. Picking a car in the game's vehicle selector, or getting into any car that is not the
   -- player's, opens a bill: the car's price, plus parts changed on it since, less the trade-in of
   -- the player's car. The swap mends the old car, so its damage is frozen into the bill.
+  -- What the player's car trades in for, less the repair its damage needs: the trade-in and repair.
+  function c:tradeIn(oldDamage)
+    local owned = self.ownedParts
+    local repair = pricing.repairCost(oldDamage, owned.value)
+    return math.max(0, math.floor((owned.value or pricing.DEFAULT_CAR_PRICE) * pricing.CAR_TRADE_IN_SHARE + 0.5) - repair), repair
+  end
+
+  -- The damage the player's car has now, frozen into a car bill when it opens.
+  function c:carDamageNow()
+    local owned = self.ownedParts
+    return (self.pendingParts and self.pendingParts.damage)
+      or (self.lastDamage and self.lastDamage.id == owned.id and self.lastDamage.damage) or (self.owedDamage + self.punctureDamage)
+  end
+
   function c:quoteCar(snapshot)
     local owned, previous = self.ownedParts, self.pendingCar
     local sameCar = previous and previous.id == snapshot.id and previous.model == snapshot.model
-    local oldDamage = previous and previous.oldDamage
-      or (self.pendingParts and self.pendingParts.damage)
-      or (self.lastDamage and self.lastDamage.id == owned.id and self.lastDamage.damage) or (self.owedDamage + self.punctureDamage)
+    local oldDamage = previous and previous.oldDamage or self:carDamageNow()
     local base = sameCar and previous.base or snapshot
+    -- A second-hand car's price is the one it was offered at.
+    local used = self.secondHand
+    if used and not sameCar then base.value, base.name = used.price, used.name end
     local extras = pricing.partsDiff(base, snapshot)
     local price = math.floor((base.value or pricing.DEFAULT_CAR_PRICE) + 0.5)
-    local repair = pricing.repairCost(oldDamage, owned.value)
-    local tradeIn = math.max(0, math.floor((owned.value or pricing.DEFAULT_CAR_PRICE) * pricing.CAR_TRADE_IN_SHARE + 0.5) - repair)
+    local tradeIn, repair = self:tradeIn(oldDamage)
     local extrasCost = extras and extras.cost or 0
     self.pendingParts, self.quote = nil, nil
     self.pendingCar = {
-      id = snapshot.id, model = snapshot.model, name = base.name or snapshot.model, base = base,
+      id = snapshot.id, model = snapshot.model, name = base.name or snapshot.model, base = base, used = used,
       price = price, extras = extrasCost, tradeIn = tradeIn, repair = repair, oldDamage = oldDamage,
       cost = math.max(0, price + extrasCost - tradeIn), fromId = owned.id,
       position = previous and previous.position
@@ -435,13 +567,137 @@ function M.attach(c)
       self.carFeedback = 'Not enough money. You need ' .. dollars(pending.cost - self.profile.progression.balance) .. ' more.'
       return false
     end
-    -- Later part changes are priced against what was paid for, so the car keeps its own Value.
+    -- Later part changes are priced against what was paid for, so the car keeps its own Value. A
+    -- second-hand car's value is its price, and it keeps the kilometres it came with.
     local snapshot = self.fittedParts
     snapshot.value = pending.base.value
+    if pending.used then
+      snapshot.used, snapshot.km = true, pending.used.km
+      self.soldUsed[pending.used.id] = true
+      self.secondHand = nil
+    end
     self:adoptParts(snapshot)
     self.owedDamage, self.punctureDamage, self.fuel = 0, 0, nil
     self.carFeedback = 'Bought ' .. tostring(pending.name) .. ' for ' .. dollars(pending.cost) .. '. Save to keep it.'
     return true
+  end
+
+  -- Second-hand cars. Buy second hand on the Garage tab lists the cars for sale in the town the
+  -- player is in, or the nearest one; each town always has the same ones. Buying one spawns it in
+  -- place of the player's car, looking worn, and opens the usual car bill at its second-hand price.
+  c.soldUsed = c.soldUsed or {}
+
+  -- The town whose cars are for sale: the one the player is in, or else the nearest.
+  function c:usedCarTown()
+    local sample = self.lastSample
+    if not sample or not sample.valid then return nil end
+    return self:here() or (places.nearest(sample, 1)[1] or {}).place
+  end
+
+  -- The cars for sale in that town, worked out once per town.
+  function c:usedOffers()
+    local town = self:usedCarTown()
+    if not town or not self.garage or not self.garage.configs then return nil end
+    if not self.usedCache or self.usedCache.town ~= town.id then
+      self.usedCache = { town = town.id, offers = usedCars.offers(town.id, usedCars.candidates(self.garage:configs())) }
+    end
+    return town, self.usedCache.offers
+  end
+
+  -- Why a second-hand car cannot be bought now, or nil when it can.
+  function c:usedCarProblem()
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not self.ownedParts then
+      return 'Second-hand cars are unavailable right now.'
+    end
+    if self.hire then return 'Press Back to my car on the Heli tab first.' end
+    if self.load then return 'Deliver or abandon your job before changing cars.' end
+    if self.pendingCar or self.pendingParts then return 'Pay for or undo the bill above first.' end
+    if self.secondHand then return 'Bringing the car out...' end
+    if not self.odometer:stopped() then return 'Stop the car to look at second-hand cars.' end
+  end
+
+  function c:openUsedCars(open)
+    self.usedCarsOpen = open
+    self.carFeedback = nil
+  end
+
+  -- The Buy second hand list for the Garage tab, while it is open.
+  function c:usedCarsView()
+    if not self.usedCarsOpen then return nil end
+    local town, offers = self:usedOffers()
+    if not town then return { problem = 'Second-hand cars are unavailable right now.', offers = {} } end
+    local problem = self:usedCarProblem()
+    local tradeIn = self.ownedParts and self:tradeIn(self:carDamageNow()) or 0
+    local balance = self.profile and self.profile.progression.balance or 0
+    local list = {}
+    for slot, offer in ipairs(offers) do
+      local cost = math.max(0, offer.price - tradeIn)
+      local sold = self.soldUsed[offer.id] == true
+      list[slot] = { slot = slot, name = offer.name, preview = offer.preview, price = offer.price, newPrice = offer.newPrice,
+        share = offer.share, km = offer.km, cost = cost, sold = sold, short = cost > balance and cost - balance or nil,
+        allowed = problem == nil and not sold and self:canAfford(cost) }
+    end
+    return { town = town.name, tradeIn = tradeIn, oldName = self.ownedParts and self.ownedParts.name or nil,
+      offers = list, problem = problem }
+  end
+
+  -- Spawns the second-hand car in this slot of the list in place of the player's car. The bill
+  -- for it then shows up as for any other car: Buy keeps it, Get my car back undoes it.
+  function c:buyUsedCar(slot)
+    local town, offers = self:usedOffers()
+    local offer = town and offers[slot]
+    if not offer then
+      self.carFeedback = 'That car is no longer for sale here.'
+      return false
+    end
+    local problem = self:usedCarProblem()
+    if problem then
+      self.carFeedback = problem
+      return false
+    end
+    if self.soldUsed[offer.id] then
+      self.carFeedback = 'You already bought that car.'
+      return false
+    end
+    local cost = math.max(0, offer.price - self:tradeIn(self:carDamageNow()))
+    if not self:canAfford(cost) then
+      self.carFeedback = 'Not enough money. You need ' .. dollars(cost - self.profile.progression.balance) .. ' more.'
+      return false
+    end
+    -- Set before the spawn: the game may report it before spawnConfig returns.
+    self.secondHand = { id = offer.id, model = offer.model, name = offer.name, price = offer.price, newPrice = offer.newPrice,
+      km = offer.km, at = self.clock }
+    self.ourRespawn = true
+    local ok, why, detail = self.garage:spawnConfig(offer.model, offer.config)
+    if not ok then
+      self.secondHand, self.ourRespawn = nil, nil
+      self.carFeedback = 'Could not bring that car out. Try again in a moment.'
+      self.diag:event('used_car_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
+      return false
+    end
+    self.usedCarsOpen, self.carFeedback = false, nil
+    self.diag:event('used_car', offer.model .. '/' .. offer.key .. ' ' .. offer.price)
+    return true
+  end
+
+  -- Second-hand cars look worn. A spawn makes a car look new, so after each one the player's
+  -- second-hand car, or the one being bought, gets the wear of its kilometres back.
+  function c:applyWear(snapshot)
+    if not self.wearDue then return end
+    self.wearDue = nil
+    local used, owned, arriving = self.secondHand, self.ownedParts, self.arrivingUsed
+    local km
+    if used and used.spawned and snapshot.model == used.model then km = used.km
+    elseif arriving and self.arrivingModel == snapshot.model then km = arriving.km
+    elseif owned and owned.used and owned.id == snapshot.id and owned.model == snapshot.model then km = owned.km end
+    if not km or not self.garage.wear then return end
+    local ok, why = self.garage:wear(km, usedCars.look(km))
+    if not ok then self.diag:event('wear_failed', tostring(why), 'W') end
+  end
+
+  -- Whether Save should keep the car's second-hand value and kilometres.
+  function c:savedVehicleUsed()
+    return self.ownedParts ~= nil and self.ownedParts.used == true
   end
 
   -- Puts the player back in their own car: the one they left, if it is still there, or else their
@@ -458,13 +714,15 @@ function M.attach(c)
       ok = self.garage:enter(pending.fromId)
       respawned = not ok
     end
+    self.secondHand = nil
     if respawned then
       self.arrivingModel, self.arrivingValue = owned.model, owned.value
+      self.arrivingUsed = owned.used and { value = owned.value, km = owned.km } or nil
       self:beforeRespawn()
       ok, why, detail = self.garage:spawnConfig(owned.model, owned.config)
       if not ok then
         self:respawnFailed()
-        self.arrivingModel, self.arrivingValue = nil, nil
+        self.arrivingModel, self.arrivingValue, self.arrivingUsed = nil, nil, nil
         self.carFeedback = 'Could not bring your car back. Try again in a moment.'
         self.diag:event('car_revert_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
         return false
@@ -479,7 +737,13 @@ function M.attach(c)
   -- Called every tick: checks parts after a spawn or vehicle switch, notes the damage the vehicle has
   -- before a change, and puts the paid parts back if the player drives off without paying.
   function c:watchParts()
-    if not self.garage then return end
+    -- A hired helicopter is not a car the player is buying: the garage waits for their car.
+    if not self.garage or self.hire then return end
+    local used = self.secondHand
+    if used and not used.spawned and self.clock - used.at >= M.USED_SPAWN_SECONDS then
+      self.secondHand, self.ourRespawn = nil, nil
+      self.carFeedback = 'That car did not turn up. Try again in a moment.'
+    end
     local vehicleId = self.lastSample and self.lastSample.valid and self.lastSample.vehicle and self.lastSample.vehicle.id
     local expected = self.pendingCar and self.pendingCar.id or (self.ownedParts and self.ownedParts.id)
     if vehicleId ~= nil and expected ~= nil and vehicleId ~= expected then self.partsCheckDue = true end
@@ -602,6 +866,8 @@ function M.attach(c)
       model, label, configFile = config.model, 'saved_car', config.partConfigFilename
       -- The saved car comes back with the fuel it was saved with.
       if saved.fuelLitres then self.fuel = { litres = saved.fuelLitres, restore = true } end
+      -- A second-hand car comes back at what was paid for it, looking as worn as it was.
+      if saved.value then self.arrivingUsed = { value = saved.value, km = saved.km } end
     end
     self.arrivingModel = model
     -- A car respawned from a saved config may not know its .pc file, so its price is looked up here.
@@ -609,7 +875,7 @@ function M.attach(c)
     self.ourRespawn = true
     local ok, why, detail = self.garage:spawnConfig(model, config)
     if not ok then
-      self.arrivingModel, self.ourRespawn = nil, nil
+      self.arrivingModel, self.arrivingUsed, self.ourRespawn = nil, nil, nil
       self.diag:event(label .. '_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
       return
     end

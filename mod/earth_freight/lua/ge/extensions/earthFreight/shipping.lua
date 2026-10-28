@@ -1,6 +1,6 @@
 -- Shipping: the cheap way to take your vehicle to another region. Book with an empty vehicle, pay,
--- then paste the coordinates into the BeamNG.Earth map and teleport there; the mod never moves the
--- car itself. A teleport without a booking strands you until you are back where you jumped from.
+-- then press Teleport (Earth's own teleport, as its map's Go) or paste the coordinates into the
+-- BeamNG.Earth map. A teleport without a booking strands you until you are back where you jumped from.
 -- Pure maths and the destination list; no game globals.
 local location = require('earthFreight/location')
 local M = {}

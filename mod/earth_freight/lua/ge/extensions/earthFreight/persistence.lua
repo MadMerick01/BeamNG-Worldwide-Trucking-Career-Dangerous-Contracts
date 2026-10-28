@@ -51,13 +51,14 @@ end
 M.plainConfig = plainConfig
 
 -- The money and distance driven, where the last puncture was, how many jobs are done (the job
--- boards are seeded from it) and the dangerous contract roads delivered, which are not offered
--- again (a list of section ids). Returns a clean copy, or nil.
+-- boards are seeded from it), the dangerous contract roads delivered, which are not offered
+-- again (a list of section ids), and what is owed on a short term loan. Returns a clean copy, or nil.
 local function progression(p)
   if type(p) ~= 'table' or not integer(p.balance, 0) or not location.finite(p.totalDistanceKm)
       or p.totalDistanceKm < 0 or p.totalDistanceKm > MAX_INTEGER then return nil end
   if not amount(p.lastPunctureKm) then return nil end
   if p.jobsDone ~= nil and not integer(p.jobsDone, 0) then return nil end
+  if p.loanOwed ~= nil and not integer(p.loanOwed, 1) then return nil end
   local done
   if p.contractsDone ~= nil then
     if type(p.contractsDone) ~= 'table' or #p.contractsDone > 64 then return nil end
@@ -69,7 +70,7 @@ local function progression(p)
     end
   end
   return { balance = p.balance, totalDistanceKm = p.totalDistanceKm, lastPunctureKm = p.lastPunctureKm, jobsDone = p.jobsDone,
-    contractsDone = done }
+    contractsDone = done, loanOwed = p.loanOwed }
 end
 
 -- A saved position, with the altitude and heading when present. Returns a clean copy, or nil and why.
@@ -145,6 +146,8 @@ function M.validate(s)
   end
   -- Damage the saved car had and nobody has paid to repair, and the fuel in its tank.
   if not amount(s.vehicle.damage) or not amount(s.vehicle.fuelLitres) then return nil, 'invalid_vehicle' end
+  -- A second-hand car keeps what was paid for it (its value) and the kilometres it came with.
+  if not amount(s.vehicle.value) or not amount(s.vehicle.km) then return nil, 'invalid_vehicle' end
   local resume, poseWhy = pose(s.resume)
   if not resume then return nil, poseWhy end
   -- atStart marks a new game the player has not reached the start of yet.
@@ -172,7 +175,7 @@ function M.validate(s)
     schemaVersion = M.SCHEMA, profileId = 'default', generation = s.generation,
     base = location.copy(s.base), resume = resume, progression = p,
     vehicle = { model = s.vehicle.model, configuration = s.vehicle.configuration, config = vehicleConfig,
-      damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres },
+      damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres, value = s.vehicle.value, km = s.vehicle.km },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent,
   }
 end

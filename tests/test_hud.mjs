@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
 
-const APP = '../mod/earth_freight/ui/modules/apps/EarthFreightHUD/'
+const APP = '../mod/earth_freight/ui/modules/apps/TruckingCareerDC/'
 const source = readFileSync(new URL(APP + 'app.js', import.meta.url), 'utf8')
 const html = readFileSync(new URL(APP + 'app.html', import.meta.url), 'utf8')
 const fixed = body => 'if earthFreight_core then earthFreight_core.' + body + ' end'
@@ -69,6 +69,28 @@ test('buttons only send fixed commands when Lua enabled them', () => {
     assert.equal(a.commands.at(-1), fixed(body), name)
   }
 })
+test('the short term loan is only taken or repaid when Lua allows it', () => {
+  const a = app()
+  const count = a.commands.length
+  a.state({ state: 'READY' }); a.scope.takeLoan(); a.scope.repayLoan()
+  a.state({ state: 'READY', loan: { takeAllowed: false, repayAllowed: false } }); a.scope.takeLoan(); a.scope.repayLoan()
+  assert.equal(a.commands.length, count, 'refused when not allowed')
+  a.state({ state: 'READY', loan: { takeAllowed: true } }); a.scope.takeLoan(); assert.equal(a.commands.at(-1), fixed('takeLoan()'))
+  a.state({ state: 'READY', loan: { repayAllowed: true } }); a.scope.repayLoan(); assert.equal(a.commands.at(-1), fixed('repayLoan()'))
+  const repair = html.slice(html.indexOf('>Repair</div>'), html.indexOf('>Fuel</div>'))
+  for (const action of ['cancelPay(); takeLoan()', 'repayLoan()']) assert.ok(repair.includes(`ng-click="${action}"`), action + ' on the Repair card')
+})
+test('Buy second hand opens the list, and a car is only bought by its slot when Lua allows it', () => {
+  const a = app()
+  a.scope.openUsedCars(true); assert.equal(a.commands.at(-1), fixed('openUsedCars(true)'))
+  a.scope.openUsedCars(false); assert.equal(a.commands.at(-1), fixed('openUsedCars(false)'))
+  const count = a.commands.length
+  a.scope.buyUsedCar({ slot: 1, allowed: false }); a.scope.buyUsedCar({ slot: '1); x(', allowed: true })
+  a.scope.buyUsedCar({ slot: 1.5, allowed: true }); a.scope.buyUsedCar(null)
+  assert.equal(a.commands.length, count, 'refused unless allowed, with a whole slot')
+  a.scope.buyUsedCar({ slot: 2, allowed: true }); assert.equal(a.commands.at(-1), fixed('buyUsedCar(2)'))
+})
+
 test('paying a bill asks to confirm that total, and a new total asks again', () => {
   const a = app()
   a.state({ state: 'READY', partsChange: { cost: 500 }, buyPartsAllowed: true })
@@ -152,6 +174,15 @@ test('insurance is only claimed when Lua offers it', () => {
   a.state({ state: 'READY', insurance: { allowed: true } }); a.scope.claimInsurance()
   assert.equal(a.commands.at(-1), fixed('claimInsurance()'))
 })
+test('a tow is only asked for when Lua allows it, from the Repair card', () => {
+  const a = app()
+  a.state({ state: 'READY', tow: { allowed: false, fee: 500 } }); a.scope.towToRoad()
+  assert.equal(a.commands.length, 1)
+  a.state({ state: 'READY', tow: { allowed: true, fee: 500 } }); a.scope.towToRoad()
+  assert.equal(a.commands.at(-1), fixed('towToRoad()'))
+  const repair = html.slice(html.indexOf('>Repair</div>'), html.indexOf('>Fuel</div>'))
+  assert.ok(repair.includes('ng-click="towToRoad()"'), 'the button is on the Repair card')
+})
 test('colours: green above the usual pay, red below, gold for a shortage or jackpot', () => {
   const a = app()
   assert.equal(a.scope.dotColor('high'), '#6fcf97'); assert.equal(a.scope.dotColor('low'), '#eb5757')
@@ -207,12 +238,22 @@ test('coordinates copy as one latitude, longitude pair through the game clipboar
   for (const invalid of [null, {}, { latitude: 91, longitude: 0 }, { latitude: '0); x()', longitude: 0 }]) a.scope.copyCoordinates(invalid)
   assert.equal(a.commands.length, count)
 })
+test('the Ko-fi link sits only at the bottom of the start page, opens the browser and copies the link', () => {
+  const a = app()
+  a.scope.openKofi()
+  assert.equal(a.commands.at(-1), 'if openWebBrowser then openWebBrowser("https://ko-fi.com/madmerick") end setClipboard("https://ko-fi.com/madmerick")')
+  assert.equal(a.scope.intro.kofiOpened, true)
+  const start = html.indexOf('<div ng-if="intro.open">'), rest = html.indexOf('<div ng-if="!intro.open">', start)
+  const at = html.indexOf('ng-click="openKofi()"')
+  assert.ok(at > start && at < rest && at > html.indexOf('ng-click="newGame()"'), 'below Start over, on the start page')
+  assert.equal(html.split('openKofi()').length, 2, 'nowhere else in the HUD')
+})
 test('the HUD keeps money, Save, the message and the load outside the tabs', () => {
   const panels = html.indexOf('role="tabpanel"')
   for (const always of ['ng-click="save()"', 'data.balance', 'notice(data)', 'data.load.to', 'data.fuel.litres', 'copyCoordinates(data.resume)']) {
     assert.ok(html.indexOf(always) > -1 && html.indexOf(always) < panels, always)
   }
-  for (const id of ['route', 'town', 'garage', 'relocate']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
+  for (const id of ['route', 'town', 'garage', 'relocate', 'heli']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
   for (const action of ['cancelPay(); buyParts()', 'revertParts()', 'cancelPay(); buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
     'newGame()', 'cancelNewGame()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()', 'teleportToResume()', 'startHere()']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
@@ -221,7 +262,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
 })
 test('the Tips tab is gone and shipping has its own Relocate tab', () => {
   const a = app()
-  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate'])
+  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli'])
   assert.ok(!html.includes(`tab === 'tips'`), 'no Tips tab')
   const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'relocate'"`))
   const shipping = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`))
@@ -426,6 +467,19 @@ test('a dangerous contract shows on the board and teleports to its start only wh
   assert.equal(a.commands.at(-1), fixed('teleportToContract()'))
   assert.equal(a.scope.coordinates(contract.start), '-16.28700000, -67.81500000')
 })
+test('a relocation booking has a Teleport button next to Copy, sent only when Lua allows it', () => {
+  const card = html.slice(html.indexOf('ng-click="copyCoordinates(data.shipping.booking)"'))
+  assert.ok(card.indexOf('ng-click="teleportToBooking()"') > 0 && card.indexOf('ng-click="teleportToBooking()"') < card.indexOf('</div>'), 'beside Copy')
+  const a = app()
+  const booking = { name: 'Coroico', region: 'Death Road', fee: 300, latitude: -16.19, longitude: -67.73 }
+  a.state({ state: 'READY', arrived: true, shipping: { booking } })
+  const count = a.commands.length
+  a.scope.teleportToBooking()
+  assert.equal(a.commands.length, count, 'refused when not allowed')
+  a.state({ state: 'READY', arrived: true, shipping: { booking: { ...booking, teleportAllowed: true } } })
+  a.scope.teleportToBooking()
+  assert.equal(a.commands.at(-1), fixed('teleportToBooking()'))
+})
 test('the HUD has no select box: BeamNG does not open its list', () => {
   assert.doesNotMatch(html, /<select/)
 })
@@ -433,18 +487,31 @@ test('the parts bill box shows over the parts menu until closed, paid or the men
   const a = app()
   const bill = { open: true, serial: 3, total: 'Parts bill so far: $600', detail: 'Parts $600, repair $0.', hint: 'Pay or undo on the Garage tab.' }
   const box = () => a.document.body.children[0]
-  const text = () => box().children.map(c => c.textContent).join(' ')
+  const words = el => [el.textContent, ...el.children.map(words)].join(' ')
+  const text = () => words(box())
   a.handlers.$destroy() // the parts menu hides the HUD; the box does not need it
   a.root.EarthFreightPartsBill({}, bill)
   assert.equal(a.document.body.children.length, 1, 'box shown')
   assert.match(text(), /Parts bill so far: \$600/); assert.match(text(), /Parts \$600, repair \$0\./)
   assert.equal(a.commands.at(-1), fixed('partsBillShown(3)'), 'tells Lua it showed')
-  a.root.EarthFreightPartsBill({}, { ...bill, serial: 4, total: 'Parts bill so far: $1,500', short: 'You are $1,400 short.' })
+  a.root.EarthFreightPartsBill({}, { ...bill, serial: 4, total: 'Parts bill so far: $1,500', money: 'You have $100.', short: 'You are $1,400 short.' })
   assert.equal(a.document.body.children.length, 1, 'a new bill replaces the box')
-  assert.match(text(), /\$1,400 short/)
+  assert.match(text(), /\$1,400 short/); assert.match(text(), /You have \$100\./, 'shows the money the player has')
   box().children[0].onclick()
   assert.equal(a.document.body.children.length, 0, 'Close closes it')
-  a.root.EarthFreightPartsBill({}, bill)
+  a.root.EarthFreightPartsBill({}, { ...bill, serial: 5, cost: 1500, payAllowed: true,
+    lines: [{ label: '+ Cargo Load Box L', amount: '$1,500' }, { label: '- Cargo Load Box M (sold back)', amount: '-$180' }] })
+  assert.match(text(), /\+ Cargo Load Box L \$1,500/, 'lists each part with its price'); assert.match(text(), /sold back\) -\$180/)
+  assert.doesNotMatch(text(), /Parts \$600, repair/, 'the list replaces the split')
+  const pay = box().children.find(c => c.tag === 'button' && /^Pay/.test(c.textContent))
+  assert.equal(pay.textContent, 'Pay $1,500')
+  const sent = a.commands.length
+  pay.onclick()
+  assert.equal(pay.textContent, 'Yes, pay $1,500', 'asks once more'); assert.equal(a.commands.length, sent, 'nothing paid yet')
+  pay.onclick()
+  assert.equal(a.commands.at(-1), fixed('payPartsBill(5)'), 'pays this bill')
+  a.root.EarthFreightPartsBill({}, { ...bill, serial: 6, cost: 1500, payAllowed: false })
+  assert.ok(!box().children.some(c => c.tag === 'button' && /^Pay/.test(c.textContent)), 'no Pay button when Lua does not allow it')
   a.root.EarthFreightPartsBill({}, { open: false })
   assert.equal(a.document.body.children.length, 0, 'paid or undone closes it')
   a.root.EarthFreightPartsBill({}, bill)
@@ -453,4 +520,31 @@ test('the parts bill box shows over the parts menu until closed, paid or the men
   a.root.EarthFreightPartsBill({}, { ...bill, serial: 'x); os.exit(' })
   assert.notEqual(a.commands.at(-1), fixed('partsBillShown(NaN)'), 'only a plain number goes back to Lua')
   assert.doesNotMatch(a.commands.at(-1), /os\.exit/)
+})
+
+test('the Heli tab hires, goes back to the car, and opens when a hire starts', () => {
+  const a = app()
+  const heli = html.slice(html.indexOf(`ng-if="tab === 'heli'"`))
+  for (const part of ['ng-click="hireHeli()"', 'ng-click="backToCar()"', 'ng-click="openHeliMod()"', 'Needs the {{data.heli.modName}} mod']) {
+    assert.ok(heli.includes(part), part)
+  }
+  a.state({ state: 'READY', arrived: true, heli: { installed: true, hireAllowed: false } })
+  a.scope.hireHeli()
+  assert.ok(!a.commands.some(c => c.includes('hireHeli')), 'nothing sent while hiring is not allowed')
+  a.state({ state: 'READY', arrived: true, heli: { installed: true, hireAllowed: true } })
+  a.scope.hireHeli()
+  assert.ok(a.commands.includes(fixed('hireHeli()')), 'hire sent')
+  a.scope.setTab('route')
+  a.state({ state: 'READY', arrived: true, heli: { hired: { stage: 'flying', backAllowed: true, car: {} } } })
+  assert.equal(a.scope.tab, 'heli', 'a hire opens the Heli tab')
+  a.scope.backToCar()
+  assert.ok(a.commands.includes(fixed('backToCar()')), 'back to the car sent')
+  assert.equal(a.scope.tabAlert('heli'), false)
+  a.state({ state: 'READY', arrived: true, heli: { hired: { stage: 'flying', car: {}, load: { inZone: true } } } })
+  assert.equal(a.scope.tabAlert('heli'), true, 'a load in the drop zone marks the tab')
+  a.state({ state: 'READY', arrived: true, heli: { modPage: 'https://www.beamng.com/threads/x.1/' } })
+  a.scope.openHeliMod()
+  assert.ok(a.commands.some(c => c.includes('openWebBrowser("https://www.beamng.com/threads/x.1/")')), 'the mod page opens')
+  const route = html.slice(html.indexOf(`ng-if="tab === 'route'"`), html.indexOf(`ng-if="tab === 'town'"`))
+  assert.ok(route.includes('Heli hired.'), 'the Route tab says a heli is hired')
 })

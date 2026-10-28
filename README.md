@@ -1,28 +1,36 @@
 # BeamNG Worldwide Trucking Career: Dangerous Contracts
 
-_Formerly Earth Freight Sim._
+Keep me awake behind the wheel! [buy me a coffee on Ko-fi](https://ko-fi.com/madmerick).
 
 **Haul cargo anywhere on Earth. Start in a rust bucket with no radiator or front brakes**
 
 A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive.
 
-<img width="1350" height="900" alt="earthFSim1" src="https://github.com/user-attachments/assets/cba471f1-b4f9-4097-b502-20e35c1105d6" />
+<img width="1650" height="1100" alt="wwtcDCtitle" src="https://github.com/user-attachments/assets/18fa1fa3-ff30-460b-a18f-791cb1303c4f" />
+
+## What you need
+
+- **BeamNG.drive 0.40.**
+- **[BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth)**, installed and working. Follow its own install guide first. The mod's **Teleport** buttons use Earth's teleport, so keep Earth's companion app running too. Without it you can still paste coordinates into Earth's map yourself.
+- Optional, for heli flights: the **[Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/)** mod by stefan750.
 
 ## Features
 
-- **130,000+ real towns, each with a job board.** Parts, bricks, water and fuel, wherever you are on Earth.
-- **Garage - Build your Rig.** Upgrade parts, buy and sell new and second hand vehicles. More freight per trip means more Pay.
-- **Off-road drops.** No GPS
-- **Dangerous highly paid contracts.** Death Road, Carhuaz, Zoji La, Sani Pass and Grimsel, for up to **8x the pay**.
-- **Dynamic economy** Towns want different goods, repeat runs pay less, shortages pay double.
-- Steep, remote and famous roads pay up to 3x. Regions are graded for difficulty. Cargo weighs the car down, fluids slosh in the tank, tyres puncture and repairs cost money.
+- **130,000+ real earth towns, each with a job board.** Move parts, bricks, water and fuel.
+- **Garage - Build your Rig.** Upgrade parts, buy and sell **new** and **second hand** vehicles.
+- **Off-road drops.** No GPS route: follow the arrow on the Route tab to a spot off the road.
+- **Dangerous highly paid contracts.** Death Road, Carhuaz, Zoji La, Sani Pass and Grimsel, for up to **8x the pay**. Each one can be done once per game.
+- **Dynamic economy.** Towns want different goods, repeat runs pay less, shortages pay double.
+- **Steep, remote and notorious roads** pay up to 3x. Regions are graded for difficulty.
 - **Relocate.** Pay to move to any town or coordinates on Earth. Some of the world's hardest regions will pay your way if you come and deliver their wares.
+- **Fuel, punctures and breakdowns.** Refuel in towns, repair burst tyres, use **Tow to road** when you're stuck, or take a short term loan when money runs out.
+- **Heli flights.** Hire a Bell 407 for $1,000 and fly loads of up to 1,000 kg on its tow hook over the world. Needs the [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) mod by stefan750.
 
 ## Install
 
 1. Download `worldwide-trucking-dangerous-contracts.zip` from the [latest release](../../releases/latest).
 2. Drop it, **still zipped**, into the `mods` folder of your BeamNG user folder. If an older `earth-freight-sim.zip` or `earth_freight.zip` is there, delete it so two copies don't load. Your saves carry over.
-3. In game, turn on the **BeamNG Worldwide Trucking Career: Dangerous Contracts** UI app.
+3. In game, turn on the **TruckingCareerDC** UI app.
 
 ## How to Start
 
@@ -32,7 +40,15 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 4. Drive it there in one piece and press **Deliver**.
 5. Press **Save** often. Next time, **Teleport to last save** puts you right back.
 
-**insurance** after a big crash costs $1,000 (the load is lost), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
+**Insurance** after a big crash costs $1,000 (the load is lost), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
+
+## Updating
+
+Download the new `worldwide-trucking-dangerous-contracts.zip`, delete the old one from your `mods` folder and drop the new one in. Your saves carry over unless the changelog says otherwise.
+
+## Feedback and bugs
+
+Found a bug or have an idea? Open an [issue on GitHub](../../issues). Say what you were doing, and if something broke, attach your `beamng.log` (in your BeamNG user folder).
 
 ## What's new
 
@@ -66,6 +82,7 @@ Every pull request adds a line for players under **Coming next** in [`CHANGELOG.
 
 ### Credits
 
+[BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth) by TecnaGamer, the real-world map this career runs on. The [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) by stefan750 (based on DrowsySam's Bell 407), used for heli flights and not included in this mod.
 Place data © [GeoNames](https://www.geonames.org/), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (`cities1000`, every place over 1,000 people). Elevation for the region pay boost: [Mapzen terrain tiles](https://registry.opendata.aws/terrain-tiles/) on AWS (SRTM, GMTED and other sources).
 
 </details>

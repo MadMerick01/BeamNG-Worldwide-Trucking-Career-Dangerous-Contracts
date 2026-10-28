@@ -7,6 +7,48 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **The download is now called `worldwide-trucking-dangerous-contracts.zip`** to match the new name. Delete the old `earth-freight-sim.zip` from your `mods` folder before you add the new one, otherwise the game loads both copies. Your saves still work.
+- No changes in the game. The README now lists what you need before installing (BeamNG.drive 0.40, BeamNG.Earth, and the Revamped Bell 407 for heli flights), how to update, where to report bugs, the features it was missing, and credits for BeamNG.Earth and the Bell 407.
+
+## Build 90 · 28 Oct 2026
+
+- **New Heli tab: hire a helicopter and fly loads over the world.** It needs the Revamped Bell 407 mod by stefan750, which you download from the BeamNG forum and put in your mods folder yourself. Without it, the Heli tab says what to install and has a button that opens the mod's page. Press **Hire helicopter · $1,000**, then **Confirm hire**, in your own car while it's stopped. The helicopter takes your car's place, and your car waits with its job, fuel and damage.
+- A load turns up in front of the helicopter. Hook it on, fly it to the town named on the Heli tab (an arrow points the way), set it down inside the drop zone and let go. It pays $3 a kg, up to $3,000 for 1,000 kg, and the next load turns up. A load that hits the ground too hard pays nothing. You can fly as many loads as you like until you press **Back to my car**. Near your car, land and your car takes the helicopter's place. Farther away, you're teleported back first. Hiring again costs another $1,000.
+- A helicopter crash costs $1,000 insurance, and you lose the load and the hire. You're taken back to your car. While you fly, Save, jobs, refuelling, repairs and relocation wait until you're back in your car. Nothing about a hire is saved, and your saves still work.
+
+## Build 87 · 28 Oct 2026
+
+- **The Ko-fi line at the bottom of the start page now reads "Keep me awake behind the wheel: ko-fi.com/madmerick".** Pressing the link works as before: it opens the page in your browser and copies the link. Your saves still work.
+
+## Build 85 · 28 Oct 2026
+
+- **You can now support the mod on Ko-fi.** At the very bottom of the start page (open it with your name button at the top of the HUD), **Support the mod on Ko-fi** opens ko-fi.com/madmerick in your browser and copies the link, so you can paste it yourself if the browser doesn't open. The mod stays free, and nothing about Ko-fi shows up while you drive, deliver or use the Garage. Your saves still work.
+
+## Build 84 · 28 Oct 2026
+
+- **You can now take a short term loan.** The Repair card on the Garage tab has a **Short term loan** button: press it and then **Yes, borrow** to get $1,000 straight away. You owe $1,350 for it, shown on the same card. Once you have $1,350, press **Repay $1,350** there to pay it off in one go. Nothing is taken from your delivery pay, and you can't take another loan until this one is repaid. The Repair card also shows up while a parts or car bill is waiting and you're short of money, so you can borrow to pay it.
+- A loan is kept when you save, like your money. Your saves still work, and an old save starts with no loan.
+
+## Build 83 · 28 Oct 2026
+
+- **Stuck off the road? Press Tow to road.** The Repair card on the Garage tab has a new **Tow to road · $500** button that puts your car back on the road it was last on. Press it, then **Confirm tow**. The $500 is only taken once your car has actually moved, so if the game can't find a road you pay nothing. Towing keeps your job and doesn't count as a teleport, but it doesn't fix anything: any damage your car had is still owed on the Repair card, even if it looks new after the tow. Your saves still work.
+
+## Build 79 · 28 Oct 2026
+
+- **You can now buy second-hand cars.** Press **Buy second hand** on the Garage tab to see two used cars for sale in the town you're in, or the nearest town. They can be any BeamNG car in any version, except trailers and props, and cost between 70% and 105% of the new price. Each card shows the car's picture, its kilometres, its price, a "Good deal" tag when it's under 80% of new, and what you'd pay after your trade-in. Each town always sells the same two cars, so drive to another town to see different ones. **Buy this one** puts the car in place of yours and opens the usual car bill at the second-hand price: buy it or press **Get my car back**, as with a new car.
+- Second-hand cars look worn, with faded paint and the kilometres on the clock, but they drive like new. A second-hand car is worth what you paid for it, so that's what its trade-in and repairs are based on, and it stays that way after part changes and after you save and load. Your saves still work.
+- **The starter car is now called the Burnside Rusty**, in the HUD and in the game's car selector. It's the same car. Your saves still work, and an existing starter car shows the new name straight away.
+
+## Build 78 · 28 Oct 2026
+
+- **The HUD is now called TruckingCareerDC in the app list.** When you open Edit Layout (or the UI apps menu) to add or move the HUD, look for TruckingCareerDC instead of EarthFreightHUD. Because the HUD has a new name, the game may drop it from a layout you saved before this build. If the HUD is missing after you update, open Edit Layout, add TruckingCareerDC again and save your layout. Delete the old ZIP from your mods folder so you don't end up with two copies. Your saves still work.
+
+## Build 77 · 28 Oct 2026
+
+- **You can now pay for your parts straight from the parts bill box.** The box that pops up in the parts menu now lists each part you've added or sold back with its price, as the Garage tab does, and shows how much money you have. Press Pay, then Yes, pay, to buy the parts without leaving the menu. The Pay button only shows when you can afford the bill. You can still pay or undo on the Garage tab. Your saves still work.
+
+## Build 74 · 28 Oct 2026
+
+- **Teleport straight to your relocation.** Once you've booked a relocation on the Relocate tab, a new **Teleport** button sits next to **Copy** and takes you there in one press, so you no longer need to paste the coordinates into the BeamNG.Earth map. The fee and the rules are the same: book with an empty car, and the booking is used up when you land. Copying the coordinates still works. Your saves still work.
 
 ## Build 71 · 28 Oct 2026
 
