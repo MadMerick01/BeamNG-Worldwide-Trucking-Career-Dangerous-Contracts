@@ -43,16 +43,45 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     box.appendChild(close)
     line(box, 'PARTS BILL', 'font-weight:bold;letter-spacing:1px;font-size:13px;color:' + gold + ';')
     line(box, String(data.total || ''), 'font-weight:bold;font-size:22px;color:' + gold + ';margin-top:2px;')
-    line(box, String(data.detail || ''), 'margin-top:4px;')
-    if (data.money) line(box, String(data.money), 'font-weight:bold;margin-top:4px;')
+    // Each part, as on the Garage tab's bill; just the split when there is no list.
+    var lines = Array.isArray(data.lines) ? data.lines : []
+    if (!lines.length) line(box, String(data.detail || ''), 'margin-top:4px;')
+    lines.forEach(function (l) {
+      var row = document.createElement('div')
+      row.style.cssText = 'display:flex;gap:8px;margin-top:2px;'
+      line(row, String(l.label || ''), 'flex:1;min-width:0;')
+      line(row, String(l.amount || ''), '')
+      box.appendChild(row)
+    })
+    if (data.money) line(box, String(data.money), 'font-weight:bold;margin-top:6px;')
     if (data.short) line(box, String(data.short), 'font-weight:bold;color:#eb5757;margin-top:4px;')
+    if (data.payWhy) line(box, String(data.payWhy), 'color:#eb5757;margin-top:4px;')
+    var serial = parseInt(data.serial, 10)
+    var lua = function (body) {
+      if (typeof bngApi !== 'undefined' && bngApi.engineLua) bngApi.engineLua('if earthFreight_core then earthFreight_core.' + body + ' end')
+    }
+    // Pay asks once more, as on the Garage tab, then pays this bill.
+    var cost = typeof data.cost === 'number' && isFinite(data.cost) ? data.cost : null
+    if (data.payAllowed && serial > 0 && cost !== null) {
+      var amount = '$' + Math.round(cost).toLocaleString('en-US')
+      var pay = document.createElement('button')
+      pay.type = 'button'
+      pay.textContent = 'Pay ' + amount
+      pay.style.cssText = 'margin-top:10px;padding:7px 14px;background:#f2c94c;color:#0c1318;font-weight:bold;' +
+        'border:none;border-radius:4px;cursor:pointer;'
+      var asked = false
+      pay.onclick = function () {
+        if (!asked) { asked = true; pay.textContent = 'Yes, pay ' + amount; return }
+        pay.disabled = true
+        pay.textContent = 'Paying...'
+        lua('payPartsBill(' + serial + ')')
+      }
+      box.appendChild(pay)
+    }
     line(box, String(data.hint || ''), 'margin-top:6px;color:#c9d6d2;font-size:13px;')
     document.body.appendChild(box)
     bill = box
-    var serial = parseInt(data.serial, 10)
-    if (serial > 0 && typeof bngApi !== 'undefined' && bngApi.engineLua) {
-      bngApi.engineLua('if earthFreight_core then earthFreight_core.partsBillShown(' + serial + ') end')
-    }
+    if (serial > 0) lua('partsBillShown(' + serial + ')')
   }
   $rootScope.$on('EarthFreightPartsBill', function (event, data) {
     if (data && data.open) showBill(data); else closeBill()

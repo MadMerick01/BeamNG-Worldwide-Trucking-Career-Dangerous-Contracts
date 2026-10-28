@@ -350,10 +350,29 @@ function M.attach(c)
         .. ', repair ' .. dollars(bill.repair) .. '.',
       money = balance and ('You have ' .. dollars(balance) .. '.') or nil,
       short = short and ('You are ' .. dollars(short) .. ' short.') or nil,
-      hint = 'Pay or undo on the Garage tab.',
+      hint = 'You can also pay or undo on the Garage tab.',
+      lines = {}, cost = bill.cost, payAllowed = self:buyPartsAllowed() and true or false,
     }
+    -- The same lines as the bill on the Garage tab.
+    for _, part in ipairs(bill.added) do popup.lines[#popup.lines + 1] = { label = '+ ' .. part.name, amount = dollars(part.price) } end
+    for _, part in ipairs(bill.removed) do
+      popup.lines[#popup.lines + 1] = { label = '- ' .. part.name .. ' (sold back)', amount = '-' .. dollars(part.refund) }
+    end
+    if bill.repair > 0 then popup.lines[#popup.lines + 1] = { label = 'Repair (damage before the change)', amount = dollars(bill.repair) } end
+    if not popup.payAllowed and not short then popup.payWhy = 'Your job would not fit with these parts. Deliver it first, or undo the changes.' end
     self.partsBill = { serial = popup.serial, at = self.clock, popup = popup }
     if self.trigger then pcall(self.trigger, 'EarthFreightPartsBill', popup) end
+  end
+
+  -- Pay on the parts bill box. Only pays the bill the box showed; says how it went in a corner pop-up.
+  function c:payPartsBill(serial)
+    if not self.partsBill or self.partsBill.serial ~= serial then
+      self:toast('warning', 'Parts bill', 'The bill changed. Check the new one and pay again.')
+      return false
+    end
+    local ok = self:buyParts()
+    self:toast(ok and 'success' or 'warning', 'Parts bill', self.partsFeedback or 'Could not pay. Try again on the Garage tab.')
+    return ok
   end
 
   -- The HUD app showed the parts bill box.
