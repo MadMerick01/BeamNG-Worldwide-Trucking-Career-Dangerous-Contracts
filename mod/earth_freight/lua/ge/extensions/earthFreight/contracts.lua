@@ -38,6 +38,9 @@ M.LIST = {
   { id = 'grimsel_pass', name = 'Grimsel Pass', region = 'Obergoms, Switzerland', km = 8, pay = 2.5,
     summary = 'Over the top from the Grimsel Hospiz lakes, then down the tight stack of Alpine switchbacks to Gletsch, with bare granite and long drops beside the road.',
     start = { latitude = 46.579575, longitude = 8.334592 }, finish = { latitude = 46.561997, longitude = 8.361186 } },
+  { id = 'ravin_de_piquet', name = 'Ravin de Piquet', region = 'Hautes-Pyrénées, France', km = 5, pay = 4,
+    summary = 'Down from the Ravin de Piquet through the steep, wooded mountain valley to the spa town of Cauterets, deep in the French Pyrenees.',
+    start = { latitude = 42.924296, longitude = -0.090329 }, finish = { latitude = 42.889783, longitude = -0.091451 } },
 }
 
 local byId = {}

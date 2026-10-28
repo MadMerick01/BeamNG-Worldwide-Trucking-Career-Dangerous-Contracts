@@ -400,10 +400,10 @@ Decided by Rowan on 25 Oct: one job on every board goes to a spot off the roads 
 
 Decided by Rowan on 26 Oct: a big-pay job over about 2 km of a treacherous Earth Enduro stage, always on the board.
 
-- **The sections** (`contracts.lua`): Death Road below Chuspipata, the last Sani Pass hairpins, the Zoji La shelf above Baltal, the Carhuaz hairpins in the Cordillera Blanca and Grimsel Pass from the Hospiz over the top to Gletsch, all with start and finish checked in game (Rowan, 27 Oct). Only checked roads are offered. Left out for now: Fairy Meadows Road (no dangerous 2 km found), Skippers Canyon (not dangerous enough), Atigun Pass and Transfăgărășan (not checked).
+- **The sections** (`contracts.lua`): Death Road below Chuspipata, the last Sani Pass hairpins, the Zoji La shelf above Baltal, the Carhuaz hairpins in the Cordillera Blanca, Grimsel Pass from the Hospiz over the top to Gletsch, all with start and finish checked in game (Rowan, 27 Oct), and the Ravin de Piquet down to Cauterets in the French Pyrenees (Rowan, 28 Oct). Only checked roads are offered. Left out for now: Fairy Meadows Road (no dangerous 2 km found), Skippers Canyon (not dangerous enough), Atigun Pass and Transfăgărășan (not checked).
 - **On the board:** every town's board ends with one contract, after the off-road drop. Which section is fixed for the town and moves on after every job, so the next town usually offers a different one. The good is parts or bricks, and the Load slider works as usual.
 - **Once per game** (Rowan, 27 Oct): a delivered contract's road is kept in the save (`progression.contractsDone`) and no board offers it again. With every road done, boards have no contract. A new game starts with none done.
-- **Pay:** a multiple, set per road, of what the same load pays at the base rate over a 5 km job: Death Road and Carhuaz 8 times, Zoji La 4 times, Sani Pass 3 times, Grimsel Pass 2.5 times (Rowan, 27 Oct). No town need, shortage, jackpot or road bonus.
+- **Pay:** a multiple, set per road, of what the same load pays at the base rate over a 5 km job: Death Road and Carhuaz 8 times, Zoji La and Ravin de Piquet 4 times, Sani Pass 3 times, Grimsel Pass 2.5 times (Rowan, 27 Oct). No town need, shortage, jackpot or road bonus.
 - **Least distance driven:** normally 70% of the straight line from start to finish. Carhuaz's finish is only about 50 m from its start as the crow flies (hairpins stacked up the slope, and the 100 m finish circle covers the start), so its section sets `driveKm = 1.5`: the load delivers only after 1.5 km driven.
 - **Relocation:** taking it costs a flat $200, and Earth is asked to teleport the car to the start (or the player pastes the start coordinates from the Route tab). A teleport landing within 1 km of the start starts the contract and does not lose the load; driving distance counts from there. Any other teleport cancels it as on any job. Abandoning before the start pays the $200 back; the $1,000 abandon fee still applies.
 - **GPS:** set to the finish when the contract starts. The Route tab's arrow shows the way too.
@@ -421,6 +421,28 @@ Decided by Rowan on 25 Oct: the board is four jobs, parts (light), bricks (heavy
 - **Fallback:** without the expression parser, without a fluid container, or for litres past the container's capacity, the weight goes on the tank part's nodes like a box, as before.
 - **Old saves:** food stays a known good, so a food job in an older save still loads and delivers.
 - **Needs checking in game:** the fluid tank part names, that the stock tanks carry a fluid container, and how the slosh feels. `tools/probe_fluid_tank.lua`, run once in the game console with a tank fitted, prints the car's cargo containers.
+
+## Heli flights as built
+
+Decided by Rowan on 28 Oct: a fun, hire-anytime way to fly over the world, never a rival to the trucks. First built with loads on the tow hook (Build 90); Rowan found the sling load far too hard to fly, so on 28 Oct it became a sightseeing hire with "don't ask questions" jobs.
+
+- **The helicopter:** stefan750's Revamped Bell 407, a mod the player installs; it is not bundled (Rowan, 28 Oct). It is found in the game's config list by a model or name with "Bell" and "407" (`heli.lua`), preferring a config without weapons, one with a hook first, then the cheapest. Without it the Heli tab names the mod and opens its page.
+- **Hire:** $1,000 on the Heli tab, asked twice, in the player's own car, stopped, with no garage bill, booking or tow going on. It lasts, unlimited, until Back to my car; hiring again costs $1,000 again. A job on board is allowed: it waits in the car. The hire earns nothing by itself.
+- **The swap:** the helicopter takes the car's place where it stands (`replaceVehicle`, as a car from the vehicle selector). The car's parts, damage owed, fuel and second-hand value are kept in memory. While hired, the garage leaves the helicopter alone (no car bill, repairs, insurance or tow), the load's weight stays off, and nothing counts as driving or as a teleport. Save, jobs, refuelling and relocation wait for the car.
+- **Scouting:** the Heli tab shows the nearest town (its region and rough-road pay boost), the height above the ground, the car's distance with an arrow, the 5 nearest towns, and the nearest town's job board as it would pay the car, read-only (Rowan, 28 Oct).
+- **Back to my car:** only when pressed and confirmed, never by landing (Rowan, 28 Oct: an accidental hop must not end the hire). Within 150 m of the car's spot and landed (under 3 m up), the car takes the helicopter's place there. Farther away, Earth teleports the helicopter to the spot first and the swap follows 2 s after landing there. With no teleport, the player flies back. The car looks new after the respawn, but its repair is still owed, as with a reverted car.
+- **Crash:** 15,000 damage on the helicopter, as for a car. It costs $1,000 insurance (or all the money, if less), the hire is lost, and the player goes back to their car as above.
+- **Saves:** nothing about a hire is saved.
+
+## Don't ask questions jobs as built
+
+Decided by Rowan on 28 Oct (`beacons.lua`).
+
+- **Finding one:** every 5 minutes of flying at least 30 m above the ground there is a 50% chance of a signal beacon, unless one is waiting or on board (one at a time). The pickup is 0.5 to 3 km from the helicopter, and must be within 15 km of the car so it can be driven to (8 directions are tried; otherwise nothing this time). A centre-screen box, like the parts bill's, says so and closes by itself after 10 s or on a click, since a click is awkward on the flight controls.
+- **What it is:** one of 19 lines (what is at the pickup), random and never the same twice running; Rowan cut the school bag. A package of no weight (`goods.lua` "package", never posted on a board).
+- **Waiting:** shown on the Route tab with its distance, an arrow, coordinates and Copy, on the Town tab's job list, and on the Heli tab. It goes quiet after 1 hour of play, counted while the game runs. Ignoring it is free (asked twice). It is kept by Save (`beacon` in the save: pickup, drop, line, seconds left); older saves load unchanged.
+- **The run:** stop within 100 m of the pickup in the car, with no other job, and press Pick it up. It is then a job like an off-road drop: no GPS, the arrow on the Route tab, delivered stopped within 100 m of a drop 2 to 5 km away, once 70% of the straight line from the pickup has been driven. It pays $12,000 (Rowan, 28 Oct, down from $25,000). An insurance claim costs $4,000 and loses it, as on a dangerous contract; a teleport without a booking cancels it, and abandoning costs the usual $1,000.
+- **Needs checking in game:** the beacon rate and pay against trucking, and the 15 km reach.
 
 ## Open questions
 

@@ -9,6 +9,7 @@ local pricing = require('earthFreight/pricing')
 local cargo = require('earthFreight/cargo')
 local goods = require('earthFreight/goods')
 local contracts = require('earthFreight/contracts')
+local beacons = require('earthFreight/beacons')
 local places = require('earthFreight/places')
 local usedCars = require('earthFreight/usedCars')
 local M = {}
@@ -63,6 +64,7 @@ function M.attach(c)
   function c:priceRepair()
     if not self.profile or self.error then return nil, 'unavailable' end
     if not self.garage then return nil, 'repair_unavailable' end
+    if self.hire then return nil, 'heli' end
     local vehicle, why = self:inspectDamage()
     if not vehicle then return nil, why end
     return vehicle, pricing.repairCost(vehicle.damage, self:carValueOf(vehicle.id))
@@ -70,6 +72,7 @@ function M.attach(c)
 
   local repairMessages = {
     unavailable = 'Repairs are unavailable right now. Check the status above.',
+    heli = 'Repairs are for your own car. Press Back to my car on the Heli tab first.',
     vehicle_required = 'Enter a vehicle to get a repair quote.',
   }
   local function repairProblem(why)
@@ -152,15 +155,15 @@ function M.attach(c)
     return d ~= nil and owned ~= nil and d.id == owned.id and d.damage >= M.SERIOUS_DAMAGE
   end
 
-  -- On a dangerous contract a claim costs contracts.INSURANCE_FEE instead.
+  -- On a dangerous contract, or a beacon's package, a claim costs more instead.
   function c:insuranceFee()
-    local fee = self.load and self.load.contract and contracts.INSURANCE_FEE or M.INSURANCE_FEE
+    local fee = self.load and (self.load.contract and contracts.INSURANCE_FEE or self.load.beacon and beacons.INSURANCE_FEE) or M.INSURANCE_FEE
     return math.min(fee, self.profile and self.profile.progression.balance or 0)
   end
 
   function c:insuranceAllowed()
     return self.profile ~= nil and not self.error and self.garage ~= nil and self.arrived and self:seriousCrash()
-      and not self.pendingParts and not self.pendingCar and not self.insurancePending
+      and not self.hire and not self.pendingParts and not self.pendingCar and not self.insurancePending
   end
 
   -- Claims: the first press asks to confirm. The car goes back to the road (BeamNG's own "teleport
@@ -236,7 +239,7 @@ function M.attach(c)
   -- for M.TOW_FEE. Towing fixes nothing: if the game resets the car on the way, watchResets keeps
   -- the damage owed, as after Insert.
   function c:towAllowed()
-    return self.profile ~= nil and not self.error and self.garage ~= nil and self.arrived
+    return self.profile ~= nil and not self.error and self.garage ~= nil and self.arrived and not self.hire
       and not self.pendingParts and not self.pendingCar and not self.insurancePending and not self.towPending
   end
 
@@ -610,6 +613,7 @@ function M.attach(c)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not self.ownedParts then
       return 'Second-hand cars are unavailable right now.'
     end
+    if self.hire then return 'Press Back to my car on the Heli tab first.' end
     if self.load then return 'Deliver or abandon your job before changing cars.' end
     if self.pendingCar or self.pendingParts then return 'Pay for or undo the bill above first.' end
     if self.secondHand then return 'Bringing the car out...' end
@@ -737,7 +741,8 @@ function M.attach(c)
   -- Called every tick: checks parts after a spawn or vehicle switch, notes the damage the vehicle has
   -- before a change, and puts the paid parts back if the player drives off without paying.
   function c:watchParts()
-    if not self.garage then return end
+    -- A hired helicopter is not a car the player is buying: the garage waits for their car.
+    if not self.garage or self.hire then return end
     local used = self.secondHand
     if used and not used.spawned and self.clock - used.at >= M.USED_SPAWN_SECONDS then
       self.secondHand, self.ourRespawn = nil, nil

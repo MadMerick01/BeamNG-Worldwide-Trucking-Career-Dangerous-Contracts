@@ -886,8 +886,10 @@ end
 -- Dangerous contracts: on every board, relocated to the start for the fee, paid the road's multiple of a 5 km job
 -- at the finish once the section is driven. A claim costs $4,000; abandoning before the start pays
 -- the relocation back.
+-- Always Zoji La, a plain 2 km road, so adding a road to the list doesn't change these tests.
 local function onContract(c)
-  local job = jobs.contractJob(penrith, 0)
+  local job, section = jobs.contractJob(penrith, 0), contracts.get('zoji_la')
+  job.contract, job.km, job.drop = section.id, section.km, F.copy(section.finish)
   job.good, job.id = 'parts', 'contract_parts_' .. job.contract
   local board = c.board
   c.board = function(self, place) local list = board(self, place); list[#list] = F.copy(job); return list end
@@ -1022,7 +1024,7 @@ do
   T.check(c:deliver(), 'delivers once the climb is driven')
 end
 
--- Each checked road pays its own multiple: Death Road 8, Zoji La 4, Sani Pass 3.
+-- Each checked road pays its own multiple: Death Road 8, Zoji La 4, Ravin de Piquet 4, Sani Pass 3.
 do
   T.eq(contracts.get('death_road').pay, 8, 'Death Road pays 8 times'); T.eq(contracts.get('zoji_la').pay, 4, 'Zoji La 4 times')
   T.eq(contracts.get('sani_pass').pay, 3, 'Sani Pass 3 times')
@@ -1032,6 +1034,9 @@ do
   local grimsel = jobs.contractJob(penrith, 0)
   grimsel.good, grimsel.contract = 'parts', 'grimsel_pass'
   T.eq(jobs.quote(grimsel, 10, {}, 0).pay, math.floor(jobs.basePay(goods.get('parts'), 10, 5) * 2.5 / 10 + 0.5) * 10, 'a Grimsel Pass job pays 2.5 times')
+  T.eq(contracts.get('ravin_de_piquet').pay, 4, 'Ravin de Piquet 4 times')
+  local piquet = contracts.get('ravin_de_piquet')
+  T.check(location.distance(piquet.start, piquet.finish) > contracts.FINISH_RADIUS, 'its start is outside the finish circle')
   local job = jobs.contractJob(penrith, 0)
   job.good, job.contract = 'parts', 'sani_pass'
   T.eq(jobs.quote(job, 10, {}, 0).pay, math.floor(jobs.basePay(goods.get('parts'), 10, 5) * 3 / 10 + 0.5) * 10, 'a Sani Pass job pays 3 times')

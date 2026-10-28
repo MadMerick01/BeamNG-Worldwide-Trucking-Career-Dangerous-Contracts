@@ -109,7 +109,8 @@
       <div ng-if="data.resumeDistanceMetres != null" style="margin-top:4px;">You are {{km(data.resumeDistanceMetres)}} km away.<span ng-if="data.resumeDistanceMetres < 5000"> Close by? You can drive there instead: the spot counts once you are within {{data.resumeRadiusMetres}} m of it.</span></div>
     </div>
     <div ng-if="data.load" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
-      <div style="font-weight:bold;color:#f2c94c;">Job: <span ng-if="!data.load.litres">{{data.load.units}} {{data.load.good | lowercase}}</span><span ng-if="data.load.litres">{{data.load.litres | number:0}} L of {{data.load.good | lowercase}}</span> &middot; {{data.load.kg | number:0}} kg &rarr; {{data.load.to}}</div>
+      <div ng-if="!data.load.beacon" style="font-weight:bold;color:#f2c94c;">Job: <span ng-if="!data.load.litres">{{data.load.units}} {{data.load.good | lowercase}}</span><span ng-if="data.load.litres">{{data.load.litres | number:0}} L of {{data.load.good | lowercase}}</span> &middot; {{data.load.kg | number:0}} kg &rarr; {{data.load.to}}</div>
+      <div ng-if="data.load.beacon" style="font-weight:bold;color:#eb5757;">Job: a package, no questions &rarr; off-road drop</div>
       <div ng-if="data.load.distanceMetres != null" style="margin-top:2px;font-weight:bold;">&asymp; {{km(data.load.distanceMetres)}} km<span ng-if="data.load.direction"> to the {{data.load.direction}}</span> &middot; pays ${{data.load.pay | number:0}}</div>
       <div style="margin-top:2px;font-size:12px;color:#c9d6d2;">From {{data.load.from}} &middot; driven {{data.load.drivenKm | number:1}} km</div>
     </div>
@@ -118,6 +119,7 @@
     </div>
     <div role="tabpanel" style="padding-top:10px;">
       <div ng-if="tab === 'route'">
+        <div ng-if="data.heli.hired" style="margin:0 0 8px;padding:6px 10px;border:1px solid #f2c94c;border-radius:6px;color:#f2c94c;"><b>Heli hired.</b> Your car waits<span ng-if="data.heli.hired.car.distanceMetres != null && !data.heli.hired.car.near"> {{km(data.heli.hired.car.distanceMetres)}} km {{data.heli.hired.car.direction}}</span>. Back to my car is on the Heli tab.</div>
         <div ng-if="data.stranded" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">
           <div style="font-weight:bold;color:#eb5757;">Teleported without relocating</div>
           <div style="font-size:13px;">Deliveries and driving do not count until you go back to where you left from, or book a relocation on the Relocate tab.</div>
@@ -126,6 +128,25 @@
             <button type="button" aria-label="Copy coordinates to go back to" ng-click="copyCoordinates(data.stranded)">Copy</button>
           </div>
           <div ng-if="data.stranded.distanceMetres != null" style="margin-top:4px;">You are {{km(data.stranded.distanceMetres)}} km away.</div>
+        </div>
+        <div ng-if="data.beacon" style="margin:0 0 8px;padding:10px;border:2px solid #eb5757;border-radius:6px;">
+          <div style="font-weight:bold;color:#eb5757;">Don't ask questions &middot; ${{data.beacon.pay | number:0}}</div>
+          <div style="font-size:13px;">{{data.beacon.line}} No weight, no questions. Pick it up, then take it {{km(data.beacon.dropMetres)}} km off road.</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
+            <div ng-if="data.beacon.arrow != null && !data.beacon.inZone" aria-hidden="true" ng-style="arrowStyle(data.beacon)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;">&#9650;</div>
+            <div style="flex:1;min-width:0;">
+              <div ng-if="!data.beacon.inZone && data.beacon.distanceMetres != null" style="font-size:18px;font-weight:bold;">Beacon <span ng-if="data.beacon.distanceMetres >= 1000">{{km(data.beacon.distanceMetres)}} km</span><span ng-if="data.beacon.distanceMetres < 1000">{{data.beacon.distanceMetres | number:0}} m</span><span ng-if="data.beacon.direction"> {{data.beacon.direction}}</span></div>
+              <div ng-if="data.beacon.inZone" style="font-size:18px;font-weight:bold;color:#6fcf97;">At the beacon</div>
+              <div style="font-size:12px;color:#c9d6d2;">Goes quiet in {{clock(data.beacon.secondsLeft)}}. No GPS: follow the arrow and stop within {{data.beacon.radiusMetres}} m. A crash costs ${{data.beacon.insurance | number:0}} insurance and loses it.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <input aria-label="Beacon coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.beacon.pickup)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+            <button type="button" aria-label="Copy beacon coordinates" ng-click="copyCoordinates(data.beacon.pickup)">Copy</button>
+          </div>
+          <div ng-if="data.beacon.problem && data.beacon.inZone" style="margin-top:4px;color:#c9d6d2;">{{data.beacon.problem}}</div>
+          <button ng-if="data.beacon.inZone" type="button" ng-click="pickUpBeacon()" ng-disabled="!data.beacon.pickUpAllowed" style="margin-top:6px;padding:7px 12px;background:#6fcf97;color:#0c1318;font-weight:bold;border:1px solid #6fcf97;border-radius:4px;">Pick it up</button>
+          <button type="button" ng-click="ignoreBeacon()" ng-style="data.beacon.ignoreArmed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="margin-top:6px;padding:5px 10px;">{{data.beacon.ignoreArmed ? 'Confirm ignore' : 'Ignore beacon'}}</button>
         </div>
         <div ng-if="data.load.contract && !data.load.contract.started" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">
           <div style="font-weight:bold;color:#eb5757;">Dangerous contract: {{data.load.contract.name}}</div>
@@ -138,7 +159,8 @@
           </div>
         </div>
         <div ng-if="data.load.drop && (!data.load.contract || data.load.contract.started)" style="margin:0 0 8px;padding:10px;border:1px solid #f2c94c;border-radius:6px;">
-          <div ng-if="!data.load.contract" style="font-weight:bold;color:#f2c94c;">Off-road drop</div>
+          <div ng-if="!data.load.contract && !data.load.beacon" style="font-weight:bold;color:#f2c94c;">Off-road drop</div>
+          <div ng-if="data.load.beacon" style="font-weight:bold;color:#eb5757;">Don't ask questions</div>
           <div ng-if="data.load.contract" style="font-weight:bold;color:#eb5757;">Dangerous contract: {{data.load.contract.name}}</div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
             <div ng-if="data.load.drop.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.load.drop)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#f2c94c;">&#9650;</div>
@@ -146,7 +168,7 @@
               <div ng-if="!data.load.drop.inZone" style="font-size:18px;font-weight:bold;"><span ng-if="data.load.drop.distanceMetres >= 1000">{{km(data.load.drop.distanceMetres)}} km</span><span ng-if="data.load.drop.distanceMetres < 1000">{{data.load.drop.distanceMetres | number:0}} m</span><span ng-if="data.load.direction"> {{data.load.direction}}</span></div>
               <div ng-if="data.load.drop.inZone" style="font-size:18px;font-weight:bold;color:#6fcf97;">{{data.load.contract ? 'At the finish' : 'In the drop zone'}}</div>
               <div ng-if="data.load.contract" style="font-size:12px;color:#c9d6d2;">Follow the road and the arrow to the finish. Stop within {{data.load.drop.radiusMetres}} m of it to deliver. A crash ends the contract, and insurance costs ${{data.load.contract.insurance | number:0}}.</div>
-              <div ng-if="!data.load.contract" style="font-size:12px;color:#c9d6d2;">No GPS route: head off road and follow the arrow. Stop within {{data.load.drop.radiusMetres}} m of the spot to deliver.</div>
+              <div ng-if="!data.load.contract" style="font-size:12px;color:#c9d6d2;">No GPS route: head off road and follow the arrow. Stop within {{data.load.drop.radiusMetres}} m of the spot to deliver.<span ng-if="data.load.beacon"> A crash costs ${{data.load.insurance | number:0}} insurance and loses it.</span></div>
             </div>
           </div>
           <div ng-if="data.load.drop.delivery.problem && data.load.drop.inZone" style="margin-top:4px;color:#c9d6d2;">{{data.load.drop.delivery.problem}}</div>
@@ -199,6 +221,7 @@
           <div style="margin:8px 0;">
             <div style="font-weight:bold;">Jobs from {{data.town.name}}</div>
             <div ng-if="data.load" style="font-size:12px;color:#c9d6d2;">Deliver or abandon your job to take another.</div>
+            <div ng-if="data.beacon" style="padding:5px 0;border-bottom:1px solid rgba(86,141,122,.3);"><span style="color:#eb5757;font-weight:bold;">Don't ask questions</span> &middot; ${{data.beacon.pay | number:0}} <span style="color:#7d8b88;font-size:12px;">beacon {{km(data.beacon.distanceMetres)}} km {{data.beacon.direction}}, goes quiet in {{clock(data.beacon.secondsLeft)}}</span><div style="font-size:12px;color:#c9d6d2;">Picked up off road, not in town: follow the beacon on the Route tab.</div></div>
             <div ng-repeat="j in data.town.jobs" style="padding:5px 0;border-bottom:1px solid rgba(86,141,122,.3);">
              <div style="display:flex;align-items:center;gap:8px;">
               <div style="flex:1;min-width:0;">
@@ -395,6 +418,55 @@
           </div>
           <div ng-if="data.shipping.feedback" style="margin-top:4px;color:#c9d6d2;">{{data.shipping.feedback}}</div>
         </div>
+      </div>
+      <div ng-if="tab === 'heli'">
+        <div ng-if="!data.heli" style="color:#c9d6d2;">Heli flights open once you are in your car at your start or last save.</div>
+        <div ng-if="data.heli && !data.heli.hired" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Hire a helicopter</div>
+          <div style="font-size:13px;">Fly a Bell 407 anywhere you like and scout the terrain, towns and jobs on their boards. A hire costs ${{data.heli.fee | number:0}} and lasts until you go back to your car. Keep your eyes open: every {{data.heli.beaconMinutes}} minutes flying over {{data.heli.beaconHeight}} m up, there&rsquo;s a {{data.heli.beaconChance}}% chance of picking up a signal beacon for a &ldquo;don&rsquo;t ask questions&rdquo; job, worth ${{data.heli.beaconPay | number:0}}, within {{data.heli.beaconKm}} km of your car.</div>
+          <div style="font-size:13px;color:#c9d6d2;margin-top:4px;">Your car waits where you leave it, with its job, fuel and damage. A crash costs ${{data.heli.crashFee | number:0}} insurance and ends the heli hire.</div>
+          <div ng-if="!data.heli.installed" style="margin-top:6px;padding:8px;border:1px solid #f2c94c;border-radius:6px;">
+            <div style="font-weight:bold;color:#f2c94c;">Needs the {{data.heli.modName}} mod</div>
+            <div style="font-size:13px;">Download the {{data.heli.modName}} by {{data.heli.modAuthor}} from the BeamNG forum, put its ZIP in your mods folder and restart the game. Then come back here.</div>
+            <button type="button" ng-click="openHeliMod()" style="margin-top:6px;padding:5px 10px;">Open the mod's page</button>
+            <div style="font-size:12px;color:#c9d6d2;margin-top:2px;">Opens it in your browser and copies the link.</div>
+          </div>
+          <div ng-if="data.heli.installed && data.heli.problem" style="margin-top:6px;color:#f2c94c;">{{data.heli.problem}}</div>
+          <button type="button" ng-click="hireHeli()" ng-disabled="!data.heli.hireAllowed" ng-style="data.heli.armed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {opacity: data.heli.hireAllowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;">{{data.heli.armed ? 'Confirm hire' : 'Hire helicopter'}}<span ng-if="!data.heli.armed"> &middot; ${{data.heli.fee | number:0}}</span></button>
+        </div>
+        <div ng-if="data.heli.hired" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
+          <div style="font-weight:bold;color:#f2c94c;">Helicopter hired</div>
+          <div ng-if="data.heli.hired.stage === 'spawning'" style="color:#c9d6d2;">Bringing the helicopter out...</div>
+          <div ng-if="data.heli.hired.stage === 'teleporting' || data.heli.hired.stage === 'swapping'" style="color:#c9d6d2;">Taking you back to your car. The terrain takes a few seconds to load.</div>
+          <div ng-if="data.heli.hired.here" style="margin-top:4px;">
+            <div style="font-size:16px;font-weight:bold;">Over {{data.heli.hired.here.name}}<span ng-if="data.heli.hired.here.distanceMetres >= 1000" style="font-weight:normal;font-size:13px;"> ({{km(data.heli.hired.here.distanceMetres)}} km off)</span></div>
+            <div style="font-size:12px;color:#c9d6d2;">{{data.heli.hired.here.region}}<span ng-if="data.heli.hired.here.boost > 1.02" style="color:#f2c94c;"> &middot; rough roads &times;{{data.heli.hired.here.boost | number:1}} pay</span><span ng-if="data.heli.hired.height != null"> &middot; {{data.heli.hired.height | number:0}} m above the ground</span></div>
+          </div>
+          <div ng-if="data.heli.hired.car.distanceMetres != null" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+            <div ng-if="data.heli.hired.car.arrow != null && !data.heli.hired.car.near" aria-hidden="true" ng-style="arrowStyle(data.heli.hired.car)" style="width:28px;height:28px;line-height:28px;text-align:center;font-size:22px;color:#a7e5c9;">&#9650;</div>
+            <div style="font-size:13px;">Your car is <span ng-if="data.heli.hired.car.near">right here</span><span ng-if="!data.heli.hired.car.near">{{km(data.heli.hired.car.distanceMetres)}} km {{data.heli.hired.car.direction}}</span>.</div>
+          </div>
+          <div ng-if="data.beacon" style="margin-top:6px;font-size:13px;color:#eb5757;"><b>Beacon:</b> <span ng-if="data.beacon.distanceMetres >= 1000">{{km(data.beacon.distanceMetres)}} km</span><span ng-if="data.beacon.distanceMetres < 1000">{{data.beacon.distanceMetres | number:0}} m</span> {{data.beacon.direction}}. Fly over to look at it; pick it up in your car.</div>
+          <div ng-if="!data.beacon && data.heli.hired.stage === 'flying'" style="margin-top:6px;font-size:12px;color:#c9d6d2;">Next chance of a beacon in {{clock(data.heli.hired.nextChanceSeconds)}} flying over {{data.heli.beaconHeight}} m up.</div>
+          <div ng-if="data.heli.hired.towns.length" style="margin-top:8px;">
+            <div style="font-weight:bold;color:#a7e5c9;font-size:13px;">Towns around you</div>
+            <div ng-repeat="t in data.heli.hired.towns" style="display:flex;gap:8px;font-size:13px;padding:2px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+              <div style="flex:1;min-width:0;">{{t.name}} <span style="color:#7d8b88;font-size:12px;">{{t.size}}</span></div>
+              <div style="color:#c9d6d2;">{{km(t.distanceMetres)}} km <span ng-if="t.direction">{{t.direction}}</span></div>
+            </div>
+          </div>
+          <div ng-if="data.heli.hired.board.length" style="margin-top:8px;">
+            <div style="font-weight:bold;color:#a7e5c9;font-size:13px;">Jobs from {{data.heli.hired.here.name}} <span style="font-weight:normal;color:#7d8b88;">(to plan ahead; take them in your car)</span></div>
+            <div ng-repeat="j in data.heli.hired.board" style="display:flex;gap:8px;font-size:13px;padding:2px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+              <div style="flex:1;min-width:0;"><span ng-if="j.contract" style="color:#eb5757;">Dangerous contract: </span><b>{{j.good}}</b><span ng-if="j.drop && !j.contract">, off-road drop</span><span ng-if="j.contract"> over {{j.to}}</span><span ng-if="!j.contract && !j.drop"> to {{j.to}}</span> <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km</span></div>
+              <div ng-if="j.units > 0" ng-style="{color: dotColor(j.level)}" style="font-weight:bold;">${{j.pay | number:0}}</div>
+              <div ng-if="j.units === 0" style="color:#eb5757;font-size:12px;">Won't fit</div>
+            </div>
+          </div>
+          <button type="button" ng-click="backToCar()" ng-disabled="!data.heli.hired.backAllowed" ng-style="data.heli.hired.backArmed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="margin-top:8px;padding:7px 12px;">{{data.heli.hired.backArmed ? 'Confirm: back to my car' : 'Back to my car'}}</button>
+          <div style="font-size:12px;color:#c9d6d2;margin-top:2px;">Ends the hire, only when you press it: near your car, land and it takes the helicopter's place; farther away, you are teleported back first. A crash costs ${{data.heli.crashFee | number:0}} insurance and ends the hire.</div>
+        </div>
+        <div ng-if="data.heli.feedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.heli.feedback}}</div>
       </div>
     </div>
     </div>

@@ -159,6 +159,13 @@ function F.fuel()
   function f:set(litres, serial) self.sets[#self.sets + 1] = { litres = litres, serial = serial }; return true end
   return f
 end
+-- Stand-in for the helicopter's game side: the player's vehicle stands at player, ground metres up.
+function F.aircraft()
+  local a = { player = { x = 0, y = 0, z = 0 }, ground = 0 }
+  function a:where(id) if id == nil then return F.copy(self.player) end return nil end
+  function a:height(id) if id == nil then return self.ground end return nil end
+  return a
+end
 function F.controller(options)
   local Core = require('earthFreight/core')
   options = options or {}
@@ -169,7 +176,7 @@ function F.controller(options)
   local fuel = options.fuel or F.fuel()
   local events, logs = {}, {}
   local c = Core.new({ io = io, adapter = adapter, garage = garage, paused = options.paused, random = options.random,
-    punctures = options.punctures, cargo = cargo, fuel = fuel,
+    punctures = options.punctures, cargo = cargo, fuel = fuel, aircraft = options.aircraft,
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
   return c, io, adapter, garage, cargo, fuel, logs

@@ -107,11 +107,22 @@ local function load(l)
   if (l.pay ~= nil and not integer(l.pay, 0)) or (l.paid ~= nil and not integer(l.paid, 0))
       or (l.pay == nil and l.paid == nil) or (l.units ~= nil and not integer(l.units, 1)) then return nil end
   if l.drop ~= nil and not drop(l.drop) then return nil end
+  if l.pickup ~= nil and (not drop(l.pickup) or l.drop == nil) then return nil end
+  if l.beacon ~= nil and (l.beacon ~= true or l.pickup == nil) then return nil end
   if l.contract ~= nil and (type(l.contract) ~= 'string' or not optionalString(l.contract) or l.drop == nil
       or (l.started ~= nil and type(l.started) ~= 'boolean') or (l.fee ~= nil and not integer(l.fee, 0))) then return nil end
   return { good = l.good, units = l.units, slots = l.slots, kg = l.kg or 0, pay = l.pay, paid = l.paid,
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
-    contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil }
+    contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
+    pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon }
+end
+
+-- A "don't ask questions" job found and not yet picked up: its pickup and drop spots, which line
+-- describes it, and the seconds of play it has left.
+local function beacon(b)
+  if type(b) ~= 'table' or not drop(b.pickup) or not drop(b.drop) or not integer(b.line, 1) or b.line > 100
+      or not location.finite(b.left) or b.left < 0 then return nil end
+  return { pickup = drop(b.pickup), drop = drop(b.drop), line = b.line, left = b.left }
 end
 
 -- Recent deliveries, which lower what a town pays for that good for a while: a list of
@@ -166,6 +177,11 @@ function M.validate(s)
     cargo = load(s.load)
     if not cargo then return nil, 'invalid_load' end
   end
+  local found = nil
+  if s.beacon ~= nil then
+    found = beacon(s.beacon)
+    if not found then return nil, 'invalid_beacon' end
+  end
   local recent = nil
   if s.needs ~= nil then
     recent = needs(s.needs)
@@ -176,7 +192,7 @@ function M.validate(s)
     base = location.copy(s.base), resume = resume, progression = p,
     vehicle = { model = s.vehicle.model, configuration = s.vehicle.configuration, config = vehicleConfig,
       damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres, value = s.vehicle.value, km = s.vehicle.km },
-    atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent,
+    atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
   }
 end
 
@@ -241,7 +257,7 @@ function M.new(io)
       generation = self.generation + 1, base = candidate.base, resume = candidate.resume,
       progression = candidate.progression, vehicle = candidate.vehicle,
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
-      playerName = candidate.playerName, needs = candidate.needs,
+      playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

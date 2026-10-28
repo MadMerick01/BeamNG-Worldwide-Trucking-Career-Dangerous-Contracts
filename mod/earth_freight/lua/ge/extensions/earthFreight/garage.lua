@@ -36,9 +36,45 @@ local function fitted(node, out)
   return out
 end
 
+-- Names that replace the game's for our own configs, by model/config key.
+M.NAMES = { ['burnside/earth_freight_starter'] = 'Burnside Rusty' }
+
 function M.new(environment)
   local env = environment or defaults()
   local g = {}
+
+  -- An info table's Name with its Brand in front, such as "Gavril D-Series"; nil without a Name.
+  local function branded(info)
+    local name = type(info) == 'table' and type(info.Name) == 'string' and info.Name ~= '' and info.Name or nil
+    if not name then return nil end
+    local brand = type(info.Brand) == 'string' and info.Brand or ''
+    return (brand ~= '' and name:sub(1, #brand) ~= brand) and (brand .. ' ' .. name) or name
+  end
+
+  -- The game's info for a model (Brand, Name, Type...), read once per model; nil when it has none.
+  local models = {}
+  local function modelInfo(model)
+    if models[model] ~= nil then return models[model] or nil end
+    local vehicles, info = env.vehicles(), nil
+    if type(vehicles) == 'table' and type(vehicles.getModel) == 'function' then
+      local ok, data = pcall(vehicles.getModel, model)
+      info = ok and type(data) == 'table' and type(data.model) == 'table' and data.model or nil
+    end
+    models[model] = info or false
+    return info
+  end
+  local function modelLabel(model) return branded(modelInfo(model)) end
+
+  -- A config's name as the player sees it: the model's name and the config's version, with
+  -- underscores as spaces. The config's own Name is only a fallback: the game makes one up from
+  -- the file name for configs without one.
+  local function carName(model, key, info)
+    if key and M.NAMES[model .. '/' .. key] then return M.NAMES[model .. '/' .. key] end
+    local label = modelLabel(model) or branded(info) or model
+    local version = info and type(info.Configuration) == 'string' and info.Configuration or ''
+    version = version:gsub('_', ' '):gsub('%s+', ' '):gsub('^ ', ''):gsub(' $', '')
+    return version ~= '' and (label .. ' ' .. version) or label
+  end
 
   local function current()
     local ok, vehicle = pcall(env.vehicle)
@@ -91,9 +127,7 @@ function M.new(environment)
     end
     local value = info and tonumber(info.Value)
     if value and (value ~= value or value < 0 or value == math.huge) then value = nil end
-    local name = info and type(info.Name) == 'string' and info.Name or model
-    if info and type(info.Configuration) == 'string' then name = name .. ' ' .. info.Configuration end
-    return value, name
+    return value, carName(model, key, info)
   end
 
   -- Every car config the game has, read once: a list of { model, key, config (its .pc path), name,
@@ -109,13 +143,10 @@ function M.new(environment)
     for _, info in pairs(type(result.configs) == 'table' and result.configs or result) do
       local model, key = type(info) == 'table' and info.model_key, type(info) == 'table' and info.key
       if type(model) == 'string' and model ~= '' and type(key) == 'string' and key ~= '' then
-        local name = type(info.Name) == 'string' and info.Name or model
-        if type(info.Brand) == 'string' and info.Brand ~= '' and name:sub(1, #info.Brand) ~= info.Brand then
-          name = info.Brand .. ' ' .. name
-        end
-        if type(info.Configuration) == 'string' then name = name .. ' ' .. info.Configuration end
-        out[#out + 1] = { model = model, key = key, config = 'vehicles/' .. model .. '/' .. key .. '.pc', name = name,
-          value = tonumber(info.Value), type = type(info.Type) == 'string' and info.Type or nil,
+        out[#out + 1] = { model = model, key = key, config = 'vehicles/' .. model .. '/' .. key .. '.pc', name = carName(model, key, info),
+          -- A config may not carry its model's Type (Car, Truck, Trailer, Prop...), so the model's is asked too.
+          value = tonumber(info.Value), type = type(info.Type) == 'string' and info.Type
+            or (modelInfo(model) and type(modelInfo(model).Type) == 'string' and modelInfo(model).Type) or nil,
           source = type(info.Source) == 'string' and info.Source or nil,
           preview = type(info.preview) == 'string' and info.preview or nil }
       end

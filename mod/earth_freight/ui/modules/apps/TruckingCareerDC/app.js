@@ -84,6 +84,33 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     bill = box
     if (serial > 0) lua('partsBillShown(' + serial + ')')
   }
+  // A signal beacon picked up while flying: a box in the middle of the screen, like the parts
+  // bill, that closes by itself after BEACON_MS, since a click is awkward with hands on the controls.
+  var BEACON_MS = 10000
+  var beacon = null
+  var closeBeacon = function () {
+    if (beacon && beacon.parentNode) beacon.parentNode.removeChild(beacon)
+    beacon = null
+  }
+  var showBeacon = function (data) {
+    closeBeacon()
+    if (typeof document === 'undefined' || !document.body) return
+    var red = '#eb5757'
+    var box = document.createElement('div')
+    box.setAttribute('role', 'alert')
+    box.style.cssText = 'position:fixed;top:12%;left:50%;transform:translateX(-50%);z-index:2147483647;' +
+      'width:440px;max-width:80vw;padding:14px 18px;background:rgba(12,19,24,.96);color:#f2f6f5;' +
+      'border:3px solid ' + red + ';border-radius:10px;box-shadow:0 0 24px rgba(0,0,0,.7);' +
+      'font:15px/1.4 sans-serif;pointer-events:auto;cursor:pointer;'
+    line(box, String(data.title || ''), 'font-weight:bold;letter-spacing:1px;font-size:13px;color:' + red + ';')
+    line(box, String(data.text || ''), 'margin-top:4px;')
+    line(box, 'Click to close.', 'margin-top:6px;color:#c9d6d2;font-size:12px;')
+    box.onclick = closeBeacon
+    document.body.appendChild(box)
+    beacon = box
+    setTimeout(function () { if (beacon === box) closeBeacon() }, BEACON_MS)
+  }
+  $rootScope.$on('EarthFreightBeacon', function (event, data) { if (data) showBeacon(data) })
   $rootScope.$on('EarthFreightPartsBill', function (event, data) {
     if (data && data.open) showBill(data); else closeBill()
   })
@@ -104,14 +131,15 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var mount = function (on) { core('uiMounted(' + (on ? 'true' : 'false') + ')') }
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
-        { id: 'relocate', label: 'Relocate' }]
+        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }]
       scope.tab = kept.tab
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
       var alerts = {
         route: function (d) {
           return !!d.resume || !!d.stranded || !!(d.shortages && d.shortages.length) ||
-            !!(d.load && d.load.drop && d.load.drop.delivery && d.load.drop.delivery.allowed)
+            !!(d.load && d.load.drop && d.load.drop.delivery && d.load.drop.delivery.allowed) ||
+            !!(d.beacon && d.beacon.pickUpAllowed)
         },
         town: function (d) {
           var t = d.town
@@ -122,7 +150,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         garage: function (d) {
           return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!d.insurance
         },
-        relocate: function (d) { return !!(d.shipping && d.shipping.booking) }
+        relocate: function (d) { return !!(d.shipping && d.shipping.booking) },
+        heli: function (d) { return !!(d.heli && d.heli.hired && d.beacon) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
       // The HUD shrinks to a Worldwide Trucking button. Its dot is red for bad news, gold for anything a
@@ -155,6 +184,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
         ['garage', function (d) { return !!d.insurance }],
+        ['heli', function (d) { return !!(d.heli && d.heli.hired) }],
         ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.startHereAllowed || !!d.stranded }]
       ]
       var follow = function (previous, next) {
@@ -274,6 +304,22 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }
       scope.abandonJob = function () { if (scope.data.abandonAllowed) core('abandonJob()') }
+      // Heli flights: hire asks Lua to confirm, and so does Back to my car.
+      scope.hireHeli = function () { if (scope.data.heli && scope.data.heli.hireAllowed) core('hireHeli()') }
+      scope.backToCar = function () {
+        var hired = scope.data.heli && scope.data.heli.hired
+        if (hired && hired.backAllowed) core('backToCar()')
+      }
+      // The mod's page: opened in the browser where the game can, and copied in case it can't.
+      scope.openHeliMod = function () {
+        var page = scope.data.heli && scope.data.heli.modPage
+        if (typeof page === 'string' && /^https:\/\/[A-Za-z0-9./_-]+$/.test(page)) {
+          call('if openWebBrowser then openWebBrowser("' + page + '") end setClipboard("' + page + '")')
+        }
+      }
+      // A "don't ask questions" beacon: picked up at its spot in the car, or ignored (asked twice).
+      scope.pickUpBeacon = function () { if (scope.data.beacon && scope.data.beacon.pickUpAllowed) core('pickUpBeacon()') }
+      scope.ignoreBeacon = function () { if (scope.data.beacon) core('ignoreBeacon()') }
       scope.claimInsurance = function () { if (scope.data.insurance && scope.data.insurance.allowed) core('claimInsurance()') }
       scope.bookShipping = function (destination) {
         if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")

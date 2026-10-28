@@ -8,6 +8,35 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **Relocating no longer fixes your car for free.** Teleporting to a relocation you booked on the Relocate tab, to the start of a dangerous contract, or anywhere with the BeamNG.Earth map puts the car down as new, just like pressing Insert. The repair it needed now always stays owed on the Garage tab, even when the car's damage could not be read while the new area was loading, which could let it slip through before. Your saves still work.
 
+## Build 97 · 28 Oct 2026
+
+- **New dangerous contract: Ravin de Piquet, France.** It runs from the Ravin de Piquet down the mountain valley to Cauterets in the French Pyrenees, about 5 km, paying 4 times the base rate. Like the other dangerous contracts, it can be done once per game. Your saves still work.
+
+## Build 96 · 28 Oct 2026
+
+- **Car names are tidy again.** The starter car shows as Burnside Rusty everywhere, including the trade-in line on the Buy second hand card, which used to show a jumble like "Special Earth_freight_starter Earth Freight _Starter". Other cars show their brand, model and version, such as "Gavril D-Series D15", with no underscores. Your saves still work.
+- **Buy second hand no longer offers trailers or props**, such as traffic cones. Only cars and trucks are for sale now.
+
+## Build 95 · 28 Oct 2026
+
+- **The helicopter is now for sightseeing and scouting, and the loads under the hook are gone.** A hire still costs $1,000 and lasts as long as you like. The Heli tab now shows the town you're over, its region, your height, which way your car is, the five nearest towns, and the nearest town's job board, so you can plan your next run. **Back to my car** only happens when you press it, never by landing.
+- **New "don't ask questions" jobs.** Every 5 minutes you fly more than 30 m up, there's a 50% chance of picking up a signal beacon within 15 km of your car. A box pops up in the middle of the screen and closes by itself. The beacon appears on the Route tab with an arrow and its coordinates, and on the Town tab's job board. Drive there in your car, stop within 100 m and press **Pick it up**. Then take the package, which weighs nothing, 2 to 5 km off road to the drop for $12,000. Only one beacon waits at a time, and it goes quiet after an hour of play. Ignoring it is free, but once it's picked up an insurance claim costs $4,000 and loses it, and abandoning costs $1,000.
+- Your saves still work, and a beacon you've found is kept when you save.
+
+## Build 92 · 28 Oct 2026
+
+- **The download is now called `worldwide-trucking-dangerous-contracts.zip`** to match the new name. Delete the old `earth-freight-sim.zip` from your `mods` folder before you add the new one, otherwise the game loads both copies. Your saves still work.
+
+## Build 91 · 28 Oct 2026
+
+- No changes in the game. The README now lists what you need before installing (BeamNG.drive 0.40, BeamNG.Earth, and the Revamped Bell 407 for heli flights), how to update, where to report bugs, the features it was missing, and credits for BeamNG.Earth and the Bell 407.
+
+## Build 90 · 28 Oct 2026
+
+- **New Heli tab: hire a helicopter and fly loads over the world.** It needs the Revamped Bell 407 mod by stefan750, which you download from the BeamNG forum and put in your mods folder yourself. Without it, the Heli tab says what to install and has a button that opens the mod's page. Press **Hire helicopter · $1,000**, then **Confirm hire**, in your own car while it's stopped. The helicopter takes your car's place, and your car waits with its job, fuel and damage.
+- A load turns up in front of the helicopter. Hook it on, fly it to the town named on the Heli tab (an arrow points the way), set it down inside the drop zone and let go. It pays $3 a kg, up to $3,000 for 1,000 kg, and the next load turns up. A load that hits the ground too hard pays nothing. You can fly as many loads as you like until you press **Back to my car**. Near your car, land and your car takes the helicopter's place. Farther away, you're teleported back first. Hiring again costs another $1,000.
+- A helicopter crash costs $1,000 insurance, and you lose the load and the hire. You're taken back to your car. While you fly, Save, jobs, refuelling, repairs and relocation wait until you're back in your car. Nothing about a hire is saved, and your saves still work.
+
 ## Build 87 · 28 Oct 2026
 
 - **The Ko-fi line at the bottom of the start page now reads "Keep me awake behind the wheel: ko-fi.com/madmerick".** Pressing the link works as before: it opens the page in your browser and copies the link. Your saves still work.
