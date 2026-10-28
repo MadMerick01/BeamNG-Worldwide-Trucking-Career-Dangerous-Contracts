@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 83 · 28 Oct 2026
+
 - **Stuck off the road? Press Tow to road.** The Repair card on the Garage tab has a new **Tow to road · $500** button that puts your car back on the road it was last on. Press it, then **Confirm tow**. The $500 is only taken once your car has actually moved, so if the game can't find a road you pay nothing. Towing keeps your job and doesn't count as a teleport, but it doesn't fix anything: any damage your car had is still owed on the Repair card, even if it looks new after the tow. Your saves still work.
 
 ## Build 79 · 28 Oct 2026
