@@ -11,7 +11,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 ## Features
 
 - **130,000+ real towns, each with a job board.** Parts, bricks, water and fuel, wherever you are on Earth.
-- **Garage - Build your Rig.** Upgrade parts, buy and sell new and second hand vehicles. More freight per trip means more Pay.
+- **Garage - Build your Rig.** Upgrade parts, buy and sell **new** and **second hand** vehicles. More freight per trip means more Pay.
 - **Off-road drops.** No GPS
 - **Dangerous highly paid contracts.** Death Road, Carhuaz, Zoji La, Sani Pass and Grimsel, for up to **8x the pay**.
 - **Dynamic economy** Towns want different goods, repeat runs pay less, shortages pay double.
