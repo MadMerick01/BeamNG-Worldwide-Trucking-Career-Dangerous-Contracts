@@ -4,7 +4,7 @@ _Formerly Earth Freight Sim._
 
 **Haul cargo anywhere on Earth. Start in a rust bucket with no radiator or front brakes**
 
-☕ Enjoying the mod? It's free and always will be. If you'd like to help me add more contracts and countries, [buy me a coffee on Ko-fi](https://ko-fi.com/madmerick).
+Enjoying the mod? It's free and always will be. [buy me a coffee on Ko-fi](https://ko-fi.com/madmerick).
 
 A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive.
 
