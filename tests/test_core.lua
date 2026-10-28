@@ -87,6 +87,10 @@ do
   local u = F.controller({ io = F.io(), adapter = F.adapter(F.copy(leeds)) })
   u:tick(0.1); T.check(u:startHere(), 'started'); u:reload(); u.adapter.pose = F.position(53.9590, -1.0815); u:tick(0.1)
   T.eq(u:view().stateLabel, 'GO TO LEEDS', 'an unsaved start is offered again after a reload')
+  -- Far from every town, in the Sahara: the start is not named after a town far away.
+  local sahara = F.controller({ io = F.io(), adapter = F.adapter(F.position(23.0, 2.0)) })
+  sahara:tick(0.1); T.check(sahara:startHere(), 'started in the desert')
+  T.eq(sahara:view().startTown, nil, 'no town name'); T.eq(sahara:view().flash.title, 'WELCOME TO YOUR START', 'welcomed to the start')
 end
 
 -- Teleport there: Earth is asked to take the player to the save, or to the start town.

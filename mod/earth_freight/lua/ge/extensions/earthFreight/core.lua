@@ -75,11 +75,18 @@ local function amount(good, units)
   return units .. ' ' .. good.name:lower()
 end
 
--- The name of the town at a point, or of the nearest one; nil when there is none.
+-- A start this far from every town is called "your start", not after a town far away.
+local START_TOWN_METRES = 20000
+
+-- The name of the town at a point, or of the nearest one close enough; nil when there is none.
 local function townName(point)
   if not location.valid(point) then return nil end
   places.ensure(point)
-  local here = places.at(point) or (places.nearest(point, 1)[1] or {}).place
+  local here = places.at(point)
+  if not here then
+    local nearest = places.nearest(point, 1)[1]
+    here = nearest and nearest.metres <= START_TOWN_METRES and nearest.place or nil
+  end
   return here and here.name or nil
 end
 
