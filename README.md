@@ -15,7 +15,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 - **Off-road drops.** No GPS
 - **Dangerous highly paid contracts.** Death Road, Carhuaz, Zoji La, Sani Pass and Grimsel, for up to **8x the pay**.
 - **Dynamic economy** Towns want different goods, repeat runs pay less, shortages pay double.
-- Steep, remote and famous roads pay up to 3x. Regions are graded for difficulty. Cargo weighs the car down, fluids slosh in the tank, tyres puncture and repairs cost money.
+- **Steep, remote and famous roads** pay up to 3x. Regions are graded for difficulty. Cargo weighs the car down, fluids slosh in the tank, tyres puncture and repairs cost money.
 - **Relocate.** Pay to move to any town or coordinates on Earth. Some of the world's hardest regions will pay your way if you come and deliver their wares.
 
 ## Install
