@@ -28,8 +28,8 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 ## Install
 
-1. Download `earth-freight-sim.zip` from the [latest release](../../releases/latest).
-2. Drop it, **still zipped**, into the `mods` folder of your BeamNG user folder. If an older `earth_freight.zip` is there, delete it. Your saves carry over.
+1. Download `worldwide-trucking-dangerous-contracts.zip` from the [latest release](../../releases/latest).
+2. Drop it, **still zipped**, into the `mods` folder of your BeamNG user folder. If an older `earth-freight-sim.zip` or `earth_freight.zip` is there, delete it so two copies don't load. Your saves carry over.
 3. In game, turn on the **TruckingCareerDC** UI app.
 
 ## How to Start
@@ -44,7 +44,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 ## Updating
 
-Download the new `earth-freight-sim.zip`, delete the old one from your `mods` folder and drop the new one in. Your saves carry over unless the changelog says otherwise.
+Download the new `worldwide-trucking-dangerous-contracts.zip`, delete the old one from your `mods` folder and drop the new one in. Your saves carry over unless the changelog says otherwise.
 
 ## Feedback and bugs
 
@@ -71,7 +71,7 @@ Optional: `/settings/earthFreight/config.json` in your BeamNG user folder (see `
 ```
 python -m pip install -r tests/requirements.txt
 python tests/run.py                    # every Lua, HUD and packaging test
-python tools/package.py                # builds dist/earth-freight-sim.zip
+python tools/package.py                # builds dist/worldwide-trucking-dangerous-contracts.zip
 python tools/make_places.py            # rebuilds the worldwide place tiles from tools/data/
 python tools/make_places.py --report   # prints the pay boost of some well-known places
 python tools/sample_terrain.py --places PLACES --cache DIR   # re-samples elevation (see its --help)
