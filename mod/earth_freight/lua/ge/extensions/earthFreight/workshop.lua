@@ -333,13 +333,14 @@ function M.attach(c)
   end
 
   -- The HUD is hidden while the game's parts menu is open, so each change to the bill also opens a
-  -- box over the menu: the total so far, how it splits, and what the player is short. It stays until
+  -- box over the menu: the total so far, how it splits, the player's money and what they are short. It stays until
   -- the player closes it, the bill is paid or undone, or the menu closes and the HUD is back. The
   -- HUD app shows the box and says so; if it has not within BILL_FALLBACK_SECONDS, a corner pop-up
   -- shows the bill instead.
   function c:showPartsBill()
     local bill = self.pendingParts
-    local short = self.profile and bill.cost - self.profile.progression.balance
+    local balance = self.profile and self.profile.progression.balance
+    local short = balance and bill.cost - balance
     short = short and short > 0 and short or nil
     self.partsBillSerial = (self.partsBillSerial or 0) + 1
     local popup = {
@@ -347,6 +348,7 @@ function M.attach(c)
       total = bill.cost < 0 and ('You get back ' .. dollars(-bill.cost)) or ('Parts bill so far: ' .. dollars(bill.cost)),
       detail = (bill.partsCost < 0 and ('Parts refund ' .. dollars(-bill.partsCost)) or ('Parts ' .. dollars(bill.partsCost)))
         .. ', repair ' .. dollars(bill.repair) .. '.',
+      money = balance and ('You have ' .. dollars(balance) .. '.') or nil,
       short = short and ('You are ' .. dollars(short) .. ' short.') or nil,
       hint = 'Pay or undo on the Garage tab.',
     }
@@ -371,7 +373,8 @@ function M.attach(c)
       open.fellBack = true
       local p = open.popup
       self:toast(p.short and 'warning' or 'info', 'Parts bill',
-        p.total .. ' (' .. p.detail:gsub('%.$', ''):lower() .. ').' .. (p.short and (' ' .. p.short) or '') .. ' ' .. p.hint)
+        p.total .. ' (' .. p.detail:gsub('%.$', ''):lower() .. ').' .. (p.money and (' ' .. p.money) or '')
+          .. (p.short and (' ' .. p.short) or '') .. ' ' .. p.hint)
     end
   end
 

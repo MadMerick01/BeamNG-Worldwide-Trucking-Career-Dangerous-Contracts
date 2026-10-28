@@ -44,6 +44,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     line(box, 'PARTS BILL', 'font-weight:bold;letter-spacing:1px;font-size:13px;color:' + gold + ';')
     line(box, String(data.total || ''), 'font-weight:bold;font-size:22px;color:' + gold + ';margin-top:2px;')
     line(box, String(data.detail || ''), 'margin-top:4px;')
+    if (data.money) line(box, String(data.money), 'font-weight:bold;margin-top:4px;')
     if (data.short) line(box, String(data.short), 'font-weight:bold;color:#eb5757;margin-top:4px;')
     line(box, String(data.hint || ''), 'margin-top:6px;color:#c9d6d2;font-size:13px;')
     document.body.appendChild(box)

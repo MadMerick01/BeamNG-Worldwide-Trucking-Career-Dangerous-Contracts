@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The parts bill box now shows how much money you have**, under the parts and repair split, so you can see your budget while you change parts. Your saves still work.
+
 ## Build 74 · 28 Oct 2026
 
 - **Teleport straight to your relocation.** Once you've booked a relocation on the Relocate tab, a new **Teleport** button sits next to **Copy** and takes you there in one press, so you no longer need to paste the coordinates into the BeamNG.Earth map. The fee and the rules are the same: book with an empty car, and the booking is used up when you land. Copying the coordinates still works. Your saves still work.
