@@ -307,6 +307,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
       scope.takeLoan = function () { if (scope.data.loan && scope.data.loan.takeAllowed) core('takeLoan()') }
       scope.repayLoan = function () { if (scope.data.loan && scope.data.loan.repayAllowed) core('repayLoan()') }
+      scope.towToRoad = function () { if (scope.data.tow && scope.data.tow.allowed) core('towToRoad()') }
       // Paying for a bill takes two presses: the first asks to confirm that total, and a changed
       // total asks again.
       scope.confirming = { kind: null, cost: null }

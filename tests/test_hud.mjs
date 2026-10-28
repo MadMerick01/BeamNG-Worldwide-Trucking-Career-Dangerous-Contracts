@@ -174,6 +174,15 @@ test('insurance is only claimed when Lua offers it', () => {
   a.state({ state: 'READY', insurance: { allowed: true } }); a.scope.claimInsurance()
   assert.equal(a.commands.at(-1), fixed('claimInsurance()'))
 })
+test('a tow is only asked for when Lua allows it, from the Repair card', () => {
+  const a = app()
+  a.state({ state: 'READY', tow: { allowed: false, fee: 500 } }); a.scope.towToRoad()
+  assert.equal(a.commands.length, 1)
+  a.state({ state: 'READY', tow: { allowed: true, fee: 500 } }); a.scope.towToRoad()
+  assert.equal(a.commands.at(-1), fixed('towToRoad()'))
+  const repair = html.slice(html.indexOf('>Repair</div>'), html.indexOf('>Fuel</div>'))
+  assert.ok(repair.includes('ng-click="towToRoad()"'), 'the button is on the Repair card')
+})
 test('colours: green above the usual pay, red below, gold for a shortage or jackpot', () => {
   const a = app()
   assert.equal(a.scope.dotColor('high'), '#6fcf97'); assert.equal(a.scope.dotColor('low'), '#eb5757')

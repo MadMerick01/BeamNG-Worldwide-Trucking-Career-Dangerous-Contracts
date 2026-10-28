@@ -343,6 +343,40 @@ do
   c:requestRepairQuote(); T.check(c:repairVehicle(), 'repaired instead'); T.check(c.load ~= nil, 'the job is kept')
 end
 
+-- Tow to road: $500 to go back to the road, charged once the car has moved. Towing is not a
+-- teleport, keeps the job, and fixes nothing: damage the game resets on the way stays owed.
+do
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a job')
+  local tow = c:view().tow
+  T.check(tow ~= nil and tow.allowed, 'offered'); T.eq(tow.fee, 500, 'for $500')
+  g.damage = 8000; c:tick(0.1)
+  local balance = c:view().balance
+  T.check(not c:towToRoad(), 'asks first'); T.check(c:view().tow.armed, 'armed')
+  T.check(c:towToRoad(), 'towed'); T.eq(g.roadTrips, 1, 'the car is sent back to the road')
+  T.check(c:view().tow.pending, 'towing'); T.eq(c:view().balance, balance, 'not charged before it moves')
+  T.check(not c:view().tow.allowed, 'one tow at a time')
+  -- The game resets the car as it moves it, 300 m away.
+  c:vehicleReset(1); g.damage = 0
+  a.pose = location.destination(c.lastSample, 0, 300); c:tick(0.1); c:tick(0.1)
+  T.eq(c:view().balance, balance - 500, 'charged $500'); T.eq(c.stranded, nil, 'not a teleport')
+  T.check(c.load ~= nil, 'the job is kept'); T.eq(c.owedDamage, 8000, 'the damage is still owed')
+  T.check(c:view().repairOwed > 0, 'shown as repair still owed'); T.eq(g.repairs, 0, 'nothing fixed')
+  T.eq(c:view().tow.pending, false, 'done')
+  -- No road to go to, or a car that never moves, costs nothing.
+  g.noRoad = true; balance = c:view().balance
+  c:towToRoad(); T.check(not c:towToRoad(), 'no road'); T.eq(c:view().balance, balance, 'not charged')
+  g.noRoad = false
+  c:towToRoad(); T.check(c:towToRoad(), 'asked')
+  for _ = 1, 12 do c:tick(0.5) end
+  T.eq(c:view().tow.pending, false, 'given up'); T.eq(c:view().balance, balance, 'still not charged')
+  T.check(c:view().repairFeedback:find('not been charged', 1, true), 'told so')
+  -- Short of $500, there is no tow.
+  c.profile.progression.balance = 400
+  c:towToRoad(); T.check(not c:towToRoad(), 'too poor'); T.eq(c:view().balance, 400, 'nothing taken')
+end
+
 -- Insert, or the game's recovery, puts the car back as new: the repair it needed is still owed,
 -- a serious crash still offers insurance, and the fuel and the load's weight are put back.
 do

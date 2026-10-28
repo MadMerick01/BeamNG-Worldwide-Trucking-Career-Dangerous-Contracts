@@ -178,6 +178,7 @@ function M.new(deps)
     self.load = self.profile and knownLoad(self.profile.load) or nil
     self.needs = needsFrom(self.profile and self.profile.needs)
     self.abandonArmed, self.insuranceArmed, self.insurancePending, self.insuredUntil = false, false, nil, nil
+    self.towArmed, self.towPending = false, nil
     local oldLoad = self.profile and self.profile.load
     if oldLoad and not self.load then
       self.diag:event('load_dropped', tostring(oldLoad.good), 'W')
@@ -423,7 +424,7 @@ function M.new(deps)
       if gap and gap > odometer.SHORT_HOP_METRES then jump = gap end
     end
     if jump then
-      -- The insurance claim's move back to the road is not a teleport.
+      -- The insurance claim's or tow's move back to the road is not a teleport.
       local insured = self.insuredUntil and self.clock <= self.insuredUntil
       if jump > odometer.SHORT_HOP_METRES and not insured then self:teleported(before, sample) end
       return
@@ -1040,6 +1041,7 @@ function M.new(deps)
     self:afterRespawn()
     self:watchFuel()
     self:watchInsurance()
+    self:watchTow()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
       self.refuelPending, self.fuelFeedback = nil, 'Refuelling did not go through. You have not been charged.'
@@ -1304,6 +1306,7 @@ function M.new(deps)
         takeAllowed = self:takeLoanAllowed(), repayAllowed = self:repayLoanAllowed(), feedback = self.loanFeedback,
       } or nil,
       insurance = self:insuranceView(),
+      tow = self:towView(),
       partsChange = self.pendingParts and {
         added = self.pendingParts.added, removed = self.pendingParts.removed,
         partsCost = self.pendingParts.partsCost, repair = self.pendingParts.repair, cost = self.pendingParts.cost,
@@ -1553,6 +1556,7 @@ end
 function M.deliverJob() return safely(function() return ensure():deliver() end) end
 function M.abandonJob() return safely(function() return ensure():abandonJob() end) end
 function M.claimInsurance() return safely(function() return ensure():claimInsurance() end) end
+function M.towToRoad() return safely(function() return ensure():towToRoad() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
 -- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.

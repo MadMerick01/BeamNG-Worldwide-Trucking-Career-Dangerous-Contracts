@@ -356,6 +356,7 @@ Not in layer 1: supply and demand, rural pickup points, the planning map, roadsi
 - Boards are seeded by the place and the player's count of jobs done (`progression.jobsDone` in the save), so a board stays put while you look at it and is new after each delivery or abandoned job. Shortages and need recovery run on the wall clock (`os.time`), like the paid-shipping offers.
 - The save keeps the job (`load` with `pay` and `units`), the jobs done and the recent deliveries (`needs`: place, good, drop and time). All are optional fields, so the save format (schema 1) is unchanged and old saves load. An old save's bought cargo is refunded on load.
 - Insurance: `garage.toRoad` calls `spawn.teleportToLastRoad` (in the 0.39 dump), guarded. The car is fixed 1.5 s later where it lands, through the same respawn as a repair. Jumps in the 10 s after a claim are not treated as teleports. Needs checking in game: whether Earth's roads give BeamNG a road to go back to; without one the car is fixed where it stands.
+- Tow to road: the Repair card's button calls the same `garage.toRoad` for $500 (`workshop.TOW_FEE`). The fee is taken once the car's position has moved more than 0.5 m, or never if it has not moved within 5 s. The jump gets the insurance grace, so it is not a teleport. Nothing is repaired: if `teleportToLastRoad` resets the car, `watchResets` sees the damage drop and keeps it owed, as after Insert.
 
 ## Worldwide places as built
 
