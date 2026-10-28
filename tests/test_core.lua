@@ -512,7 +512,11 @@ do
   g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
   T.eq(#bills, 1, 'a part change opens the box'); T.check(bills[1].open, 'open')
   T.eq(bills[1].total, 'Parts bill so far: $600', 'with its total'); T.eq(bills[1].detail, 'Parts $600, repair $0.', 'and split')
+  T.eq(bills[1].money, 'You have ' .. require('earthFreight/pricing').dollars(c.profile.progression.balance) .. '.', 'with the money the player has')
   T.eq(bills[1].short, nil, 'not short')
+  T.eq(#bills[1].lines, 1, 'lists the parts'); T.eq(bills[1].lines[1].label, '+ Cargo Load Box M', 'by name')
+  T.eq(bills[1].lines[1].amount, '$600', 'with its price'); T.eq(bills[1].cost, 600, 'and the total to pay')
+  T.check(bills[1].payAllowed, 'can pay from the box')
   c:partsBillShown(bills[1].serial); F.advance(c, 3)
   T.eq(#toasts, 0, 'no corner pop-up once the box showed'); T.eq(#bills, 1, 'and the box stays open')
   c:vehicleSpawned(); c:tick(0.1)
@@ -520,16 +524,22 @@ do
   c.profile.progression.balance = 100
   g:fit('box', 'pickup_cargo_load_box_l'); c:vehicleSpawned(); c:tick(0.1)
   T.eq(#bills, 2, 'another change shows the new bill'); T.eq(bills[2].short, 'You are $1,400 short.', 'says how much is missing')
+  T.eq(bills[2].money, 'You have $100.', 'and the money the player has')
+  T.check(not bills[2].payAllowed, 'cannot pay when short')
   F.advance(c, Workshop.BILL_FALLBACK_SECONDS + 0.2)
   T.eq(#toasts, 1, 'a corner pop-up when the box did not show'); T.eq(toasts[1].type, 'warning', 'a warning when short')
-  T.check(toasts[1].msg:find('Parts bill so far: $1,500 (parts $1,500, repair $0). You are $1,400 short.', 1, true), 'with the same bill')
+  T.check(toasts[1].msg:find('Parts bill so far: $1,500 (parts $1,500, repair $0). You have $100. You are $1,400 short.', 1, true), 'with the same bill')
   F.advance(c, 3); T.eq(#toasts, 1, 'only once')
   g:fit('box', ''); c:vehicleSpawned(); c:tick(0.1)
   T.eq(bills[#bills].open, false, 'undoing in the parts menu closes the box'); T.check(toasts[2].msg:find('Nothing to pay'), 'and says nothing to pay')
-  g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
   c.profile.progression.balance = 5000
+  g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
+  local shown = bills[#bills]
+  T.check(shown.open and shown.payAllowed, 'a bill the player can pay')
+  T.check(not c:payPartsBill(shown.serial - 1), 'an older bill is not paid'); T.eq(c.profile.progression.balance, 5000, 'nothing charged')
   local count = #bills
-  T.check(c:buyParts(), 'paid'); F.advance(c, 1)
+  T.check(c:payPartsBill(shown.serial), 'paid from the box'); T.eq(c.profile.progression.balance, 4400, 'charged the bill')
+  T.check(toasts[#toasts].msg:find('Bought for $600'), 'says it was paid'); F.advance(c, 1)
   T.eq(#bills, count + 1, 'paying closes the box'); T.eq(bills[#bills].open, false, 'closed')
 end
 
