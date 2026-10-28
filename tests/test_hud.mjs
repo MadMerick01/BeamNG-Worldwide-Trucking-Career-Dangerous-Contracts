@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
 
-const APP = '../mod/earth_freight/ui/modules/apps/EarthFreightHUD/'
+const APP = '../mod/earth_freight/ui/modules/apps/TruckingCareerDC/'
 const source = readFileSync(new URL(APP + 'app.js', import.meta.url), 'utf8')
 const html = readFileSync(new URL(APP + 'app.html', import.meta.url), 'utf8')
 const fixed = body => 'if earthFreight_core then earthFreight_core.' + body + ' end'
@@ -59,7 +59,7 @@ test('buttons only send fixed commands when Lua enabled them', () => {
     buyParts: ['buyPartsAllowed', 'buyParts()'], revertParts: ['revertPartsAllowed', 'revertParts()'],
     buyCar: ['buyCarAllowed', 'buyCar()'], revertCar: ['revertCarAllowed', 'revertCar()'],
     newGame: ['newGameAllowed', 'newGame()'], abandonJob: ['abandonAllowed', 'abandonJob()'],
-    teleportToResume: ['teleportAllowed', 'teleportToResume()']
+    teleportToResume: ['teleportAllowed', 'teleportToResume()'], startHere: ['startHereAllowed', 'startHere()']
   }
   for (const [name, [flag, body]] of Object.entries(buttons)) {
     const count = a.commands.length
@@ -225,7 +225,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
   }
   for (const id of ['route', 'town', 'garage', 'relocate']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
   for (const action of ['cancelPay(); buyParts()', 'revertParts()', 'cancelPay(); buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
-    'newGame()', 'cancelNewGame()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()', 'teleportToResume()']) {
+    'newGame()', 'cancelNewGame()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()', 'teleportToResume()', 'startHere()']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
   }
   assert.ok(html.includes('GeoNames'), 'GeoNames credit')
@@ -356,7 +356,7 @@ test('Refuel sits on the Garage tab, and the Town tab has no cargo slots card', 
   assert.match(a.commands.at(-1), /core_vehicles\.openPartsSelectorUI\(\)/)
   assert.match(a.commands.at(-1), /menu\.vehicleconfig\.parts/)
 })
-test('the HUD minimises to an Earth Freight button, and stays that way after a rebuild or a restart', () => {
+test('the HUD minimises to a Worldwide Trucking button, and stays that way after a rebuild or a restart', () => {
   const saved = {}
   const storage = { getItem: k => (k in saved ? saved[k] : null), setItem: (k, v) => { saved[k] = String(v) } }
   const a = app(storage)
@@ -369,7 +369,7 @@ test('the HUD minimises to an Earth Freight button, and stays that way after a r
   a.scope.setMinimised(false)
   assert.equal(app(storage).scope.hud.minimised, false)
   assert.equal(app().scope.hud.minimised, false, 'starts open without storage')
-  assert.ok(html.includes('ng-if="hud.minimised" ng-click="setMinimised(false)"') && html.includes('>Earth Freight<'))
+  assert.ok(html.includes('ng-if="hud.minimised" ng-click="setMinimised(false)"') && html.includes('>Worldwide Trucking<'))
   assert.ok(html.includes('ng-click="setMinimised(true)"'), 'the header has a minimise button')
   assert.ok(/ng-style="hud\.minimised \? \{[^}]*\} : \{height:'100%'[^}]*background:'rgba/.test(html), 'the full HUD gets its look back when reopened')
   assert.ok(html.indexOf('ng-click="setMinimised(true)"') > html.indexOf('ng-if="!intro.open"') &&
@@ -437,6 +437,19 @@ test('a dangerous contract shows on the board and teleports to its start only wh
   assert.equal(a.commands.at(-1), fixed('teleportToContract()'))
   assert.equal(a.scope.coordinates(contract.start), '-16.28700000, -67.81500000')
 })
+test('a relocation booking has a Teleport button next to Copy, sent only when Lua allows it', () => {
+  const card = html.slice(html.indexOf('ng-click="copyCoordinates(data.shipping.booking)"'))
+  assert.ok(card.indexOf('ng-click="teleportToBooking()"') > 0 && card.indexOf('ng-click="teleportToBooking()"') < card.indexOf('</div>'), 'beside Copy')
+  const a = app()
+  const booking = { name: 'Coroico', region: 'Death Road', fee: 300, latitude: -16.19, longitude: -67.73 }
+  a.state({ state: 'READY', arrived: true, shipping: { booking } })
+  const count = a.commands.length
+  a.scope.teleportToBooking()
+  assert.equal(a.commands.length, count, 'refused when not allowed')
+  a.state({ state: 'READY', arrived: true, shipping: { booking: { ...booking, teleportAllowed: true } } })
+  a.scope.teleportToBooking()
+  assert.equal(a.commands.at(-1), fixed('teleportToBooking()'))
+})
 test('the HUD has no select box: BeamNG does not open its list', () => {
   assert.doesNotMatch(html, /<select/)
 })
@@ -444,18 +457,31 @@ test('the parts bill box shows over the parts menu until closed, paid or the men
   const a = app()
   const bill = { open: true, serial: 3, total: 'Parts bill so far: $600', detail: 'Parts $600, repair $0.', hint: 'Pay or undo on the Garage tab.' }
   const box = () => a.document.body.children[0]
-  const text = () => box().children.map(c => c.textContent).join(' ')
+  const words = el => [el.textContent, ...el.children.map(words)].join(' ')
+  const text = () => words(box())
   a.handlers.$destroy() // the parts menu hides the HUD; the box does not need it
   a.root.EarthFreightPartsBill({}, bill)
   assert.equal(a.document.body.children.length, 1, 'box shown')
   assert.match(text(), /Parts bill so far: \$600/); assert.match(text(), /Parts \$600, repair \$0\./)
   assert.equal(a.commands.at(-1), fixed('partsBillShown(3)'), 'tells Lua it showed')
-  a.root.EarthFreightPartsBill({}, { ...bill, serial: 4, total: 'Parts bill so far: $1,500', short: 'You are $1,400 short.' })
+  a.root.EarthFreightPartsBill({}, { ...bill, serial: 4, total: 'Parts bill so far: $1,500', money: 'You have $100.', short: 'You are $1,400 short.' })
   assert.equal(a.document.body.children.length, 1, 'a new bill replaces the box')
-  assert.match(text(), /\$1,400 short/)
+  assert.match(text(), /\$1,400 short/); assert.match(text(), /You have \$100\./, 'shows the money the player has')
   box().children[0].onclick()
   assert.equal(a.document.body.children.length, 0, 'Close closes it')
-  a.root.EarthFreightPartsBill({}, bill)
+  a.root.EarthFreightPartsBill({}, { ...bill, serial: 5, cost: 1500, payAllowed: true,
+    lines: [{ label: '+ Cargo Load Box L', amount: '$1,500' }, { label: '- Cargo Load Box M (sold back)', amount: '-$180' }] })
+  assert.match(text(), /\+ Cargo Load Box L \$1,500/, 'lists each part with its price'); assert.match(text(), /sold back\) -\$180/)
+  assert.doesNotMatch(text(), /Parts \$600, repair/, 'the list replaces the split')
+  const pay = box().children.find(c => c.tag === 'button' && /^Pay/.test(c.textContent))
+  assert.equal(pay.textContent, 'Pay $1,500')
+  const sent = a.commands.length
+  pay.onclick()
+  assert.equal(pay.textContent, 'Yes, pay $1,500', 'asks once more'); assert.equal(a.commands.length, sent, 'nothing paid yet')
+  pay.onclick()
+  assert.equal(a.commands.at(-1), fixed('payPartsBill(5)'), 'pays this bill')
+  a.root.EarthFreightPartsBill({}, { ...bill, serial: 6, cost: 1500, payAllowed: false })
+  assert.ok(!box().children.some(c => c.tag === 'button' && /^Pay/.test(c.textContent)), 'no Pay button when Lua does not allow it')
   a.root.EarthFreightPartsBill({}, { open: false })
   assert.equal(a.document.body.children.length, 0, 'paid or undone closes it')
   a.root.EarthFreightPartsBill({}, bill)

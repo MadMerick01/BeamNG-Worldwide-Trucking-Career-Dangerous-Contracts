@@ -43,21 +43,51 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     box.appendChild(close)
     line(box, 'PARTS BILL', 'font-weight:bold;letter-spacing:1px;font-size:13px;color:' + gold + ';')
     line(box, String(data.total || ''), 'font-weight:bold;font-size:22px;color:' + gold + ';margin-top:2px;')
-    line(box, String(data.detail || ''), 'margin-top:4px;')
+    // Each part, as on the Garage tab's bill; just the split when there is no list.
+    var lines = Array.isArray(data.lines) ? data.lines : []
+    if (!lines.length) line(box, String(data.detail || ''), 'margin-top:4px;')
+    lines.forEach(function (l) {
+      var row = document.createElement('div')
+      row.style.cssText = 'display:flex;gap:8px;margin-top:2px;'
+      line(row, String(l.label || ''), 'flex:1;min-width:0;')
+      line(row, String(l.amount || ''), '')
+      box.appendChild(row)
+    })
+    if (data.money) line(box, String(data.money), 'font-weight:bold;margin-top:6px;')
     if (data.short) line(box, String(data.short), 'font-weight:bold;color:#eb5757;margin-top:4px;')
+    if (data.payWhy) line(box, String(data.payWhy), 'color:#eb5757;margin-top:4px;')
+    var serial = parseInt(data.serial, 10)
+    var lua = function (body) {
+      if (typeof bngApi !== 'undefined' && bngApi.engineLua) bngApi.engineLua('if earthFreight_core then earthFreight_core.' + body + ' end')
+    }
+    // Pay asks once more, as on the Garage tab, then pays this bill.
+    var cost = typeof data.cost === 'number' && isFinite(data.cost) ? data.cost : null
+    if (data.payAllowed && serial > 0 && cost !== null) {
+      var amount = '$' + Math.round(cost).toLocaleString('en-US')
+      var pay = document.createElement('button')
+      pay.type = 'button'
+      pay.textContent = 'Pay ' + amount
+      pay.style.cssText = 'margin-top:10px;padding:7px 14px;background:#f2c94c;color:#0c1318;font-weight:bold;' +
+        'border:none;border-radius:4px;cursor:pointer;'
+      var asked = false
+      pay.onclick = function () {
+        if (!asked) { asked = true; pay.textContent = 'Yes, pay ' + amount; return }
+        pay.disabled = true
+        pay.textContent = 'Paying...'
+        lua('payPartsBill(' + serial + ')')
+      }
+      box.appendChild(pay)
+    }
     line(box, String(data.hint || ''), 'margin-top:6px;color:#c9d6d2;font-size:13px;')
     document.body.appendChild(box)
     bill = box
-    var serial = parseInt(data.serial, 10)
-    if (serial > 0 && typeof bngApi !== 'undefined' && bngApi.engineLua) {
-      bngApi.engineLua('if earthFreight_core then earthFreight_core.partsBillShown(' + serial + ') end')
-    }
+    if (serial > 0) lua('partsBillShown(' + serial + ')')
   }
   $rootScope.$on('EarthFreightPartsBill', function (event, data) {
     if (data && data.open) showBill(data); else closeBill()
   })
   return {
-    templateUrl: '/ui/modules/apps/EarthFreightHUD/app.html',
+    templateUrl: '/ui/modules/apps/TruckingCareerDC/app.html',
     replace: true,
     link: function (scope, element) {
       'use strict'
@@ -94,7 +124,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         relocate: function (d) { return !!(d.shipping && d.shipping.booking) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
-      // The HUD shrinks to an Earth Freight button. Its dot is red for bad news, gold for anything a
+      // The HUD shrinks to a Worldwide Trucking button. Its dot is red for bad news, gold for anything a
       // tab marks, so the player can tell from the button alone that the HUD has something for them.
       if (!kept.hud) kept.hud = { minimised: stored() }
       scope.hud = kept.hud
@@ -124,7 +154,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
         ['garage', function (d) { return !!d.insurance }],
-        ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.stranded }]
+        ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.startHereAllowed || !!d.stranded }]
       ]
       var follow = function (previous, next) {
         // The start page opens once on a new game or on loading a save, until the player is there.
@@ -168,7 +198,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // A new game that has not reached the start town yet: nothing to show or start over.
       scope.firstLaunch = function (d) { return !!d && d.mode === 'start' && !d.arrived }
       scope.introSteps = [
-        'press Teleport, or copy the coordinates into the BeamNG.Earth map and teleport there. Your starter car is waiting.',
+        'open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
         'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
@@ -309,12 +339,22 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
             Math.abs(position.latitude) > 90 || Math.abs(position.longitude) > 180) return ''
         return position.latitude.toFixed(8) + ', ' + position.longitude.toFixed(8)
       }
-      // Earth Freight asks BeamNG.Earth to teleport the player to the last save (or the start town).
+      // The mod asks BeamNG.Earth to teleport the player to the last save (or the start town).
+      // Start here: a new game starts wherever the player is. The start page closes, keeping the name.
+      scope.startHere = function () {
+        if (!scope.data || !scope.data.startHereAllowed) return
+        if (scope.intro.open) scope.closeIntro()
+        core('startHere()')
+      }
       scope.teleportToResume = function () { if (scope.data && scope.data.teleportAllowed) core('teleportToResume()') }
       // ...and to the start of a dangerous contract just taken.
       scope.teleportToContract = function () {
         var load = scope.data && scope.data.load
         if (load && load.contract && load.contract.teleportAllowed) core('teleportToContract()')
+      }
+      scope.teleportToBooking = function () {
+        var booking = scope.data && scope.data.shipping && scope.data.shipping.booking
+        if (booking && booking.teleportAllowed) core('teleportToBooking()')
       }
       scope.copyCoordinates = function (position) {
         var text = scope.coordinates(position)
@@ -340,7 +380,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
             if (disposed) return
             scope.data = {
               state: 'EARTH_UNAVAILABLE', stateLabel: 'WAITING FOR EARTH FREIGHT SIM', saveAllowed: false,
-              sessionStatus: 'Earth Freight Sim is not responding. Check that the mod is enabled, then reload it.'
+              sessionStatus: 'Worldwide Trucking Career is not responding. Check that the mod is enabled, then reload it.'
             }
           })
         }

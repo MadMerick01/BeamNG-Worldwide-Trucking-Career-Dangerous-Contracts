@@ -1,6 +1,6 @@
 # What's changed
 
-Every change to Earth Freight Sim, in plain English, newest first. Each build is a new download on the [Releases](../../releases/latest) page.
+Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly Earth Freight Sim), in plain English, newest first. Each build is a new download on the [Releases](../../releases/latest) page.
 
 ## Coming next
 
@@ -8,6 +8,31 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **You can now buy second-hand cars.** Press **Buy second hand** on the Garage tab to see two used cars for sale in the town you're in, or the nearest town. They can be any BeamNG car in any version, except trailers and props, and cost between 70% and 105% of the new price. Each card shows the car's picture, its kilometres, its price, a "Good deal" tag when it's under 80% of new, and what you'd pay after your trade-in. Each town always sells the same two cars, so drive to another town to see different ones. **Buy this one** puts the car in place of yours and opens the usual car bill at the second-hand price: buy it or press **Get my car back**, as with a new car.
 - Second-hand cars look worn, with faded paint and the kilometres on the clock, but they drive like new. A second-hand car is worth what you paid for it, so that's what its trade-in and repairs are based on, and it stays that way after part changes and after you save and load. Your saves still work.
+
+## Build 78 · 28 Oct 2026
+
+- **The HUD is now called TruckingCareerDC in the app list.** When you open Edit Layout (or the UI apps menu) to add or move the HUD, look for TruckingCareerDC instead of EarthFreightHUD. Because the HUD has a new name, the game may drop it from a layout you saved before this build. If the HUD is missing after you update, open Edit Layout, add TruckingCareerDC again and save your layout. Delete the old ZIP from your mods folder so you don't end up with two copies. Your saves still work.
+
+## Build 77 · 28 Oct 2026
+
+- **You can now pay for your parts straight from the parts bill box.** The box that pops up in the parts menu now lists each part you've added or sold back with its price, as the Garage tab does, and shows how much money you have. Press Pay, then Yes, pay, to buy the parts without leaving the menu. The Pay button only shows when you can afford the bill. You can still pay or undo on the Garage tab. Your saves still work.
+
+## Build 74 · 28 Oct 2026
+
+- **Teleport straight to your relocation.** Once you've booked a relocation on the Relocate tab, a new **Teleport** button sits next to **Copy** and takes you there in one press, so you no longer need to paste the coordinates into the BeamNG.Earth map. The fee and the rules are the same: book with an empty car, and the booking is used up when you land. Copying the coordinates still works. Your saves still work.
+
+## Build 71 · 28 Oct 2026
+
+- **Start anywhere on Earth, such as your home town.** A new game no longer sends you to Penrith. Open the BeamNG.Earth map, find any place, teleport there and press the new **Start here** button on the start page or the Route tab. Your starter car and $2,500 are waiting right where you are, and that spot becomes your start. It's named after the town you're in or the nearest one within 20 km. Anywhere more remote is simply called your start.
+- **New game takes you back to your own start.** After pressing **New game…** and **Yes, start over**, the start page offers **Teleport to** your start town, or you can teleport somewhere else and press **Start here** to pick a new one. Your saves still work: a game that began in Penrith keeps Penrith as its start until you choose another.
+
+## Build 70 · 28 Oct 2026
+
+- **The mod has a new name: BeamNG Worldwide Trucking Career: Dangerous Contracts.** It used to be called Earth Freight Sim. The HUD now says Worldwide Trucking Career at the top, the start page shows the new name, the minimised HUD button says Worldwide Trucking, and the UI apps list shows the new name. Nothing else changes: the download is still `earth-freight-sim.zip`, you don't need to delete anything, and your saves still work.
+
+## Build 64 · 27 Oct 2026
+
+- No changes in the game. **The README has been rewritten for players**: a short list of what the game offers, how to install it and how to get started.
 
 ## Build 63 · 27 Oct 2026
 

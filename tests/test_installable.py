@@ -78,18 +78,31 @@ class InstalledHooksTest(unittest.TestCase):
 
     def arrive(self):
         self.core.onPreRender(0.1)
-        self.assertEqual(self.core.getState()['state'], 'READY')
+        state = self.core.getState()
+        self.assertEqual(state['state'], 'READY')
+        # A new game starts wherever the player presses Start here.
+        if state['mode'] == 'start' and not state['arrived']:
+            self.assertTrue(self.core.startHere())
+            self.core.onPreRender(0.1)
 
-    def test_loader_uses_penrith_without_configuration_or_writes(self):
+    def test_loader_starts_where_the_player_chooses_without_configuration_or_writes(self):
         self.assertEqual(self.lua.globals().registeredName, 'earthFreight_core')
         self.assertEqual(self.lua.globals().registeredMode, 'manual')
         self.core.onExtensionLoaded()
         state = self.core.getState()
         self.assertEqual(state['state'], 'EARTH_UNAVAILABLE')
-        self.assertEqual(state['base']['latitude'], -33.75)
+        self.assertIsNone(state['base'])
         self.assertFalse(self.core.save())
+        self.core.onPreRender(0.1)
+        state = self.core.getState()
+        self.assertEqual(state['stateLabel'], 'CHOOSE WHERE YOU START')
+        self.assertIsNone(state['resume'])
+        self.assertTrue(state['startHereAllowed'])
         self.arrive()
-        self.assertEqual(self.core.getState()['here']['name'], 'Penrith')
+        state = self.core.getState()
+        self.assertTrue(state['arrived'])
+        self.assertEqual(state['here']['name'], 'Penrith')
+        self.assertEqual(state['base']['latitude'], -33.75)
         self.assertFalse(list(self.user.rglob('save-*.json')))
 
     def test_save_restart_and_a_delivery_load_survive_on_disk(self):

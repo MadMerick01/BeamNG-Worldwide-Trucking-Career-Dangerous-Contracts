@@ -46,6 +46,53 @@ do
   T.check(r:manualSave(), 'saving works again')
 end
 
+-- Start here: with no fixed start, the player teleports anywhere, such as Leeds, and starts there.
+-- A new game later starts there again, or wherever Start here is pressed next.
+do
+  local io = F.io()
+  local leeds = F.position(53.7997, -1.5492)
+  local c, _, a, g = F.controller({ io = io, adapter = F.adapter(F.copy(leeds)) })
+  T.eq(c.startupTarget, nil, 'no fixed start without a base in config.json')
+  T.check(not c:startHere(), 'nothing to start before Earth is ready')
+  c:tick(0.1)
+  local v = c:view()
+  T.eq(v.stateLabel, 'CHOOSE WHERE YOU START', 'the player is asked to choose a start')
+  T.eq(v.resume, nil, 'no coordinates to go to'); T.check(not v.teleportAllowed, 'nothing to teleport to')
+  T.check(v.sessionStatus:find('Start here') ~= nil, 'told to press Start here')
+  T.check(v.startHereAllowed, 'Start here offered'); T.check(not c:newGame(), 'no new game before starting')
+  T.check(not c:manualSave(), 'no save before starting'); T.eq(#g.spawns, 0, 'no starter car yet')
+  T.check(c:startHere(), 'started in Leeds')
+  v = c:view()
+  T.check(v.arrived, 'arrived'); T.eq(v.flash.title, 'WELCOME TO LEEDS', 'welcomed to Leeds')
+  T.eq(v.startTown, 'Leeds', 'the start is Leeds'); T.check(not v.startHereAllowed, 'Start here is used up')
+  T.check(not c:startHere(), 'only once')
+  c:tick(0.1); T.eq(#g.spawns, 1, 'the starter car is given in Leeds')
+  c:vehicleSpawned(); c:tick(0.6); c:tick(0.6)
+  T.check(c:manualSave(), 'saved'); T.near(io.files[A].base.latitude, leeds.latitude, 1e-9, 'Leeds is saved as the start')
+  -- A new game, pressed in York, goes back to Leeds.
+  F.drive(c, a, F.position(53.9590, -1.0815))
+  c:addMoney(1000); c:newGame()
+  T.check(c:view().saveFeedback:find('Leeds') ~= nil, 'the warning names Leeds')
+  T.check(c:newGame(), 'new game'); c:tick(0.1)
+  v = c:view()
+  T.eq(v.stateLabel, 'GO TO LEEDS', 'a new game goes back to Leeds')
+  T.near(v.resume.latitude, leeds.latitude, 1e-9, 'with its coordinates')
+  T.check(v.startHereAllowed, 'or Start here somewhere else')
+  -- Start here in York instead makes York the start.
+  T.check(not c:view().arrived, 'not at the start yet')
+  T.check(c:startHere(), 'started in York'); T.eq(c:view().startTown, 'York', 'the start is York')
+  c:tick(0.1); c:vehicleSpawned(); c:tick(0.6); c:tick(0.6)
+  T.check(c:manualSave(), 'saved'); T.near(io.files[A].base.latitude, 53.9590, 1e-9, 'York is saved as the start')
+  -- Not saved: a reload offers the spot pressed again, and Start here still works.
+  local u = F.controller({ io = F.io(), adapter = F.adapter(F.copy(leeds)) })
+  u:tick(0.1); T.check(u:startHere(), 'started'); u:reload(); u.adapter.pose = F.position(53.9590, -1.0815); u:tick(0.1)
+  T.eq(u:view().stateLabel, 'GO TO LEEDS', 'an unsaved start is offered again after a reload')
+  -- Far from every town, in the Sahara: the start is not named after a town far away.
+  local sahara = F.controller({ io = F.io(), adapter = F.adapter(F.position(23.0, 2.0)) })
+  sahara:tick(0.1); T.check(sahara:startHere(), 'started in the desert')
+  T.eq(sahara:view().startTown, nil, 'no town name'); T.eq(sahara:view().flash.title, 'WELCOME TO YOUR START', 'welcomed to the start')
+end
+
 -- Teleport there: Earth is asked to take the player to the save, or to the start town.
 do
   local c, io, a = F.controller()
@@ -54,7 +101,7 @@ do
   c:tick(0.1)
   T.check(c:view().teleportAllowed, 'offered on the way to Penrith')
   T.check(c:teleportToResume(), 'asked'); T.eq(#a.teleports, 1, 'one teleport asked of Earth')
-  T.eq(a.teleports[1].latitude, F.PENRITH.latitude, 'to Penrith'); T.eq(a.teleports[1].name, 'Earth Freight: Penrith', 'named for Earth')
+  T.eq(a.teleports[1].latitude, F.PENRITH.latitude, 'to Penrith'); T.eq(a.teleports[1].name, 'Worldwide Trucking: Penrith', 'named for Earth')
   T.check(not c:view().teleportAllowed, 'the button rests while Earth loads')
   T.check(c:view().teleportFeedback:find('Teleporting') ~= nil, 'the player is told it is on its way')
   c:tick(31)
@@ -68,7 +115,7 @@ do
   local r = F.controller({ io = io })
   local ra = F.adapter(F.position(-33.9, 151.2)); r.adapter = ra; r:tick(0.1)
   T.check(r:teleportToResume(), 'a reload offers the teleport to the save')
-  T.eq(ra.teleports[1].name, 'Earth Freight: last save', 'named as the last save')
+  T.eq(ra.teleports[1].name, 'Worldwide Trucking: last save', 'named as the last save')
   T.near(ra.teleports[1].latitude, io.files[A].resume.latitude, 1e-12, 'to where it was saved')
   local f = F.controller({ io = io })
   local fa = F.adapter(F.position(-33.9, 151.2)); fa.teleportRefused = true; f.adapter = fa; f:tick(0.1)
@@ -465,7 +512,11 @@ do
   g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
   T.eq(#bills, 1, 'a part change opens the box'); T.check(bills[1].open, 'open')
   T.eq(bills[1].total, 'Parts bill so far: $600', 'with its total'); T.eq(bills[1].detail, 'Parts $600, repair $0.', 'and split')
+  T.eq(bills[1].money, 'You have ' .. require('earthFreight/pricing').dollars(c.profile.progression.balance) .. '.', 'with the money the player has')
   T.eq(bills[1].short, nil, 'not short')
+  T.eq(#bills[1].lines, 1, 'lists the parts'); T.eq(bills[1].lines[1].label, '+ Cargo Load Box M', 'by name')
+  T.eq(bills[1].lines[1].amount, '$600', 'with its price'); T.eq(bills[1].cost, 600, 'and the total to pay')
+  T.check(bills[1].payAllowed, 'can pay from the box')
   c:partsBillShown(bills[1].serial); F.advance(c, 3)
   T.eq(#toasts, 0, 'no corner pop-up once the box showed'); T.eq(#bills, 1, 'and the box stays open')
   c:vehicleSpawned(); c:tick(0.1)
@@ -473,16 +524,22 @@ do
   c.profile.progression.balance = 100
   g:fit('box', 'pickup_cargo_load_box_l'); c:vehicleSpawned(); c:tick(0.1)
   T.eq(#bills, 2, 'another change shows the new bill'); T.eq(bills[2].short, 'You are $1,400 short.', 'says how much is missing')
+  T.eq(bills[2].money, 'You have $100.', 'and the money the player has')
+  T.check(not bills[2].payAllowed, 'cannot pay when short')
   F.advance(c, Workshop.BILL_FALLBACK_SECONDS + 0.2)
   T.eq(#toasts, 1, 'a corner pop-up when the box did not show'); T.eq(toasts[1].type, 'warning', 'a warning when short')
-  T.check(toasts[1].msg:find('Parts bill so far: $1,500 (parts $1,500, repair $0). You are $1,400 short.', 1, true), 'with the same bill')
+  T.check(toasts[1].msg:find('Parts bill so far: $1,500 (parts $1,500, repair $0). You have $100. You are $1,400 short.', 1, true), 'with the same bill')
   F.advance(c, 3); T.eq(#toasts, 1, 'only once')
   g:fit('box', ''); c:vehicleSpawned(); c:tick(0.1)
   T.eq(bills[#bills].open, false, 'undoing in the parts menu closes the box'); T.check(toasts[2].msg:find('Nothing to pay'), 'and says nothing to pay')
-  g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
   c.profile.progression.balance = 5000
+  g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
+  local shown = bills[#bills]
+  T.check(shown.open and shown.payAllowed, 'a bill the player can pay')
+  T.check(not c:payPartsBill(shown.serial - 1), 'an older bill is not paid'); T.eq(c.profile.progression.balance, 5000, 'nothing charged')
   local count = #bills
-  T.check(c:buyParts(), 'paid'); F.advance(c, 1)
+  T.check(c:payPartsBill(shown.serial), 'paid from the box'); T.eq(c.profile.progression.balance, 4400, 'charged the bill')
+  T.check(toasts[#toasts].msg:find('Bought for $600'), 'says it was paid'); F.advance(c, 1)
   T.eq(#bills, count + 1, 'paying closes the box'); T.eq(bills[#bills].open, false, 'closed')
 end
 
@@ -566,6 +623,14 @@ do
   T.check(c:cancelShipping(), 'cancelled'); T.eq(c:view().balance, before, 'refunded')
   T.check(c:bookShipping('coroico'), 'booked again')
   T.eq(c:view().shipping.booking.latitude, coroico.latitude, 'coordinates to paste')
+  -- Teleport asks Earth to take the car there, and rests while Earth loads.
+  T.check(c:view().shipping.booking.teleportAllowed, 'Teleport offered with the booking')
+  T.check(c:teleportToBooking(), 'teleport asked'); T.eq(#a.teleports, 1, 'one teleport asked of Earth')
+  T.eq(a.teleports[1].latitude, coroico.latitude, 'to the booking'); T.eq(a.teleports[1].name, 'Worldwide Trucking: Coroico', 'named for Earth')
+  T.check(not c:view().shipping.booking.teleportAllowed and c:view().shipping.booking.teleporting, 'the button rests while Earth loads')
+  a.teleportRefused = true; c:cancelShipping(); c:bookShipping('coroico')
+  T.check(not c:teleportToBooking(), 'Earth refusing is reported'); T.check(c:view().shipping.feedback:find('did not take'), 'told to copy instead')
+  a.teleportRefused = nil
   -- Earth pauses while it teleports; the jump still counts as one.
   a.valid = false; c:tick(0.1)
   a.valid = true; a.pose = location.destination(coroico, 0, 1000); c:tick(0.1); c:tick(0.6); c:tick(0.6)
@@ -792,7 +857,7 @@ do
   T.check(c:takeJob(job.id, 50), 'taken at half load'); T.eq(c.load.units, math.floor(q.units / 2 + 0.5), 'half the load')
   T.eq(c:view().balance, 10000 - contracts.FEE, 'the relocation is paid')
   T.eq(#a.teleports, 1, 'Earth is asked to teleport'); T.near(a.teleports[1].latitude, section.start.latitude, 1e-12, 'to the start')
-  T.eq(a.teleports[1].name, 'Earth Freight: ' .. section.name, 'named for Earth')
+  T.eq(a.teleports[1].name, 'Worldwide Trucking: ' .. section.name, 'named for Earth')
   local v = c:view()
   T.check(v.load.contract and not v.load.contract.started, 'the HUD shows the contract, not started')
   T.check(not v.load.drop.delivery.allowed, 'nothing to deliver yet'); T.check(not c:deliver(), 'not delivered in town')

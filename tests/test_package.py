@@ -28,7 +28,7 @@ class PackageTest(unittest.TestCase):
             names = set(archive.namelist())
             for name in ('scripts/earthFreight/modScript.lua', 'lua/ge/extensions/earthFreight/core.lua',
                          'lua/ge/extensions/earthFreight/placesIndex.lua', 'lua/ge/extensions/earthFreight/tiles/s35e150.lua',
-                         'ui/modules/apps/EarthFreightHUD/app.json',
+                         'ui/modules/apps/TruckingCareerDC/app.json',
                          'README.md', 'CHANGELOG.md', 'docs/DESIGN.md', 'config.example.json'):
                 self.assertIn(name, names)
             self.assertFalse(any(n.startswith(('settings/', 'tests/', 'tools/', 'earth_freight/', 'docs/beamng-api/')) for n in names))
@@ -36,16 +36,16 @@ class PackageTest(unittest.TestCase):
             self.assertIsNone(archive.testzip())
 
     def test_manifest_configuration_and_app_assets_are_consistent(self):
-        prefix = 'ui/modules/apps/EarthFreightHUD/'
+        prefix = 'ui/modules/apps/TruckingCareerDC/'
         with ZipFile(self.output) as archive:
             manifest = json.loads(archive.read(prefix + 'app.json'))
             config = json.loads(archive.read('config.example.json'))
-            self.assertEqual(manifest['appName'], 'EarthFreightHUD')
-            self.assertEqual(manifest['name'], 'Earth Freight Sim')
+            self.assertEqual(manifest['appName'], 'TruckingCareerDC')
+            self.assertEqual(manifest['name'], 'BeamNG Worldwide Trucking Career: Dangerous Contracts')
             self.assertEqual(manifest['directive'], 'earthFreightHud')
             self.assertIn('earth-freight-hud', manifest['domElement'])
             self.assertEqual(config['base'], {'latitude': -33.75, 'longitude': 150.7})
-            self.assertIn(b'/ui/modules/apps/EarthFreightHUD/app.html', archive.read(prefix + 'app.js'))
+            self.assertIn(b'/ui/modules/apps/TruckingCareerDC/app.html', archive.read(prefix + 'app.js'))
             self.assertIn(b'earthFreight_core', archive.read('scripts/earthFreight/modScript.lua'))
 
     def test_starter_car_config_is_packaged(self):
@@ -63,7 +63,7 @@ class PackageTest(unittest.TestCase):
 
     def test_png_is_complete_with_valid_checksums(self):
         with ZipFile(self.output) as archive:
-            data = archive.read('ui/modules/apps/EarthFreightHUD/app.png')
+            data = archive.read('ui/modules/apps/TruckingCareerDC/app.png')
         self.assertEqual(data[:8], b'\x89PNG\r\n\x1a\n')
         offset, ended = 8, False
         while offset < len(data):
@@ -100,7 +100,7 @@ class PackageTest(unittest.TestCase):
           packagedPlaces = #require('earthFreight/places').list
         ''')
         g = lua.globals()
-        self.assertEqual(g.packagedDefaults['base']['latitude'], -33.75)
+        self.assertIsNone(g.packagedDefaults['base'])
         self.assertEqual(g.packagedDefaults['resumeRadiusMetres'], 50)
         self.assertTrue(g.packagedDefaults['autoGps'])
         self.assertGreater(g.packagedPlaces, 30)

@@ -39,14 +39,15 @@ local labels = {
   CONFIG_REQUIRED = 'BASE CONFIGURATION REQUIRED', EARTH_UNAVAILABLE = 'EARTH UNAVAILABLE',
   READY = 'READY', ERROR = 'FREIGHT PAUSED',
 }
--- What the HUD asks of the player until they reach the resume point.
-local goLabels = { resume = 'GO TO YOUR LAST SAVE', start = 'GO TO ' .. config.START_TOWN:upper() }
+-- What the HUD asks of the player until they reach the resume point. A new game with no start yet
+-- asks them to choose one: anywhere on Earth they teleport to, then Start here.
 local goMessages = {
   resume = 'Press Teleport there to carry on, or copy these coordinates into the BeamNG.Earth map.',
-  start = 'Press Teleport there to start, or copy these coordinates into the BeamNG.Earth map. You get your starter car when you arrive.',
+  start = 'Press Teleport there to go back to your start, or teleport anywhere in the BeamNG.Earth map and press Start here.'
+    .. ' You get your starter car when you start.',
+  choose = 'Open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there.'
+    .. ' Then press Start here. You get your starter car there.',
 }
--- The name Earth's recent places list the teleport under.
-local goPlaces = { resume = 'Earth Freight: last save', start = 'Earth Freight: ' .. config.START_TOWN }
 local messages = {
   earth_missing = 'Enable BeamNG.Earth to continue.',
   earth_starting = 'Waiting for BeamNG.Earth to finish starting.',
@@ -57,9 +58,9 @@ local messages = {
 }
 -- What the player sees for each problem that pauses Earth Freight.
 local errorMessages = {
-  newer_version = 'Your save was made by a newer version of Earth Freight Sim. Update the mod to keep playing.',
-  storage_unavailable = 'Earth Freight Sim could not open its save folder. Load the level again to try again.',
-  internal_error = 'Earth Freight Sim hit a problem and paused. Load the level again to carry on from your last save.'
+  newer_version = 'Your save was made by a newer version of Worldwide Trucking Career. Update the mod to keep playing.',
+  storage_unavailable = 'Worldwide Trucking Career could not open its save folder. Load the level again to try again.',
+  internal_error = 'Worldwide Trucking Career hit a problem and paused. Load the level again to carry on from your last save.'
     .. ' What went wrong is in beamng.log: search it for internal_error.',
 }
 local loadMessages = {
@@ -72,6 +73,21 @@ local loadMessages = {
 local function amount(good, units)
   if good.kind == 'fluid' then return math.floor(units * good.litres + 0.5) .. ' L of ' .. good.name:lower() end
   return units .. ' ' .. good.name:lower()
+end
+
+-- A start this far from every town is called "your start", not after a town far away.
+local START_TOWN_METRES = 20000
+
+-- The name of the town at a point, or of the nearest one close enough; nil when there is none.
+local function townName(point)
+  if not location.valid(point) then return nil end
+  places.ensure(point)
+  local here = places.at(point)
+  if not here then
+    local nearest = places.nearest(point, 1)[1]
+    here = nearest and nearest.metres <= START_TOWN_METRES and nearest.place or nil
+  end
+  return here and here.name or nil
 end
 
 local function copy(value)
@@ -136,7 +152,7 @@ function M.new(deps)
     self.partsFeedback, self.carFeedback, self.tradeFeedback, self.fuelFeedback = nil, nil, nil, nil
     self.vehicleProvided, self.arrivingModel, self.arrivingValue, self.arrived = false, nil, nil, false
     self.newGameArmed, self.flash, self.refunded = false, nil, nil
-    self.teleportAskedAt, self.teleportFeedback, self.contractTeleportAt = nil, nil, nil
+    self.teleportAskedAt, self.teleportFeedback, self.contractTeleportAt, self.bookingTeleportAt = nil, nil, nil, nil
     -- Shipping booked and not yet used, and where an unbooked teleport left from. Neither is saved:
     -- Save waits until both are settled.
     self.booking, self.stranded, self.shippingFeedback, self.lastDriven = nil, nil, nil, nil
@@ -188,15 +204,25 @@ function M.new(deps)
     else self:transition('EARTH_UNAVAILABLE', 'position_invalid') end
   end
 
+  -- The town the player's start is in: where a new game starts. Remembered for the last base asked.
+  function c:startTown()
+    local base = self.profile and self.profile.base or self.creationBase
+    if not base then return nil end
+    local key = string.format('%.6f,%.6f', base.latitude, base.longitude)
+    if self.startTownKey ~= key then self.startTownKey, self.startTownName = key, townName(base) end
+    return self.startTownName
+  end
+
   -- Teleport there: asks Earth to take the player to the resume point (the last save, or the start
-  -- town), as pasting its coordinates into Earth's map does. Arriving is seen in observe.
+  -- of a new game), as pasting its coordinates into Earth's map does. Arriving is seen in observe.
   function c:teleportToResume()
     if self.state ~= 'READY' or self.arrived or self.error or not self.startupTarget then return false end
     if not self.adapter.teleport then
       self.teleportFeedback = 'Teleporting is not available. Copy the coordinates into the BeamNG.Earth map instead.'
       return false
     end
-    local ok, why, detail = self.adapter:teleport(self.startupTarget, goPlaces[self.mode])
+    local name = self.mode == 'start' and ('Worldwide Trucking: ' .. (self:startTown() or 'start')) or 'Worldwide Trucking: last save'
+    local ok, why, detail = self.adapter:teleport(self.startupTarget, name)
     self.diag:event('teleport_to_resume', ok and 'requested' or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
     if not ok then
       self.teleportAskedAt = nil
@@ -402,7 +428,7 @@ function M.new(deps)
     end
     if self.booking and shipping.arrived(to, self.booking) then
       local b = self.booking
-      self.booking, self.stranded = nil, nil
+      self.booking, self.stranded, self.bookingTeleportAt = nil, nil, nil
       local paid = ''
       if b.offer then
         self.offer = { latitude = b.latitude, longitude = b.longitude, name = b.name, fee = b.fee }
@@ -499,9 +525,23 @@ function M.new(deps)
     end
     self.booking = { id = destination.id, name = destination.name, region = destination.region, fee = fee,
       latitude = destination.latitude, longitude = destination.longitude }
-    self.shippingFeedback = 'Booked to ' .. destination.name .. ' for ' .. dollars(fee) .. '. Copy the coordinates, paste them into the BeamNG.Earth map and teleport there.'
+    self.bookingTeleportAt = nil
+    self.shippingFeedback = 'Booked to ' .. destination.name .. ' for ' .. dollars(fee) .. '. Press Teleport there, or copy the coordinates into the BeamNG.Earth map.'
     self.diag:event('shipping_booked', destination.id .. ':' .. fee)
     return true
+  end
+
+  -- Asks Earth to take the car to the booked destination, as pasting its coordinates into Earth's
+  -- map does. Landing there uses up the booking, seen in teleported.
+  function c:teleportToBooking()
+    local b = self.booking
+    if not b or self.error or self.state ~= 'READY' or not self.adapter.teleport then return false end
+    local ok, why, detail = self.adapter:teleport(b, 'Worldwide Trucking: ' .. b.name)
+    self.diag:event('teleport_to_booking', ok and b.id or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
+    self.bookingTeleportAt = ok and self.clock or nil
+    -- On the way, the HUD says so under the button for as long as the button rests.
+    self.shippingFeedback = not ok and 'BeamNG.Earth did not take the teleport. Copy the coordinates into its map instead.' or nil
+    return ok == true
   end
 
   -- Cancels a booking not yet used and refunds its fee.
@@ -510,7 +550,7 @@ function M.new(deps)
     self:addMoney(self.booking.fee)
     self.shippingFeedback = 'Booking cancelled. ' .. dollars(self.booking.fee) .. ' refunded.'
     self.diag:event('shipping_cancelled', self.booking.id)
-    self.booking = nil
+    self.booking, self.bookingTeleportAt = nil, nil
     return true
   end
 
@@ -561,13 +601,20 @@ function M.new(deps)
     self.sessionVerified = true
     -- Arriving within the radius of the resume point, usually by teleporting there from the map,
     -- confirms the player is back where they left off.
+    self:checkArrival(sample)
+    if self.arrived then self:drive(sample, dt) end
+    self:transition('READY', 'verified')
+  end
+
+  function c:checkArrival(sample)
     if not self.arrived and self.startupTarget then
       local away = location.distance(sample, self.startupTarget)
       if away and away <= self.configuration.resumeRadiusMetres then
         self.arrived = true
         self.odometer:reset()
         if self.mode == 'start' then
-          self:showFlash('delivered', self:named('Welcome to ' .. config.START_TOWN):upper(),
+          local town = self:startTown()
+          self:showFlash('delivered', self:named('Welcome to ' .. (town or 'your start')):upper(),
             'Your starter car needs a radiator: press Buy parts on the Garage tab, fit one, then pay there.')
         else
           self:showFlash('delivered', self:named('Welcome back'):upper(), 'You are where you last saved.'
@@ -577,8 +624,32 @@ function M.new(deps)
         self.diag:event('arrived', string.format('%.1f m', away))
       end
     end
-    if self.arrived then self:drive(sample, dt) end
-    self:transition('READY', 'verified')
+  end
+
+  -- Start here: on a new game, makes wherever the player stands their start, and starts there. A
+  -- new game later starts there again. Like everything else, it is kept by Save.
+  function c:startHereAllowed()
+    return self.state == 'READY' and self.mode == 'start' and not self.arrived and not self.error and self.profile ~= nil
+  end
+
+  function c:startHere()
+    if not self:startHereAllowed() then return false end
+    local fresh = self.adapter:sample()
+    if not fresh.valid or not location.valid(fresh) then
+      self.lastSample = fresh
+      self:interrupt(fresh.reason or 'position_invalid')
+      self.diag:event('start_here_rejected', fresh.reason or 'position_invalid', 'W')
+      return false
+    end
+    places.ensure(fresh)
+    local spot = location.copy(fresh)
+    self.profile.base, self.profile.resume = location.copy(spot), location.copy(spot)
+    self.creationBase, self.startupTarget, self.unsavedBase = location.copy(spot), location.copy(spot), location.copy(spot)
+    self.teleportAskedAt, self.teleportFeedback = nil, nil
+    self.lastSample = fresh
+    self.diag:event('start_here', string.format('%.8f,%.8f', spot.latitude, spot.longitude))
+    self:checkArrival(fresh)
+    return self.arrived
   end
 
   -- Where the player is: the place whose arrival circle they are in, once arrived.
@@ -696,7 +767,7 @@ function M.new(deps)
   function c:teleportToContract()
     local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
     if not section or self.error or self.state ~= 'READY' or not self.adapter.teleport then return false end
-    local ok, why, detail = self.adapter:teleport(section.start, 'Earth Freight: ' .. section.name)
+    local ok, why, detail = self.adapter:teleport(section.start, 'Worldwide Trucking: ' .. section.name)
     self.diag:event('teleport_to_contract', ok and section.id or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
     self.contractTeleportAt = ok and self.clock or nil
     if not ok then
@@ -1100,13 +1171,16 @@ function M.new(deps)
         secondsLeft = left, here = here, allowed = problem == nil and not here and self:canAfford(fee) }
     end
     local b = self.booking
+    -- Teleport there rests while Earth carries out the last press.
+    local teleporting = self.bookingTeleportAt ~= nil and self.clock - self.bookingTeleportAt < TELEPORT_WAIT_SECONDS
     return {
       offer = offerView, destinations = list, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
       problem = problem, feedback = self.shippingFeedback,
       pending = self.offer and { name = self.offer.name, fee = self.offer.fee, radiusKm = shipping.OFFER_RADIUS_METRES / 1000,
         distanceMetres = location.distance(current, self.offer) } or nil,
       booking = b and { id = b.id, name = b.name, region = b.region, fee = b.fee, offer = b.offer == true, latitude = b.latitude, longitude = b.longitude,
-        distanceMetres = location.distance(current, b) } or nil,
+        distanceMetres = location.distance(current, b),
+        teleportAllowed = self.adapter.teleport ~= nil and not teleporting, teleporting = teleporting or nil } or nil,
     }
   end
 
@@ -1121,17 +1195,22 @@ function M.new(deps)
     local vehicleId = self.lastSample and self.lastSample.valid and self.lastSample.vehicle and self.lastSample.vehicle.id
     if quote and (self.error or vehicleId ~= quote.vehicleId) then quote = nil end
     if self.state == 'CONFIG_REQUIRED' then
-      status = 'Set valid base coordinates in the Earth Freight Sim configuration, then load the level again.'
+      status = 'Set valid base coordinates in the Worldwide Trucking Career configuration, then load the level again.'
     elseif self.state == 'ERROR' then
       status = errorMessages[self.error] or errorMessages.internal_error
     elseif self.state == 'READY' and not self.arrived then
-      status = goMessages[self.mode]
+      status = goMessages[(self.mode == 'start' and not resume) and 'choose' or self.mode]
     elseif self.state == 'READY' then
       status = nil
     elseif not status then status = messages.position_invalid end
     local teleporting = self.teleportAskedAt ~= nil and self.clock - self.teleportAskedAt < TELEPORT_WAIT_SECONDS
     local label = labels[self.state]
-    if self.state == 'READY' and not self.arrived then label = goLabels[self.mode] end
+    local startTown = self:startTown()
+    if self.state == 'READY' and not self.arrived then
+      if self.mode == 'resume' then label = 'GO TO YOUR LAST SAVE'
+      elseif resume then label = 'GO TO ' .. (startTown or 'YOUR START'):upper()
+      else label = 'CHOOSE WHERE YOU START' end
+    end
     local active = self.profile ~= nil and not self.error
     local flashShown = self.flash ~= nil and self.clock - self.flash.at < FLASH_SECONDS
     local space = self:space()
@@ -1149,7 +1228,8 @@ function M.new(deps)
       teleportFeedback = resume and (self.teleportAskedAt and not teleporting
         and 'Not there yet? Press Teleport there again, or copy the coordinates into the BeamNG.Earth map.'
         or self.teleportFeedback) or nil,
-      startTown = config.START_TOWN,
+      startTown = startTown,
+      startHereAllowed = self:startHereAllowed(),
       startingMoney = STARTING_MONEY,
       playerName = self.playerName,
       nameUnsaved = self.playerName ~= self.savedName,
@@ -1294,13 +1374,19 @@ function M.new(deps)
       self.feedback = 'New game is unavailable right now. Check the status above.'
       return false
     end
+    -- A new game starts where the last one did; Start here moves it anywhere else.
+    local start = location.copy(self.profile and self.profile.base or self.creationBase)
+    if not start then
+      self.feedback = 'You have not started yet. Teleport anywhere in the BeamNG.Earth map and press Start here.'
+      return false
+    end
+    local town = self:startTown() or 'your start'
     if not self.newGameArmed then
       self.newGameArmed = true
-      self.feedback = 'Press Yes, start over to start over in ' .. config.START_TOWN .. ' in the starter car with '
+      self.feedback = 'Press Yes, start over to start over in ' .. town .. ' in the starter car with '
         .. dollars(STARTING_MONEY) .. '. Your car, job and every dollar you have now are lost.'
       return false
     end
-    local start = location.copy(self.configuration.base)
     local saved, why = self:record({ base = start, resume = start,
       progression = { balance = STARTING_MONEY, totalDistanceKm = 0 }, vehicle = {}, atStart = true,
       playerName = self.playerName })
@@ -1310,10 +1396,10 @@ function M.new(deps)
       self.diag:event('new_game_failed', tostring(why), 'E')
       return false
     end
-    self.diag:event('new_game', config.START_TOWN)
+    self.diag:event('new_game', town)
     self:reload()
-    self.feedback = string.format('New game started. Teleport to %s at %.8f, %.8f (Copy is just below) to get your starter car.',
-      config.START_TOWN, start.latitude, start.longitude)
+    self.feedback = string.format('New game started. Teleport to %s at %.8f, %.8f (Copy is just below) to get your starter car,'
+      .. ' or teleport anywhere in the BeamNG.Earth map and press Start here.', town, start.latitude, start.longitude)
     return true
   end
 
@@ -1406,8 +1492,10 @@ function M.buyUsedCar(slot)
 end
 function M.newGame() return safely(function() return ensure():newGame() end) end
 function M.cancelNewGame() return safely(function() return ensure():cancelNewGame() end) end
+function M.startHere() return safely(function() return ensure():startHere() end) end
 function M.teleportToResume() return safely(function() return ensure():teleportToResume() end) end
 function M.teleportToContract() return safely(function() return ensure():teleportToContract() end) end
+function M.teleportToBooking() return safely(function() return ensure():teleportToBooking() end) end
 -- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
 -- share is the slider's percentage of a full load: 10 to 100 in steps of 10; anything else takes it all.
 function M.takeJob(job, share)
@@ -1444,6 +1532,7 @@ end
 function M.onVehicleSpawned() return safely(function() if active then active:vehicleSpawned() end end) end
 function M.onVehicleResetted(vehicleId) return safely(function() if active then active:vehicleReset(vehicleId) end end) end
 function M.reload() return safely(function() ensure():reload() end) end
+function M.payPartsBill(serial) return safely(function() return ensure():payPartsBill(serial) end) end
 function M.partsBillShown(serial) return safely(function() if active then active:partsBillShown(serial) end end) end
 function M.uiMounted(on) return safely(function() ensure():mount(on == true) end) end
 function M.getState() return safely(function() return ensure():view() end) end

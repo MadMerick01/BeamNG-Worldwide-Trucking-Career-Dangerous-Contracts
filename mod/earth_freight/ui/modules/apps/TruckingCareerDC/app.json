@@ -1,0 +1,14 @@
+{
+  "domElement": "<earth-freight-hud></earth-freight-hud>",
+  "name": "BeamNG Worldwide Trucking Career: Dangerous Contracts",
+  "types": ["ui.apps.categories.utility"],
+  "description": "BeamNG Worldwide Trucking Career: Dangerous Contracts: a worldwide trucking career for BeamNG.Earth. Buy loads in one BeamNG.Earth town, drive them to another and get paid, with real cargo weight, fuel and repairs.",
+  "css": {"width": "380px", "height": "620px", "top": "100px", "left": "20px"},
+  "author": "BeamNG Worldwide Trucking Career: Dangerous Contracts",
+  "version": "0.1.0",
+  "directive": "earthFreightHud",
+  "appName": "TruckingCareerDC",
+  "category": "BeamNG Worldwide Trucking Career: Dangerous Contracts",
+  "isAuxiliary": false,
+  "interactive": "yes"
+}
