@@ -613,6 +613,14 @@ do
   T.check(c:cancelShipping(), 'cancelled'); T.eq(c:view().balance, before, 'refunded')
   T.check(c:bookShipping('coroico'), 'booked again')
   T.eq(c:view().shipping.booking.latitude, coroico.latitude, 'coordinates to paste')
+  -- Teleport asks Earth to take the car there, and rests while Earth loads.
+  T.check(c:view().shipping.booking.teleportAllowed, 'Teleport offered with the booking')
+  T.check(c:teleportToBooking(), 'teleport asked'); T.eq(#a.teleports, 1, 'one teleport asked of Earth')
+  T.eq(a.teleports[1].latitude, coroico.latitude, 'to the booking'); T.eq(a.teleports[1].name, 'Worldwide Trucking: Coroico', 'named for Earth')
+  T.check(not c:view().shipping.booking.teleportAllowed and c:view().shipping.booking.teleporting, 'the button rests while Earth loads')
+  a.teleportRefused = true; c:cancelShipping(); c:bookShipping('coroico')
+  T.check(not c:teleportToBooking(), 'Earth refusing is reported'); T.check(c:view().shipping.feedback:find('did not take'), 'told to copy instead')
+  a.teleportRefused = nil
   -- Earth pauses while it teleports; the jump still counts as one.
   a.valid = false; c:tick(0.1)
   a.valid = true; a.pose = location.destination(coroico, 0, 1000); c:tick(0.1); c:tick(0.6); c:tick(0.6)

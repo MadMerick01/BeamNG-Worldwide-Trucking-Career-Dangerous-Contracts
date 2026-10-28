@@ -320,12 +320,14 @@
             <div style="display:flex;gap:6px;margin-top:4px;">
               <input aria-label="Relocation coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.shipping.booking)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
               <button type="button" aria-label="Copy relocation coordinates" ng-click="copyCoordinates(data.shipping.booking)">Copy</button>
+              <button type="button" aria-label="Teleport to {{data.shipping.booking.name}}" ng-click="teleportToBooking()" ng-disabled="!data.shipping.booking.teleportAllowed" ng-style="{opacity: data.shipping.booking.teleportAllowed ? 1 : 0.5}" style="background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Teleport</button>
             </div>
-            <div style="font-size:13px;color:#c9d6d2;margin-top:4px;">Paste them into the BeamNG.Earth map and teleport there. Your car goes with you; cargo cannot.</div>
+            <div ng-if="data.shipping.booking.teleporting" role="status" style="margin-top:4px;color:#c9d6d2;">Teleporting. The terrain takes a few seconds to load.</div>
+            <div style="font-size:13px;color:#c9d6d2;margin-top:4px;">Press Teleport, or paste the coordinates into the BeamNG.Earth map and teleport there. Your car goes with you; cargo cannot.</div>
             <button type="button" ng-click="cancelShipping()" style="margin-top:6px;padding:5px 10px;">Cancel booking (refund ${{data.shipping.booking.fee | number:0}})</button>
           </div>
           <div ng-if="!data.shipping.booking">
-            <div style="font-size:13px;color:#c9d6d2;">Move your car anywhere in the world cheaply: pick a region, find a town, or paste coordinates. Book with an empty car, pay, then teleport there with the coordinates. Teleporting without a booking cancels your job (for the ${{data.abandonFee | number:0}} abandon fee) and stops pay until you go back.</div>
+            <div style="font-size:13px;color:#c9d6d2;">Move your car anywhere in the world cheaply: pick a region, find a town, or paste coordinates. Book with an empty car, pay, then press Teleport or use the coordinates. Teleporting without a booking cancels your job (for the ${{data.abandonFee | number:0}} abandon fee) and stops pay until you go back.</div>
             <div ng-if="data.shipping.problem" style="color:#f2c94c;">{{data.shipping.problem}}</div>
             <div ng-repeat="d in data.shipping.destinations" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
               <div style="flex:1;min-width:0;">{{d.name}} <span style="color:#7d8b88;font-size:12px;">{{d.region}}</span></div>

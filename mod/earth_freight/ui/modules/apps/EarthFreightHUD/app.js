@@ -317,6 +317,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var load = scope.data && scope.data.load
         if (load && load.contract && load.contract.teleportAllowed) core('teleportToContract()')
       }
+      scope.teleportToBooking = function () {
+        var booking = scope.data && scope.data.shipping && scope.data.shipping.booking
+        if (booking && booking.teleportAllowed) core('teleportToBooking()')
+      }
       scope.copyCoordinates = function (position) {
         var text = scope.coordinates(position)
         if (text) call('setClipboard("' + text + '")')
