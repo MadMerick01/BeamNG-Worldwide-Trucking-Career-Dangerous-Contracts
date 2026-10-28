@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Ko-fi line at the bottom of the start page now reads "Keep me awake behind the wheel: ko-fi.com/madmerick".** Pressing the link works as before: it opens the page in your browser and copies the link. Your saves still work.
+
 ## Build 85 · 28 Oct 2026
 
 - **You can now support the mod on Ko-fi.** At the very bottom of the start page (open it with your name button at the top of the HUD), **Support the mod on Ko-fi** opens ko-fi.com/madmerick in your browser and copies the link, so you can paste it yourself if the browser doesn't open. The mod stays free, and nothing about Ko-fi shows up while you drive, deliver or use the Garage. Your saves still work.
