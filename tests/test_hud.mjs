@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
 
-const APP = '../mod/earth_freight/ui/modules/apps/EarthFreightHUD/'
+const APP = '../mod/earth_freight/ui/modules/apps/TruckingCareerDC/'
 const source = readFileSync(new URL(APP + 'app.js', import.meta.url), 'utf8')
 const html = readFileSync(new URL(APP + 'app.html', import.meta.url), 'utf8')
 const fixed = body => 'if earthFreight_core then earthFreight_core.' + body + ' end'
