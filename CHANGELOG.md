@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 71 · 28 Oct 2026
+
 - **Start anywhere on Earth, such as your home town.** A new game no longer sends you to Penrith. Open the BeamNG.Earth map, find any place, teleport there and press the new **Start here** button on the start page or the Route tab. Your starter car and $2,500 are waiting right where you are, and that spot becomes your start. It's named after the town you're in or the nearest one within 20 km. Anywhere more remote is simply called your start.
 - **New game takes you back to your own start.** After pressing **New game…** and **Yes, start over**, the start page offers **Teleport to** your start town, or you can teleport somewhere else and press **Start here** to pick a new one. Your saves still work: a game that began in Penrith keeps Penrith as its start until you choose another.
 
