@@ -8,6 +8,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   }
   // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
   var STORE = 'earthFreight.hudMinimised'
+  var KOFI = 'https://ko-fi.com/madmerick'
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
   // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
@@ -362,6 +363,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.copyCoordinates = function (position) {
         var text = scope.coordinates(position)
         if (text) call('setClipboard("' + text + '")')
+      }
+      // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
+      scope.openKofi = function () {
+        call('if openWebBrowser then openWebBrowser("' + KOFI + '") end setClipboard("' + KOFI + '")')
+        scope.intro.kofiOpened = true
       }
       scope.$on('EarthFreightState', function (event, data) {
         if (disposed || !data || typeof data.state !== 'string') return

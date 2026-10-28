@@ -238,6 +238,16 @@ test('coordinates copy as one latitude, longitude pair through the game clipboar
   for (const invalid of [null, {}, { latitude: 91, longitude: 0 }, { latitude: '0); x()', longitude: 0 }]) a.scope.copyCoordinates(invalid)
   assert.equal(a.commands.length, count)
 })
+test('the Ko-fi link sits only at the bottom of the start page, opens the browser and copies the link', () => {
+  const a = app()
+  a.scope.openKofi()
+  assert.equal(a.commands.at(-1), 'if openWebBrowser then openWebBrowser("https://ko-fi.com/madmerick") end setClipboard("https://ko-fi.com/madmerick")')
+  assert.equal(a.scope.intro.kofiOpened, true)
+  const start = html.indexOf('<div ng-if="intro.open">'), rest = html.indexOf('<div ng-if="!intro.open">', start)
+  const at = html.indexOf('ng-click="openKofi()"')
+  assert.ok(at > start && at < rest && at > html.indexOf('ng-click="newGame()"'), 'below Start over, on the start page')
+  assert.equal(html.split('openKofi()').length, 2, 'nowhere else in the HUD')
+})
 test('the HUD keeps money, Save, the message and the load outside the tabs', () => {
   const panels = html.indexOf('role="tabpanel"')
   for (const always of ['ng-click="save()"', 'data.balance', 'notice(data)', 'data.load.to', 'data.fuel.litres', 'copyCoordinates(data.resume)']) {
