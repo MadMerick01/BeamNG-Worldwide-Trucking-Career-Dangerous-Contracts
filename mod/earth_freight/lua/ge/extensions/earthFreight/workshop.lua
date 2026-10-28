@@ -333,13 +333,14 @@ function M.attach(c)
   end
 
   -- The HUD is hidden while the game's parts menu is open, so each change to the bill also opens a
-  -- box over the menu: the total so far, how it splits, and what the player is short. It stays until
+  -- box over the menu: the total so far, how it splits, the player's money and what they are short. It stays until
   -- the player closes it, the bill is paid or undone, or the menu closes and the HUD is back. The
   -- HUD app shows the box and says so; if it has not within BILL_FALLBACK_SECONDS, a corner pop-up
   -- shows the bill instead.
   function c:showPartsBill()
     local bill = self.pendingParts
-    local short = self.profile and bill.cost - self.profile.progression.balance
+    local balance = self.profile and self.profile.progression.balance
+    local short = balance and bill.cost - balance
     short = short and short > 0 and short or nil
     self.partsBillSerial = (self.partsBillSerial or 0) + 1
     local popup = {
@@ -347,11 +348,31 @@ function M.attach(c)
       total = bill.cost < 0 and ('You get back ' .. dollars(-bill.cost)) or ('Parts bill so far: ' .. dollars(bill.cost)),
       detail = (bill.partsCost < 0 and ('Parts refund ' .. dollars(-bill.partsCost)) or ('Parts ' .. dollars(bill.partsCost)))
         .. ', repair ' .. dollars(bill.repair) .. '.',
+      money = balance and ('You have ' .. dollars(balance) .. '.') or nil,
       short = short and ('You are ' .. dollars(short) .. ' short.') or nil,
-      hint = 'Pay or undo on the Garage tab.',
+      hint = 'You can also pay or undo on the Garage tab.',
+      lines = {}, cost = bill.cost, payAllowed = self:buyPartsAllowed() and true or false,
     }
+    -- The same lines as the bill on the Garage tab.
+    for _, part in ipairs(bill.added) do popup.lines[#popup.lines + 1] = { label = '+ ' .. part.name, amount = dollars(part.price) } end
+    for _, part in ipairs(bill.removed) do
+      popup.lines[#popup.lines + 1] = { label = '- ' .. part.name .. ' (sold back)', amount = '-' .. dollars(part.refund) }
+    end
+    if bill.repair > 0 then popup.lines[#popup.lines + 1] = { label = 'Repair (damage before the change)', amount = dollars(bill.repair) } end
+    if not popup.payAllowed and not short then popup.payWhy = 'Your job would not fit with these parts. Deliver it first, or undo the changes.' end
     self.partsBill = { serial = popup.serial, at = self.clock, popup = popup }
     if self.trigger then pcall(self.trigger, 'EarthFreightPartsBill', popup) end
+  end
+
+  -- Pay on the parts bill box. Only pays the bill the box showed; says how it went in a corner pop-up.
+  function c:payPartsBill(serial)
+    if not self.partsBill or self.partsBill.serial ~= serial then
+      self:toast('warning', 'Parts bill', 'The bill changed. Check the new one and pay again.')
+      return false
+    end
+    local ok = self:buyParts()
+    self:toast(ok and 'success' or 'warning', 'Parts bill', self.partsFeedback or 'Could not pay. Try again on the Garage tab.')
+    return ok
   end
 
   -- The HUD app showed the parts bill box.
@@ -371,7 +392,8 @@ function M.attach(c)
       open.fellBack = true
       local p = open.popup
       self:toast(p.short and 'warning' or 'info', 'Parts bill',
-        p.total .. ' (' .. p.detail:gsub('%.$', ''):lower() .. ').' .. (p.short and (' ' .. p.short) or '') .. ' ' .. p.hint)
+        p.total .. ' (' .. p.detail:gsub('%.$', ''):lower() .. ').' .. (p.money and (' ' .. p.money) or '')
+          .. (p.short and (' ' .. p.short) or '') .. ' ' .. p.hint)
     end
   end
 

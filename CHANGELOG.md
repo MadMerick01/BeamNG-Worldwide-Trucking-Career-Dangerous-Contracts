@@ -8,6 +8,10 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **The HUD is now called TruckingCareerDC in the app list.** When you open Edit Layout (or the UI apps menu) to add or move the HUD, look for TruckingCareerDC instead of EarthFreightHUD. Because the HUD has a new name, the game may drop it from a layout you saved before this build. If the HUD is missing after you update, open Edit Layout, add TruckingCareerDC again and save your layout. Delete the old ZIP from your mods folder so you don't end up with two copies. Your saves still work.
 
+## Build 77 · 28 Oct 2026
+
+- **You can now pay for your parts straight from the parts bill box.** The box that pops up in the parts menu now lists each part you've added or sold back with its price, as the Garage tab does, and shows how much money you have. Press Pay, then Yes, pay, to buy the parts without leaving the menu. The Pay button only shows when you can afford the bill. You can still pay or undo on the Garage tab. Your saves still work.
+
 ## Build 74 · 28 Oct 2026
 
 - **Teleport straight to your relocation.** Once you've booked a relocation on the Relocate tab, a new **Teleport** button sits next to **Copy** and takes you there in one press, so you no longer need to paste the coordinates into the BeamNG.Earth map. The fee and the rules are the same: book with an empty car, and the booking is used up when you land. Copying the coordinates still works. Your saves still work.
