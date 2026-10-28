@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Teleport straight to your relocation.** Once you've booked a relocation on the Relocate tab, a new **Teleport** button sits next to **Copy** and takes you there in one press, so you no longer need to paste the coordinates into the BeamNG.Earth map. The fee and the rules are the same: book with an empty car, and the booking is used up when you land. Copying the coordinates still works. Your saves still work.
+
 ## Build 71 · 28 Oct 2026
 
 - **Start anywhere on Earth, such as your home town.** A new game no longer sends you to Penrith. Open the BeamNG.Earth map, find any place, teleport there and press the new **Start here** button on the start page or the Route tab. Your starter car and $2,500 are waiting right where you are, and that spot becomes your start. It's named after the town you're in or the nearest one within 20 km. Anywhere more remote is simply called your start.

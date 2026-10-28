@@ -152,7 +152,7 @@ function M.new(deps)
     self.partsFeedback, self.carFeedback, self.tradeFeedback, self.fuelFeedback = nil, nil, nil, nil
     self.vehicleProvided, self.arrivingModel, self.arrivingValue, self.arrived = false, nil, nil, false
     self.newGameArmed, self.flash, self.refunded = false, nil, nil
-    self.teleportAskedAt, self.teleportFeedback, self.contractTeleportAt = nil, nil, nil
+    self.teleportAskedAt, self.teleportFeedback, self.contractTeleportAt, self.bookingTeleportAt = nil, nil, nil, nil
     -- Shipping booked and not yet used, and where an unbooked teleport left from. Neither is saved:
     -- Save waits until both are settled.
     self.booking, self.stranded, self.shippingFeedback, self.lastDriven = nil, nil, nil, nil
@@ -428,7 +428,7 @@ function M.new(deps)
     end
     if self.booking and shipping.arrived(to, self.booking) then
       local b = self.booking
-      self.booking, self.stranded = nil, nil
+      self.booking, self.stranded, self.bookingTeleportAt = nil, nil, nil
       local paid = ''
       if b.offer then
         self.offer = { latitude = b.latitude, longitude = b.longitude, name = b.name, fee = b.fee }
@@ -525,9 +525,23 @@ function M.new(deps)
     end
     self.booking = { id = destination.id, name = destination.name, region = destination.region, fee = fee,
       latitude = destination.latitude, longitude = destination.longitude }
-    self.shippingFeedback = 'Booked to ' .. destination.name .. ' for ' .. dollars(fee) .. '. Copy the coordinates, paste them into the BeamNG.Earth map and teleport there.'
+    self.bookingTeleportAt = nil
+    self.shippingFeedback = 'Booked to ' .. destination.name .. ' for ' .. dollars(fee) .. '. Press Teleport there, or copy the coordinates into the BeamNG.Earth map.'
     self.diag:event('shipping_booked', destination.id .. ':' .. fee)
     return true
+  end
+
+  -- Asks Earth to take the car to the booked destination, as pasting its coordinates into Earth's
+  -- map does. Landing there uses up the booking, seen in teleported.
+  function c:teleportToBooking()
+    local b = self.booking
+    if not b or self.error or self.state ~= 'READY' or not self.adapter.teleport then return false end
+    local ok, why, detail = self.adapter:teleport(b, 'Worldwide Trucking: ' .. b.name)
+    self.diag:event('teleport_to_booking', ok and b.id or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
+    self.bookingTeleportAt = ok and self.clock or nil
+    -- On the way, the HUD says so under the button for as long as the button rests.
+    self.shippingFeedback = not ok and 'BeamNG.Earth did not take the teleport. Copy the coordinates into its map instead.' or nil
+    return ok == true
   end
 
   -- Cancels a booking not yet used and refunds its fee.
@@ -536,7 +550,7 @@ function M.new(deps)
     self:addMoney(self.booking.fee)
     self.shippingFeedback = 'Booking cancelled. ' .. dollars(self.booking.fee) .. ' refunded.'
     self.diag:event('shipping_cancelled', self.booking.id)
-    self.booking = nil
+    self.booking, self.bookingTeleportAt = nil, nil
     return true
   end
 
@@ -1157,13 +1171,16 @@ function M.new(deps)
         secondsLeft = left, here = here, allowed = problem == nil and not here and self:canAfford(fee) }
     end
     local b = self.booking
+    -- Teleport there rests while Earth carries out the last press.
+    local teleporting = self.bookingTeleportAt ~= nil and self.clock - self.bookingTeleportAt < TELEPORT_WAIT_SECONDS
     return {
       offer = offerView, destinations = list, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
       problem = problem, feedback = self.shippingFeedback,
       pending = self.offer and { name = self.offer.name, fee = self.offer.fee, radiusKm = shipping.OFFER_RADIUS_METRES / 1000,
         distanceMetres = location.distance(current, self.offer) } or nil,
       booking = b and { id = b.id, name = b.name, region = b.region, fee = b.fee, offer = b.offer == true, latitude = b.latitude, longitude = b.longitude,
-        distanceMetres = location.distance(current, b) } or nil,
+        distanceMetres = location.distance(current, b),
+        teleportAllowed = self.adapter.teleport ~= nil and not teleporting, teleporting = teleporting or nil } or nil,
     }
   end
 
@@ -1469,6 +1486,7 @@ function M.cancelNewGame() return safely(function() return ensure():cancelNewGam
 function M.startHere() return safely(function() return ensure():startHere() end) end
 function M.teleportToResume() return safely(function() return ensure():teleportToResume() end) end
 function M.teleportToContract() return safely(function() return ensure():teleportToContract() end) end
+function M.teleportToBooking() return safely(function() return ensure():teleportToBooking() end) end
 -- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.
 -- share is the slider's percentage of a full load: 10 to 100 in steps of 10; anything else takes it all.
 function M.takeJob(job, share)

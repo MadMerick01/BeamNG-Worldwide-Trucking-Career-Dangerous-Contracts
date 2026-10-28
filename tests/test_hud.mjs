@@ -426,6 +426,19 @@ test('a dangerous contract shows on the board and teleports to its start only wh
   assert.equal(a.commands.at(-1), fixed('teleportToContract()'))
   assert.equal(a.scope.coordinates(contract.start), '-16.28700000, -67.81500000')
 })
+test('a relocation booking has a Teleport button next to Copy, sent only when Lua allows it', () => {
+  const card = html.slice(html.indexOf('ng-click="copyCoordinates(data.shipping.booking)"'))
+  assert.ok(card.indexOf('ng-click="teleportToBooking()"') > 0 && card.indexOf('ng-click="teleportToBooking()"') < card.indexOf('</div>'), 'beside Copy')
+  const a = app()
+  const booking = { name: 'Coroico', region: 'Death Road', fee: 300, latitude: -16.19, longitude: -67.73 }
+  a.state({ state: 'READY', arrived: true, shipping: { booking } })
+  const count = a.commands.length
+  a.scope.teleportToBooking()
+  assert.equal(a.commands.length, count, 'refused when not allowed')
+  a.state({ state: 'READY', arrived: true, shipping: { booking: { ...booking, teleportAllowed: true } } })
+  a.scope.teleportToBooking()
+  assert.equal(a.commands.at(-1), fixed('teleportToBooking()'))
+})
 test('the HUD has no select box: BeamNG does not open its list', () => {
   assert.doesNotMatch(html, /<select/)
 })
