@@ -57,7 +57,7 @@ class PackageTest(unittest.TestCase):
             workshop = archive.read('lua/ge/extensions/earthFreight/workshop.lua')
         self.assertEqual(config['model'], 'burnside')
         self.assertIsInstance(config['parts'], dict)
-        self.assertEqual(info['Configuration'], 'Earth_Freight_Starter')
+        self.assertEqual(info['Configuration'], 'Rusty')
         self.assertEqual(thumbnail[:3], b'\xff\xd8\xff')
         self.assertIn(b"'" + (prefix + 'earth_freight_starter.pc').encode() + b"'", workshop)
 
