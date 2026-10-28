@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Stuck off the road? Press Tow to road.** The Repair card on the Garage tab has a new **Tow to road · $500** button that puts your car back on the road it was last on. Press it, then **Confirm tow**. The $500 is only taken once your car has actually moved, so if the game can't find a road you pay nothing. Towing keeps your job and doesn't count as a teleport, but it doesn't fix anything: any damage your car had is still owed on the Repair card, even if it looks new after the tow. Your saves still work.
+
 ## Build 79 · 28 Oct 2026
 
 - **You can now buy second-hand cars.** Press **Buy second hand** on the Garage tab to see two used cars for sale in the town you're in, or the nearest town. They can be any BeamNG car in any version, except trailers and props, and cost between 70% and 105% of the new price. Each card shows the car's picture, its kilometres, its price, a "Good deal" tag when it's under 80% of new, and what you'd pay after your trade-in. Each town always sells the same two cars, so drive to another town to see different ones. **Buy this one** puts the car in place of yours and opens the usual car bill at the second-hand price: buy it or press **Get my car back**, as with a new car.

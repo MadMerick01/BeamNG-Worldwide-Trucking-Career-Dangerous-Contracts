@@ -311,7 +311,9 @@
           <div style="display:flex;gap:8px;margin-top:6px;">
             <button type="button" ng-click="requestRepairQuote()" ng-disabled="!data.repairQuoteAllowed" style="padding:7px 12px;">Get repair quote</button>
             <button type="button" ng-click="repairVehicle()" ng-disabled="!data.repairAllowed" style="padding:7px 12px;">Repair</button>
+            <button type="button" ng-if="data.tow" ng-click="towToRoad()" ng-disabled="!data.tow.allowed" ng-style="data.tow.armed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:7px 12px;">{{data.tow.pending ? 'Towing...' : (data.tow.armed ? 'Confirm tow' : 'Tow to road')}} &middot; ${{data.tow.fee | number:0}}</button>
           </div>
+          <div ng-if="data.tow" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Stuck or off the road? Tow to road puts your car back on the road it was last on. It does not fix any damage.</div>
         </div>
         <div style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
           <div style="font-weight:bold;color:#a7e5c9;">Fuel</div>
