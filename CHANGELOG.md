@@ -10,6 +10,10 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - **The Nearby list on the Route tab shows which way each town is**, as N, SE and so on under its distance, and each town has a **GPS** button. Press it to set BeamNG.Earth's GPS to the middle of that town, which is where it counts as being in town. The town the GPS is set to has a gold button, including the drop-off of the job you took.
 - **A chime plays when you can deliver.** Stopping at your drop-off town, an off-road drop or a dangerous contract's finish, or at a beacon you can pick up, plays two short notes. If the HUD is minimised, its Worldwide Trucking button flashes gold until you deliver.
 
+## Build 98 · 28 Oct 2026
+
+- **Relocating no longer fixes your car for free.** Teleporting to a relocation you booked on the Relocate tab, to the start of a dangerous contract, or anywhere with the BeamNG.Earth map puts the car down as new, just like pressing Insert. The repair it needed now always stays owed on the Garage tab, even when the car's damage could not be read while the new area was loading, which could let it slip through before. Your saves still work.
+
 ## Build 97 · 28 Oct 2026
 
 - **New dangerous contract: Ravin de Piquet, France.** It runs from the Ravin de Piquet down the mountain valley to Cauterets in the French Pyrenees, about 5 km, paying 4 times the base rate. Like the other dangerous contracts, it can be done once per game. Your saves still work.
