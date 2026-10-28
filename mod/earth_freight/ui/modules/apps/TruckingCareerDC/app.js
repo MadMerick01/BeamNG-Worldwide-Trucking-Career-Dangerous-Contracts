@@ -87,7 +87,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     if (data && data.open) showBill(data); else closeBill()
   })
   return {
-    templateUrl: '/ui/modules/apps/EarthFreightHUD/app.html',
+    templateUrl: '/ui/modules/apps/TruckingCareerDC/app.html',
     replace: true,
     link: function (scope, element) {
       'use strict'
