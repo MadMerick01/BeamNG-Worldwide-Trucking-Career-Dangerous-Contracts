@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The game now saves itself.** After a delivery, buying parts or a car, a repair or a relocation, it saves once you've been stopped for a few seconds, and the line under your money says "Saved automatically after your delivery" (or whatever you did). If you drive straight off, it saves at your next stop. A game crash or a forgotten Save no longer loses your run. The **Save** button still works for anything else, such as kilometres driven. Your saves still work.
+- **The Nearby list on the Route tab shows which way each town is**, as N, SE and so on under its distance, and each town has a **GPS** button. Press it to set BeamNG.Earth's GPS to the middle of that town, which is where it counts as being in town. The town the GPS is set to has a gold button, including the drop-off of the job you took.
+- **A chime plays when you can deliver.** Stopping at your drop-off town, an off-road drop or a dangerous contract's finish, or at a beacon you can pick up, plays two short notes. If the HUD is minimised, its Worldwide Trucking button flashes gold until you deliver.
+
 ## Build 97 · 28 Oct 2026
 
 - **New dangerous contract: Ravin de Piquet, France.** It runs from the Ravin de Piquet down the mountain valley to Cauterets in the French Pyrenees, about 5 km, paying 4 times the base rate. Like the other dangerous contracts, it can be done once per game. Your saves still work.

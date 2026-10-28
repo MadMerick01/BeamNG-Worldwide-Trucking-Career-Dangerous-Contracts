@@ -180,6 +180,36 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         for (var id in alerts) if (alerts[id](d)) return 'waiting'
         return ''
       }
+      // At the drop-off and stopped, so Deliver (or Pick it up) works: the player hears a chime, and a
+      // minimised HUD's button flashes until they do it.
+      scope.atDestination = function (d) {
+        d = d || scope.data || {}
+        return !!(d.town && d.town.delivery && d.town.delivery.allowed) ||
+          !!(d.load && d.load.drop && d.load.drop.delivery && d.load.drop.delivery.allowed) ||
+          !!(d.beacon && d.beacon.pickUpAllowed)
+      }
+      // Two short rising notes, made here so the mod needs no sound files. Where the game has no
+      // Web Audio it stays quiet; the flashing button still shows it.
+      var chime = function () {
+        kept.chimes = (kept.chimes || 0) + 1
+        try {
+          var Context = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)
+          if (!Context) return
+          var audio = kept.audio || (kept.audio = new Context())
+          if (audio.resume) audio.resume()
+          var start = audio.currentTime
+          ;[[880, 0], [1318.5, 0.16]].forEach(function (note) {
+            var tone = audio.createOscillator(), level = audio.createGain()
+            tone.type = 'sine'; tone.frequency.value = note[0]
+            level.gain.setValueAtTime(0.0001, start + note[1])
+            level.gain.exponentialRampToValueAtTime(0.25, start + note[1] + 0.02)
+            level.gain.exponentialRampToValueAtTime(0.0001, start + note[1] + 0.5)
+            tone.connect(level); level.connect(audio.destination)
+            tone.start(start + note[1]); tone.stop(start + note[1] + 0.55)
+          })
+        } catch (e) {}
+      }
+      scope.chimes = function () { return kept.chimes || 0 }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
@@ -190,6 +220,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var follow = function (previous, next) {
         // The start page opens once on a new game or on loading a save, until the player is there.
         if (next.arrived || (previous.mode && previous.mode !== next.mode)) kept.introShown = false
+        if (scope.atDestination(next) && !scope.atDestination(previous)) chime()
         if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
           kept.introShown = true; scope.openIntro(next); scope.setMinimised(false)
         }
