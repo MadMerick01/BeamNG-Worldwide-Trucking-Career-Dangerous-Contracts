@@ -1,5 +1,5 @@
 {
-  "Configuration":"Earth_Freight_Starter",
+  "Configuration":"Rusty",
   "format":2,
   "mainPartName":"burnside",
   "mainPartPath":"/burnside",

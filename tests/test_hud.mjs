@@ -69,6 +69,28 @@ test('buttons only send fixed commands when Lua enabled them', () => {
     assert.equal(a.commands.at(-1), fixed(body), name)
   }
 })
+test('the short term loan is only taken or repaid when Lua allows it', () => {
+  const a = app()
+  const count = a.commands.length
+  a.state({ state: 'READY' }); a.scope.takeLoan(); a.scope.repayLoan()
+  a.state({ state: 'READY', loan: { takeAllowed: false, repayAllowed: false } }); a.scope.takeLoan(); a.scope.repayLoan()
+  assert.equal(a.commands.length, count, 'refused when not allowed')
+  a.state({ state: 'READY', loan: { takeAllowed: true } }); a.scope.takeLoan(); assert.equal(a.commands.at(-1), fixed('takeLoan()'))
+  a.state({ state: 'READY', loan: { repayAllowed: true } }); a.scope.repayLoan(); assert.equal(a.commands.at(-1), fixed('repayLoan()'))
+  const repair = html.slice(html.indexOf('>Repair</div>'), html.indexOf('>Fuel</div>'))
+  for (const action of ['cancelPay(); takeLoan()', 'repayLoan()']) assert.ok(repair.includes(`ng-click="${action}"`), action + ' on the Repair card')
+})
+test('Buy second hand opens the list, and a car is only bought by its slot when Lua allows it', () => {
+  const a = app()
+  a.scope.openUsedCars(true); assert.equal(a.commands.at(-1), fixed('openUsedCars(true)'))
+  a.scope.openUsedCars(false); assert.equal(a.commands.at(-1), fixed('openUsedCars(false)'))
+  const count = a.commands.length
+  a.scope.buyUsedCar({ slot: 1, allowed: false }); a.scope.buyUsedCar({ slot: '1); x(', allowed: true })
+  a.scope.buyUsedCar({ slot: 1.5, allowed: true }); a.scope.buyUsedCar(null)
+  assert.equal(a.commands.length, count, 'refused unless allowed, with a whole slot')
+  a.scope.buyUsedCar({ slot: 2, allowed: true }); assert.equal(a.commands.at(-1), fixed('buyUsedCar(2)'))
+})
+
 test('paying a bill asks to confirm that total, and a new total asks again', () => {
   const a = app()
   a.state({ state: 'READY', partsChange: { cost: 500 }, buyPartsAllowed: true })
@@ -152,6 +174,15 @@ test('insurance is only claimed when Lua offers it', () => {
   a.state({ state: 'READY', insurance: { allowed: true } }); a.scope.claimInsurance()
   assert.equal(a.commands.at(-1), fixed('claimInsurance()'))
 })
+test('a tow is only asked for when Lua allows it, from the Repair card', () => {
+  const a = app()
+  a.state({ state: 'READY', tow: { allowed: false, fee: 500 } }); a.scope.towToRoad()
+  assert.equal(a.commands.length, 1)
+  a.state({ state: 'READY', tow: { allowed: true, fee: 500 } }); a.scope.towToRoad()
+  assert.equal(a.commands.at(-1), fixed('towToRoad()'))
+  const repair = html.slice(html.indexOf('>Repair</div>'), html.indexOf('>Fuel</div>'))
+  assert.ok(repair.includes('ng-click="towToRoad()"'), 'the button is on the Repair card')
+})
 test('colours: green above the usual pay, red below, gold for a shortage or jackpot', () => {
   const a = app()
   assert.equal(a.scope.dotColor('high'), '#6fcf97'); assert.equal(a.scope.dotColor('low'), '#eb5757')
@@ -206,6 +237,16 @@ test('coordinates copy as one latitude, longitude pair through the game clipboar
   const count = a.commands.length
   for (const invalid of [null, {}, { latitude: 91, longitude: 0 }, { latitude: '0); x()', longitude: 0 }]) a.scope.copyCoordinates(invalid)
   assert.equal(a.commands.length, count)
+})
+test('the Ko-fi link sits only at the bottom of the start page, opens the browser and copies the link', () => {
+  const a = app()
+  a.scope.openKofi()
+  assert.equal(a.commands.at(-1), 'if openWebBrowser then openWebBrowser("https://ko-fi.com/madmerick") end setClipboard("https://ko-fi.com/madmerick")')
+  assert.equal(a.scope.intro.kofiOpened, true)
+  const start = html.indexOf('<div ng-if="intro.open">'), rest = html.indexOf('<div ng-if="!intro.open">', start)
+  const at = html.indexOf('ng-click="openKofi()"')
+  assert.ok(at > start && at < rest && at > html.indexOf('ng-click="newGame()"'), 'below Start over, on the start page')
+  assert.equal(html.split('openKofi()').length, 2, 'nowhere else in the HUD')
 })
 test('the HUD keeps money, Save, the message and the load outside the tabs', () => {
   const panels = html.indexOf('role="tabpanel"')

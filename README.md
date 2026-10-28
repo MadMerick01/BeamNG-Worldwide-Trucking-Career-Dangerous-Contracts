@@ -1,6 +1,6 @@
 # BeamNG Worldwide Trucking Career: Dangerous Contracts
 
-_Formerly Earth Freight Sim._
+Keep me awake behind the wheel! [buy me a coffee on Ko-fi](https://ko-fi.com/madmerick).
 
 **Haul cargo anywhere on Earth. Start in a rust bucket with no radiator or front brakes**
 
@@ -10,19 +10,19 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 ## Features
 
-- **130,000+ real towns, each with a job board.** Parts, bricks, water and fuel, wherever you are on Earth.
-- **Garage - Build your Rig.** Upgrade parts, buy and sell new and second hand vehicles. More freight per trip means more Pay.
+- **130,000+ real earth towns, each with a job board.** Move parts, bricks, water and fuel.
+- **Garage - Build your Rig.** Upgrade parts, buy and sell **new** and **second hand** vehicles.
 - **Off-road drops.** No GPS
 - **Dangerous highly paid contracts.** Death Road, Carhuaz, Zoji La, Sani Pass and Grimsel, for up to **8x the pay**.
 - **Dynamic economy** Towns want different goods, repeat runs pay less, shortages pay double.
-- **Steep, remote and famous roads** pay up to 3x. Regions are graded for difficulty. Cargo weighs the car down, fluids slosh in the tank, tyres puncture and repairs cost money.
+- **Steep, remote and notorious roads** pay up to 3x. Regions are graded for difficulty.
 - **Relocate.** Pay to move to any town or coordinates on Earth. Some of the world's hardest regions will pay your way if you come and deliver their wares.
 
 ## Install
 
 1. Download `earth-freight-sim.zip` from the [latest release](../../releases/latest).
 2. Drop it, **still zipped**, into the `mods` folder of your BeamNG user folder. If an older `earth_freight.zip` is there, delete it. Your saves carry over.
-3. In game, turn on the **BeamNG Worldwide Trucking Career: Dangerous Contracts** UI app.
+3. In game, turn on the **TruckingCareerDC** UI app.
 
 ## How to Start
 

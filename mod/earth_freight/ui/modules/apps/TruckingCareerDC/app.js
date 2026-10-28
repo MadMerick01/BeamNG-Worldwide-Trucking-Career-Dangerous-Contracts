@@ -8,6 +8,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   }
   // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
   var STORE = 'earthFreight.hudMinimised'
+  var KOFI = 'https://ko-fi.com/madmerick'
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
   // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
@@ -305,6 +306,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
+      scope.takeLoan = function () { if (scope.data.loan && scope.data.loan.takeAllowed) core('takeLoan()') }
+      scope.repayLoan = function () { if (scope.data.loan && scope.data.loan.repayAllowed) core('repayLoan()') }
+      scope.towToRoad = function () { if (scope.data.tow && scope.data.tow.allowed) core('towToRoad()') }
       // Paying for a bill takes two presses: the first asks to confirm that total, and a changed
       // total asks again.
       scope.confirming = { kind: null, cost: null }
@@ -315,6 +319,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
       scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar()') }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
+      // Buy second hand: opens or closes the town's list; a car is picked by its place in it.
+      scope.openUsedCars = function (open) { core('openUsedCars(' + (open ? 'true' : 'false') + ')') }
+      scope.buyUsedCar = function (offer) {
+        if (offer && offer.allowed && [1, 2, 3, 4, 5, 6, 7, 8, 9].indexOf(offer.slot) >= 0) core('buyUsedCar(' + offer.slot + ')')
+      }
       // Open the game's own parts menu (Ctrl+W) and car selector (Ctrl+E); the bill then shows up on the Garage tab.
       scope.openPartsMenu = function () {
         call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
@@ -354,6 +363,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.copyCoordinates = function (position) {
         var text = scope.coordinates(position)
         if (text) call('setClipboard("' + text + '")')
+      }
+      // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
+      scope.openKofi = function () {
+        call('if openWebBrowser then openWebBrowser("' + KOFI + '") end setClipboard("' + KOFI + '")')
+        scope.intro.kofiOpened = true
       }
       scope.$on('EarthFreightState', function (event, data) {
         if (disposed || !data || typeof data.state !== 'string') return

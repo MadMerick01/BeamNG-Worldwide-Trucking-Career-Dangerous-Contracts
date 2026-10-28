@@ -227,6 +227,8 @@ Vehicles are bought through the garage as in Enduro: a car's game Value sets its
 
 **Decided (Q9): there is no forced ladder.** The player can buy any vanilla BeamNG vehicle they can afford. The sedan → ute → truck → semi tiers above describe the usual path, not a rule; money does the gating.
 
+**Decided (Rowan, 27 Oct): second-hand cars.** Buy second hand on the Garage tab lists two cars for sale in the town the player is in, or the nearest town (`usedCars.lua`). They are picked from the game's whole config list (official BeamNG configs with a Value, no trailers or props) by a hash of the town's id, so each town always has the same two and the player drives on to see others. The price is 70% to 105% of the config's Value; cheaper cars have more kilometres (20,000 to 300,000). Buying spawns the car in place of the player's and opens the normal car bill at that price. The car is made to look worn through the game's part condition (mileage and faded paint) and is otherwise like new. Its value is the price paid, kept through part changes and in the save, so it cannot be traded in for more than it cost. The idea comes from RLS Career Overhaul's dealerships; none of its code is used.
+
 ## Teleporting: book shipping (decided, Q10 and Q11)
 
 The point of the game is to take your vehicle all over the world, so moving it should be **cheap**. What you cannot do is teleport with goods.
@@ -354,6 +356,7 @@ Not in layer 1: supply and demand, rural pickup points, the planning map, roadsi
 - Boards are seeded by the place and the player's count of jobs done (`progression.jobsDone` in the save), so a board stays put while you look at it and is new after each delivery or abandoned job. Shortages and need recovery run on the wall clock (`os.time`), like the paid-shipping offers.
 - The save keeps the job (`load` with `pay` and `units`), the jobs done and the recent deliveries (`needs`: place, good, drop and time). All are optional fields, so the save format (schema 1) is unchanged and old saves load. An old save's bought cargo is refunded on load.
 - Insurance: `garage.toRoad` calls `spawn.teleportToLastRoad` (in the 0.39 dump), guarded. The car is fixed 1.5 s later where it lands, through the same respawn as a repair. Jumps in the 10 s after a claim are not treated as teleports. Needs checking in game: whether Earth's roads give BeamNG a road to go back to; without one the car is fixed where it stands.
+- Tow to road: the Repair card's button calls the same `garage.toRoad` for $500 (`workshop.TOW_FEE`). The fee is taken once the car's position has moved more than 0.5 m, or never if it has not moved within 5 s. The jump gets the insurance grace, so it is not a teleport. Nothing is repaired: if `teleportToLastRoad` resets the car, `watchResets` sees the damage drop and keeps it owed, as after Insert.
 
 ## Worldwide places as built
 
