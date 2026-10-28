@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- No changes in the game. The README now lists what you need before installing (BeamNG.drive 0.40, BeamNG.Earth, and the Revamped Bell 407 for heli flights), how to update, where to report bugs, the features it was missing, and credits for BeamNG.Earth and the Bell 407.
+
 ## Build 90 · 28 Oct 2026
 
 - **New Heli tab: hire a helicopter and fly loads over the world.** It needs the Revamped Bell 407 mod by stefan750, which you download from the BeamNG forum and put in your mods folder yourself. Without it, the Heli tab says what to install and has a button that opens the mod's page. Press **Hire helicopter · $1,000**, then **Confirm hire**, in your own car while it's stopped. The helicopter takes your car's place, and your car waits with its job, fuel and damage.
