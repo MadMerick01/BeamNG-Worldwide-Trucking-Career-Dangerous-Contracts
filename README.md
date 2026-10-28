@@ -6,7 +6,7 @@ _Formerly Earth Freight Sim._
 
 A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive.
 
-<img width="1500" height="1000" alt="wwtcDCtitle" src="https://github.com/user-attachments/assets/7f236848-88bb-4f92-96cf-135bb46c4589" />
+<img width="1500" height="1000" alt="wwtcDCtitle" src="https://github.com/user-attachments/assets/a4f19789-2c43-44ed-9949-018cfa19957a" />
 
 ## Features
 
