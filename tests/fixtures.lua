@@ -159,6 +159,32 @@ function F.fuel()
   function f:set(litres, serial) self.sets[#self.sets + 1] = { litres = litres, serial = serial }; return true end
   return f
 end
+-- Stand-in for the heli loads: each load is a world position and damage by id; the player's
+-- vehicle stands at player. Tests move them and answer through the controller's loadMass.
+function F.aircraft()
+  local a = { player = { x = 0, y = 0, z = 0 }, loads = {}, spawned = {}, masses = {}, removed = {}, nextId = 100, ground = 0 }
+  function a:where(id)
+    if id == nil then return F.copy(self.player) end
+    local load = self.loads[id]
+    return load and F.copy(load.pos) or nil
+  end
+  function a:height(id)
+    if id == nil then return self.ground end
+    return self.loads[id] and (self.loads[id].height or 0) or nil
+  end
+  function a:damage(id) return self.loads[id] and self.loads[id].damage or nil end
+  function a:spawnLoad(model, config, ahead)
+    if self.fails then return nil, 'spawn_failed' end
+    self.nextId = self.nextId + 1
+    self.loads[self.nextId] = { model = model, config = config, damage = 0,
+      pos = { x = self.player.x, y = self.player.y + ahead, z = 0 } }
+    self.spawned[#self.spawned + 1] = self.nextId
+    return self.nextId
+  end
+  function a:setMass(id, kg) self.masses[#self.masses + 1] = { id = id, kg = kg }; return true end
+  function a:remove(id) self.loads[id] = nil; self.removed[#self.removed + 1] = id; return true end
+  return a
+end
 function F.controller(options)
   local Core = require('earthFreight/core')
   options = options or {}
@@ -169,7 +195,7 @@ function F.controller(options)
   local fuel = options.fuel or F.fuel()
   local events, logs = {}, {}
   local c = Core.new({ io = io, adapter = adapter, garage = garage, paused = options.paused, random = options.random,
-    punctures = options.punctures, cargo = cargo, fuel = fuel,
+    punctures = options.punctures, cargo = cargo, fuel = fuel, aircraft = options.aircraft,
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
   return c, io, adapter, garage, cargo, fuel, logs

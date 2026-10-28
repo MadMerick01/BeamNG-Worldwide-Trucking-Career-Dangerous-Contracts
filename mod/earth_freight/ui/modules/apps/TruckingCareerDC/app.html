@@ -118,6 +118,7 @@
     </div>
     <div role="tabpanel" style="padding-top:10px;">
       <div ng-if="tab === 'route'">
+        <div ng-if="data.heli.hired" style="margin:0 0 8px;padding:6px 10px;border:1px solid #f2c94c;border-radius:6px;color:#f2c94c;"><b>Heli hired.</b> Your car waits<span ng-if="data.heli.hired.car.distanceMetres != null && !data.heli.hired.car.near"> {{km(data.heli.hired.car.distanceMetres)}} km {{data.heli.hired.car.direction}}</span>. Loads and Back to my car are on the Heli tab.</div>
         <div ng-if="data.stranded" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">
           <div style="font-weight:bold;color:#eb5757;">Teleported without relocating</div>
           <div style="font-size:13px;">Deliveries and driving do not count until you go back to where you left from, or book a relocation on the Relocate tab.</div>
@@ -395,6 +396,45 @@
           </div>
           <div ng-if="data.shipping.feedback" style="margin-top:4px;color:#c9d6d2;">{{data.shipping.feedback}}</div>
         </div>
+      </div>
+      <div ng-if="tab === 'heli'">
+        <div ng-if="!data.heli" style="color:#c9d6d2;">Heli flights open once you are in your car at your start or last save.</div>
+        <div ng-if="data.heli && !data.heli.hired" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Hire a helicopter</div>
+          <div style="font-size:13px;">Fly a Bell 407 over the world and carry loads on its tow hook. A hire costs ${{data.heli.fee | number:0}} and lasts until you go back to your car. Each load pays ${{data.heli.payPerKg | number:0}} a kg, up to ${{data.heli.maxPay | number:0}} for {{data.heli.maxKg | number:0}} kg, in full from {{data.heli.fullPayKm}} km. It is for fun and the views: trucks pay far more.</div>
+          <div style="font-size:13px;color:#c9d6d2;margin-top:4px;">Your car waits where you leave it, with its job, fuel and damage. A crash costs ${{data.heli.crashFee | number:0}} insurance and ends the hire.</div>
+          <div ng-if="!data.heli.installed" style="margin-top:6px;padding:8px;border:1px solid #f2c94c;border-radius:6px;">
+            <div style="font-weight:bold;color:#f2c94c;">Needs the {{data.heli.modName}} mod</div>
+            <div style="font-size:13px;">Download the {{data.heli.modName}} by {{data.heli.modAuthor}} from the BeamNG forum, put its ZIP in your mods folder and restart the game. Then come back here.</div>
+            <button type="button" ng-click="openHeliMod()" style="margin-top:6px;padding:5px 10px;">Open the mod's page</button>
+            <div style="font-size:12px;color:#c9d6d2;margin-top:2px;">Opens it in your browser and copies the link.</div>
+          </div>
+          <div ng-if="data.heli.installed && data.heli.problem" style="margin-top:6px;color:#f2c94c;">{{data.heli.problem}}</div>
+          <button type="button" ng-click="hireHeli()" ng-disabled="!data.heli.hireAllowed" ng-style="data.heli.armed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {opacity: data.heli.hireAllowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;">{{data.heli.armed ? 'Confirm hire' : 'Hire helicopter'}}<span ng-if="!data.heli.armed"> &middot; ${{data.heli.fee | number:0}}</span></button>
+        </div>
+        <div ng-if="data.heli.hired" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
+          <div style="font-weight:bold;color:#f2c94c;">Helicopter hired<span ng-if="data.heli.hired.flights"> &middot; {{data.heli.hired.flights}} {{data.heli.hired.flights === 1 ? 'load' : 'loads'}}, ${{data.heli.hired.earned | number:0}} earned</span></div>
+          <div ng-if="data.heli.hired.stage === 'spawning'" style="color:#c9d6d2;">Bringing the helicopter out...</div>
+          <div ng-if="data.heli.hired.stage === 'teleporting' || data.heli.hired.stage === 'swapping'" style="color:#c9d6d2;">Taking you back to your car. The terrain takes a few seconds to load.</div>
+          <div ng-if="data.heli.hired.waiting" style="color:#c9d6d2;">A new load is on its way, in front of the helicopter.</div>
+          <div ng-if="data.heli.hired.load && data.heli.hired.stage === 'flying'" style="margin-top:6px;">
+            <div style="font-weight:bold;">Load: {{data.heli.hired.load.kg | number:0}} kg &rarr; {{data.heli.hired.load.to}} &middot; pays ${{data.heli.hired.load.pay | number:0}}</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
+              <div ng-if="data.heli.hired.load.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.heli.hired.load)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#f2c94c;">&#9650;</div>
+              <div style="flex:1;min-width:0;">
+                <div ng-if="!data.heli.hired.load.inZone && data.heli.hired.load.distanceMetres != null" style="font-size:18px;font-weight:bold;"><span ng-if="data.heli.hired.load.distanceMetres >= 1000">{{km(data.heli.hired.load.distanceMetres)}} km</span><span ng-if="data.heli.hired.load.distanceMetres < 1000">{{data.heli.hired.load.distanceMetres | number:0}} m</span><span ng-if="data.heli.hired.load.direction"> {{data.heli.hired.load.direction}}</span></div>
+                <div ng-if="data.heli.hired.load.inZone" style="font-size:18px;font-weight:bold;color:#6fcf97;">In the drop zone</div>
+                <div style="font-size:13px;" ng-style="{color: data.heli.hired.load.hooked ? '#6fcf97' : '#f2f6f5'}">{{data.heli.hired.load.hooked ? 'Hooked on. ' : ''}}{{data.heli.hired.load.status}}</div>
+                <div style="font-size:12px;color:#c9d6d2;">Set it down within {{data.heli.hired.load.radiusMetres}} m of {{data.heli.hired.load.to}} and let go to get paid. A hard landing breaks it.</div>
+              </div>
+            </div>
+            <div ng-if="data.heli.hired.height != null" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.heli.hired.height | number:0}} m above the ground</div>
+          </div>
+          <div ng-if="data.heli.hired.car.distanceMetres != null" style="margin-top:8px;font-size:13px;">Your car is <span ng-if="data.heli.hired.car.near">right here</span><span ng-if="!data.heli.hired.car.near">{{km(data.heli.hired.car.distanceMetres)}} km {{data.heli.hired.car.direction}}</span>.</div>
+          <button type="button" ng-click="backToCar()" ng-disabled="!data.heli.hired.backAllowed" ng-style="data.heli.hired.backArmed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="margin-top:6px;padding:7px 12px;">{{data.heli.hired.backArmed ? 'Confirm: back to my car' : 'Back to my car'}}</button>
+          <div style="font-size:12px;color:#c9d6d2;margin-top:2px;">Ends the hire: near your car, land and it takes the helicopter's place; farther away, you are teleported back first. A crash costs ${{data.heli.crashFee | number:0}} insurance, and you lose the load and the hire.</div>
+        </div>
+        <div ng-if="data.heli.feedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.heli.feedback}}</div>
       </div>
     </div>
     </div>

@@ -104,7 +104,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var mount = function (on) { core('uiMounted(' + (on ? 'true' : 'false') + ')') }
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
-        { id: 'relocate', label: 'Relocate' }]
+        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }]
       scope.tab = kept.tab
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
@@ -122,7 +122,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         garage: function (d) {
           return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!d.insurance
         },
-        relocate: function (d) { return !!(d.shipping && d.shipping.booking) }
+        relocate: function (d) { return !!(d.shipping && d.shipping.booking) },
+        heli: function (d) { return !!(d.heli && d.heli.hired && d.heli.hired.load && d.heli.hired.load.inZone) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
       // The HUD shrinks to a Worldwide Trucking button. Its dot is red for bad news, gold for anything a
@@ -155,6 +156,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
         ['garage', function (d) { return !!d.insurance }],
+        ['heli', function (d) { return !!(d.heli && d.heli.hired) }],
         ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.startHereAllowed || !!d.stranded }]
       ]
       var follow = function (previous, next) {
@@ -274,6 +276,19 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }
       scope.abandonJob = function () { if (scope.data.abandonAllowed) core('abandonJob()') }
+      // Heli flights: hire asks Lua to confirm, and so does Back to my car.
+      scope.hireHeli = function () { if (scope.data.heli && scope.data.heli.hireAllowed) core('hireHeli()') }
+      scope.backToCar = function () {
+        var hired = scope.data.heli && scope.data.heli.hired
+        if (hired && hired.backAllowed) core('backToCar()')
+      }
+      // The mod's page: opened in the browser where the game can, and copied in case it can't.
+      scope.openHeliMod = function () {
+        var page = scope.data.heli && scope.data.heli.modPage
+        if (typeof page === 'string' && /^https:\/\/[A-Za-z0-9./_-]+$/.test(page)) {
+          call('if openWebBrowser then openWebBrowser("' + page + '") end setClipboard("' + page + '")')
+        }
+      }
       scope.claimInsurance = function () { if (scope.data.insurance && scope.data.insurance.allowed) core('claimInsurance()') }
       scope.bookShipping = function (destination) {
         if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")

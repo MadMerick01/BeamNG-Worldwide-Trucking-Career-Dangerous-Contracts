@@ -422,6 +422,22 @@ Decided by Rowan on 25 Oct: the board is four jobs, parts (light), bricks (heavy
 - **Old saves:** food stays a known good, so a food job in an older save still loads and delivers.
 - **Needs checking in game:** the fluid tank part names, that the stock tanks carry a fluid container, and how the slosh feels. `tools/probe_fluid_tank.lua`, run once in the game console with a tank fitted, prints the car's cargo containers.
 
+## Heli flights as built
+
+Decided by Rowan on 28 Oct: a fun, hire-anytime way to fly over the world, never a rival to the trucks.
+
+- **The helicopter:** stefan750's Revamped Bell 407, a mod the player installs; it is not bundled (Rowan, 28 Oct). It is found in the game's config list by a model or name with "Bell" and "407" (`heli.lua`), preferring a config without weapons, one with a hook first, then the cheapest. Without it the Heli tab names the mod and opens its page.
+- **Hire:** $1,000 on the Heli tab, asked twice, in the player's own car, stopped, with no garage bill, booking or tow going on. It lasts until Back to my car; hiring again costs $1,000 again. A job on board is allowed: it waits in the car.
+- **The swap:** the helicopter takes the car's place where it stands (`replaceVehicle`, as a car from the vehicle selector). The car's parts, damage owed, fuel and second-hand value are kept in memory. While hired, the garage leaves the helicopter alone (no car bill, repairs, insurance or tow), the load's weight stays off, and nothing counts as driving or as a teleport. Save, jobs, refuelling and relocation wait for the car.
+- **Back to my car:** within 150 m of the car's spot and landed (under 3 m up), the car takes the helicopter's place there. Farther away, Earth teleports the helicopter to the spot first and the swap follows 2 s after landing there. With no teleport, the player flies back. The car looks new after the respawn, but its repair is still owed, as with a reverted car.
+- **Loads:** one at a time, put down 25 m in front of the helicopter (`aircraft.lua`, `spawnNewVehicle` without entering it), 4 s after the last. It is the first of `boxutility` (a trailer: its tow hitch should couple to the hook), `woodcrate`, `metal_box` and `haybale` the game has; its whole mass is set to 250 to 1,000 kg by spreading the difference over its nodes, and it reports what it weighs. A drop-off is a town 4 to 40 km away (a spot in open country where there is none), never the last one.
+- **Delivering:** the load must have been flown at least 1 km from where it was picked up, then rest inside 40 m of the drop-off, on the ground (under 3 m), let go of (the game's coupler hooks say when the hook holds it), and still for 3 s. The load is taken away and the next one turns up.
+- **Pay:** $3 a kg, in full from 10 km (a share of it below), capped at $3,000 for 1,000 kg. No town need, shortage, jackpot or road bonus. A hire makes at most $2,000 on its first load; a truck carrying 1,000 kg makes about $2,300 over 5 km and about $14,000 over 20 km. Rowan, 28 Oct: as many loads as you like per hire, to be tuned after testing.
+- **Lost loads:** a load with 5,000 damage hit the ground too hard and pays nothing; a new one turns up.
+- **Crash:** 15,000 damage on the helicopter, as for a car. It costs $1,000 insurance (or all the money, if less), the load and the hire are lost, and the player goes back to their car as above.
+- **Saves:** nothing about a hire is saved. A reload takes the load away, and the saved car comes back on arrival as usual.
+- **Needs checking in game:** the Bell 407's model name and configs, which load the hook couples to, the crash and smash damage levels, and the load's height reading.
+
 ## Open questions
 
 | # | Question | Working assumption |

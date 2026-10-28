@@ -253,7 +253,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
   for (const always of ['ng-click="save()"', 'data.balance', 'notice(data)', 'data.load.to', 'data.fuel.litres', 'copyCoordinates(data.resume)']) {
     assert.ok(html.indexOf(always) > -1 && html.indexOf(always) < panels, always)
   }
-  for (const id of ['route', 'town', 'garage', 'relocate']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
+  for (const id of ['route', 'town', 'garage', 'relocate', 'heli']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
   for (const action of ['cancelPay(); buyParts()', 'revertParts()', 'cancelPay(); buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
     'newGame()', 'cancelNewGame()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()', 'teleportToResume()', 'startHere()']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
@@ -262,7 +262,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
 })
 test('the Tips tab is gone and shipping has its own Relocate tab', () => {
   const a = app()
-  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate'])
+  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli'])
   assert.ok(!html.includes(`tab === 'tips'`), 'no Tips tab')
   const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'relocate'"`))
   const shipping = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`))
@@ -520,4 +520,31 @@ test('the parts bill box shows over the parts menu until closed, paid or the men
   a.root.EarthFreightPartsBill({}, { ...bill, serial: 'x); os.exit(' })
   assert.notEqual(a.commands.at(-1), fixed('partsBillShown(NaN)'), 'only a plain number goes back to Lua')
   assert.doesNotMatch(a.commands.at(-1), /os\.exit/)
+})
+
+test('the Heli tab hires, goes back to the car, and opens when a hire starts', () => {
+  const a = app()
+  const heli = html.slice(html.indexOf(`ng-if="tab === 'heli'"`))
+  for (const part of ['ng-click="hireHeli()"', 'ng-click="backToCar()"', 'ng-click="openHeliMod()"', 'Needs the {{data.heli.modName}} mod']) {
+    assert.ok(heli.includes(part), part)
+  }
+  a.state({ state: 'READY', arrived: true, heli: { installed: true, hireAllowed: false } })
+  a.scope.hireHeli()
+  assert.ok(!a.commands.some(c => c.includes('hireHeli')), 'nothing sent while hiring is not allowed')
+  a.state({ state: 'READY', arrived: true, heli: { installed: true, hireAllowed: true } })
+  a.scope.hireHeli()
+  assert.ok(a.commands.includes(fixed('hireHeli()')), 'hire sent')
+  a.scope.setTab('route')
+  a.state({ state: 'READY', arrived: true, heli: { hired: { stage: 'flying', backAllowed: true, car: {} } } })
+  assert.equal(a.scope.tab, 'heli', 'a hire opens the Heli tab')
+  a.scope.backToCar()
+  assert.ok(a.commands.includes(fixed('backToCar()')), 'back to the car sent')
+  assert.equal(a.scope.tabAlert('heli'), false)
+  a.state({ state: 'READY', arrived: true, heli: { hired: { stage: 'flying', car: {}, load: { inZone: true } } } })
+  assert.equal(a.scope.tabAlert('heli'), true, 'a load in the drop zone marks the tab')
+  a.state({ state: 'READY', arrived: true, heli: { modPage: 'https://www.beamng.com/threads/x.1/' } })
+  a.scope.openHeliMod()
+  assert.ok(a.commands.some(c => c.includes('openWebBrowser("https://www.beamng.com/threads/x.1/")')), 'the mod page opens')
+  const route = html.slice(html.indexOf(`ng-if="tab === 'route'"`), html.indexOf(`ng-if="tab === 'town'"`))
+  assert.ok(route.includes('Heli hired.'), 'the Route tab says a heli is hired')
 })
