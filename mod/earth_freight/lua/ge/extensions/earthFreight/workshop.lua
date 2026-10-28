@@ -328,9 +328,12 @@ function M.attach(c)
 
   -- Called every tick: when the car's damage drops with no repair or respawn of ours going on, the
   -- game has reset it. The car looks new, but, as after a reload, the repair it needed is still
-  -- owed, so the repair bill and the insurance offer stay as they were.
+  -- owed, so the repair bill and the insurance offer stay as they were. Relocating resets it too
+  -- (Earth's teleport places the car with a reset); its damage can be unreadable while Earth loads
+  -- the terrain, so the last reading is kept until it can be read again.
   function c:watchResets()
     local raw, owned = self.garage:inspect(), self.ownedParts
+    if not raw and owned and not self.ourRespawn and not self.insurancePending then return end
     if not raw or not owned or raw.id ~= owned.id or self.ourRespawn or self.insurancePending then
       self.rawDamage = nil
       return

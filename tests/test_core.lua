@@ -634,6 +634,23 @@ do
   F.drive(c, a, F.PENRITH); T.check(c:view().arrived, 'driving onto the spot arrives')
 end
 
+-- Relocating resets the car as Insert does: the repair it needed is still owed, even when its
+-- damage cannot be read while Earth loads the terrain.
+do
+  local shipping = require('earthFreight/shipping')
+  local c, _, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  g.damage = 5000; c:tick(0.1)
+  T.check(c:bookShipping('coroico'), 'booked'); T.check(c:teleportToBooking(), 'teleport asked')
+  g.unreadable = true; c:tick(0.1)
+  c:vehicleReset(1); g.damage = 0; c:tick(0.1)
+  g.unreadable = nil
+  a.pose = location.destination(shipping.get('coroico'), 0, 1000); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(c.booking, nil, 'relocated')
+  T.eq(c.owedDamage, 5000, 'relocating is not a free repair')
+  T.check(c:view().repairOwed ~= nil, 'shown as repair still owed')
+end
+
 -- Shipping: book with an empty car, teleport to the coordinates, arrive with the booking used up.
 do
   local shipping = require('earthFreight/shipping')
