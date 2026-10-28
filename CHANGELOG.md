@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 98 · 28 Oct 2026
+
 - **Relocating no longer fixes your car for free.** Teleporting to a relocation you booked on the Relocate tab, to the start of a dangerous contract, or anywhere with the BeamNG.Earth map puts the car down as new, just like pressing Insert. The repair it needed now always stays owed on the Garage tab, even when the car's damage could not be read while the new area was loading, which could let it slip through before. Your saves still work.
 
 ## Build 97 · 28 Oct 2026
