@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New dangerous contract: Ravin de Piquet, France.** It runs from the Ravin de Piquet down the mountain valley to Cauterets in the French Pyrenees, about 5 km, paying 4 times the base rate. Like the other dangerous contracts, it can be done once per game. Your saves still work.
+
 ## Build 96 · 28 Oct 2026
 
 - **Car names are tidy again.** The starter car shows as Burnside Rusty everywhere, including the trade-in line on the Buy second hand card, which used to show a jumble like "Special Earth_freight_starter Earth Freight _Starter". Other cars show their brand, model and version, such as "Gavril D-Series D15", with no underscores. Your saves still work.
