@@ -2,7 +2,7 @@ name: Release
 
 # Every push to main is tested, packaged and published as a new GitHub
 # Release. The ZIP asset always has the same name, so
-# releases/latest/download/earth-freight-sim.zip points at the newest build.
+# releases/latest/download/worldwide-trucking-dangerous-contracts.zip points at the newest build.
 # The release notes are the "Coming next" entries from CHANGELOG.md, then every
 # earlier build under "Earlier builds". The entries are then moved under
 # "## Build N" and pushed back to main.
@@ -49,7 +49,7 @@ jobs:
           python tools/changelog.py --build "$BUILD" --released "$RUNNER_TEMP/released-changelog.md" --notes "$RUNNER_TEMP/zip-notes.md"
 
       - name: Build mod ZIP
-        run: python tools/package.py --output dist/earth-freight-sim.zip
+        run: python tools/package.py --output dist/worldwide-trucking-dangerous-contracts.zip
 
       # Main may have moved on since this commit, so the notes only list the
       # entries main still has waiting in "Coming next".
@@ -77,11 +77,11 @@ jobs:
             echo
             echo "## Install"
             echo
-            echo 'Copy `earth-freight-sim.zip` into the `mods` folder of your BeamNG user folder. Do not extract it.'
+            echo 'Copy `worldwide-trucking-dangerous-contracts.zip` into the `mods` folder of your BeamNG user folder. Do not extract it.'
             echo
             echo "Built from $short_sha on $(date -u +%Y-%m-%d)."
           } > notes.md
-          gh release create "$TAG" dist/earth-freight-sim.zip \
+          gh release create "$TAG" dist/worldwide-trucking-dangerous-contracts.zip \
             --target "$GITHUB_SHA" \
             --title "Worldwide Trucking Career build ${{ github.run_number }} ($short_sha)" \
             --notes-file notes.md \
