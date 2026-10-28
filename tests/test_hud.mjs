@@ -69,6 +69,17 @@ test('buttons only send fixed commands when Lua enabled them', () => {
     assert.equal(a.commands.at(-1), fixed(body), name)
   }
 })
+test('the short term loan is only taken or repaid when Lua allows it', () => {
+  const a = app()
+  const count = a.commands.length
+  a.state({ state: 'READY' }); a.scope.takeLoan(); a.scope.repayLoan()
+  a.state({ state: 'READY', loan: { takeAllowed: false, repayAllowed: false } }); a.scope.takeLoan(); a.scope.repayLoan()
+  assert.equal(a.commands.length, count, 'refused when not allowed')
+  a.state({ state: 'READY', loan: { takeAllowed: true } }); a.scope.takeLoan(); assert.equal(a.commands.at(-1), fixed('takeLoan()'))
+  a.state({ state: 'READY', loan: { repayAllowed: true } }); a.scope.repayLoan(); assert.equal(a.commands.at(-1), fixed('repayLoan()'))
+  const repair = html.slice(html.indexOf('>Repair</div>'), html.indexOf('>Fuel</div>'))
+  for (const action of ['cancelPay(); takeLoan()', 'repayLoan()']) assert.ok(repair.includes(`ng-click="${action}"`), action + ' on the Repair card')
+})
 test('Buy second hand opens the list, and a car is only bought by its slot when Lua allows it', () => {
   const a = app()
   a.scope.openUsedCars(true); assert.equal(a.commands.at(-1), fixed('openUsedCars(true)'))

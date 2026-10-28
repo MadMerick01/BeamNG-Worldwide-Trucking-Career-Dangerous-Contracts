@@ -302,7 +302,8 @@
           <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Cargo: <span ng-if="data.space.boot">boot only</span><span ng-if="!data.space.boot">{{data.space.boxes.length}} {{data.space.boxes.length === 1 ? 'box' : 'boxes'}}</span> &middot; {{data.space.slots}} slots &middot; {{data.space.kg | number:0}} kg max<span ng-if="data.space.boot">. A Cargo Load box adds room.</span></div>
           <div style="font-size:13px;color:#c9d6d2;">Tank: <span ng-if="data.space.litres > 0">{{data.space.tanks.join(', ')}} &middot; {{data.space.litres | number:0}} L</span><span ng-if="!(data.space.litres > 0)">none. Press Buy parts, fit a Cargo Load fluid tank and pay for it here to take water and fuel jobs.</span></div>
         </div>
-        <div ng-if="(!data.carChange && !data.partsChange) || data.repairOwed > 0 || data.puncture" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+        <div ng-if="(!data.carChange && !data.partsChange) || data.repairOwed > 0 || data.puncture || (data.loan && data.loan.owed)
+          || (data.partsChange && data.balance < data.partsChange.cost) || (data.carChange && data.balance < data.carChange.cost)" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
           <div style="font-weight:bold;color:#a7e5c9;">Repair</div>
           <div ng-if="data.repairOwed > 0">Repair still owed: ${{data.repairOwed | number:0}}</div>
           <div ng-if="data.puncture" style="color:#eb5757;">Puncture: the tyre repair adds ${{data.puncture.tyreCost | number:0}} to the repair.</div>
@@ -314,6 +315,21 @@
             <button type="button" ng-if="data.tow" ng-click="towToRoad()" ng-disabled="!data.tow.allowed" ng-style="data.tow.armed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:7px 12px;">{{data.tow.pending ? 'Towing...' : (data.tow.armed ? 'Confirm tow' : 'Tow to road')}} &middot; ${{data.tow.fee | number:0}}</button>
           </div>
           <div ng-if="data.tow" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Stuck or off the road? Tow to road puts your car back on the road it was last on. It does not fix any damage.</div>
+          <div ng-if="data.loan" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(86,141,122,.6);">
+            <div ng-if="!data.loan.owed" style="font-size:13px;color:#c9d6d2;">Short of money? A short term loan gives you ${{data.loan.amount | number:0}} now, and you pay back ${{data.loan.repay | number:0}}.</div>
+            <div ng-if="data.loan.owed">Short term loan owed: ${{data.loan.owed | number:0}}</div>
+            <div ng-if="data.loan.owed && !data.loan.repayAllowed" style="font-size:13px;color:#c9d6d2;">Repay it here once you have ${{data.loan.owed | number:0}}. No new loan until then.</div>
+            <div ng-if="!data.loan.owed && !isConfirming('loan', data.loan.amount)" style="margin-top:6px;">
+              <button type="button" ng-click="askToPay('loan', data.loan.amount)" ng-disabled="!data.loan.takeAllowed" style="padding:7px 12px;">Short term loan</button>
+            </div>
+            <div ng-if="!data.loan.owed && isConfirming('loan', data.loan.amount)" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;">
+              <span style="font-weight:bold;">Borrow ${{data.loan.amount | number:0}} and owe ${{data.loan.repay | number:0}}?</span>
+              <button type="button" ng-click="cancelPay(); takeLoan()" ng-disabled="!data.loan.takeAllowed" style="padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Yes, borrow</button>
+              <button type="button" ng-click="cancelPay()" style="padding:7px 12px;">Cancel</button>
+            </div>
+            <button type="button" ng-if="data.loan.owed" ng-click="repayLoan()" ng-disabled="!data.loan.repayAllowed" style="margin-top:6px;padding:7px 12px;">Repay ${{data.loan.owed | number:0}}</button>
+            <div ng-if="data.loan.feedback" role="status" style="margin-top:4px;">{{data.loan.feedback}}</div>
+          </div>
         </div>
         <div style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
           <div style="font-weight:bold;color:#a7e5c9;">Fuel</div>
