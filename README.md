@@ -1,7 +1,5 @@
 # BeamNG Worldwide Trucking Career: Dangerous Contracts
 
-Keep me awake behind the wheel! [buy me a coffee on Ko-fi](https://ko-fi.com/madmerick).
-
 **Haul cargo anywhere on Earth. Start in a rust bucket with no radiator or front brakes**
 
 A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive.
@@ -24,7 +22,8 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 - **Steep, remote and notorious roads** pay up to 3x. Regions are graded for difficulty.
 - **Relocate.** Pay to move to any town or coordinates on Earth. Some of the world's hardest regions will pay your way if you come and deliver their wares.
 - **Fuel, punctures and breakdowns.** Refuel in towns, repair burst tyres, use **Tow to road** when you're stuck, or take a short term loan when money runs out.
-- **Heli flights.** Hire a Bell 407 for $1,000 and fly loads of up to 1,000 kg on its tow hook over the world. Needs the [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) mod by stefan750.
+- **Heli flights.** Hire a Bell 407 for $1,000. Needs the [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) mod by stefan750.
+- **Insurance** after a big crash costs $1,000 (the load is lost), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
 
 ## Install
 
@@ -40,7 +39,6 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 4. Drive it there in one piece and press **Deliver**.
 5. Press **Save** often. Next time, **Teleport to last save** puts you right back.
 
-**Insurance** after a big crash costs $1,000 (the load is lost), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
 
 ## Updating
 
@@ -54,6 +52,7 @@ Found a bug or have an idea? Open an [issue on GitHub](../../issues). Say what y
 
 Every change, in plain English: [CHANGELOG.md](CHANGELOG.md). Each build is also on the [Releases](../../releases/latest) page.
 
+Keep me awake behind the wheel! [buy me a coffee on Ko-fi](https://ko-fi.com/madmerick).
 ---
 
 <details>
