@@ -22,7 +22,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 1. Download `earth-freight-sim.zip` from the [latest release](../../releases/latest).
 2. Drop it, **still zipped**, into the `mods` folder of your BeamNG user folder. If an older `earth_freight.zip` is there, delete it. Your saves carry over.
-3. In game, turn on the **BeamNG Worldwide Trucking Career: Dangerous Contracts** UI app.
+3. In game, turn on the **TruckingCareerDC** UI app.
 
 ## How to Start
 
