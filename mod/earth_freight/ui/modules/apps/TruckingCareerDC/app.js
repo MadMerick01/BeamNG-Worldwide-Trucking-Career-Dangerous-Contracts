@@ -321,6 +321,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.pickUpBeacon = function () { if (scope.data.beacon && scope.data.beacon.pickUpAllowed) core('pickUpBeacon()') }
       scope.ignoreBeacon = function () { if (scope.data.beacon) core('ignoreBeacon()') }
       scope.claimInsurance = function () { if (scope.data.insurance && scope.data.insurance.allowed) core('claimInsurance()') }
+      // GPS on the Nearby list: the route to the middle of that town.
+      scope.gpsToTown = function (place) { if (scope.data.gpsAllowed && plainId(place)) core("gpsToTown('" + place + "')") }
       scope.bookShipping = function (destination) {
         if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")
       }

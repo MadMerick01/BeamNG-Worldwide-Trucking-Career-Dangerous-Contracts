@@ -258,6 +258,39 @@ do
   T.eq(c:view().saveFeedback, 'Saved automatically after buying parts.', 'named after what was done')
 end
 
+-- The Nearby list shows which way each town is, and its GPS button routes there.
+do
+  local c, _, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local v = c:view()
+  T.check(v.gpsAllowed, 'GPS offered')
+  for _, p in ipairs(v.nearby) do
+    local bearing = location.bearing(a.pose, places.get(p.id))
+    T.eq(p.direction, location.compassPoint(bearing), p.name .. ' has its direction')
+    T.eq(p.letters, location.compassLetters(bearing), p.name .. ' and its letters')
+  end
+  T.eq(location.compassLetters(0), 'N', 'north is N'); T.eq(location.compassLetters(135), 'SE', '135 degrees is SE')
+  T.eq(location.compassLetters(350), 'N', '350 degrees is N'); T.eq(location.compassLetters(0 / 0), nil, 'no bearing, no letters')
+  local town = v.nearby[2]
+  T.check(c:gpsToTown(town.id), 'GPS set')
+  T.eq(a.gps[#a.gps].name, town.name, 'to that town'); T.near(a.gps[#a.gps].latitude, places.get(town.id).latitude, 1e-9, 'at its middle')
+  v = c:view()
+  T.eq(v.gpsFeedback, 'The GPS is set to ' .. town.name .. '.', 'and says so')
+  T.check(v.nearby[2].gps and not v.nearby[1].gps, 'its button is marked')
+  T.check(not c:gpsToTown('nowhere'), 'an unknown town is refused')
+  a.gpsMissing = true
+  T.check(not c:gpsToTown(town.id), 'no GPS in Earth')
+  T.check(c:view().gpsFeedback:find('Paste') ~= nil, 'told to paste the coordinates instead')
+  T.check(not c:view().nearby[2].gps, 'nothing marked')
+  -- Taking a job sets the GPS to its drop-off, which is then the town marked.
+  a.gpsMissing = nil
+  local id = F.offer(c, stClair, 'food')
+  T.check(c:takeJob(id), 'job taken')
+  v = c:view()
+  T.eq(v.gpsFeedback, nil, 'the old GPS message is gone')
+  for _, p in ipairs(v.nearby) do T.eq(p.gps, p.id == stClair.id or nil, p.name .. ' marked only if it is the drop-off') end
+end
+
 -- Jobs need the car stopped in a town, fit the car, and must be driven.
 do
   local c, _, a = F.controller()

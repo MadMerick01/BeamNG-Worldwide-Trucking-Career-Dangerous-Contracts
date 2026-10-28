@@ -176,7 +176,7 @@ function M.new(deps)
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
     self.ourRespawn, self.rawDamage = nil, nil
-    self.autoSave = nil
+    self.autoSave, self.gpsTown, self.gpsFeedback = nil, nil, nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
@@ -799,6 +799,7 @@ function M.new(deps)
     local gps = ''
     if self.configuration.autoGps and self.adapter.setDestination then
       local ok, why = self.adapter:setDestination(destination, destination.name)
+      self.gpsTown, self.gpsFeedback = ok and destination.id or nil, nil
       gps = ok and ' The GPS is set to ' .. destination.name .. '.' or ' Set the GPS yourself: copy the drop-off coordinates on the Route tab.'
       self.diag:event('gps', ok and destination.id or tostring(why), ok and 'I' or 'W')
     end
@@ -823,10 +824,27 @@ function M.new(deps)
     return true
   end
 
+  -- GPS on the Route tab's Nearby list: sets BeamNG.Earth's GPS to the middle of a town, where
+  -- it counts as being in town. A job's own GPS is set again with the button on its own row.
+  function c:gpsToTown(placeId)
+    local place = placeId and places.get(placeId)
+    if not place or not self.adapter.setDestination or self.state ~= 'READY' or not self.arrived or self.hire then
+      self.gpsFeedback = 'The GPS cannot be set right now.'
+      return false
+    end
+    local ok, why = self.adapter:setDestination(place, place.name)
+    self.diag:event('gps', ok and ('town:' .. place.id) or tostring(why), ok and 'I' or 'W')
+    self.gpsTown = ok and place.id or nil
+    self.gpsFeedback = ok and ('The GPS is set to ' .. place.name .. '.')
+      or ('Could not set the GPS. Paste ' .. coordinates(place) .. ' into the BeamNG.Earth map instead.')
+    return ok == true
+  end
+
   -- Sets the GPS to a dangerous contract's finish. Returns whether it was set.
   function c:gpsToFinish(section)
     if not self.adapter.setDestination then return false end
     local ok, why = self.adapter:setDestination(section.finish, section.name .. ' finish')
+    if ok then self.gpsTown, self.gpsFeedback = nil, nil end
     self.diag:event('gps', ok and ('contract:' .. section.id) or tostring(why), ok and 'I' or 'W')
     return ok == true
   end
@@ -1244,8 +1262,11 @@ function M.new(deps)
     local nearby = {}
     if current then
       for _, n in ipairs(places.nearest(current, NEARBY_COUNT, place and place.id)) do
+        local bearing = location.bearing(current, n.place)
         nearby[#nearby + 1] = { id = n.place.id, name = n.place.name, size = n.place.size,
           distanceMetres = n.metres * places.ROAD_FACTOR, dots = self:dots(n.place, now),
+          direction = location.compassPoint(bearing), letters = location.compassLetters(bearing),
+          gps = self.gpsTown == n.place.id or nil,
           destination = self.load ~= nil and not self.load.drop and self.load.to == n.place.id }
       end
     end
@@ -1421,6 +1442,8 @@ function M.new(deps)
       fuel = self.fuel and { litres = self.fuel.litres, capacity = self.fuel.capacity, pricePerLitre = fuel.PRICE_PER_LITRE } or nil,
       here = trade.here, region = trade.region, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
       shortages = trade.shortages,
+      gpsAllowed = self.adapter.setDestination ~= nil and self.state == 'READY' and self.arrived and not self.hire,
+      gpsFeedback = self.gpsFeedback,
       abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee,
       tradeFeedback = self.tradeFeedback,
       fuelFeedback = self.fuelFeedback,
@@ -1728,6 +1751,7 @@ function M.backToCar() return safely(function() return ensure():backToCar(false)
 -- A heli load's answer: what it weighs once its mass is set.
 function M.pickUpBeacon() return safely(function() return ensure():pickUpBeacon() end) end
 function M.ignoreBeacon() return safely(function() return ensure():ignoreBeacon() end) end
+function M.gpsToTown(place) return safely(function() return ensure():gpsToTown(id(place)) end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
 -- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.
 function M.bookShippingTo(latitude, longitude)
