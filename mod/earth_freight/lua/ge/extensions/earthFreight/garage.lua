@@ -51,18 +51,19 @@ function M.new(environment)
     return (brand ~= '' and name:sub(1, #brand) ~= brand) and (brand .. ' ' .. name) or name
   end
 
-  -- A model's branded name, read once per model; nil when the game has no model info for it.
-  local modelLabels = {}
-  local function modelLabel(model)
-    if modelLabels[model] ~= nil then return modelLabels[model] or nil end
-    local vehicles, label = env.vehicles(), nil
+  -- The game's info for a model (Brand, Name, Type...), read once per model; nil when it has none.
+  local models = {}
+  local function modelInfo(model)
+    if models[model] ~= nil then return models[model] or nil end
+    local vehicles, info = env.vehicles(), nil
     if type(vehicles) == 'table' and type(vehicles.getModel) == 'function' then
       local ok, data = pcall(vehicles.getModel, model)
-      label = ok and type(data) == 'table' and branded(data.model) or nil
+      info = ok and type(data) == 'table' and type(data.model) == 'table' and data.model or nil
     end
-    modelLabels[model] = label or false
-    return label
+    models[model] = info or false
+    return info
   end
+  local function modelLabel(model) return branded(modelInfo(model)) end
 
   -- A config's name as the player sees it: the model's name and the config's version, with
   -- underscores as spaces. The config's own Name is only a fallback: the game makes one up from
@@ -143,7 +144,9 @@ function M.new(environment)
       local model, key = type(info) == 'table' and info.model_key, type(info) == 'table' and info.key
       if type(model) == 'string' and model ~= '' and type(key) == 'string' and key ~= '' then
         out[#out + 1] = { model = model, key = key, config = 'vehicles/' .. model .. '/' .. key .. '.pc', name = carName(model, key, info),
-          value = tonumber(info.Value), type = type(info.Type) == 'string' and info.Type or nil,
+          -- A config may not carry its model's Type (Car, Truck, Trailer, Prop...), so the model's is asked too.
+          value = tonumber(info.Value), type = type(info.Type) == 'string' and info.Type
+            or (modelInfo(model) and type(modelInfo(model).Type) == 'string' and modelInfo(model).Type) or nil,
           source = type(info.Source) == 'string' and info.Source or nil,
           preview = type(info.preview) == 'string' and info.preview or nil }
       end

@@ -10,6 +10,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - **New "don't ask questions" jobs.** Every 5 minutes you fly more than 30 m up, there's a 50% chance of picking up a signal beacon within 15 km of your car. A box pops up in the middle of the screen and closes by itself. The beacon appears on the Route tab with an arrow and its coordinates, and on the Town tab's job board. Drive there in your car, stop within 100 m and press **Pick it up**. Then take the package, which weighs nothing, 2 to 5 km off road to the drop for $12,000. Only one beacon waits at a time, and it goes quiet after an hour of play. Ignoring it is free, but once it's picked up an insurance claim costs $4,000 and loses it, and abandoning costs $1,000.
 - Your saves still work, and a beacon you've found is kept when you save.
 - **Car names are tidy again.** The starter car shows as Burnside Rusty everywhere, including the trade-in line on the Buy second hand card, which used to show a jumble like "Special Earth_freight_starter Earth Freight _Starter". Other cars show their brand, model and version, such as "Gavril D-Series D15", with no underscores. Your saves still work.
+- **Buy second hand no longer offers trailers or props**, such as traffic cones. Only cars and trucks are for sale now.
 
 ## Build 92 · 28 Oct 2026
 

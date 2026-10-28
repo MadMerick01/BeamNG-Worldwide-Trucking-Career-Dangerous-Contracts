@@ -13,7 +13,7 @@ M.PRICE_STEP = 100
 M.KM_LOW, M.KM_HIGH = 20000, 300000
 -- How worn a car looks, from 1 (new) down to LOOK_WORN at KM_HIGH and beyond.
 M.LOOK_WORN = 0.8
--- Model types that are never for sale. The unicycle is the game's walking mode, not a car.
+-- Model types that are never for sale, matched anywhere in the type, any case. The unicycle is the game's walking mode, not a car.
 M.EXCLUDED_TYPES = { trailer = true, prop = true }
 M.EXCLUDED_MODELS = { unicycle = true }
 
@@ -21,7 +21,12 @@ M.EXCLUDED_MODELS = { unicycle = true }
 function M.sellable(info)
   if type(info) ~= 'table' or type(info.model) ~= 'string' or type(info.key) ~= 'string' then return false end
   if M.EXCLUDED_MODELS[info.model] then return false end
-  if type(info.type) == 'string' and M.EXCLUDED_TYPES[info.type:lower()] then return false end
+  if type(info.type) == 'string' then
+    local kind = info.type:lower()
+    for excluded in pairs(M.EXCLUDED_TYPES) do
+      if kind:find(excluded, 1, true) then return false end
+    end
+  end
   -- Mods and the player's own saved configs name another source; configs with none are kept.
   if type(info.source) == 'string' and not info.source:find('BeamNG', 1, true) then return false end
   local value = tonumber(info.value)

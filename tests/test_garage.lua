@@ -142,4 +142,16 @@ local nameEnv = env({ vehicles = function() return {
 local ng = G.new(nameEnv)
 T.eq(select(2, ng:carValue('burnside', 'vehicles/burnside/earth_freight_starter.pc')), 'Burnside Rusty', 'the starter is the Burnside Rusty')
 T.eq(select(2, ng:carValue('burnside', 'vehicles/burnside/custom.pc')), 'Burnside Special Custom Coupe', 'brand, model and a tidy version')
+-- A config without its model's Type gets it from the model, so trailers and props can be left out.
+local typedEnv = env({ vehicles = function() return {
+  getModel = function(model) return { model = ({ flatbed = { Name = 'Flatbed', Type = 'Trailer' }, cones = { Name = 'Cones', Type = 'Prop' } })[model] } end,
+  getConfigList = function() return { configs = {
+    a = { model_key = 'flatbed', key = 'long', Value = 5000 }, b = { model_key = 'cones', key = 'big', Value = 50 },
+    c = { model_key = 'pickup', key = 'd15', Value = 33000, Type = 'Truck' } } } end } end })
+local types = {}
+for _, info in ipairs(G.new(typedEnv):configs()) do types[info.model] = info.type end
+T.eq(types.flatbed, 'Trailer', 'trailer type from the model'); T.eq(types.cones, 'Prop', 'prop type from the model')
+T.eq(types.pickup, 'Truck', 'the config type kept')
+local U = require('earthFreight/usedCars')
+T.eq(#U.candidates(G.new(typedEnv):configs()), 1, 'only the truck is for sale')
 T.done('garage')
