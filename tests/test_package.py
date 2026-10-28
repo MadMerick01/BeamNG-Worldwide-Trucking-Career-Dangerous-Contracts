@@ -100,7 +100,7 @@ class PackageTest(unittest.TestCase):
           packagedPlaces = #require('earthFreight/places').list
         ''')
         g = lua.globals()
-        self.assertEqual(g.packagedDefaults['base']['latitude'], -33.75)
+        self.assertIsNone(g.packagedDefaults['base'])
         self.assertEqual(g.packagedDefaults['resumeRadiusMetres'], 50)
         self.assertTrue(g.packagedDefaults['autoGps'])
         self.assertGreater(g.packagedPlaces, 30)

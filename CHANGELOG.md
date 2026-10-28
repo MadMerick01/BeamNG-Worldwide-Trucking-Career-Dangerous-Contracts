@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Start anywhere on Earth, such as your home town.** A new game no longer sends you to Penrith. Open the BeamNG.Earth map, find any place, teleport there and press the new **Start here** button on the start page or the Route tab. Your starter car and $2,500 are waiting right where you are, and that spot becomes your start.
+- **New game takes you back to your own start.** After pressing **New game…** and **Yes, start over**, the start page offers **Teleport to** your start town, or you can teleport somewhere else and press **Start here** to pick a new one. Your saves still work: a game that began in Penrith keeps Penrith as its start until you choose another.
+
 ## Build 70 · 28 Oct 2026
 
 - **The mod has a new name: BeamNG Worldwide Trucking Career: Dangerous Contracts.** It used to be called Earth Freight Sim. The HUD now says Worldwide Trucking Career at the top, the start page shows the new name, the minimised HUD button says Worldwide Trucking, and the UI apps list shows the new name. Nothing else changes: the download is still `earth-freight-sim.zip`, you don't need to delete anything, and your saves still work.

@@ -26,7 +26,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 ## How to Start
 
-1. Load the BeamNG.Earth Freeroam level, type your name and press **Teleport to the suburb Penrith of Sydney, Australia**. You start with a rusty Burnside and $2,500.
+1. Load the BeamNG.Earth Freeroam level and type your name. Open the BeamNG.Earth map, teleport anywhere on Earth, such as your home town, and press **Start here**. You start there with a rusty Burnside and $2,500.
 2. Fit a radiator first: **Buy parts** on the Garage tab. The starter car needs one.
 3. Stop in any town, open the **Town** tab, pick a job and press **Take job**. The GPS is set for you.
 4. Drive it there in one piece and press **Deliver**.
@@ -47,7 +47,7 @@ Every change, in plain English: [CHANGELOG.md](CHANGELOG.md). Each build is also
 
 Optional: `/settings/earthFreight/config.json` in your BeamNG user folder (see `mod/earth_freight/config.example.json`).
 
-- `base`: where a new game starts, instead of Penrith.
+- `base`: a fixed spot every new game starts at, instead of the one you choose with **Start here**.
 - `autoGps`: `false` stops the mod setting BeamNG.Earth's GPS when you take a job.
 
 ### Development

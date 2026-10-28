@@ -124,7 +124,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
         ['garage', function (d) { return !!d.insurance }],
-        ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.stranded }]
+        ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.startHereAllowed || !!d.stranded }]
       ]
       var follow = function (previous, next) {
         // The start page opens once on a new game or on loading a save, until the player is there.
@@ -168,7 +168,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // A new game that has not reached the start town yet: nothing to show or start over.
       scope.firstLaunch = function (d) { return !!d && d.mode === 'start' && !d.arrived }
       scope.introSteps = [
-        'press Teleport, or copy the coordinates into the BeamNG.Earth map and teleport there. Your starter car is waiting.',
+        'open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
         'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
@@ -305,6 +305,12 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         return position.latitude.toFixed(8) + ', ' + position.longitude.toFixed(8)
       }
       // The mod asks BeamNG.Earth to teleport the player to the last save (or the start town).
+      // Start here: a new game starts wherever the player is. The start page closes, keeping the name.
+      scope.startHere = function () {
+        if (!scope.data || !scope.data.startHereAllowed) return
+        if (scope.intro.open) scope.closeIntro()
+        core('startHere()')
+      }
       scope.teleportToResume = function () { if (scope.data && scope.data.teleportAllowed) core('teleportToResume()') }
       // ...and to the start of a dangerous contract just taken.
       scope.teleportToContract = function () {

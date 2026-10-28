@@ -39,14 +39,15 @@ local labels = {
   CONFIG_REQUIRED = 'BASE CONFIGURATION REQUIRED', EARTH_UNAVAILABLE = 'EARTH UNAVAILABLE',
   READY = 'READY', ERROR = 'FREIGHT PAUSED',
 }
--- What the HUD asks of the player until they reach the resume point.
-local goLabels = { resume = 'GO TO YOUR LAST SAVE', start = 'GO TO ' .. config.START_TOWN:upper() }
+-- What the HUD asks of the player until they reach the resume point. A new game with no start yet
+-- asks them to choose one: anywhere on Earth they teleport to, then Start here.
 local goMessages = {
   resume = 'Press Teleport there to carry on, or copy these coordinates into the BeamNG.Earth map.',
-  start = 'Press Teleport there to start, or copy these coordinates into the BeamNG.Earth map. You get your starter car when you arrive.',
+  start = 'Press Teleport there to go back to your start, or teleport anywhere in the BeamNG.Earth map and press Start here.'
+    .. ' You get your starter car when you start.',
+  choose = 'Open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there.'
+    .. ' Then press Start here. You get your starter car there.',
 }
--- The name Earth's recent places list the teleport under.
-local goPlaces = { resume = 'Worldwide Trucking: last save', start = 'Worldwide Trucking: ' .. config.START_TOWN }
 local messages = {
   earth_missing = 'Enable BeamNG.Earth to continue.',
   earth_starting = 'Waiting for BeamNG.Earth to finish starting.',
@@ -72,6 +73,14 @@ local loadMessages = {
 local function amount(good, units)
   if good.kind == 'fluid' then return math.floor(units * good.litres + 0.5) .. ' L of ' .. good.name:lower() end
   return units .. ' ' .. good.name:lower()
+end
+
+-- The name of the town at a point, or of the nearest one; nil when there is none.
+local function townName(point)
+  if not location.valid(point) then return nil end
+  places.ensure(point)
+  local here = places.at(point) or (places.nearest(point, 1)[1] or {}).place
+  return here and here.name or nil
 end
 
 local function copy(value)
@@ -188,15 +197,25 @@ function M.new(deps)
     else self:transition('EARTH_UNAVAILABLE', 'position_invalid') end
   end
 
+  -- The town the player's start is in: where a new game starts. Remembered for the last base asked.
+  function c:startTown()
+    local base = self.profile and self.profile.base or self.creationBase
+    if not base then return nil end
+    local key = string.format('%.6f,%.6f', base.latitude, base.longitude)
+    if self.startTownKey ~= key then self.startTownKey, self.startTownName = key, townName(base) end
+    return self.startTownName
+  end
+
   -- Teleport there: asks Earth to take the player to the resume point (the last save, or the start
-  -- town), as pasting its coordinates into Earth's map does. Arriving is seen in observe.
+  -- of a new game), as pasting its coordinates into Earth's map does. Arriving is seen in observe.
   function c:teleportToResume()
     if self.state ~= 'READY' or self.arrived or self.error or not self.startupTarget then return false end
     if not self.adapter.teleport then
       self.teleportFeedback = 'Teleporting is not available. Copy the coordinates into the BeamNG.Earth map instead.'
       return false
     end
-    local ok, why, detail = self.adapter:teleport(self.startupTarget, goPlaces[self.mode])
+    local name = self.mode == 'start' and ('Worldwide Trucking: ' .. (self:startTown() or 'start')) or 'Worldwide Trucking: last save'
+    local ok, why, detail = self.adapter:teleport(self.startupTarget, name)
     self.diag:event('teleport_to_resume', ok and 'requested' or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
     if not ok then
       self.teleportAskedAt = nil
@@ -561,13 +580,20 @@ function M.new(deps)
     self.sessionVerified = true
     -- Arriving within the radius of the resume point, usually by teleporting there from the map,
     -- confirms the player is back where they left off.
+    self:checkArrival(sample)
+    if self.arrived then self:drive(sample, dt) end
+    self:transition('READY', 'verified')
+  end
+
+  function c:checkArrival(sample)
     if not self.arrived and self.startupTarget then
       local away = location.distance(sample, self.startupTarget)
       if away and away <= self.configuration.resumeRadiusMetres then
         self.arrived = true
         self.odometer:reset()
         if self.mode == 'start' then
-          self:showFlash('delivered', self:named('Welcome to ' .. config.START_TOWN):upper(),
+          local town = self:startTown()
+          self:showFlash('delivered', self:named('Welcome to ' .. (town or 'your start')):upper(),
             'Your starter car needs a radiator: press Buy parts on the Garage tab, fit one, then pay there.')
         else
           self:showFlash('delivered', self:named('Welcome back'):upper(), 'You are where you last saved.'
@@ -577,8 +603,32 @@ function M.new(deps)
         self.diag:event('arrived', string.format('%.1f m', away))
       end
     end
-    if self.arrived then self:drive(sample, dt) end
-    self:transition('READY', 'verified')
+  end
+
+  -- Start here: on a new game, makes wherever the player stands their start, and starts there. A
+  -- new game later starts there again. Like everything else, it is kept by Save.
+  function c:startHereAllowed()
+    return self.state == 'READY' and self.mode == 'start' and not self.arrived and not self.error and self.profile ~= nil
+  end
+
+  function c:startHere()
+    if not self:startHereAllowed() then return false end
+    local fresh = self.adapter:sample()
+    if not fresh.valid or not location.valid(fresh) then
+      self.lastSample = fresh
+      self:interrupt(fresh.reason or 'position_invalid')
+      self.diag:event('start_here_rejected', fresh.reason or 'position_invalid', 'W')
+      return false
+    end
+    places.ensure(fresh)
+    local spot = location.copy(fresh)
+    self.profile.base, self.profile.resume = location.copy(spot), location.copy(spot)
+    self.creationBase, self.startupTarget, self.unsavedBase = location.copy(spot), location.copy(spot), location.copy(spot)
+    self.teleportAskedAt, self.teleportFeedback = nil, nil
+    self.lastSample = fresh
+    self.diag:event('start_here', string.format('%.8f,%.8f', spot.latitude, spot.longitude))
+    self:checkArrival(fresh)
+    return self.arrived
   end
 
   -- Where the player is: the place whose arrival circle they are in, once arrived.
@@ -1125,13 +1175,18 @@ function M.new(deps)
     elseif self.state == 'ERROR' then
       status = errorMessages[self.error] or errorMessages.internal_error
     elseif self.state == 'READY' and not self.arrived then
-      status = goMessages[self.mode]
+      status = goMessages[(self.mode == 'start' and not resume) and 'choose' or self.mode]
     elseif self.state == 'READY' then
       status = nil
     elseif not status then status = messages.position_invalid end
     local teleporting = self.teleportAskedAt ~= nil and self.clock - self.teleportAskedAt < TELEPORT_WAIT_SECONDS
     local label = labels[self.state]
-    if self.state == 'READY' and not self.arrived then label = goLabels[self.mode] end
+    local startTown = self:startTown()
+    if self.state == 'READY' and not self.arrived then
+      if self.mode == 'resume' then label = 'GO TO YOUR LAST SAVE'
+      elseif resume then label = 'GO TO ' .. (startTown or 'YOUR START'):upper()
+      else label = 'CHOOSE WHERE YOU START' end
+    end
     local active = self.profile ~= nil and not self.error
     local flashShown = self.flash ~= nil and self.clock - self.flash.at < FLASH_SECONDS
     local space = self:space()
@@ -1149,7 +1204,8 @@ function M.new(deps)
       teleportFeedback = resume and (self.teleportAskedAt and not teleporting
         and 'Not there yet? Press Teleport there again, or copy the coordinates into the BeamNG.Earth map.'
         or self.teleportFeedback) or nil,
-      startTown = config.START_TOWN,
+      startTown = startTown,
+      startHereAllowed = self:startHereAllowed(),
       startingMoney = STARTING_MONEY,
       playerName = self.playerName,
       nameUnsaved = self.playerName ~= self.savedName,
@@ -1291,13 +1347,19 @@ function M.new(deps)
       self.feedback = 'New game is unavailable right now. Check the status above.'
       return false
     end
+    -- A new game starts where the last one did; Start here moves it anywhere else.
+    local start = location.copy(self.profile and self.profile.base or self.creationBase)
+    if not start then
+      self.feedback = 'You have not started yet. Teleport anywhere in the BeamNG.Earth map and press Start here.'
+      return false
+    end
+    local town = self:startTown() or 'your start'
     if not self.newGameArmed then
       self.newGameArmed = true
-      self.feedback = 'Press Yes, start over to start over in ' .. config.START_TOWN .. ' in the starter car with '
+      self.feedback = 'Press Yes, start over to start over in ' .. town .. ' in the starter car with '
         .. dollars(STARTING_MONEY) .. '. Your car, job and every dollar you have now are lost.'
       return false
     end
-    local start = location.copy(self.configuration.base)
     local saved, why = self:record({ base = start, resume = start,
       progression = { balance = STARTING_MONEY, totalDistanceKm = 0 }, vehicle = {}, atStart = true,
       playerName = self.playerName })
@@ -1307,10 +1369,10 @@ function M.new(deps)
       self.diag:event('new_game_failed', tostring(why), 'E')
       return false
     end
-    self.diag:event('new_game', config.START_TOWN)
+    self.diag:event('new_game', town)
     self:reload()
-    self.feedback = string.format('New game started. Teleport to %s at %.8f, %.8f (Copy is just below) to get your starter car.',
-      config.START_TOWN, start.latitude, start.longitude)
+    self.feedback = string.format('New game started. Teleport to %s at %.8f, %.8f (Copy is just below) to get your starter car,'
+      .. ' or teleport anywhere in the BeamNG.Earth map and press Start here.', town, start.latitude, start.longitude)
     return true
   end
 
@@ -1397,6 +1459,7 @@ function M.buyCar() return safely(function() return ensure():buyCar() end) end
 function M.revertCar() return safely(function() return ensure():revertCar(false) end) end
 function M.newGame() return safely(function() return ensure():newGame() end) end
 function M.cancelNewGame() return safely(function() return ensure():cancelNewGame() end) end
+function M.startHere() return safely(function() return ensure():startHere() end) end
 function M.teleportToResume() return safely(function() return ensure():teleportToResume() end) end
 function M.teleportToContract() return safely(function() return ensure():teleportToContract() end) end
 -- count is how many slots to buy; anything but a whole number from 1 to 999 buys as many as fit and are affordable.

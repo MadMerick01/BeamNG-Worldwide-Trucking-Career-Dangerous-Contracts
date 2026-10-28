@@ -59,7 +59,7 @@ test('buttons only send fixed commands when Lua enabled them', () => {
     buyParts: ['buyPartsAllowed', 'buyParts()'], revertParts: ['revertPartsAllowed', 'revertParts()'],
     buyCar: ['buyCarAllowed', 'buyCar()'], revertCar: ['revertCarAllowed', 'revertCar()'],
     newGame: ['newGameAllowed', 'newGame()'], abandonJob: ['abandonAllowed', 'abandonJob()'],
-    teleportToResume: ['teleportAllowed', 'teleportToResume()']
+    teleportToResume: ['teleportAllowed', 'teleportToResume()'], startHere: ['startHereAllowed', 'startHere()']
   }
   for (const [name, [flag, body]] of Object.entries(buttons)) {
     const count = a.commands.length
@@ -214,7 +214,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
   }
   for (const id of ['route', 'town', 'garage', 'relocate']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
   for (const action of ['cancelPay(); buyParts()', 'revertParts()', 'cancelPay(); buyCar()', 'revertCar()', 'requestRepairQuote()', 'repairVehicle()',
-    'newGame()', 'cancelNewGame()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()', 'teleportToResume()']) {
+    'newGame()', 'cancelNewGame()', 'deliverJob()', 'refuel()', 'abandonJob()', 'takeJob(j)', 'claimInsurance()', 'teleportToResume()', 'startHere()']) {
     assert.ok(html.includes(`ng-click="${action}"`), action)
   }
   assert.ok(html.includes('GeoNames'), 'GeoNames credit')
