@@ -94,7 +94,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         relocate: function (d) { return !!(d.shipping && d.shipping.booking) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
-      // The HUD shrinks to an Earth Freight button. Its dot is red for bad news, gold for anything a
+      // The HUD shrinks to a Worldwide Trucking button. Its dot is red for bad news, gold for anything a
       // tab marks, so the player can tell from the button alone that the HUD has something for them.
       if (!kept.hud) kept.hud = { minimised: stored() }
       scope.hud = kept.hud
@@ -304,7 +304,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
             Math.abs(position.latitude) > 90 || Math.abs(position.longitude) > 180) return ''
         return position.latitude.toFixed(8) + ', ' + position.longitude.toFixed(8)
       }
-      // Earth Freight asks BeamNG.Earth to teleport the player to the last save (or the start town).
+      // The mod asks BeamNG.Earth to teleport the player to the last save (or the start town).
       scope.teleportToResume = function () { if (scope.data && scope.data.teleportAllowed) core('teleportToResume()') }
       // ...and to the start of a dangerous contract just taken.
       scope.teleportToContract = function () {
@@ -335,7 +335,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
             if (disposed) return
             scope.data = {
               state: 'EARTH_UNAVAILABLE', stateLabel: 'WAITING FOR EARTH FREIGHT SIM', saveAllowed: false,
-              sessionStatus: 'Earth Freight Sim is not responding. Check that the mod is enabled, then reload it.'
+              sessionStatus: 'Worldwide Trucking Career is not responding. Check that the mod is enabled, then reload it.'
             }
           })
         }

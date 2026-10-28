@@ -41,7 +41,7 @@ class PackageTest(unittest.TestCase):
             manifest = json.loads(archive.read(prefix + 'app.json'))
             config = json.loads(archive.read('config.example.json'))
             self.assertEqual(manifest['appName'], 'EarthFreightHUD')
-            self.assertEqual(manifest['name'], 'Earth Freight Sim')
+            self.assertEqual(manifest['name'], 'BeamNG Worldwide Trucking Career: Dangerous Contracts')
             self.assertEqual(manifest['directive'], 'earthFreightHud')
             self.assertIn('earth-freight-hud', manifest['domElement'])
             self.assertEqual(config['base'], {'latitude': -33.75, 'longitude': 150.7})

@@ -46,7 +46,7 @@ local goMessages = {
   start = 'Press Teleport there to start, or copy these coordinates into the BeamNG.Earth map. You get your starter car when you arrive.',
 }
 -- The name Earth's recent places list the teleport under.
-local goPlaces = { resume = 'Earth Freight: last save', start = 'Earth Freight: ' .. config.START_TOWN }
+local goPlaces = { resume = 'Worldwide Trucking: last save', start = 'Worldwide Trucking: ' .. config.START_TOWN }
 local messages = {
   earth_missing = 'Enable BeamNG.Earth to continue.',
   earth_starting = 'Waiting for BeamNG.Earth to finish starting.',
@@ -57,9 +57,9 @@ local messages = {
 }
 -- What the player sees for each problem that pauses Earth Freight.
 local errorMessages = {
-  newer_version = 'Your save was made by a newer version of Earth Freight Sim. Update the mod to keep playing.',
-  storage_unavailable = 'Earth Freight Sim could not open its save folder. Load the level again to try again.',
-  internal_error = 'Earth Freight Sim hit a problem and paused. Load the level again to carry on from your last save.'
+  newer_version = 'Your save was made by a newer version of Worldwide Trucking Career. Update the mod to keep playing.',
+  storage_unavailable = 'Worldwide Trucking Career could not open its save folder. Load the level again to try again.',
+  internal_error = 'Worldwide Trucking Career hit a problem and paused. Load the level again to carry on from your last save.'
     .. ' What went wrong is in beamng.log: search it for internal_error.',
 }
 local loadMessages = {
@@ -696,7 +696,7 @@ function M.new(deps)
   function c:teleportToContract()
     local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
     if not section or self.error or self.state ~= 'READY' or not self.adapter.teleport then return false end
-    local ok, why, detail = self.adapter:teleport(section.start, 'Earth Freight: ' .. section.name)
+    local ok, why, detail = self.adapter:teleport(section.start, 'Worldwide Trucking: ' .. section.name)
     self.diag:event('teleport_to_contract', ok and section.id or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
     self.contractTeleportAt = ok and self.clock or nil
     if not ok then
@@ -1121,7 +1121,7 @@ function M.new(deps)
     local vehicleId = self.lastSample and self.lastSample.valid and self.lastSample.vehicle and self.lastSample.vehicle.id
     if quote and (self.error or vehicleId ~= quote.vehicleId) then quote = nil end
     if self.state == 'CONFIG_REQUIRED' then
-      status = 'Set valid base coordinates in the Earth Freight Sim configuration, then load the level again.'
+      status = 'Set valid base coordinates in the Worldwide Trucking Career configuration, then load the level again.'
     elseif self.state == 'ERROR' then
       status = errorMessages[self.error] or errorMessages.internal_error
     elseif self.state == 'READY' and not self.arrived then
