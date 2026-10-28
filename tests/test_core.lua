@@ -222,6 +222,42 @@ do
   T.near(jobs.need(stClair, goods.get('food'), r.needs, 50100), jobs.need(stClair, goods.get('food'), c.needs, 50100), 1e-9, 'and loaded')
 end
 
+-- Autosave: after a delivery the game saves itself once the car has been stopped a few seconds.
+-- Driving straight off waits for the next stop; a purchase saves the same way.
+do
+  local c, io, a, g = F.controller()
+  g.fitted.box = 'pickup_cargo_load_box_m'
+  c.now = function() return 50000 end
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local writes = io.writes
+  local id = F.offer(c, stClair, 'food')
+  T.check(c:takeJob(id), 'job taken')
+  F.drive(c, a, stClair)
+  T.eq(io.writes, writes, 'taking a job does not save')
+  T.check(c:deliver(), 'delivered')
+  T.check(not c:view().flash.text:find('Save to keep'), 'no reminder to press Save')
+  c:tick(0.1)
+  T.eq(io.writes, writes, 'not saved straight away')
+  -- Driving off before it saves: it waits for the next stop.
+  a.pose = location.destination(a.pose, 0, 50); c:tick(1)
+  a.pose = location.destination(a.pose, 0, 50); c:tick(1)
+  F.advance(c, Core.AUTOSAVE_SECONDS - 0.5)
+  T.eq(io.writes, writes, 'waits until stopped for a few seconds')
+  F.advance(c, 2)
+  T.eq(io.writes, writes + 1, 'saved itself once stopped')
+  T.eq(c:view().saveFeedback, 'Saved automatically after your delivery.', 'and says so')
+  T.eq(io.files[A].progression.jobsDone, 1, 'the delivery is in the save')
+  T.eq(c:view().unsavedBalance, 0, 'the pay is kept')
+  F.advance(c, 10)
+  T.eq(io.writes, writes + 1, 'only once')
+  -- A relocation booking puts it off, as it does Save.
+  c:autoSaveSoon('buying parts'); c.booking = { id = 'x', name = 'X', region = 'Y', fee = 0 }
+  F.advance(c, 10); T.eq(io.writes, writes + 1, 'not while a relocation is booked')
+  c.booking = nil; F.advance(c, Core.AUTOSAVE_SECONDS + 0.5)
+  T.eq(io.writes, writes + 2, 'saved once the booking is gone')
+  T.eq(c:view().saveFeedback, 'Saved automatically after buying parts.', 'named after what was done')
+end
+
 -- Jobs need the car stopped in a town, fit the car, and must be driven.
 do
   local c, _, a = F.controller()

@@ -37,6 +37,10 @@ local NEARBY_COUNT = 6
 local FLASH_SECONDS = 8
 -- After Teleport there, the button waits this long for Earth to load the terrain and place the car.
 local TELEPORT_WAIT_SECONDS = 30
+-- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
+-- been stopped this long and nothing else is going on.
+local AUTOSAVE_SECONDS = 3
+M.AUTOSAVE_SECONDS = AUTOSAVE_SECONDS
 -- A puncture's tyre repair, as damage points, so every repair quote and bill includes it. Like
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
 local PUNCTURE_DAMAGE = punctures.TYRE_REPAIR_COST / pricing.REPAIR_COST_PER_DAMAGE
@@ -172,6 +176,7 @@ function M.new(deps)
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
     self.ourRespawn, self.rawDamage = nil, nil
+    self.autoSave = nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
@@ -494,6 +499,7 @@ function M.new(deps)
       end
       self:showFlash(lost ~= '' and 'cancelled' or 'delivered', 'RELOCATED TO ' .. b.name:upper(),
         'Welcome to ' .. b.region .. '. Find a load in town.' .. paid .. lost)
+      self:autoSaveSoon('your relocation')
       self.diag:event('shipped', b.id)
     elseif self.stranded and shipping.returned(to, self.stranded) then
       self:unstrand()
@@ -911,15 +917,17 @@ function M.new(deps)
     local section = load.contract and contracts.get(load.contract)
     if load.beacon then
       self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), 'Dropped off. Nobody saw a thing, and nobody asked.'
-        .. refund .. ' Save to keep it.')
+        .. refund)
       self.tradeFeedback = nil
+      self:autoSaveSoon('your delivery')
       self.diag:event('job_delivered', 'beacon for ' .. load.pay)
       return true
     end
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units)
       .. (section and (' over ' .. section.name .. '. ' .. self:named('You made it') .. '.') or (' dropped off road. ' .. self:named('Nice driving') .. '.'))
-      .. refund .. ' Save to keep it.')
+      .. refund)
     self.tradeFeedback = nil
+    self:autoSaveSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> drop for %d', good.id, load.units, load.pay))
     return true
   end
@@ -948,8 +956,9 @@ function M.new(deps)
       self.offer = nil
     end
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' to ' .. place.name
-      .. '. ' .. self:named('Nice driving') .. '.' .. refund .. ' Save to keep it.')
+      .. '. ' .. self:named('Nice driving') .. '.' .. refund)
     self.tradeFeedback = nil
+    self:autoSaveSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> %s for %d', good.id, load.units, place.id, load.pay))
     return true
   end
@@ -1160,6 +1169,7 @@ function M.new(deps)
     self:watchFuel()
     self:watchInsurance()
     self:watchTow()
+    self:watchAutoSave()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
       self.refuelPending, self.fuelFeedback = nil, 'Refuelling did not go through. You have not been charged.'
@@ -1539,6 +1549,34 @@ function M.new(deps)
     self.feedback = self:named('Saved') .. '.'
     self.diag:clear('manual_save_succeeded'); self.diag:event('manual_save_succeeded', 'generation ' .. saved.generation)
     return true
+  end
+
+  -- Asks for a save once things have settled: see watchAutoSave. A later ask replaces it.
+  function c:autoSaveSoon(what)
+    if self.profile then self.autoSave = { what = what, since = nil } end
+  end
+
+  -- Called every tick: saves the game the player asked for with autoSaveSoon once the car has been
+  -- stopped for AUTOSAVE_SECONDS in its own car, with no bill, booking, respawn or claim waiting.
+  -- Until then it keeps waiting, so a player who drives straight off is saved at their next stop.
+  function c:watchAutoSave()
+    local due = self.autoSave
+    if not due then return end
+    local sample = self.lastSample
+    local settled = self.state == 'READY' and self.profile and not self.error and self.arrived
+      and not self.stranded and not self.booking and not self.hire
+      and not self.pendingParts and not self.pendingCar and not self.insurancePending and not self.towPending
+      and not self.refuelPending and not self.respawned and not self.partsCheckDue
+      and sample and sample.valid and self.odometer:stopped()
+    if not settled then due.since = nil; return end
+    due.since = due.since or self.clock
+    if self.clock - due.since < AUTOSAVE_SECONDS then return end
+    self.autoSave = nil
+    -- A save that fails says so, as Save does; the last save is untouched.
+    if self:manualSave() then
+      self.feedback = 'Saved automatically after ' .. due.what .. '.'
+      self.diag:event('auto_save', due.what)
+    end
   end
 
   function c:newGameAllowed()

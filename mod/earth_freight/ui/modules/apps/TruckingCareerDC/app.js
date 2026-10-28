@@ -233,7 +233,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
         'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
-        'Press Save often. Anything since your last Save is lost when you exit.'
+        'The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.'
       ]
       // While a text box has focus the game's keys are off, so typing does not drive the car.
       var typingNow = false
