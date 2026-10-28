@@ -18,6 +18,8 @@ local fuel = require('earthFreight/fuel')
 local workshop = require('earthFreight/workshop')
 local shipping = require('earthFreight/shipping')
 local contracts = require('earthFreight/contracts')
+local flights = require('earthFreight/flights')
+local aircraft = require('earthFreight/aircraft')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and some fuel
@@ -117,12 +119,15 @@ function M.new(deps)
     -- Adds the load's weight to the car, and reads and sets its fuel; without them the load has no
     -- weight and there is no Refuel.
     cargo = deps.cargo, fuelTank = deps.fuel,
+    -- Puts heli loads down and reads where they are; without it there are no heli flights.
+    aircraft = deps.aircraft,
     odometer = odometer.new(),
     -- Sends game UI events, such as the pop-ups that show over the game's own menus.
     trigger = deps.trigger,
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
+  flights.attach(c)
 
   function c:transition(nextState, reason)
     if self.state == nextState and self.reason == reason then return end
@@ -179,6 +184,9 @@ function M.new(deps)
     self.needs = needsFrom(self.profile and self.profile.needs)
     self.abandonArmed, self.insuranceArmed, self.insurancePending, self.insuredUntil = false, false, nil, nil
     self.towArmed, self.towPending = false, nil
+    -- A heli hire is not saved: its load is taken away and the saved car comes back on arrival.
+    if self.hire and self.hire.load and self.aircraft then pcall(self.aircraft.remove, self.aircraft, self.hire.load.id) end
+    self.hire, self.heliArmed, self.backArmed, self.heliFeedback = nil, false, false, nil
     local oldLoad = self.profile and self.profile.load
     if oldLoad and not self.load then
       self.diag:event('load_dropped', tostring(oldLoad.good), 'W')
@@ -354,7 +362,8 @@ function M.new(deps)
   -- Puts the load's weight on the car, when it changed or the car respawned. A fluid load pours
   -- into the tank, so it sloshes.
   function c:applyWeight(force)
-    if not self.cargo then return end
+    -- The load waits in the car while the player flies a helicopter.
+    if not self.cargo or self.hire then return end
     local kg = self.load and self.load.kg or 0
     local good = self.load and goods.get(self.load.good)
     local key = tostring(kg) .. ':' .. tostring(good and good.id)
@@ -419,6 +428,8 @@ function M.new(deps)
     self.lastDriven = location.copy(sample)
     -- Which way the car is going, for the drop arrow when Earth does not say which way it points.
     if before and not jump and (location.distance(before, sample) or 0) > 0.5 then self.heading = location.bearing(before, sample) end
+    -- Flying a hired helicopter, nothing counts: not the distance, nor the teleport back to the car.
+    if self.hire then return end
     if fresh and before then
       local gap = location.distance(before, sample)
       if gap and gap > odometer.SHORT_HOP_METRES then jump = gap end
@@ -492,9 +503,13 @@ function M.new(deps)
     end
   end
 
+  -- What the player is told while a hired helicopter stands in for their car.
+  local FLYING = 'You are flying a hired helicopter. Press Back to my car on the Heli tab first.'
+
   -- Why booking shipping is not possible now, or nil when it is.
   function c:shippingProblem()
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Relocation is unavailable right now.' end
+    if self.hire then return FLYING end
     if self.load then return 'Deliver or abandon your job first: cargo cannot be relocated.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     if self.booking then return 'You already have a relocation booked to ' .. self.booking.name .. '.' end
@@ -705,6 +720,7 @@ function M.new(deps)
   -- Why taking or delivering a job at this place is not possible now, or nil when it is.
   function c:tradeProblem(place)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Jobs are unavailable right now.' end
+    if self.hire then return FLYING end
     if not place then return 'Drive into a town to find a job.' end
     if not self.odometer:stopped() then return 'Stop the car to take or deliver a job.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
@@ -810,6 +826,10 @@ function M.new(deps)
   function c:teleportToContract()
     local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
     if not section or self.error or self.state ~= 'READY' or not self.adapter.teleport then return false end
+    if self.hire then
+      self.tradeFeedback = FLYING
+      return false
+    end
     local ok, why, detail = self.adapter:teleport(section.start, 'Worldwide Trucking: ' .. section.name)
     self.diag:event('teleport_to_contract', ok and section.id or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
     self.contractTeleportAt = ok and self.clock or nil
@@ -837,6 +857,7 @@ function M.new(deps)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then
       return 'Deliveries are unavailable right now.'
     end
+    if self.hire then return FLYING end
     local section = load.contract and contracts.get(load.contract)
     if section and not load.started then return 'Teleport to the start of ' .. section.name .. ' first.' end
     local away = location.distance(sample, load.drop)
@@ -961,7 +982,7 @@ function M.new(deps)
   -- through fuelReading. Refuel fills the tank as far as the money goes, inside a place's arrival
   -- circle, stopped, and is charged when the car reports how much went in.
   function c:watchFuel()
-    if not self.fuelTank or self.state ~= 'READY' or not self.arrived or self.partsCheckDue then return end
+    if not self.fuelTank or self.state ~= 'READY' or not self.arrived or self.partsCheckDue or self.hire then return end
     if self.fuelReadAt and self.clock - self.fuelReadAt < fuel.READ_EVERY_SECONDS then return end
     self.fuelReadAt = self.clock
     local ok, why = self.fuelTank:read()
@@ -1036,6 +1057,7 @@ function M.new(deps)
     self.clock = self.clock + dt
     self:observe(self.adapter:sample(), dt)
     self:provideVehicle()
+    self:watchHire()
     self:watchParts()
     self:watchPartsBill()
     self:afterRespawn()
@@ -1138,7 +1160,7 @@ function M.new(deps)
         delivery = delivery,
         refuel = refuel and { litres = refuel.litres, cost = refuel.cost, full = refuel.full } or nil,
         refuelAllowed = problem == nil and self.fuelTank ~= nil and refuel ~= nil and not refuel.full and refuel.litres > 0
-          and not self.refuelPending,
+          and not self.refuelPending and not self.hire,
       }
     end
     local loadView
@@ -1296,7 +1318,7 @@ function M.new(deps)
       tradeFeedback = self.tradeFeedback,
       fuelFeedback = self.fuelFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
-      repairQuoteAllowed = active and self.garage ~= nil,
+      repairQuoteAllowed = active and self.garage ~= nil and not self.hire,
       repairQuote = quote and quote.cost or nil,
       repairOwed = self.owedDamage > 0 and pricing.repairCost(self.owedDamage, self:carValueOf(self.ownedParts and self.ownedParts.id)) or nil,
       repairAllowed = quote ~= nil and not self.pendingParts and not self.pendingCar,
@@ -1324,7 +1346,8 @@ function M.new(deps)
       buyCarAllowed = self:buyCarAllowed(),
       revertCarAllowed = self.pendingCar ~= nil,
       carFeedback = self.carFeedback,
-      saveAllowed = self.state == 'READY' and self.arrived and not self.stranded and not self.booking,
+      saveAllowed = self.state == 'READY' and self.arrived and not self.stranded and not self.booking and not self.hire,
+      heli = self:heliView(current),
       shipping = self:shippingView(current),
       stranded = self.stranded and current and {
         latitude = self.stranded.latitude, longitude = self.stranded.longitude,
@@ -1374,6 +1397,11 @@ function M.new(deps)
       self.feedback = self.stranded and 'Go back to where you teleported from, or book a relocation, before saving.'
         or 'Teleport to your relocation booking, or cancel it, before saving.'
       self.diag:event('manual_save_rejected', self.stranded and 'stranded' or 'booking', 'W')
+      return false
+    end
+    if self.hire then
+      self.feedback = 'Press Back to my car on the Heli tab before saving: Save keeps your car, not the helicopter.'
+      self.diag:event('manual_save_rejected', 'heli', 'W')
       return false
     end
     if not self.arrived then
@@ -1493,7 +1521,7 @@ end
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
-      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(),
+      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
       log = rawget(_G, 'log'),
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
@@ -1558,6 +1586,15 @@ function M.abandonJob() return safely(function() return ensure():abandonJob() en
 function M.claimInsurance() return safely(function() return ensure():claimInsurance() end) end
 function M.towToRoad() return safely(function() return ensure():towToRoad() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end
+function M.hireHeli() return safely(function() return ensure():hireHeli() end) end
+function M.backToCar() return safely(function() return ensure():backToCar(false) end) end
+-- A heli load's answer: what it weighs once its mass is set.
+function M.loadMass(id, kg)
+  return safely(function() if active and type(id) == 'number' and type(kg) == 'number' then active:loadMass(id, kg) end end)
+end
+-- The game's coupler hooks: the helicopter's hook taking hold of a load, or letting it go.
+function M.onCouplerAttached(a, b) return safely(function() if active then active:couplerChanged(a, b, true) end end) end
+function M.onCouplerDetached(a, b) return safely(function() if active then active:couplerChanged(a, b, false) end end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
 -- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.
 function M.bookShippingTo(latitude, longitude)
