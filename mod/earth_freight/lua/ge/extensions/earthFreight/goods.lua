@@ -20,6 +20,8 @@ M.list = {
   { id = 'gravel', name = 'Gravel / ore', kind = 'dryBulk', slots = 1, kg = 160 },
   { id = 'water', name = 'Water', kind = 'fluid', litres = 10, slots = 10, kg = 10, rate = 1 },
   { id = 'fuel', name = 'Fuel', kind = 'fluid', litres = 10, slots = 10, kg = 7.5, rate = 1 },
+  -- What a "don't ask questions" job carries (beacons.lua): never posted on a board, and no weight.
+  { id = 'package', name = 'Package', kind = 'package', slots = 1, kg = 0 },
 }
 -- The cargo kinds the mod can carry yet.
 M.CARRIED = { parcel = true, fluid = true }

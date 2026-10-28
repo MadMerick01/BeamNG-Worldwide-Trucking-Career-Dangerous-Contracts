@@ -25,7 +25,6 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 - **Insurance** after a big crash costs $1,000 (the load is lost), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
 - **Heli flights.** Hire a Bell 407 for $1,000 and search for **'dont ask questions'** jobs. Needs the [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) mod by stefan750.
 
-
 ## Install
 
 1. Download `worldwide-trucking-dangerous-contracts.zip` from the [latest release](../../releases/latest).
