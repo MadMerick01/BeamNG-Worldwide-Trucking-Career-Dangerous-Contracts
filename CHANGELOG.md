@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 70 · 28 Oct 2026
+
 - **The mod has a new name: BeamNG Worldwide Trucking Career: Dangerous Contracts.** It used to be called Earth Freight Sim. The HUD now says Worldwide Trucking Career at the top, the start page shows the new name, the minimised HUD button says Worldwide Trucking, and the UI apps list shows the new name. Nothing else changes: the download is still `earth-freight-sim.zip`, you don't need to delete anything, and your saves still work.
 
 ## Build 64 · 27 Oct 2026
