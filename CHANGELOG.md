@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 79 · 28 Oct 2026
+
 - **You can now buy second-hand cars.** Press **Buy second hand** on the Garage tab to see two used cars for sale in the town you're in, or the nearest town. They can be any BeamNG car in any version, except trailers and props, and cost between 70% and 105% of the new price. Each card shows the car's picture, its kilometres, its price, a "Good deal" tag when it's under 80% of new, and what you'd pay after your trade-in. Each town always sells the same two cars, so drive to another town to see different ones. **Buy this one** puts the car in place of yours and opens the usual car bill at the second-hand price: buy it or press **Get my car back**, as with a new car.
 - Second-hand cars look worn, with faded paint and the kilometres on the clock, but they drive like new. A second-hand car is worth what you paid for it, so that's what its trade-in and repairs are based on, and it stays that way after part changes and after you save and load. Your saves still work.
 
