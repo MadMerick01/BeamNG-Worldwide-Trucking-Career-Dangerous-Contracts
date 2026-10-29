@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 100 · 29 Oct 2026
+
 - **The world is fuller: about 179,000 towns and villages to trade at, up from 100,000.** Villages down to 500 people are on the map now, and places can be as close as 3 km apart, so country areas that had nowhere to deliver nearby now have short runs too. The job boards, the Nearby list and the Relocate search all include the new places. The download grows from about 3.3 MB to 5.3 MB. Your saves still work, and every town you know is still there except about 40 worldwide whose position on the map was corrected; a job you saved on the way to one of those is cancelled when you load. A few remote places pay a little differently because the town populations are newer, for example Coroico on Death Road now pays 2.9 times instead of 3.
 - **Pick how far you want to drive with the new Distance filter on the Town tab.** Choose Any, Short (up to 8 km), Medium (8 to 13 km) or Long (13 to 20 km), and all three town jobs on the board go that far, each to a different town where there are enough. Any keeps the usual mix of one short, one medium and one long run. If no town is that far away, the closest towns are used instead and those jobs are marked "nearest". The off-road drop and the dangerous contract don't change. Your choice is remembered after you restart the game, and your saves still work.
 
