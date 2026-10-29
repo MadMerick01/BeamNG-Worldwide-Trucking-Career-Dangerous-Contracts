@@ -649,3 +649,11 @@ test('the Nearby list shows each town\'s direction and sets the GPS only when Lu
   assert.ok(a.commands.includes(fixed("gpsToTown('gn123')")), 'sends the town')
   assert.ok(html.includes('ng-click="gpsToTown(p.id)"') && html.includes('{{p.letters}}'), 'each row has its letters and a GPS button')
 })
+test('each town job has a GPS button to see the route before taking it', () => {
+  const a = app()
+  a.state({ state: 'READY', arrived: true, gpsAllowed: true, town: { jobs: [{ id: 'food_gn1', toId: 'gn1' }] } })
+  a.scope.gpsToTown('gn1')
+  assert.ok(a.commands.includes(fixed("gpsToTown('gn1')")), 'sends the drop-off town')
+  assert.equal(a.commands.filter(c => c.includes('takeJob')).length, 0, 'without taking the job')
+  assert.ok(html.includes('ng-click="gpsToTown(j.toId)"') && html.includes('ng-if="!j.drop && !j.contract" aria-label="Set the GPS'), 'town jobs only')
+})

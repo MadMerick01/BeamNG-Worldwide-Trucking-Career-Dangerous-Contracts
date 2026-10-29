@@ -1254,6 +1254,8 @@ function M.new(deps)
       local section = job.contract and contracts.get(job.contract)
       out[#out + 1] = { id = job.id, good = good.name, goodId = good.id,
         to = section and section.name or job.drop and 'Off-road drop' or to.name, toId = to.id,
+        -- A town job's GPS button routes to the drop-off town before the job is taken.
+        gps = not job.drop and not section and self.gpsTown == to.id or nil,
         size = not job.drop and to.size or nil, drop = job.drop ~= nil and not section or nil,
         contract = section and { name = section.name, region = section.region, summary = section.summary,
           fee = contracts.FEE, insurance = contracts.INSURANCE_FEE, pays = section.pay } or nil,
