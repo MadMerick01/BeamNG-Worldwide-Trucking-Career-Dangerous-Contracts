@@ -172,7 +172,7 @@ do
   T.eq(v.here.name, 'Penrith', 'in Penrith'); T.check(v.town.stopped, 'stopped')
   T.eq(v.region.name, 'Australia', 'the region is named'); T.near(v.region.boost, 1, 1e-9, 'flat Sydney roads add nothing')
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
-  T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 5000, 'distances are road estimates')
+  T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 3000 * places.ROAD_FACTOR, 'distances are road estimates')
   T.eq(#v.nearby[1].dots, 4, 'a dot per good: parts, bricks, water and fuel')
   T.eq(#v.town.jobs, 5, 'the board lists parts, bricks, a fluid, the off-road drop and a dangerous contract')
   T.eq(v.town.jobs[1].goodId, 'parts', 'parts first'); T.eq(v.town.jobs[2].goodId, 'bricks', 'then bricks')

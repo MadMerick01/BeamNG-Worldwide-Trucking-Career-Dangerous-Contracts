@@ -2,8 +2,9 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Mali" },
+  regions = { "Algeria", "Mali" },
   places = [==[
-2449893	Tessalit	20.2013	1.0119	v	14	1
+2449893	Tessalit	20.2013	1.0119	v	14	2
+2596770	Timiaouine	20.4408	1.8055	v	14	1
 ]==],
 }

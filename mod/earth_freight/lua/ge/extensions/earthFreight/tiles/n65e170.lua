@@ -4,6 +4,6 @@
 return {
   regions = { "Russia" },
   places = [==[
-2122090	Pevek	69.7029	170.2999	v	15	1
+2122090	Pevek	69.7028	170.3071	v	15	1
 ]==],
 }

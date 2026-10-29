@@ -4,10 +4,10 @@
 return {
   regions = { "Micronesia" },
   places = [==[
-4043034	Kolonia	6.9640	158.2062	t	16	1
+4043034	Kolonia	6.9640	158.2062	t	15	1
 7667608	Madolenihm Municipality Government	6.8349	158.2987	v	16	1
 7628452	Mokil	6.6928	159.7628	v	14	1
 7627088	Ngatik	5.7885	157.1595	v	14	1
-2081986	Palikir - National Government Center	6.9248	158.1611	v	16	1
+2081986	Palikir	6.9248	158.1611	t	15	1
 ]==],
 }

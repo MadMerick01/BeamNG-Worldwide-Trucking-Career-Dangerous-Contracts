@@ -4,10 +4,11 @@
 return {
   regions = { "Russia" },
   places = [==[
+1511845	Aleksandrovskoye	60.4290	77.8642	v	12	1
 1539209	Gubkinskiy	64.4340	76.5026	t	13	1
 7290697	Izluchinsk	60.9794	76.9242	t	11	1
 6696767	Langepas	61.2544	75.2124	t	12	1
-1499053	Megion	61.0296	76.1136	t	11	1
+1499053	Megion	61.0343	76.1068	t	11	1
 1497543	Nizhnevartovsk	60.9344	76.5531	c	11	1
 1497210	Novoagansk	61.9449	76.6625	t	12	1
 1496503	Noyabrsk	63.1931	75.4373	c	12	1

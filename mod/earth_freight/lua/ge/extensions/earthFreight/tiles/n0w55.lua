@@ -2,18 +2,35 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Brazil", "French Guiana" },
+  regions = { "Brazil", "French Guiana", "Suriname" },
   places = [==[
+3407765	Amapá	2.0450	-50.7882	t	13	1
+6692148	Benzdorp (Monte Hermon)	3.6721	-54.1035	v	14	3
+3403899	Calçoene	2.4975	-50.9486	t	13	1
 3382226	Camopi	3.1689	-52.3353	v	14	2
-3382160	Cayenne	4.9333	-52.3333	c	11	2
-3381538	Grand-Santi	4.2729	-54.3815	v	14	2
-3396016	Macapá	0.0389	-51.0664	c	11	1
+3382160	Cayenne	4.9381	-52.3346	c	11	2
+6316984	Cutias	0.9861	-50.8022	v	13	1
+3399627	Ferreira Gomes	0.8583	-51.1800	t	12	1
+3381538	Grand-Santi	4.2729	-54.3815	t	14	2
+3397867	Itaubal	0.7117	-50.8000	t	13	1
+8602201	Lago da Vaca	0.0893	-51.0564	v	10	1
+3396016	Macapá	0.0389	-51.0664	c	10	1
 3381117	Macouria	4.9122	-52.3743	t	11	2
-3380994	Maripasoula	3.6416	-54.0317	v	14	2
+3380994	Maripasoula	3.6416	-54.0317	t	14	2
 3380965	Matoury	4.8492	-52.3235	t	11	2
+3393758	Oiapoque	3.8431	-51.8350	t	13	1
+6317907	Pedra Branca do Amapari	0.7781	-51.9436	t	13	1
+3391368	Porto Grande	0.7133	-51.4133	t	13	1
+6318039	Portuário do Igarapé da Fortaleza	0.0508	-51.1264	t	10	1
+6318044	Pracuúba	1.7433	-50.7914	v	13	1
+8602183	Ressaca do Muca	0.0090	-51.0804	t	10	1
 3380450	Roura	4.7287	-52.3250	v	12	2
 3380523	Régina	4.3130	-52.1308	v	14	2
 3380892	Rémire-Montjoly	4.9167	-52.2667	t	11	2
-3380402	Saint-Georges	3.8886	-51.8024	v	14	2
+11953175	Résidence Arc-en-Ciel	4.8931	-52.2866	v	11	2
+11953214	Résidence Cogneau-Larivot	4.8938	-52.3412	v	11	2
+3380402	Saint-Georges	3.8886	-51.8024	v	13	2
+3387835	Serra do Navio	0.8956	-52.0022	v	13	1
+3386604	Tartarugalzinho	1.5056	-50.9119	t	13	1
 ]==],
 }

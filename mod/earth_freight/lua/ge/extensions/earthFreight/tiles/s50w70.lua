@@ -4,14 +4,15 @@
 return {
   regions = { "Argentina" },
   places = [==[
-3863379	Caleta Olivia	-46.4393	-67.5281	t	13	1
-3860466	Comandante Luis Piedra Buena	-49.9851	-68.9147	v	14	1
-3860443	Comodoro Rivadavia	-45.8641	-67.4966	c	12	1
-3848353	Las Heras	-46.5419	-68.9359	t	14	1
-3841309	Pico Truncado	-46.7949	-67.9573	t	13	1
-3840104	Puerto Deseado	-47.7503	-65.8938	t	13	1
+3863379	Caleta Olivia	-46.4479	-67.5227	c	12	1
+3862889	Cañadón Seco	-46.5580	-67.6109	v	12	1
+3860466	Comandante Luis Piedrabuena	-49.9852	-68.9151	t	13	1
+3860443	Comodoro Rivadavia	-45.8626	-67.4940	c	12	1
+3848353	Las Heras	-46.5413	-68.9323	t	13	1
+3841309	Pico Truncado	-46.7994	-67.9578	t	13	1
+3840104	Puerto Deseado	-47.7513	-65.8967	t	13	1
+3840082	Puerto San Julián	-49.3070	-67.7298	t	14	1
 3839482	Rada Tilly	-45.9246	-67.5542	t	12	1
-3840082	San Julián	-49.3055	-67.7274	t	14	1
-3835710	Sarmiento	-45.5881	-69.0700	t	14	1
+3835710	Sarmiento	-45.5869	-69.0689	t	14	1
 ]==],
 }

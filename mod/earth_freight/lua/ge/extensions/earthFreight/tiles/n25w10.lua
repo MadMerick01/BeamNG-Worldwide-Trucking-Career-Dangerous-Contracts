@@ -2,17 +2,25 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Algeria", "Morocco" },
+  regions = { "Algeria", "Morocco", "Western Sahara" },
   places = [==[
+2558667	Akka	29.3891	-8.2549	t	15	2
+2556996	Assa	28.6099	-9.4299	t	13	2
+13526712	Bir Lehlou	26.3499	-9.5769	v	14	3
+2554594	Bou Izakarn	29.1771	-9.7118	t	15	2
+12718689	Fam El Hisn	29.0189	-8.8911	t	15	2
+12718677	Lakhsas	29.3661	-9.7508	t	13	2
 2565267	Mhamid	29.8200	-5.7200	t	13	2
 2540554	Ouijjane	29.6278	-9.5396	v	14	2
 2538332	Reggada	29.5802	-9.7009	v	14	2
-2531877	Tafraout	29.7245	-8.9747	v	22	2
+2531877	Tafraout	29.7245	-8.9747	t	22	2
 2530395	Tanalt	29.7755	-9.1680	v	23	2
+2529777	Tarhjicht	29.0583	-9.4288	t	14	2
 2529621	Tarsouat	29.5815	-9.0266	v	19	2
-2529362	Tata	29.7441	-7.9730	v	16	2
+2529411	Tassila	29.9713	-9.6419	t	10	2
+2529362	Tata	29.7441	-7.9730	t	15	2
 2476301	Tindouf	27.6711	-8.1474	t	12	1
 2527089	Tiznit	29.6974	-9.7316	c	12	2
-2526459	Zag	28.0221	-9.2940	t	14	2
+2526459	Zag	28.0221	-9.2940	t	13	2
 ]==],
 }

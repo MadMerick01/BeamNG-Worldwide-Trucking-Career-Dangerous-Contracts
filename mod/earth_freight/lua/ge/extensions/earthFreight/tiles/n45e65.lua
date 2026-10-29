@@ -4,7 +4,11 @@
 return {
   regions = { "Kazakhstan" },
   places = [==[
+12228179	Kengir	47.8400	67.6150	v	11	1
+1519933	Qarsaqbay	47.8368	66.7264	v	14	1
+1520692	Satpayev	47.9041	67.5411	c	11	1
 1537909	Shubarköl	48.8822	68.8072	v	14	1
-1516589	Zhezqazghan	47.7833	67.7667	c	12	1
+1517743	Ulytau	48.6550	67.0059	v	15	1
+1516589	Zhezqazghan	47.7941	67.7063	c	11	1
 ]==],
 }

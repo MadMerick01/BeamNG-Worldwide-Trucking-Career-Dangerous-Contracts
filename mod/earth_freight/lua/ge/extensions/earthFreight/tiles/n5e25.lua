@@ -2,13 +2,14 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Central African Republic", "South Sudan" },
+  regions = { "Central African Republic", "South Sudan", "Sudan" },
   places = [==[
+380308	Abyei	9.5953	28.4349	t	13	3
 364367	Aweil	8.7619	27.3919	t	11	2
 377472	Bentiu	9.2572	29.7983	t	14	2
 376967	Cueibet	7.0267	29.2461	v	14	2
 374739	Gogrial	8.5332	28.1004	t	12	2
-371712	Kuacjok	8.3028	27.9800	v	12	2
+371712	Kuacjok	8.3028	27.9800	c	12	2
 11118586	Mayen Abun	9.1364	28.3458	v	14	2
 236950	Obo	5.3959	26.4921	t	13	1
 10123653	Pariang	9.9154	29.9811	v	14	2

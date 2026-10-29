@@ -5,5 +5,6 @@ return {
   regions = { "Cook Islands" },
   places = [==[
 4035715	Avarua	-21.2075	-159.7755	t	13	1
+4036498	Matavera	-21.2244	-159.7333	v	13	1
 ]==],
 }

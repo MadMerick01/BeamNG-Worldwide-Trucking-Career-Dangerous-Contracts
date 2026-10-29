@@ -6,7 +6,11 @@ return {
   places = [==[
 2071536	Fitzroy Crossing	-18.1971	125.5666	v	14	1
 2070176	Halls Creek	-18.2248	127.6665	v	14	1
-2068110	Kununurra	-15.7782	128.7421	t	14	1
+8348603	King Leopold Ranges	-17.1099	125.4806	v	14	1
+2068110	Kununurra	-15.7782	128.7421	v	14	1
+11747927	Lake Argyle	-16.1153	128.7368	v	15	1
 8349102	St George Ranges	-18.9820	125.0087	v	14	1
+2060626	Tanami	-19.9833	129.7167	v	14	1
+2057705	Wyndham	-15.4869	128.1243	v	14	1
 ]==],
 }

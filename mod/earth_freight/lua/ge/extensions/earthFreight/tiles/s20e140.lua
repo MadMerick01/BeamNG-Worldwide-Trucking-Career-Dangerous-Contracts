@@ -5,6 +5,8 @@ return {
   regions = { "Australia" },
   places = [==[
 2161798	Karumba	-17.4869	140.8426	v	14	1
+2161022	Kowanyama	-15.4736	141.7457	v	14	1
+2160514	Laura	-15.5217	144.1986	v	14	1
 2155085	Normanton	-17.6718	141.0772	v	14	1
 ]==],
 }

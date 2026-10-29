@@ -5,11 +5,14 @@ return {
   regions = { "Mexico" },
   places = [==[
 4022333	Chametla	24.0993	-110.3739	v	11	1
+8861924	El Cachanilla	23.7178	-110.2822	v	11	1
+4010618	El Carrizal	23.7843	-110.3117	v	11	1
 8858277	El Centenario	24.1025	-110.4144	v	11	1
 4022368	El Pescadero	23.3642	-110.1683	v	14	1
-4000900	La Paz	24.1444	-110.3005	c	11	1
+4000900	La Paz	24.1423	-110.3132	c	11	1
 8858983	Melitón Albáñez Domínguez	23.6614	-110.4208	v	13	1
 3987485	Puerto San Carlos	24.7887	-112.1050	t	14	1
+3985138	San Pedro	23.9258	-110.2634	v	15	1
 3981432	Todos Santos	23.4469	-110.2231	t	14	1
 4022149	Villa Morelos	24.9300	-111.6281	v	12	1
 ]==],

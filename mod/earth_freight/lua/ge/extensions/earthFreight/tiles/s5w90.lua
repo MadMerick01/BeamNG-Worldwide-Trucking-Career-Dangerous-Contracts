@@ -4,6 +4,6 @@
 return {
   regions = { "Ecuador" },
   places = [==[
-3652758	Puerto Baquerizo Moreno	-0.9017	-89.6102	v	15	1
+3652758	Puerto Baquerizo Moreno	-0.9017	-89.6102	t	15	1
 ]==],
 }

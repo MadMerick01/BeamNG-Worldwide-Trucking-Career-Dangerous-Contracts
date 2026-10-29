@@ -4,6 +4,7 @@
 return {
   regions = { "Canada" },
   places = [==[
+6172408	Upper Liard	60.0496	-128.9061	v	14	1
 6176992	Watson Lake	60.0635	-128.7089	v	15	1
 ]==],
 }

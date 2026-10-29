@@ -4,6 +4,7 @@
 return {
   regions = { "French Polynesia" },
   places = [==[
+4034588	Avera	-22.4781	-151.3513	v	14	1
 4034188	Moerai	-22.4513	-151.3419	v	14	1
 ]==],
 }

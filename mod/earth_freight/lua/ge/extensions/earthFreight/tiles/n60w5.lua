@@ -4,8 +4,10 @@
 return {
   regions = { "United Kingdom" },
   places = [==[
+2654970	Brae	60.3963	-1.3530	v	14	1
 2644605	Lerwick	60.1534	-1.1443	t	14	1
 2638534	Sandwick	60.0000	-1.2500	v	14	1
 2638439	Scalloway	60.1383	-1.2769	v	14	1
+8426371	Symbister	60.3419	-1.0246	v	14	1
 ]==],
 }

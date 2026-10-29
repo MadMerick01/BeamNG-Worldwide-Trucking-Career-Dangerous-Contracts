@@ -4,6 +4,7 @@
 return {
   regions = { "Australia" },
   places = [==[
-2065594	Mount Isa	-20.7252	139.4973	t	12	1
+2065594	Mount Isa	-20.7252	139.4973	t	13	1
+8347862	Sandover	-21.9596	135.5128	v	14	1
 ]==],
 }

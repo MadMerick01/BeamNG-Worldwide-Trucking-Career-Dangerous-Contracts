@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the mod's worldwide place list from GeoNames: thin it to well-known towns about 4 km
+"""Build the mod's worldwide place list from GeoNames: thin it to well-known towns about 3 km
 apart, score each one's region pay boost, and write it as region tiles the mod loads near the
 player. Built offline, never in game.
 
@@ -9,7 +9,10 @@ player. Built offline, never in game.
     python tools/make_places.py --world cities1000.txt
 
 The inputs are in GeoNames' tab-separated dump format, plain or gzipped:
-- tools/data/geonames_world.tsv.gz: every place over 1,000 people, cut from cities1000.
+- tools/data/geonames_world.tsv.gz: every place over 500 people, cut from cities500, and the rows of
+  the older cities1000 cut that cities500 no longer has.
+- tools/data/previous_places.txt.gz: the GeoNames ids of every place in the list before it went down
+  to 500 people. They are kept first, so a saved job still finds its town.
 - tools/data/geonames_sydney.tsv: the Sydney region cut from a newer cities1000; inside
   REGION_RADIUS_KM of Penrith it replaces the world rows, and place_overrides.json applies there.
 - tools/data/terrain.tsv.gz: each place's elevation and relief, sampled by tools/sample_terrain.py.
@@ -29,6 +32,7 @@ DATA = ROOT / 'tools' / 'data'
 WORLD = DATA / 'geonames_world.tsv.gz'
 SYDNEY = DATA / 'geonames_sydney.tsv'
 OVERRIDES = DATA / 'place_overrides.json'
+PREVIOUS = DATA / 'previous_places.txt.gz'
 TERRAIN = DATA / 'terrain.tsv.gz'
 REGIONS = DATA / 'regions.json'
 COUNTRIES = DATA / 'countries.tsv'
@@ -37,7 +41,7 @@ INDEX = EXTENSIONS / 'placesIndex.lua'
 TILES = EXTENSIONS / 'tiles'
 PENRITH = (-33.75, 150.7)
 REGION_RADIUS_KM = 150
-SPACING_KM = 4
+SPACING_KM = 3
 # Tiles are TILE_DEGREES square; the mod loads the one you are in and the eight around it.
 TILE_DEGREES = 5
 EARTH_RADIUS = 6371008.8
@@ -56,6 +60,10 @@ RELIEF_FLAT_M, RELIEF_STEEP_M, STEEP_BOOST = 200, 2000, 1.6
 # Remoteness: the people living within REMOTE_RADIUS_KM, from nothing at a big city's
 # REMOTE_BUSY people down to the full REMOTE_BOOST at REMOTE_EMPTY people.
 REMOTE_RADIUS_KM, REMOTE_BUSY, REMOTE_EMPTY, REMOTE_BOOST = 50, 1000000, 5000, 0.4
+# Only the places GeoNames' cities1000 has are counted (at least REMOTE_COUNTED people, or a seat of
+# government), as when the list started there, so the smaller places added since do not make
+# anywhere count as less remote.
+REMOTE_COUNTED = 1000
 # The paid-shipping offers on the HUD rotate through the places with at least this boost that
 # have another place to deliver to within OFFER_DELIVERY_KM by road, so a town is never offered
 # with nowhere close to deliver. ROAD_FACTOR is places.lua's straight-line to road estimate, the
@@ -118,16 +126,16 @@ def merge(world, sydney):
     return [p for p in world if not inside(p)] + [dict(p, regional=True) for p in sydney if inside(p)]
 
 
-def thin(places, overrides, spacing_km):
-    """Keeps the best-known places at least spacing_km apart. The override names only apply to
-    places from the Sydney extract, so Liverpool in England is not forced in."""
+def thin(places, overrides, spacing_km, previous=frozenset()):
+    """Keeps the best-known places at least spacing_km apart, the previous ones first. The override
+    names only apply to places from the Sydney extract, so Liverpool in England is not forced in."""
     include = set(overrides.get('include', []))
     exclude = set(overrides.get('exclude', []))
     named = lambda p, names: p.get('regional') and (p['name'] in names or str(p['geonameid']) in names)
     candidates = [p for p in places if not named(p, exclude)]
 
     def score(p):
-        return (bool(named(p, include)), p['population'] * (SUBURB_WEIGHT if p['code'] == 'PPLX' else 1), -p['geonameid'])
+        return (bool(named(p, include)), p['geonameid'] in previous, p['population'] * (SUBURB_WEIGHT if p['code'] == 'PPLX' else 1), -p['geonameid'])
 
     grid, kept = Grid(spacing_km * 1000), []
     for p in sorted(candidates, key=score, reverse=True):
@@ -192,7 +200,8 @@ def people_around(kept, everyone):
     """The people living within REMOTE_RADIUS_KM of each kept place, from the whole input."""
     grid = Grid(REMOTE_RADIUS_KM * 1000)
     for p in everyone:
-        grid.add(p)
+        if p['population'] >= REMOTE_COUNTED or p['code'].startswith(('PPLA', 'PPLC')):
+            grid.add(p)
     out = {}
     for k in kept:
         out[k['geonameid']] = sum(q['population'] for q in grid.near(k['lat'], k['lon'])
@@ -286,7 +295,8 @@ def render(kept, terrain, people, areas, countries, source):
 def build_all(args):
     overrides = json.loads(args.overrides.read_text(encoding='utf-8')) if args.overrides.exists() else {}
     everyone = merge(read(args.world), read(args.sydney))
-    kept = thin(everyone, overrides, SPACING_KM)
+    previous = {int(i) for i in text_of(args.previous).split()} if args.previous.exists() else set()
+    kept = thin(everyone, overrides, SPACING_KM, previous)
     terrain = read_terrain(args.terrain)
     people = people_around(kept, everyone)
     areas = json.loads(args.regions.read_text(encoding='utf-8'))['areas']
@@ -317,6 +327,7 @@ def main():
     parser.add_argument('--world', type=Path, default=WORLD)
     parser.add_argument('--sydney', type=Path, default=SYDNEY)
     parser.add_argument('--overrides', type=Path, default=OVERRIDES)
+    parser.add_argument('--previous', type=Path, default=PREVIOUS)
     parser.add_argument('--terrain', type=Path, default=TERRAIN)
     parser.add_argument('--regions', type=Path, default=REGIONS)
     parser.add_argument('--countries', type=Path, default=COUNTRIES)

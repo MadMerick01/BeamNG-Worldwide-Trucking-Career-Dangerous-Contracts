@@ -2,15 +2,21 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Saudi Arabia", "Sudan" },
+  regions = { "Egypt", "Saudi Arabia", "Sudan" },
   places = [==[
-109417	Al Jumūm	21.6195	39.6966	t	10	1
-107744	Badr Ḩunayn	23.7829	38.7905	t	14	1
-375046	Gebeit	21.0667	36.3167	t	13	2
-105343	Jeddah	21.4901	39.1862	c	10	1
-104515	Mecca	21.4266	39.8256	c	10	1
-109223	Medina	24.4686	39.6142	c	10	1
-103035	Rābigh	22.7986	39.0349	t	12	1
-100425	Yanbu	24.0895	38.0618	c	11	1
+109417	Al Jumūm	21.6195	39.6966	t	10	2
+107744	Badr Ḩunayn	23.7829	38.7905	t	14	2
+375046	Gebeit	21.0667	36.3167	t	13	3
+374290	Hala'ib	22.2227	36.6468	t	13	1
+105343	Jeddah	21.4901	39.1862	c	10	2
+104923	Khulayş	22.1555	39.3201	t	12	2
+11524299	King Abdullah City	22.4463	39.1245	t	12	2
+109223	Madinah	24.4686	39.6142	c	10	2
+104515	Makkah	21.4266	39.8256	c	10	2
+103035	Rābigh	22.7986	39.0349	c	12	2
+8555994	Shalateen	23.1323	35.5909	t	13	1
+101760	Sulţānah	24.4926	39.5857	c	10	2
+409682	Thuwal	22.2827	39.1125	t	12	2
+100425	Yanbu	24.0895	38.0618	c	11	2
 ]==],
 }

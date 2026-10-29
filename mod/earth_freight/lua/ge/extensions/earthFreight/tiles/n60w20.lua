@@ -5,5 +5,6 @@ return {
   regions = { "Iceland" },
   places = [==[
 2630299	Höfn	64.2539	-15.2121	v	15	1
+2625252	Vík í Mýrdal	63.4194	-19.0097	v	15	1
 ]==],
 }

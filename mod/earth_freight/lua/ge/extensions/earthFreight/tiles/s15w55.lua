@@ -4,9 +4,46 @@
 return {
   regions = { "Brazil" },
   places = [==[
+6316352	Alto Boa Vista	-11.6738	-51.3786	t	14	1
+3471394	Aruanã	-14.9203	-51.0831	t	13	1
+12972085	Bom Jesus do Araguaia	-12.1743	-51.5076	t	14	1
+12972572	Campinápolis	-14.5411	-52.7951	t	12	1
+6316755	Canabrava do Norte	-11.0544	-51.8314	v	13	1
+6316760	Canarana	-13.5522	-52.2683	t	13	1
+6316876	Cláudia	-11.5153	-54.8914	t	14	1
+3465999	Cocalinho	-14.3972	-50.9958	t	14	1
+6316908	Confresa	-10.6439	-51.5689	t	12	1
+6317134	Feliz Natal	-12.3861	-54.9197	t	13	1
+6317189	Gaúcha do Norte	-13.2422	-53.0797	t	14	1
+12972738	Gaúcha do Norte	-13.1797	-53.2540	v	14	1
+3458383	Luciara	-11.2216	-50.6672	v	13	1
+6317537	Marcelândia	-11.0894	-54.4506	t	13	1
+12972212	Marcelândia	-11.0824	-54.5178	v	13	1
+6317574	Matupá	-10.1693	-54.9344	t	12	1
 3456642	Mozarlândia	-14.7447	-50.5706	t	13	1
-3466255	Nova Xavantina	-14.6646	-52.3556	t	13	1
+6317665	Mundo Novo	-13.7761	-50.2811	t	13	1
+6317715	Nova Brasilândia	-14.9569	-54.9656	v	15	1
+13453345	Nova Brasilândia	-14.9299	-54.9736	v	14	1
+6317728	Nova Crixás	-14.0986	-50.3267	t	13	1
+12975044	Nova Nazaré	-13.9902	-51.7987	v	13	1
+3466255	Nova Xavantina	-14.6643	-52.3586	t	12	1
+8470810	Novo Santo Antônio	-12.2913	-50.9682	v	14	1
+6317803	Novo São Joaquim	-14.9058	-53.0183	t	13	1
+6317871	Paranatinga	-14.4317	-54.0511	t	13	1
+6317924	Peixoto de Azevedo	-10.2231	-54.9797	t	12	1
+12969193	Planalto da Serra	-14.6628	-54.7756	v	14	1
+6318027	Porto Alegre do Norte	-10.8769	-51.6325	t	12	1
+6318091	Querência	-12.5969	-52.1997	t	13	1
+6318126	Ribeirão Cascalheira	-12.9417	-51.8242	t	13	1
+6318229	Santa Cruz Do Xingu	-10.1556	-52.3944	v	14	1
 3449767	Santa Terezinha	-10.4706	-50.5136	t	14	1
+12972741	Santo Antônio do Leste	-14.8015	-53.6103	v	14	1
+12136327	Serra Nova Dourada	-12.0907	-51.4002	v	13	1
+6318414	São Félix do Araguaia	-11.6172	-50.6694	t	13	1
+6318519	São José do Xingu	-10.8044	-52.7442	t	14	1
 3448455	São Miguel do Araguaia	-13.2750	-50.1628	t	13	1
+6318833	União do Sul	-11.5331	-54.3533	v	14	1
+6318931	Vila Rica	-10.0117	-51.1164	t	13	1
+6316314	Água Boa	-14.0500	-52.1586	t	13	1
 ]==],
 }

@@ -5,8 +5,10 @@ return {
   regions = { "Canada" },
   places = [==[
 5944935	Ear Falls	50.6395	-93.2353	v	14	1
+5962499	Gods River	54.8419	-94.0904	v	14	1
 6118417	Red Lake	51.0168	-93.8274	v	14	1
 6118425	Red Lake	51.0668	-93.7337	v	14	1
+6148373	Sioux Lookout	50.0991	-91.9216	t	14	1
 6148374	Sioux Lookout	50.0668	-91.9836	v	14	1
 ]==],
 }

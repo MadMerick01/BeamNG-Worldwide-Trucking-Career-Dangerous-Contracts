@@ -5,8 +5,9 @@ return {
   regions = { "Somalia", "Yemen" },
   places = [==[
 64670	Bargaal	11.2864	51.0773	t	16	1
-64412	Bereeda	11.8704	51.0579	t	16	1
+64412	Bereeda	11.8704	51.0579	t	14	1
 63081	Caluula	11.9661	50.7569	t	13	1
+60149	El Dibir	11.7667	51.2167	c	17	1
 75427	Hadibu	12.6488	54.0189	t	21	2
 56505	Iskushuban	10.2837	50.2300	t	14	1
 73685	Kilmia	12.1858	52.2333	v	14	2

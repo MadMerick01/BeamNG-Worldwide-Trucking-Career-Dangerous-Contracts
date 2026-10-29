@@ -5,5 +5,6 @@ return {
   regions = { "Northern Mariana Islands" },
   places = [==[
 7267949	San Jose Village	14.9682	145.6200	t	12	1
+4041579	Songsong	14.1397	145.1411	v	15	1
 ]==],
 }

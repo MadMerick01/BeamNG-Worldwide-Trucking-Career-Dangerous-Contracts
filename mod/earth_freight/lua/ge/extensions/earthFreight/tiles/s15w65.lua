@@ -4,15 +4,57 @@
 return {
   regions = { "Bolivia", "Brazil" },
   places = [==[
-3925212	Cacoal	-11.4386	-61.4472	c	12	2
-3925040	Jaru	-10.4389	-62.4664	t	12	2
+6316344	Alta Floresta d'Oeste	-11.9681	-61.9542	t	12	2
+8542933	Alta Floresta d'Oeste	-11.9291	-61.9937	v	12	2
+3969433	Alto Alegre dos Parecis	-12.1281	-61.8506	t	12	2
+6316378	Alvorada d'Oeste	-11.3414	-62.2864	t	12	2
+6316666	Buritis	-10.2117	-63.8286	t	12	2
+6316673	Cabixi	-13.4978	-60.5542	t	12	2
+3969378	Cacaulândia	-10.3392	-62.8953	v	11	2
+3925212	Cacoal	-11.4386	-61.4472	c	11	2
+6316744	Campo Novo de Rondônia	-10.5969	-63.6122	t	12	2
+13453182	Campo Novo de Rondônia	-10.5709	-63.6202	v	12	2
+6316825	Castanheiras	-11.4175	-61.9386	v	12	2
+6316847	Cerejeiras	-13.1889	-60.8122	t	12	2
+6316868	Chupinguaia	-12.5522	-60.8997	t	13	2
+6316897	Colorado do Oeste	-13.1167	-60.5417	t	12	2
+6316935	Corumbiara	-12.9619	-60.8867	t	12	2
+12978151	Corumbiara	-12.9985	-60.9431	v	12	2
+3925158	Costa Marques	-12.4450	-64.2272	t	13	2
+3925118	Espigão dOeste	-11.5247	-61.0128	t	11	2
+6317215	Governador Jorge Teixeira	-10.5250	-62.6439	t	12	2
+12968345	Governador Jorge Teixeira	-10.6135	-62.7346	v	12	2
+3925040	Jaru	-10.4389	-62.4664	c	12	2
 3925033	Ji Paraná	-10.8853	-61.9517	c	11	2
+6317595	Ministro Andreazza	-11.0742	-61.5169	t	12	2
+6317600	Mirante da Serra	-11.0297	-62.6750	t	13	2
+6317631	Monte Negro	-10.2944	-63.3253	t	13	2
+12968438	Monte Negro	-10.2604	-63.2979	v	12	2
+6317773	Nova União	-10.9042	-62.5611	t	12	2
+8505882	Novo Horizonte do Oeste	-11.7096	-61.9997	t	12	2
 3924948	Ouro Preto do Oeste	-10.7481	-62.2158	t	11	2
-3924908	Pimenta Bueno	-11.6725	-61.1936	t	12	2
-3924872	Presidente Médici	-11.1753	-61.9014	t	12	2
-3924877	Pôsto Fiscal Rolim de Moura	-13.0827	-62.2773	t	12	2
-3905088	San Ramón	-13.2833	-64.7167	v	14	1
-3902377	Trinidad	-14.8333	-64.9000	c	12	1
+3969432	Parecis	-12.1961	-61.6014	v	12	2
+3924908	Pimenta Bueno	-11.6725	-61.1936	t	11	2
+3924906	Pimenteiras do Oeste	-13.4813	-61.0469	v	13	2
+3924872	Presidente Médici	-11.1753	-61.9014	t	11	2
+6318073	Primavera de Rondônia	-11.8169	-61.3228	v	11	2
+6318182	Rolim de Moura	-11.8036	-61.8033	c	12	2
+12954560	Rolim de Moura	-11.7256	-61.7781	v	11	2
+3924877	Rolim de Moura do Guaporé	-13.0827	-62.2773	t	12	2
+12966295	Rondolândia	-10.8420	-61.4608	v	13	2
+3905088	San Ramón	-13.2665	-64.6151	v	14	1
+6318273	Santa Luzia d'Oeste	-11.9081	-61.7789	t	12	2
+6318665	Seringueiras	-11.7981	-63.0311	t	13	2
+13414507	Seringueiras	-11.7702	-63.0367	v	13	2
+12978116	São Domingos do Guaporé	-12.0752	-64.0269	v	13	2
+6318412	São Felipe d'Oeste	-11.9025	-61.5022	t	11	2
+6318426	São Francisco do Guaporé	-12.0522	-63.5675	t	13	2
+6318556	São Miguel do Guaporé	-11.6936	-62.7114	t	13	2
+3969415	Teixeirópolis	-10.9175	-62.2494	v	11	2
+3969387	Theobroma	-10.2389	-62.3583	t	12	2
+3902377	Trinidad	-14.8322	-64.9034	c	12	1
+8464759	Urupá	-11.1261	-62.3721	t	12	2
+3969388	Vale do Paraíso	-10.4478	-62.1342	t	12	2
 3924679	Vilhena	-12.7406	-60.1458	c	12	2
 ]==],
 }

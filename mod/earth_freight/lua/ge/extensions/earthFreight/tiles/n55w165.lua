@@ -5,6 +5,9 @@ return {
   regions = { "United States" },
   places = [==[
 5866308	King Cove	55.0609	-162.3185	v	16	1
-5873349	Sand Point	55.3366	-160.4988	v	14	1
+5866390	Kipnuk	59.9389	-164.0414	v	14	1
+5872343	Quinhagak	59.7489	-161.9158	v	14	1
+5873349	Sand Point	55.3360	-160.5007	v	14	1
+5876357	Togiak	59.0619	-160.3764	v	14	1
 ]==],
 }

@@ -2,11 +2,21 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "China" },
+  regions = { "China", "Nepal" },
   places = [==[
 1281593	Burang	30.2956	81.1751	t	25	1
+7536142	Darchen	30.9312	81.2894	v	20	1
+8756203	Gangsha	30.9770	81.2875	v	24	1
+1280003	Gar	32.5012	80.0976	t	19	1
+1281219	Gar	32.1194	80.0561	v	23	1
 1280477	Geji	32.3954	81.1397	v	21	1
+8999643	Jisegumen	34.0642	80.7712	v	23	1
+1283206	Khārpū	30.0465	82.1571	v	28	2
+8999489	Langjiu	32.3595	80.4268	v	19	1
+8044502	Lumaka	33.0862	80.3678	v	21	1
 1280679	Luring	32.2667	84.2000	v	18	1
-1280003	Shiquanhe	32.5012	80.0976	v	20	1
+8059104	Xagmakajor	31.4944	82.3324	v	17	1
+8309938	Zangkaxa	33.7129	80.3768	v	23	1
+9092355	Zhabu	33.1189	83.3038	v	22	1
 ]==],
 }

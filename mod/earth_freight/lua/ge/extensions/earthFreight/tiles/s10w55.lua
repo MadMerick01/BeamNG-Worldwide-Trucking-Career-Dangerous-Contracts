@@ -4,9 +4,16 @@
 return {
   regions = { "Brazil" },
   places = [==[
+6316495	Bannach	-7.3481	-50.3958	v	13	1
+6316974	Cumaru do Norte	-7.8250	-50.7728	t	13	1
+12969893	Guarantã do Norte	-9.9505	-54.9082	t	12	1
 6317824	Ourilândia do Norte	-6.7547	-51.0839	t	12	1
+6317900	Pau d'Arco	-7.8331	-50.0444	t	12	1
 6318107	Redenção	-8.0286	-50.0314	c	12	1
-3388847	São Félix do Xingu	-6.6447	-51.9950	t	13	1
+6318160	Rio Maria	-7.3106	-50.0483	t	12	1
+6318324	Santana do Araguaia	-9.3350	-50.3500	t	12	1
+3388847	São Félix do Xingu	-6.6447	-51.9950	c	12	1
 6318807	Tucumã	-6.7475	-51.1611	t	12	1
+6316312	Água Azul do Norte	-6.7911	-50.4669	t	13	1
 ]==],
 }

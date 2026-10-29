@@ -4,6 +4,7 @@
 return {
   regions = { "Russia" },
   places = [==[
+2019184	Nizhneyansk	71.4403	136.1359	v	14	1
 2013921	Ust-Kuyga	70.0021	135.5488	v	15	1
 ]==],
 }

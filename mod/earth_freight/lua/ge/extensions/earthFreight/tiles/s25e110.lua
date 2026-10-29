@@ -4,7 +4,10 @@
 return {
   regions = { "Australia" },
   places = [==[
-2074865	Carnarvon	-24.8826	113.6571	t	13	1
+2074865	Carnarvon	-24.8826	113.6571	v	14	1
+7115182	Coral Bay	-23.1408	113.7763	v	14	1
 2079492	Exmouth	-21.9306	114.1209	v	14	1
+8348631	Kingsford	-24.8639	113.6955	v	14	1
+10177173	North West Cape	-21.9263	114.0295	v	14	1
 ]==],
 }

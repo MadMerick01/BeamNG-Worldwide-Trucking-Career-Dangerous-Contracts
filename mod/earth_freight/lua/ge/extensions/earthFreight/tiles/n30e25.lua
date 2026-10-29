@@ -2,11 +2,21 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Egypt", "Libya" },
+  regions = { "Egypt", "Greece", "Libya" },
   places = [==[
-80509	Al Bardīyah	31.7560	25.0853	t	14	2
-361612	Al ‘Alamayn	30.8301	28.9550	t	14	1
+80509	Al Bardīyah	31.7560	25.0853	t	13	3
+361219	Al Ḩammām	30.8453	29.3882	t	12	1
+361612	Al ‘Alamayn	30.8301	28.9550	t	13	1
 361058	Alexandria	31.2018	29.9158	c	10	1
-352733	Mersa Matruh	31.3529	27.2372	c	12	1
+12640361	An-Najaylah	31.4071	26.5832	t	13	1
+6697441	Arvi	34.9921	25.4551	v	21	2
+359867	As Sallūm	31.5537	25.1579	t	13	1
+358631	Burj al ‘Arab	30.9032	29.5528	t	10	1
+434129	Burj al ‘Arab al Jadīdah	30.8852	29.5772	t	10	1
+361871	El Dabaa	31.0282	28.4450	t	13	1
+352733	Marsá Maţrūḩ	31.3529	27.2372	c	11	1
+348548	Sīdī Barānī	31.6117	25.9254	t	12	1
+12687307	Umm Sā'ad	31.6097	25.0500	t	13	3
+346067	Zāwyat Umm ar Rakham	31.3960	27.0453	v	11	1
 ]==],
 }

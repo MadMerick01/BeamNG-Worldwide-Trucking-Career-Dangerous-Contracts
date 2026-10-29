@@ -4,10 +4,12 @@
 return {
   regions = { "Russia" },
   places = [==[
+1501178	Kutop’yugan	66.3333	70.3833	v	14	1
 1504850	Mys-Kamennyy	68.4597	73.5903	v	14	1
 1498087	Nadym	65.5333	72.5167	t	12	1
 1496441	Nyda	66.6247	72.9228	v	14	1
 1495626	Pangody	65.8500	74.4859	t	13	1
+12188498	Pravohettinskiy	65.4496	73.5310	v	12	1
 1490918	Staryy Nadym	65.6118	72.6842	v	12	1
 1486321	Yar-Sale	66.8654	70.8378	v	14	1
 ]==],

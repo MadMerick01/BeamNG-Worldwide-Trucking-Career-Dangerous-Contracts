@@ -2,13 +2,18 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Central African Republic" },
+  regions = { "Central African Republic", "Chad", "South Sudan" },
   places = [==[
 240999	Alindao	5.0267	21.2088	t	13	1
-240604	Bambari	5.7679	20.6757	t	13	1
-239899	Bria	6.5423	21.9863	t	13	1
+240604	Bambari	5.7679	20.6757	c	12	1
+240592	Bamingui	7.5559	20.1767	t	14	1
+239899	Bria	6.5423	21.9863	t	12	1
+238714	Grimari	5.7395	20.0556	t	13	1
+8299879	Haraze	9.9397	20.9052	t	14	2
 238566	Ippy	6.2679	21.2247	t	13	1
+373130	Kafia Kingi	9.2735	24.4170	t	13	3
 237379	Ndélé	8.4109	20.6473	t	13	1
 236901	Ouadda	8.0777	22.4007	t	14	1
+236863	Ouanda Djallé	8.9002	22.8028	v	15	1
 ]==],
 }

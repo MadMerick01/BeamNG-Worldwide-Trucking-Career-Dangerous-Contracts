@@ -4,6 +4,8 @@
 return {
   regions = { "Canada" },
   places = [==[
+5955887	Fort Liard	60.2395	-123.4737	v	14	1
+5955953	Fort Simpson	61.8627	-121.3516	v	14	1
 6085532	Nahanni Butte	61.0335	-123.3864	v	17	1
 ]==],
 }

@@ -4,6 +4,6 @@
 return {
   regions = { "Mali" },
   places = [==[
-2450173	Taoudenni	22.6744	-3.9789	v	14	1
+2450173	Taoudenni	22.6769	-3.9792	v	14	1
 ]==],
 }

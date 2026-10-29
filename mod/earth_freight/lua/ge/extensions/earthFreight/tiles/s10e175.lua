@@ -5,7 +5,7 @@ return {
   regions = { "Tuvalu" },
   places = [==[
 2110415	Asau Village	-7.4903	178.6802	v	14	1
-2110394	Funafuti	-8.5243	179.1942	v	14	1
+2110394	Funafuti	-8.5243	179.1942	t	14	1
 2110377	Kulia Village	-6.1082	177.3339	v	14	1
 7602373	Savave Village	-8.0273	178.3135	v	14	1
 2110322	Tanrake Village	-7.2456	177.1451	v	14	1

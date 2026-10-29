@@ -4,10 +4,13 @@
 return {
   regions = { "Greenland" },
   places = [==[
-3424901	Aasiaat	68.7098	-52.8699	v	14	1
+3424901	Aasiaat	68.7087	-52.8637	v	14	1
 3423146	Ilulissat	69.2198	-51.0986	v	14	1
+3422683	Kangaatsiaq	68.3065	-53.4641	v	14	1
+3419714	Kangerlussuaq	67.0088	-50.6894	v	16	1
 3421982	Maniitsoq	65.4151	-52.8982	v	14	1
 3420768	Qasigiannguit	68.8193	-51.1922	v	15	1
+3420635	Qeqertarsuaq	69.2472	-53.5368	v	18	1
 3419842	Sisimiut	66.9395	-53.6735	t	14	1
 ]==],
 }

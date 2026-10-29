@@ -4,6 +4,8 @@
 return {
   regions = { "Australia" },
   places = [==[
+2076017	Borroloola	-16.0697	136.3080	v	14	1
+2075074	Camooweal	-19.9215	138.1201	v	14	1
 8310698	Doomadgee	-17.9435	138.8272	v	14	1
 8347753	Wellesley Islands	-16.6318	139.4014	v	14	1
 ]==],

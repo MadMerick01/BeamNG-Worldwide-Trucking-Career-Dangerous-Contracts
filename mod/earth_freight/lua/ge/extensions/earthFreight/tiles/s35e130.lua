@@ -5,6 +5,8 @@ return {
   regions = { "Australia" },
   places = [==[
 2074685	Ceduna	-32.1266	133.6727	v	14	1
+2061399	Smoky Bay	-32.3784	133.9340	v	14	1
 2060937	Streaky Bay	-32.7955	134.2093	v	14	1
+8604804	Thevenard	-32.1458	133.6485	v	14	1
 ]==],
 }

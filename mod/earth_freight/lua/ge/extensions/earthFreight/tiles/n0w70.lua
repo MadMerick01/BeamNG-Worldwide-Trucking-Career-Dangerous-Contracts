@@ -5,10 +5,10 @@ return {
   regions = { "Colombia", "Venezuela" },
   places = [==[
 3685435	Cumaribo	4.4455	-69.7990	t	13	1
-3671450	Inírida	3.8653	-67.9239	t	14	1
+3671450	Inírida	3.8653	-67.9239	t	13	1
 3638075	La Esmeralda	3.1745	-65.5452	v	14	2
 3632867	Maroa	2.7188	-67.5605	v	14	2
 3628488	San Carlos de Río Negro	1.9203	-67.0609	v	14	2
-3628394	San Fernando de Atabapo	4.0456	-67.6993	v	14	2
+3628394	San Fernando de Atabapo	4.0456	-67.6993	t	13	2
 ]==],
 }

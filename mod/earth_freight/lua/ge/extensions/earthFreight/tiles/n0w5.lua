@@ -4,7 +4,9 @@
 return {
   regions = { "Ghana" },
   places = [==[
-2303611	Axim	4.8664	-2.2418	t	13	1
-2294915	Takoradi	4.8982	-1.7603	c	11	1
+2303611	Esim	4.8664	-2.2418	t	13	1
+11808941	Sekondi	4.9342	-1.7145	c	10	1
+2295458	Sekondi-Takoradi	4.9268	-1.7577	c	10	1
+2294915	Takoradi	4.8982	-1.7603	c	10	1
 ]==],
 }

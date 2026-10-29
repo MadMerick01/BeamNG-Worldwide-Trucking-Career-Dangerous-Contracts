@@ -5,7 +5,10 @@ return {
   regions = { "Argentina" },
   places = [==[
 3855121	General Conesa	-40.1041	-64.4559	t	14	1
+3854514	Guardia Mitre	-40.4280	-63.6743	v	14	1
+3840087	Puerto Pirámides	-42.5721	-64.2844	v	14	1
 3837980	San Antonio Oeste	-40.7319	-64.9477	t	13	1
-3832899	Viedma	-40.8135	-62.9967	t	12	1
+3835024	Stroeder	-40.1858	-62.6203	v	14	1
+3832899	Viedma	-40.8152	-63.0004	t	12	1
 ]==],
 }

@@ -5,9 +5,13 @@ return {
   regions = { "United States" },
   places = [==[
 5879403	Anchor Point	59.7767	-151.8314	v	13	1
+5860661	Diamond Ridge	59.6761	-151.5575	v	15	1
+5862522	Fox River	59.8583	-150.9583	v	17	1
 5862590	Fritz Creek	59.7361	-151.2953	v	16	1
+5863686	Happy Valley	59.9472	-151.7322	v	13	1
 5864145	Homer	59.6425	-151.5494	t	15	1
 5866583	Kodiak	57.7885	-152.4053	t	15	1
 7262898	Kodiak Station	57.7659	-152.6000	v	18	1
+5878330	Womens Bay	57.6822	-152.6686	v	19	1
 ]==],
 }

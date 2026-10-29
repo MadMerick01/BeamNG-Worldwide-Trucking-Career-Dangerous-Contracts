@@ -82,6 +82,6 @@ Every pull request adds a line for players under **Coming next** in [`CHANGELOG.
 ### Credits
 
 [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth) by TecnaGamer, the real-world map this career runs on. The [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) by stefan750 (based on DrowsySam's Bell 407), used for heli flights and not included in this mod.
-Place data © [GeoNames](https://www.geonames.org/), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (`cities1000`, every place over 1,000 people). Elevation for the region pay boost: [Mapzen terrain tiles](https://registry.opendata.aws/terrain-tiles/) on AWS (SRTM, GMTED and other sources).
+Place data © [GeoNames](https://www.geonames.org/), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (`cities500`, every place over 500 people). Elevation for the region pay boost: [Mapzen terrain tiles](https://registry.opendata.aws/terrain-tiles/) on AWS (SRTM, GMTED and other sources).
 
 </details>

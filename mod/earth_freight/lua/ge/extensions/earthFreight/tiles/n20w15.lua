@@ -2,10 +2,21 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Mauritania" },
+  regions = { "Mauritania", "Morocco", "Western Sahara" },
   places = [==[
-2381334	Atar	20.5177	-13.0486	t	13	1
+2463161	Aousserd	22.5540	-14.3300	t	14	2
+2381334	Atar	20.5188	-13.0464	t	13	1
+2463113	Bir Anzarane	23.8900	-14.5360	v	14	3
 2380519	Chingueṭṭi	20.4630	-12.3620	v	14	1
-2375558	Zouerate	22.7354	-12.4713	t	14	1
+2597435	Choum	21.2996	-13.0668	v	15	1
+2379615	Fderîck	22.6780	-12.7110	v	12	1
+2462653	Hasi Gueleita	24.9953	-12.3369	v	14	3
+13608373	Jraifia	24.9122	-14.8212	v	14	3
+8300874	Mijek	23.4490	-12.8254	v	14	3
+2377339	Ouadane	20.9277	-11.6214	v	14	1
+13608370	Oum Dreyga	24.1009	-13.2965	v	14	3
+2461677	Tichla	21.5837	-14.9722	t	14	3
+2375558	Zouérat	22.7354	-12.4713	c	14	1
+2461423	Zug	21.5652	-14.1039	v	14	3
 ]==],
 }

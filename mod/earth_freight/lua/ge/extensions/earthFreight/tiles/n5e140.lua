@@ -5,6 +5,7 @@ return {
   regions = { "Micronesia" },
   places = [==[
 7645763	Eauripik	6.6870	143.0375	v	14	1
+13697223	Eauripik Village	6.6836	143.0776	v	14	1
 7645769	Fais	9.7660	140.5200	v	14	1
 7645749	Faraulep	8.5880	144.5080	v	14	1
 7645754	Ifalik	7.2500	144.4445	v	14	1

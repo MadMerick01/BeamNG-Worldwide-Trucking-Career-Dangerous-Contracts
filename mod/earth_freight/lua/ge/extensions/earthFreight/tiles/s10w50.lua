@@ -4,27 +4,143 @@
 return {
   regions = { "Brazil" },
   places = [==[
-3407755	Amarante do Maranhão	-5.5667	-46.7422	t	13	1
-3407357	Araguaína	-7.1911	-48.2072	c	12	1
+3411870	Abreulândia	-9.6214	-49.1508	v	13	1
+3407798	Alto Parnaíba	-9.1108	-45.9297	t	13	1
+3407755	Amarante do Maranhão	-5.5667	-46.7422	t	12	1
+3407674	Ananás	-6.3653	-48.0728	t	13	1
+3411871	Angico	-6.3892	-47.8644	v	12	1
+3411872	Aparecida do Rio Negro	-9.9517	-47.9722	t	11	1
+3411873	Aragominas	-7.1597	-48.5275	t	12	1
+3407360	Araguacema	-8.8036	-49.5564	t	13	1
+3407356	Araguanã	-6.5811	-48.6444	v	12	1
+3407353	Araguatins	-5.6508	-48.1112	t	12	1
+3407357	Araguaína	-7.1911	-48.2072	c	11	1
+3407319	Arapoema	-7.6578	-49.0639	t	13	1
+3411874	Augustinópolis	-5.4685	-47.8886	v	11	1
+6316470	Axixá do Tocantins	-5.6164	-47.7861	t	11	1
+3406923	Babaçulândia	-7.2047	-47.7569	t	11	1
+6316478	Baixa Grande do Ribeiro	-7.8503	-45.2136	t	13	1
 3406545	Balsas	-7.5325	-46.0356	c	12	1
+6316492	Bandeirantes do Tocantins	-7.7564	-48.5836	v	12	1
 3406317	Barra do Corda	-5.5056	-45.2433	c	12	1
-3405341	Bom Jardim	-7.0167	-46.4833	t	13	1
+6316511	Barra do Ouro	-7.6894	-47.6828	v	12	1
+3395003	Barreiras do Piauí	-9.9228	-45.4772	v	13	1
+3411875	Barrolândia	-9.8356	-48.7253	v	12	1
+3411877	Bernardo Sayão	-7.8736	-48.8883	v	12	1
+3405341	Bom Jardim	-7.0167	-46.4833	t	12	1
+6316607	Bom Jesus do Tocantins	-5.0514	-48.6089	t	12	1
+3411879	Brasilândia do Tocantins	-8.3875	-48.4811	v	12	1
+6316651	Brejo Grande do Araguaia	-5.6989	-48.4131	t	12	1
+3411881	Buriti do Tocantins	-5.3153	-48.2297	t	12	1
+6316664	Buritirama	-5.5928	-47.0178	t	11	1
+3411912	Cachoeirinha	-6.1203	-47.9213	v	13	1
+6316719	Campestre do Maranhão	-6.1722	-47.3636	t	11	1
+3411883	Campos Lindos	-7.9939	-46.8681	t	14	1
+6316757	Canaã dos Carajás	-6.5239	-49.8517	t	12	1
+3411884	Carmolândia	-7.0333	-48.3961	v	11	1
 3402724	Carolina	-7.3356	-47.4622	t	12	1
-3401845	Conceição do Araguaia	-8.2644	-49.2698	t	13	1
-3398931	Gilbués	-9.8317	-45.3439	v	14	1
-3398856	Grajaú	-5.8194	-46.1386	t	13	1
+6316815	Carrasco Bonito	-5.3219	-48.0347	v	12	1
+3411887	Caseara	-9.2783	-49.9556	t	12	1
+3411888	Centenário	-8.9506	-47.3358	v	14	1
+6316873	Cidelândia	-5.1742	-47.7817	t	11	1
+3411913	Colinas do Tocantins	-8.0592	-48.4750	t	12	1
+3411889	Colméia	-8.7294	-48.7647	t	12	1
+3401845	Conceição do Araguaia	-8.2644	-49.2698	t	12	1
+3401562	Couto Magalhães	-8.3610	-49.1778	t	12	1
+6316976	Curionópolis	-6.1017	-49.5981	t	11	1
+3411914	Darcinópolis	-6.7071	-47.7493	t	12	1
+12960457	Davinópolis	-5.5259	-47.3910	t	11	1
+3411890	Divinópolis do Tocantins	-9.7997	-49.2139	t	13	1
+3401007	Dois Irmãos do Tocantins	-9.2583	-49.0644	t	14	1
+6317056	Eldorado dos Carajás	-6.1042	-49.3553	t	12	1
+3411891	Esperantina	-5.3428	-48.5114	t	12	1
+3393051	Estreito	-6.5557	-47.4415	t	12	1
+6317131	Feira Nova do Maranhão	-6.9600	-46.6856	t	12	1
+3399603	Filadélfia	-7.3361	-47.4903	t	12	1
+6317151	Floresta do Araguaia	-7.5536	-49.7125	t	12	1
+3399464	Formosa da Serra Negra	-6.4446	-46.1888	t	14	1
+3411892	Fortaleza do Tabocão	-9.0572	-48.5189	v	12	1
+3399388	Fortaleza dos Nogueiras	-6.9639	-46.1772	t	13	1
+3398931	Gilbués	-9.8317	-45.3439	t	13	1
+3398901	Goianorte	-8.7758	-48.9317	v	12	1
+3398899	Goiatins	-7.7100	-47.3142	t	12	1
+8543780	Governador Edison Lobão	-5.7451	-47.3640	t	11	1
+3398856	Grajaú	-5.8194	-46.1386	c	12	1
+3398573	Guaraí	-8.8342	-48.5103	t	12	1
 3398269	Imperatriz	-5.5264	-47.4917	c	11	1
-3397851	Itupiranga	-5.1347	-49.3267	t	11	1
+3397997	Itacajá	-8.3917	-47.7678	t	13	1
+3397985	Itaguatins	-5.7689	-47.4833	t	11	1
+3397972	Itaipava do Grajaú	-5.1433	-45.7891	v	12	1
+3411893	Itapiratins	-8.3839	-48.1114	v	13	1
+3397900	Itaporã do Tocantins	-8.5714	-48.6892	v	13	1
+3397851	Itupiranga	-5.1347	-49.3267	c	11	1
+6317380	Jenipapo dos Vieiras	-5.3714	-45.6364	t	12	1
+3397292	João Lisboa	-5.4478	-47.4008	t	11	1
+3411894	Juarina	-8.1194	-49.0647	v	12	1
+3396517	Lajeado	-9.7514	-48.3581	v	12	1
+6317457	Lajeado Novo	-6.1886	-47.0353	t	12	1
+3396214	Lizarda	-9.5942	-46.6731	v	14	1
+3396150	Loreto	-7.0844	-45.1411	t	12	1
+6317498	Luzinópolis	-6.1822	-47.8561	v	13	1
 3395503	Marabá	-5.3815	-49.1323	c	11	1
-3394817	Miracema do Tocantins	-9.5672	-48.3917	t	13	1
-3394539	Montes Altos	-5.8333	-47.0667	v	13	1
+3411895	Marianópolis do Tocantins	-9.7958	-49.6542	v	13	1
+3411911	Maurilândia do Tocantins	-5.9531	-47.5064	v	11	1
+3394817	Miracema do Tocantins	-9.5672	-48.3917	t	12	1
+3411915	Miranorte	-9.5294	-48.5900	t	12	1
+3394576	Monte Alegre do Piauí	-9.7539	-45.3039	t	13	1
+3394539	Montes Altos	-5.8333	-47.0667	t	11	1
 3394372	Morros	-9.4467	-46.3003	v	14	1
-6317872	Parauapebas	-6.0675	-49.9022	c	13	1
-3391371	Porto Franco	-6.3383	-47.3992	t	13	1
-3390581	Riachão	-7.3619	-46.6172	t	13	1
+3411916	Muricilândia	-7.1458	-48.6100	v	11	1
+3393984	Nazaré	-6.3719	-47.6639	v	11	1
+6317726	Nova Colinas	-7.1199	-46.2623	t	12	1
+3393844	Nova Olinda	-7.6317	-48.4225	t	12	1
+6317776	Novo Acordo	-9.9628	-47.6772	v	13	1
+6317853	Palestina do Pará	-5.7417	-48.3169	t	12	1
+3393239	Palmeirante	-7.8600	-47.9258	v	14	1
+3411896	Palmeiras do Tocantins	-6.6125	-47.5458	v	12	1
+6317872	Parauapebas	-6.0675	-49.9022	c	12	1
+3392811	Pau d'Arco	-7.5397	-49.3722	v	13	1
+3392438	Pedro Afonso	-8.9675	-48.1747	t	12	1
+3392335	Pequizeiro	-8.5936	-48.9342	t	13	1
+3411917	Piraquê	-6.7736	-48.2969	v	11	1
+6317943	Piçarra	-6.4381	-48.8717	t	12	1
+3391371	Porto Franco	-6.3383	-47.3992	t	12	1
+6318049	Praia Norte	-5.3931	-47.8111	t	11	1
+3411899	Presidente Kennedy	-8.5394	-48.5061	v	12	1
+3411900	Recursolândia	-8.7278	-47.2431	v	14	1
+3390533	Riachinho	-6.4375	-48.1383	v	12	1
+3390581	Riachão	-7.3619	-46.6172	t	12	1
+6318122	Ribamar Fiquene	-5.9303	-47.3844	t	11	1
+3390318	Ribeiro Gonçalves	-7.5583	-45.2422	t	13	1
+3411903	Rio Sono	-9.3436	-47.9019	v	14	1
+3411902	Rio dos Bois	-9.3450	-48.5353	v	12	1
+3389751	Sambaíba	-7.1403	-45.3461	t	12	1
+3411904	Sampaio	-5.3483	-47.8731	v	11	1
+3411905	Santa Fé do Araguaia	-7.1558	-48.7028	t	13	1
 3389557	Santa Luzia	-7.6426	-47.2174	t	12	1
-3388760	São Geraldo do Araguaia	-6.4006	-48.5550	t	13	1
-3388147	São Raimundo das Mangabeiras	-7.0219	-45.4811	t	13	1
+3389461	Santa Maria das Barreiras	-8.8717	-49.7128	t	13	1
+3411906	Santa Maria do Tocantins	-8.7754	-47.7475	v	13	1
+6318284	Santa Maria do Tocantins	-8.7969	-47.7947	v	13	1
+3389226	Santa Terezinha do Tocantins	-6.4352	-47.6727	v	12	1
+6318633	Sapucaia	-6.9472	-49.6822	t	12	1
+6318654	Senador La Rocque	-5.4425	-47.2908	t	11	1
+3388995	São Bento do Tocantins	-6.0203	-47.9022	t	12	1
+6318408	São Domingos do Araguaia	-5.5378	-48.7333	t	11	1
+6318425	São Francisco do Brejão	-5.1228	-47.3858	t	11	1
+3388760	São Geraldo do Araguaia	-6.4006	-48.5550	t	12	1
+3388624	São João do Araguaia	-5.3583	-48.7914	t	11	1
+6318462	São João do Paraíso	-6.4611	-47.0575	t	12	1
+3411907	São Miguel do Tocantins	-5.5520	-47.5781	t	11	1
+6318568	São Pedro da Água Branca	-5.0850	-48.4292	t	12	1
+6318579	São Pedro dos Crentes	-6.8264	-46.5319	t	12	1
+3388147	São Raimundo das Mangabeiras	-7.0219	-45.4811	t	12	1
+6318583	São Raimundo do Doca Bezerra	-5.1047	-45.0772	t	11	1
+3388107	São Sebastião do Tocantins	-5.2572	-48.2000	v	12	1
+6318703	Sítio Novo	-5.8781	-46.6992	t	12	1
+6318704	Sítio Novo do Tocantins	-5.6000	-47.6414	t	11	1
+6318752	Tasso Fragoso	-8.4753	-45.7428	t	14	1
+12954561	Vila Nova dos Martírios	-5.1844	-48.1400	t	11	1
+3411910	Wanderlândia	-6.8492	-47.9631	t	11	1
 6318968	Xinguara	-7.0983	-49.9435	t	12	1
 ]==],
 }

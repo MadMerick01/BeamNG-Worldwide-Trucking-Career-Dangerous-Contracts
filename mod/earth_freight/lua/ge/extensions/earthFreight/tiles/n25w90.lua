@@ -5,12 +5,16 @@ return {
   regions = { "United States" },
   places = [==[
 4316329	Belle Chasse	29.8549	-89.9906	t	10	1
+4317607	Boothville	29.3436	-89.4198	v	14	1
+4318332	Buras	29.3519	-89.5242	v	14	1
 4319518	Chalmette	29.9430	-89.9654	t	10	1
+4323768	Empire	29.3877	-89.5973	v	14	1
 4326198	Grand Isle	29.2366	-89.9873	v	13	1
 4333126	Meraux	29.9302	-89.9162	t	10	1
 4164131	Mexico Beach	29.9481	-85.4200	v	11	1
 4169166	Port Saint Joe	29.8119	-85.3030	v	12	1
 4337859	Port Sulphur	29.4805	-89.6940	v	14	1
+4337963	Poydras	29.8694	-89.8889	v	10	1
 4344684	Violet	29.8958	-89.8978	v	10	1
 ]==],
 }

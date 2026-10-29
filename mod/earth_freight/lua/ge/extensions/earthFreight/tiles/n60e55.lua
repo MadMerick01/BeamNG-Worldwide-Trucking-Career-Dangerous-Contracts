@@ -4,13 +4,13 @@
 return {
   regions = { "Russia" },
   places = [==[
-569359	Cherdyn’	60.4029	56.4787	t	13	1
+569359	Cherdyn’	60.4010	56.4796	t	13	1
 569295	Cherëmukhovo	60.3484	59.9851	t	12	1
-542184	Krasnovishersk	60.4078	57.0820	t	13	1
+542184	Krasnovishersk	60.4073	57.0829	t	13	1
 516588	Nyrob	60.7330	56.7202	t	13	1
 496275	Severoural’sk	60.1533	59.9520	t	11	1
 496290	Tretiy Severnyy	60.2086	59.9611	v	12	1
-481548	Troitsko-Pechorsk	62.7084	56.1964	t	14	1
-470905	Vuktyl	63.8567	57.3094	t	13	1
+481548	Troitsko-Pechorsk	62.7193	56.1717	t	14	1
+470905	Vuktyl	63.8478	57.3099	t	13	1
 ]==],
 }

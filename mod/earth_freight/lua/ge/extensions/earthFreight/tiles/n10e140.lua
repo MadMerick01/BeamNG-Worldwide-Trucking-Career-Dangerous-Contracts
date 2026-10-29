@@ -4,15 +4,20 @@
 return {
   regions = { "Guam" },
   places = [==[
+13237019	Anao	13.5289	144.9182	v	11	1
+13237020	Apra Harbor	13.4283	144.6525	v	11	1
 4043812	Asan-Maina Village	13.4721	144.7165	v	11	1
+13237021	Chaguian	13.5717	144.8806	v	11	1
 4043615	Chalan Pago-Ordot Village	13.4474	144.7590	t	11	1
 4043909	Dededo Village	13.5178	144.8391	t	11	1
+4044012	Hagåtña	13.4757	144.7489	v	11	1
 4043499	Inarajan Village	13.2736	144.7484	v	11	1
 7268049	Mangilao Village	13.4476	144.8011	t	11	1
 4043399	Merizo Village	13.2658	144.6691	v	11	1
 4038554	Santa Rita Village	13.3861	144.6723	t	11	1
 4038647	Talofofo Village	13.3551	144.7584	v	11	1
 4038659	Tamuning-Tumon-Harmon Village	13.4877	144.7814	t	11	1
+4038733	Umatac Village	13.2984	144.6631	v	11	1
 4038794	Yigo Village	13.5360	144.8886	t	11	1
 4038809	Yona Village	13.4097	144.7770	t	11	1
 ]==],

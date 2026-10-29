@@ -5,19 +5,27 @@ return {
   regions = { "Bahamas", "Cuba", "Turks and Caicos Islands" },
   places = [==[
 3572940	Abraham’s Bay	22.3667	-72.9667	v	14	1
-3567834	Baracoa	20.3471	-74.4962	t	13	2
+3567834	Baracoa	20.3480	-74.4971	t	13	2
+3577039	Bottle Creek Settlements	21.8836	-71.9223	v	13	3
 3572640	Clarence Town	23.1000	-74.9833	v	14	1
+3577027	Cockburn Harbour	21.4929	-71.5330	v	14	3
 3572627	Cockburn Town	24.0518	-74.5314	v	14	1
 3576994	Cockburn Town	21.4612	-71.1419	v	14	3
 3572620	Colonel Hill	22.7545	-74.2041	v	14	1
+3577004	Five Cays Settlement	21.7571	-72.2677	v	13	3
 3556772	Imías	20.0694	-74.6314	v	17	2
+3576979	Kew	21.9134	-71.9926	v	13	3
 11080071	La Máquina	20.1920	-74.2272	v	15	2
 3548441	Maisí	20.2467	-74.1518	t	12	2
 3571908	Masons Bay	22.5435	-73.8778	v	14	1
 3571898	Matthew Town	20.9498	-73.6735	v	14	1
 3546791	Moa	20.6578	-74.9507	c	13	2
-3545308	Palenque	20.3637	-74.9704	v	12	2
+3545308	Palenque	20.3648	-74.9698	v	12	2
 3571650	Port Nelson	23.6497	-74.8416	v	14	1
-3540881	San Antonio del Sur	20.0576	-74.8105	v	14	2
+11703857	Providenciales	21.7825	-72.2521	t	13	3
+3540881	San Antonio del Sur	20.0572	-74.8096	v	14	2
+3576922	The Bight Settlements	21.7796	-72.2042	v	13	3
+11201380	Wheeland	21.8140	-72.2821	v	13	3
+3576905	Whitby	21.9540	-71.9661	v	13	3
 ]==],
 }

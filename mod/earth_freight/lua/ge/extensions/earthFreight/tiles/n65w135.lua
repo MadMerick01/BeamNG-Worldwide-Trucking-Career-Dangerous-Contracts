@@ -6,5 +6,6 @@ return {
   places = [==[
 5955898	Fort McPherson	67.4386	-134.8854	v	14	1
 5983607	Inuvik	68.3617	-133.7282	v	14	1
+6170031	Tuktoyaktuk	69.4447	-133.0342	v	14	1
 ]==],
 }

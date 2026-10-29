@@ -2,18 +2,50 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Angola", "Zambia" },
+  regions = { "Angola", "Democratic Republic of the Congo", "Zambia" },
   places = [==[
-876485	Cazaji	-11.0671	20.7015	v	14	1
-916246	Kabompo	-13.5927	24.2008	t	14	2
-915471	Kalabo	-14.9931	22.6793	t	14	2
-913323	Kaoma	-14.7833	24.8000	t	13	2
-876177	Luau	-10.7073	22.2247	t	13	1
-909488	Lukulu	-14.3707	23.2420	v	14	2
-876123	Lumeje	-11.5500	20.7833	v	13	1
-876233	Léua	-11.6500	20.4500	t	13	1
-905382	Mufumbwe	-13.6833	24.8000	t	13	2
-902620	Mwinilunga	-11.7358	24.4293	t	13	2
-895953	Zambezi	-13.5432	23.1047	t	14	2
+876668	Caianda	-11.0062	23.5312	v	14	1
+876640	Calunda	-12.1221	23.4788	v	15	1
+876632	Camanongue	-11.4361	20.1646	t	11	1
+876123	Cameia	-11.5577	20.7810	v	13	1
+876282	Cameia	-11.6905	20.8392	t	13	1
+876590	Cangombe	-14.4352	20.0353	v	14	1
+876544	Cassai-Sul	-10.5889	21.9697	v	12	1
+876541	Cassamba	-13.1340	20.2986	v	14	1
+876182	Cassongo	-12.1103	20.2932	v	14	1
+876485	Cazage	-11.0671	20.7015	v	14	1
+876482	Cazombo	-11.8991	22.9022	t	13	1
+920470	Chavuma	-13.0667	22.6833	t	13	3
+876310	Dala	-11.0333	20.2000	t	13	1
+916246	Kabompo	-13.5927	24.2008	t	13	3
+915471	Kalabo	-14.9931	22.6793	t	13	3
+913323	Kaoma	-14.7833	24.8000	t	13	3
+876235	Lago Dilolo	-11.5044	22.0146	v	14	1
+12236158	Liangongo	-11.6593	20.6930	v	13	1
+876200	Luacano	-11.2176	21.6453	v	14	1
+876177	Luau	-10.7073	22.2247	c	12	1
+876165	Lucusse	-12.5246	20.8190	v	14	1
+909488	Lukulu	-14.3707	23.2420	t	13	3
+876130	Lumbala	-14.1016	21.4353	t	13	1
+876131	Lumbala Caquengue	-12.6411	22.5872	v	13	1
+7905765	Lumbala Nguimbo	-14.1329	21.3827	v	13	1
+876097	Lutembo	-13.4866	21.3747	v	14	1
+876093	Lutuai	-12.6584	20.1299	v	14	1
+876085	Luvuei	-13.0730	21.1657	v	14	1
+876233	Léua	-11.6575	20.4477	t	12	1
+876205	Lóvua do Zambeze	-11.5557	23.5464	v	14	1
+876064	Macondo	-12.5830	23.7576	v	14	1
+922597	Malemba	-10.3781	24.5452	t	12	2
+907705	Manyinga	-13.4165	24.3353	t	13	3
+875971	Muconda	-10.5924	21.3180	t	14	1
+905382	Mufumbwe	-13.6833	24.8000	t	13	3
+875941	Muié	-14.3560	20.4118	v	14	1
+875914	Mussuma Mitete	-14.2011	21.9105	v	14	1
+902620	Mwinilunga	-11.7358	24.4293	t	13	3
+876236	Nana Candundo	-11.5158	23.0158	v	13	1
+875857	Ninda	-14.8067	21.3836	v	14	1
+875673	Sessa	-13.9129	20.7959	v	14	1
+922083	Tshilenge	-10.9667	22.9000	c	12	2
+895953	Zambezi	-13.5432	23.1047	t	13	3
 ]==],
 }

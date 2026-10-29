@@ -4,65 +4,231 @@
 return {
   regions = { "Brazil" },
   places = [==[
-3407805	Alto Longá	-5.2511	-42.2103	v	12	1
+3408320	Acauã	-8.2150	-41.0817	t	12	1
+3408270	Afrânio	-8.5150	-41.0050	t	12	1
+3408250	Agricolândia	-5.7967	-42.6618	v	11	1
+3408132	Aiuaba	-6.5736	-40.1236	t	12	1
+3408092	Alagoinha do Piauí	-7.0096	-40.9379	t	12	1
+3407998	Alegrete do Piauí	-7.2430	-40.8599	v	12	1
+3407805	Alto Longá	-5.2511	-42.2103	t	11	1
 3407797	Altos	-5.0381	-42.4600	t	10	1
+13101175	Alvorada do Gurguéia	-8.4484	-43.8666	t	13	1
 3407756	Amarante	-6.2432	-42.8454	t	12	1
-3407248	Araripe	-7.2134	-40.1370	t	12	1
-3407243	Araripina	-7.5761	-40.4983	t	12	1
+3407594	Angical do Piauí	-6.0856	-42.7392	t	11	1
+6316397	Antônio Almeida	-7.2192	-44.1975	v	12	1
+6316395	Anísio de Abreu	-9.1894	-43.0458	t	12	1
+3407248	Araripe	-7.2134	-40.1370	t	11	1
+3407243	Araripina	-7.5761	-40.4983	c	11	1
+3407128	Arneiroz	-6.3236	-40.1606	t	11	1
+3407126	Aroazes	-6.1189	-41.7931	t	13	1
+3407092	Aroeiras do Itaim	-7.2795	-41.5636	v	11	1
+3407075	Arraial	-6.6547	-42.5317	v	12	1
+3407003	Assunção do Piauí	-5.8629	-41.0492	t	12	1
+6316502	Barra dAlcântara	-6.5167	-42.1144	v	12	1
+3406048	Barro Duro	-5.8169	-42.5131	t	12	1
+6316549	Bela Vista do Piauí	-7.9725	-41.8718	v	12	1
+6316555	Belém do Piauí	-7.3761	-40.9717	v	12	1
 3405796	Beneditinos	-5.4500	-42.3667	t	12	1
-3405304	Bom Jesus	-9.0744	-44.3586	t	13	1
-3404722	Buriti Bravo	-5.8372	-43.8336	t	13	1
+3405760	Bertolínia	-7.6411	-43.9514	t	13	1
+6316567	Betânia do Piauí	-8.1483	-40.7956	t	12	1
+3405441	Bocaina	-6.9425	-41.3225	v	11	1
+3405304	Bom Jesus	-9.0744	-44.3586	t	12	1
+3405206	Bonfim do Piauí	-9.1693	-42.8754	t	12	1
+3404877	Brejo do Piauí	-8.2067	-42.8347	v	13	1
+3404722	Buriti Bravo	-5.8372	-43.8336	t	12	1
+3404712	Buriti dos Montes	-5.3119	-41.0972	t	12	1
+3404010	Cajazeiras do Piauí	-6.7933	-42.3938	v	12	1
+3403836	Caldeirão Grande do Piauí	-7.3324	-40.6388	t	12	1
+3403637	Campinas do Piauí	-7.6603	-41.8817	v	12	1
+3402496	Campo Alegre de Lourdes	-9.5173	-43.0103	t	12	1
+3403614	Campo Alegre do Fidalgo	-8.3768	-41.8370	v	12	1
+3403592	Campo Grande do Piauí	-7.1337	-41.0376	t	11	1
 3403534	Campos Sales	-7.0744	-40.3761	t	12	1
-3403251	Canto do Buriti	-8.1100	-42.9444	t	13	1
-3402548	Castelo do Piauí	-5.3222	-41.5525	t	13	1
+3403413	Canavieira	-7.6881	-43.7206	v	13	1
+3403251	Canto do Buriti	-8.1100	-42.9444	t	12	1
+6316789	Capitão Gervásio Oliveira	-8.4903	-41.8197	v	12	1
+3403050	Caracol	-9.2786	-43.3300	t	12	1
+3402905	Caridade do Piauí	-7.7324	-40.9880	v	12	1
+3402621	Casa Nova	-9.1742	-40.9751	c	12	1
+3402548	Castelo do Piauí	-5.3222	-41.5525	t	12	1
+3401975	Coivaras	-5.0894	-42.2033	v	12	1
 3401963	Colinas	-6.0258	-44.2492	t	12	1
-3401548	Crateús	-5.1783	-40.6775	c	12	1
+6316887	Colônia do Gurguéia	-8.1819	-43.7919	t	13	1
+3401953	Colônia do Piauí	-7.2289	-42.1785	v	12	1
+3401844	Conceição do Canindé	-7.8778	-41.5969	v	12	1
+13102922	Coronel José Dias	-8.8261	-42.4788	v	13	1
+3401548	Crateús	-5.1777	-40.6695	c	11	1
+3401522	Cristino Castro	-8.8178	-44.2242	t	13	1
+3401287	Currais	-9.0139	-44.3989	v	13	1
+3401235	Curral Novo do Piauí	-7.8330	-40.9008	v	12	1
+3401257	Curralinhos	-5.6187	-42.8284	v	11	1
 3401106	Demerval Lobão	-5.3583	-42.6764	t	10	1
-3400969	Dom Pedro	-5.0375	-44.4386	t	12	1
-3400920	Elesbão Veloso	-6.2019	-42.1403	t	13	1
-3400617	Estreito	-5.7833	-43.2500	t	13	1
-3399506	Floriano	-6.7669	-43.0225	t	12	1
-3399377	Fortuna	-5.7333	-44.1583	t	12	1
+8437716	Dirceu Arcoverde	-9.3425	-42.4342	t	12	1
+3400553	Dom Expedito Lopes	-6.9594	-41.6411	t	11	1
+3401234	Dom Inocêncio	-9.0054	-41.9746	t	14	1
+3400969	Dom Pedro	-5.0382	-44.4375	t	11	1
+6317039	Dormentes	-8.4472	-40.7711	t	12	1
+3400920	Elesbão Veloso	-6.2019	-42.1403	t	12	1
+3400918	Eliseu Martins	-8.0967	-43.6636	v	13	1
+3400617	Estreito	-5.7833	-43.2500	t	12	1
+3400484	Fartura do Piauí	-9.4819	-42.7896	t	12	1
+6317137	Fernando Falcão	-6.1511	-44.9018	t	13	1
+3399527	Flores do Piauí	-7.7911	-42.9272	v	12	1
+3399507	Floresta do Piauí	-7.4672	-41.7998	v	12	1
+3399506	Floriano	-6.7669	-43.0225	c	12	1
+3399377	Fortuna	-5.7333	-44.1583	t	11	1
+3399344	Francinópolis	-6.3958	-42.2619	v	12	1
+3399340	Francisco Ayres	-6.6231	-42.6928	v	11	1
+6317172	Francisco Macedo	-7.3306	-40.7883	v	11	1
+3399336	Francisco Santos	-6.9928	-41.1378	t	11	1
+3399295	Fronteiras	-7.0881	-40.6164	t	11	1
+6317191	Geminiano	-7.1578	-41.3611	t	11	1
+3398885	Gonçalves Dias	-5.1533	-44.3001	v	11	1
+3398872	Governador Archer	-5.0222	-44.2711	t	11	1
+6317214	Governador Eugênio Barros	-5.3231	-44.2467	t	11	1
+6317217	Governador Luiz Rocha	-5.4686	-44.0739	t	12	1
+3398619	Guadalupe	-6.7909	-43.5706	v	13	1
+3398535	Guaribas	-9.3955	-43.6929	v	13	1
+6317253	Hugo Napoleão	-5.9886	-42.5561	v	11	1
 3398255	Independência	-5.3964	-40.3086	t	12	1
-3398178	Inhuma	-6.6683	-41.7078	t	13	1
-3398105	Ipubi	-7.6519	-40.1489	t	12	1
+3398178	Inhuma	-6.6683	-41.7078	t	12	1
+3398135	Ipiranga do Piauí	-6.8283	-41.7406	t	11	1
+3398105	Ipubi	-7.6519	-40.1489	t	11	1
 3398076	Ipueiras	-7.0333	-40.4500	t	12	1
-3397976	Itainópolis	-7.4469	-41.4783	v	12	1
-3397865	Itaueira	-7.6033	-43.0256	t	14	1
-3397660	Jaicós	-7.3592	-41.1378	t	12	1
+3398007	Isaías Coelho	-7.7378	-41.6761	t	12	1
+3397976	Itainópolis	-7.4469	-41.4783	t	11	1
+3397865	Itaueira	-7.6033	-43.0256	t	13	1
+3397734	Jacobina do Piauí	-7.9364	-41.2113	v	12	1
+3397660	Jaicós	-7.3592	-41.1378	t	11	1
+6317367	Jardim do Mulato	-6.0989	-42.6303	v	11	1
+6317374	Jatobá	-5.8167	-44.2233	t	12	1
+3397367	Jerumenha	-7.0878	-43.5097	v	14	1
+6317387	João Costa	-8.4901	-42.4174	v	13	1
+3397165	Juazeiro do Piauí	-5.1737	-41.7076	t	12	1
+3397033	Jurema	-9.2223	-43.1292	v	12	1
+3396675	Lagoa Grande	-8.9969	-40.2719	t	12	1
+8437585	Lagoa do Barro do Piauí	-8.4847	-41.5331	t	13	1
+6317436	Lagoa do Mato	-6.0467	-43.5261	t	12	1
+6317437	Lagoa do Piauí	-5.4150	-42.6433	v	10	1
+3396714	Lagoa do Sítio	-6.5133	-41.5842	v	12	1
+3396578	Lagoinha do Piauí	-5.8319	-42.6341	v	12	1
+3396405	Landri Sales	-7.2658	-43.9303	t	13	1
+3395533	Manoel Emídio	-8.0128	-43.8717	t	13	1
+3395401	Marcolândia	-7.4425	-40.6611	t	11	1
+3395396	Marcos Parente	-7.1211	-43.8908	v	13	1
+3395232	Massapê do Piauí	-7.4623	-41.1264	t	12	1
+3395100	Matões	-5.5189	-43.1989	t	12	1
+3394890	Miguel Leão	-5.6806	-42.7386	v	11	1
 3394813	Mirador	-6.3708	-44.3631	t	12	1
-3394621	Monsenhor Gil	-5.5642	-42.6078	v	12	1
-3393783	Novo Oriente	-5.5344	-40.7742	t	12	1
-3393764	Oeiras	-7.0253	-42.1311	t	13	1
-3393452	Ouricuri	-7.8825	-40.0817	t	12	1
-3393240	Palmeirais	-5.9778	-43.0633	v	12	1
+3394621	Monsenhor Gil	-5.5642	-42.6078	t	12	1
+3394620	Monsenhor Hipólito	-6.9964	-41.0297	t	11	1
+3404587	Morro Cabeça no Tempo	-9.7263	-43.9087	v	13	1
+3393971	Nazaré do Piauí	-6.9733	-42.6719	t	12	1
+3393966	Nazária	-5.3493	-42.8203	t	10	1
+3393860	Nova Iorque	-6.7339	-44.0444	v	12	1
+6317766	Nova Santa Rita	-8.0743	-42.0501	v	12	1
+3393783	Novo Oriente	-5.5344	-40.7742	t	11	1
+3393782	Novo Oriente do Piauí	-6.4501	-41.9288	t	12	1
+6317802	Novo Santo Antônio	-5.2883	-41.9333	v	12	1
+3393764	Oeiras	-7.0253	-42.1311	t	12	1
+6317812	Olho d'Água do Piauí	-5.8414	-42.5750	v	12	1
+3393452	Ouricuri	-7.8825	-40.0817	c	11	1
+3393355	Padre Marcos	-7.3550	-40.9044	t	12	1
+3393351	Paes Landim	-7.7778	-42.2556	v	12	1
+3393316	Pajeú do Piauí	-7.8559	-42.8210	v	12	1
+3393253	Palmeira do Piauí	-8.7264	-44.2366	t	13	1
+3393240	Palmeirais	-5.9778	-43.0633	t	11	1
+3393137	Paquetá	-7.1044	-41.7039	v	12	1
 3393095	Paraibano	-6.4331	-43.9836	t	12	1
-3393065	Parambu	-6.2111	-40.6944	t	13	1
+3393065	Parambu	-6.2111	-40.6944	t	12	1
 3392996	Parnarama	-5.6817	-43.0933	t	12	1
 3392942	Passagem Franca	-6.1797	-43.7836	t	12	1
+6317880	Passagem Franca do Piauí	-5.8583	-42.4397	v	12	1
 3392907	Pastos Bons	-6.6017	-44.0767	t	12	1
-3392242	Petrolina	-9.3986	-40.5008	c	11	1
-3392167	Picos	-7.0769	-41.4669	c	12	1
-3392095	Pimenteiras	-6.2453	-41.4192	v	13	1
-3392020	Pio IX	-6.8375	-40.5792	v	12	1
-3391220	Presidente Dutra	-5.2900	-44.4900	t	12	1
-3390814	Raposa	-6.5167	-44.1833	t	13	1
+6317896	Patos do Piauí	-7.6786	-41.2452	t	12	1
+12957804	Pau d’Arco do Piauí	-5.2539	-42.3882	v	10	1
+3392738	Paulistana	-8.1436	-41.1497	t	12	1
+3392708	Pavussu	-7.9658	-43.2225	v	12	1
+6317918	Pedro Laurentino	-8.0683	-42.2850	v	12	1
+3392242	Petrolina	-9.3986	-40.5008	c	10	1
+3392167	Picos	-7.0769	-41.4669	c	11	1
+3392095	Pimenteiras	-6.2453	-41.4192	t	12	1
+3392020	Pio IX	-6.8354	-40.6130	t	12	1
+3391401	Porto Alegre do Piauí	-6.9709	-44.1983	v	12	1
+3391336	Potengi	-7.0906	-40.0267	t	11	1
+3391251	Prata do Piauí	-5.6672	-42.2067	v	12	1
+3391220	Presidente Dutra	-5.2900	-44.4900	t	11	1
+3391056	Queimada Nova	-8.5794	-41.4194	t	13	1
+3401564	Quiterianópolis	-5.8443	-40.7019	t	11	1
+3390814	Raposa	-6.5167	-44.1833	t	12	1
+3390731	Redenção do Gurguéia	-9.4889	-44.5823	t	14	1
 3390700	Regeneração	-6.2312	-42.6869	t	12	1
-3387620	Simplício Mendes	-7.8539	-41.9103	t	14	1
-3387625	Simões	-7.5989	-40.8178	v	13	1
-3388868	São Domingos do Maranhão	-5.5758	-44.3853	t	12	1
-3388618	São João do Piauí	-8.3581	-42.2467	t	13	1
-3386567	São João dos Inhamuns	-6.0000	-40.2833	t	13	1
+3390682	Remanso	-9.6217	-42.0814	t	12	1
+3400694	Ribeira do Piauí	-7.6915	-42.7131	v	13	1
+3390289	Rio Grande do Piauí	-7.7760	-43.1354	t	12	1
+3389819	Salitre	-7.2847	-40.4572	t	11	1
+3401459	Santa Cruz	-8.2394	-40.3323	v	12	1
+3389650	Santa Cruz do Piauí	-7.1853	-41.7675	t	11	1
+3389649	Santa Cruz dos Milagres	-5.8003	-41.9594	v	12	1
+3394156	Santa Filomena	-8.1625	-40.6156	t	13	1
+3389626	Santa Filomena do Maranhão	-5.4978	-44.5590	t	11	1
+6318259	Santa Luz	-8.9539	-44.1294	t	12	1
+3401939	Santa Rosa do Piauí	-6.7973	-42.2793	v	12	1
+6318328	Santana do Piauí	-6.9478	-41.5186	v	12	1
+3389069	Santo Antônio de Lisboa	-6.9814	-41.2342	t	11	1
+6318370	Santo Antônio dos Milagres	-6.0469	-42.7097	v	11	1
+3389042	Santo Inácio do Piauí	-7.4239	-41.9141	v	12	1
+3398039	Sebastião Leal	-7.5698	-44.0650	v	13	1
+6318650	Senador Alexandre Costa	-5.2564	-44.0556	t	12	1
+6318662	Sento Sé	-9.7458	-41.8853	t	12	1
+3387620	Simplício Mendes	-7.8539	-41.9103	t	12	1
+3387625	Simões	-7.5989	-40.8178	t	12	1
+3387305	Sobradinho	-9.4718	-40.8015	t	10	1
+3390408	Sobrado	-9.2964	-40.8187	t	10	1
+3387273	Socorro do Piauí	-7.8635	-42.5028	v	13	1
+3387161	Sucupira do Norte	-6.4769	-44.1917	t	12	1
+6318721	Sucupira do Riachão	-6.4111	-43.5461	v	12	1
+3387105	Sussuapara	-7.0116	-41.3839	t	11	1
+3388937	São Braz do Piauí	-9.0642	-42.9989	v	12	1
+3388892	São Domingos do Azeitão	-6.8128	-44.6442	t	12	1
+3388868	São Domingos do Maranhão	-5.5758	-44.3853	t	11	1
+6318421	São Francisco de Assis do Piauí	-8.2378	-41.6861	t	12	1
+3388781	São Francisco do Piauí	-7.2514	-42.5433	t	13	1
+3388849	São Félix de Balsas	-7.0828	-44.8131	v	12	1
+3388848	São Félix do Piauí	-5.9325	-42.1139	v	12	1
+3388712	São Gonçalo do Piauí	-5.9933	-42.7028	v	11	1
+3388432	São José do Peixe	-7.4936	-42.5636	v	13	1
+3388431	São José do Piauí	-6.8717	-41.4753	t	12	1
+3388427	São José dos Basílios	-5.0511	-44.5839	t	11	1
+3388630	São João da Serra	-5.5142	-41.8992	t	12	1
+3388628	São João da Varjota	-6.9151	-41.8642	v	11	1
+3388618	São João do Piauí	-8.3581	-42.2467	t	12	1
+6318466	São João do Soter	-5.1139	-43.8100	t	13	1
+3386567	São João dos Inhamuns	-6.0000	-40.2833	t	12	1
 3388615	São João dos Patos	-6.4950	-43.7022	t	12	1
-3388266	São Miguel do Tapuio	-5.5036	-41.3233	t	13	1
-3388173	São Pedro do Piauí	-5.9294	-42.7186	t	12	1
-3388145	São Raimundo Nonato	-9.0153	-42.6994	t	13	1
+3388403	São Julião	-7.0847	-40.8256	t	11	1
+3388383	São Lourenço do Piauí	-9.1724	-42.5421	v	12	1
+3388351	São Luis do Piauí	-6.8264	-41.3233	v	12	1
+3406726	São Miguel da Baixa Grande	-5.8650	-42.1869	v	12	1
+3388295	São Miguel do Fidalgo	-7.5837	-42.3706	v	13	1
+3388266	São Miguel do Tapuio	-5.5036	-41.3233	t	12	1
+3388173	São Pedro do Piauí	-5.9294	-42.7186	t	11	1
+3388145	São Raimundo Nonato	-9.0153	-42.6994	t	12	1
+6318584	São Roberto	-5.0211	-44.9908	v	11	1
+6318737	Tamboril do Piauí	-8.4000	-42.9136	v	13	1
+6318740	Tanque do Piauí	-6.6000	-42.2822	v	12	1
 3386496	Teresina	-5.0892	-42.8019	c	10	1
-3386042	Trindade	-7.7619	-40.2678	t	12	1
-3385922	Tuntum	-5.2581	-44.6489	t	12	1
-3385658	Uruçuí	-7.2294	-44.5561	t	13	1
+3386361	Timon	-5.0942	-42.8367	c	10	1
+3386042	Trindade	-7.7619	-40.2678	t	11	1
+3385922	Tuntum	-5.2581	-44.6489	t	11	1
+3385658	Uruçuí	-7.2294	-44.5561	t	12	1
 3385592	Valença do Piauí	-6.4075	-41.7456	t	12	1
-3385467	Várzea Alegre	-5.3500	-40.3833	t	12	1
-3408221	Água Branca	-5.8922	-42.6361	t	12	1
+3385227	Vera Mendes	-7.6033	-41.4828	v	12	1
+6318917	Vila Nova do Piauí	-7.1356	-40.9400	v	11	1
+3385467	Várzea Alegre	-5.3500	-40.3833	t	11	1
+3385461	Várzea Branca	-9.2389	-42.9639	t	12	1
+3385385	Várzea Grande	-6.5447	-42.2464	v	12	1
+6318959	Wall Ferraz	-7.2328	-41.9100	v	12	1
+3408221	Água Branca	-5.8922	-42.6361	t	11	1
 ]==],
 }

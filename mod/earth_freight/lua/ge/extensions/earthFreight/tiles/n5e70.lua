@@ -2,14 +2,16 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Maldives" },
+  regions = { "India", "Maldives" },
   places = [==[
-1337612	Dhidhdhoo	6.8874	73.1140	v	13	1
-1337606	Eydhafushi	5.1033	73.0708	v	14	1
-1337620	Funadhoo	6.1509	73.2901	v	14	1
-1337613	Kulhudhuffushi	6.6221	73.0700	t	13	1
-1337618	Manadhoo	5.7669	73.4136	v	13	1
-1337616	Naifaru	5.4444	73.3657	t	14	1
-1337619	Ugoofaaru	5.6681	73.0302	v	14	1
+1337612	Dhihdhoo	6.8874	73.1140	v	13	2
+1337606	Eydhafushi	5.1033	73.0708	v	14	2
+1337620	Funadhoo	6.1509	73.2901	v	14	2
+1337613	Kulhudhuffushi	6.6221	73.0700	t	13	2
+12088818	Maafaru	5.8308	73.4794	v	14	2
+1337618	Manadhoo	5.7669	73.4136	v	13	2
+11185845	Minicoy	8.2890	73.0617	t	13	1
+1337616	Naifaru	5.4444	73.3657	t	14	2
+1337619	Un’goofaaru	5.6681	73.0302	v	14	2
 ]==],
 }

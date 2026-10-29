@@ -5,7 +5,7 @@ return {
   regions = { "Russia" },
   places = [==[
 2024626	Dzhebariki-Khaya	62.2108	135.8488	v	14	1
-2022773	Khandyga	62.6533	135.5667	t	14	1
+2022773	Khandyga	62.6530	135.5665	t	14	1
 6930488	Nezhdaninskoe	62.5052	139.0510	t	20	1
 2016305	Solnechnyy	60.3022	137.5556	v	17	1
 ]==],
