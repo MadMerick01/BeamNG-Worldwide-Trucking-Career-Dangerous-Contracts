@@ -5,11 +5,10 @@ return {
   regions = { "Argentina", "Chile" },
   places = [==[
 3833094	28 de Noviembre	-51.5839	-72.2138	v	14	1
-3858677	El Calafate	-50.3407	-72.2768	t	19	1
-3875367	Porvenir	-53.2960	-70.3663	v	12	2
+3858677	El Calafate	-50.3407	-72.2768	t	18	1
+3875367	Porvenir	-53.2960	-70.3663	t	12	2
 3874958	Puerto Natales	-51.7299	-72.5060	t	12	2
-3874787	Punta Arenas	-53.1548	-70.9113	c	13	2
-8521759	Río Turbio	-51.5359	-72.3367	t	14	1
-3832376	Yacimiento Río Turbio	-51.5732	-72.3508	t	15	1
+3874787	Punta Arenas	-53.1628	-70.9092	c	13	2
+3832376	Yacimientos Río Turbio	-51.5364	-72.3379	t	14	1
 ]==],
 }

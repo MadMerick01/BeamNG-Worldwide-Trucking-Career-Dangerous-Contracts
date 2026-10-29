@@ -4,8 +4,10 @@
 return {
   regions = { "Canada" },
   places = [==[
+5917270	Carmacks	62.0883	-136.2929	v	16	1
 6943713	Dawson City	64.0601	-139.4333	v	17	1
 5969025	Haines Junction	60.7522	-137.5108	v	21	1
+6068416	Mayo	63.5927	-135.8998	v	16	1
 6180550	Whitehorse	60.7161	-135.0538	t	16	1
 ]==],
 }

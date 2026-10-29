@@ -4,19 +4,41 @@
 return {
   regions = { "Brazil", "Colombia", "Peru" },
   places = [==[
-3665016	Benjamin Constant	-4.3755	-70.0318	t	12	1
-3699188	Caballococha	-3.9058	-70.5164	v	14	3
+3665168	Atalaia do Norte	-4.3665	-70.1919	t	11	1
+3699514	Aucayo	-3.8615	-73.1518	v	11	3
+3665016	Benjamin Constant	-4.3755	-70.0318	t	11	1
+3699188	Caballococha	-3.9058	-70.5164	t	13	3
 3697881	Concordia	-4.5667	-74.7833	v	14	3
-6279052	Genaro Herrera	-4.9074	-73.6678	v	14	3
+3696990	Francisco de Orellana	-3.4137	-72.7691	v	14	3
+6279052	Genaro Herrera	-4.9074	-73.6678	v	12	3
+3766420	Huanta	-3.4883	-72.0524	v	14	3
 10346348	Indiana	-3.4999	-73.0514	v	11	3
-3696183	Iquitos	-3.7491	-73.2538	c	11	3
-3694436	Nauta	-4.5333	-73.5500	v	14	3
+3696183	Iquitos	-3.7481	-73.2529	c	11	3
+3679509	La Chorrera	-1.4428	-72.7893	v	14	2
+3827813	Manacamiri	-3.7195	-73.2827	v	11	3
+6278857	Monte Israel	-3.8839	-71.4425	t	14	3
+3694436	Nauta	-4.5056	-73.5803	t	13	3
 3693863	Parinari	-4.5667	-74.4333	v	14	3
 3693782	Pebas	-3.3288	-71.8551	v	14	3
-3671437	Puerto Leguízamo	-0.1934	-74.7819	t	14	2
-3671387	Puerto Nariño	-3.7889	-70.3558	v	14	2
+3828895	Puerto Alegría	-4.1207	-70.0531	v	11	3
+3671437	Puerto Leguízamo	-0.1934	-74.7819	t	13	2
+3671387	Puerto Nariño	-3.7889	-70.3558	v	13	2
+12954197	Remanso	-2.4081	-71.1766	v	14	3
+6395522	Samito	-3.8576	-73.5834	v	11	3
 3697085	San Antonio del Estrecho	-2.4501	-72.6690	t	14	3
+6279004	San António	-3.8114	-71.5706	v	14	3
+6278850	San Isidro	-3.8645	-71.3533	v	14	3
+3692502	San Joaquín de Omaguas	-4.2707	-73.4116	v	13	3
+3692465	San José de Saramuro	-4.7184	-74.9220	v	14	3
+3692462	San Juan	-3.7761	-73.2814	c	11	3
 6395526	San Juan	-3.8850	-73.5672	v	11	3
-3692020	Saquena	-4.6667	-73.5167	v	14	3
+3692298	San Regis	-4.5115	-73.9042	v	13	3
+6394359	Santa María de Ojeal	-3.6029	-73.1669	v	11	3
+13562189	Santa Mercedes	-1.7889	-73.4116	v	14	3
+6279096	Sapuena	-4.7657	-73.6246	v	12	3
+3692020	Saquena	-4.6667	-73.5167	v	13	3
+12253617	Soplín Vargas	-0.3729	-74.6756	v	13	3
+6394370	Varillal	-3.8811	-73.3444	v	11	3
+3827800	Zúngaro Cocha	-3.8296	-73.3563	v	11	3
 ]==],
 }

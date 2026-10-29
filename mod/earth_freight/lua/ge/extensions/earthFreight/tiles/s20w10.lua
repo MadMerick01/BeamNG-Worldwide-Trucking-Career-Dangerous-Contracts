@@ -4,6 +4,7 @@
 return {
   regions = { "Saint Helena" },
   places = [==[
-3370903	Jamestown	-15.9387	-5.7168	v	17	1
+3370903	Jamestown	-15.9249	-5.7182	v	17	1
+3370867	Longwood	-15.9492	-5.6857	v	17	1
 ]==],
 }

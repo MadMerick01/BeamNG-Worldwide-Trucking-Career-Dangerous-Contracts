@@ -4,13 +4,16 @@
 return {
   regions = { "French Guiana", "Suriname" },
   places = [==[
-3382527	Apatou	5.1553	-54.3431	v	14	1
+3382527	Apatou	5.1553	-54.3431	t	13	1
+3382530	Awala-Yalimapo	5.7364	-53.9087	v	13	1
+3382401	Bellevue	5.4769	-53.2606	v	14	1
 3384482	Brokopondo	5.0559	-54.9804	t	13	2
 3381428	Iracoubo	5.4795	-53.2052	v	14	1
 3381303	Kourou	5.1628	-52.6427	t	11	1
 3381041	Mana	5.6691	-53.7790	t	13	1
-3383494	Moengo	5.6141	-54.4012	t	13	2
+3383494	Moengo	5.6141	-54.4012	t	12	2
 3380387	Saint-Laurent-du-Maroni	5.5015	-54.0292	t	12	1
 3380290	Sinnamary	5.3768	-52.9568	v	13	1
+3380169	Tonate	5.0117	-52.4724	v	11	1
 ]==],
 }

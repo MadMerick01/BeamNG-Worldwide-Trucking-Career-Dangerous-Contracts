@@ -4,38 +4,70 @@
 return {
   regions = { "Argentina", "Bolivia", "Paraguay" },
   places = [==[
-3865605	Apolinario Saravia	-24.4328	-63.9954	t	13	1
-3923154	Bermejo	-22.7321	-64.3372	t	13	2
-3923015	Boyuibe	-20.4323	-63.2815	v	16	2
-3863491	Caimancito	-23.7407	-64.5937	t	13	1
-3863366	Calilegua	-23.7737	-64.7700	t	15	1
-3922414	Camiri	-20.0385	-63.5183	t	16	2
-3867411	Colonia Neuland	-22.6667	-60.1167	v	13	3
-3856231	Embarcación	-23.2100	-64.0996	t	12	1
+3866572	Aguaray	-22.2449	-63.7353	t	14	1
+3866080	Alto de la Sierra	-22.7418	-62.4978	v	14	1
+3865605	Apolinario Saravia	-24.4323	-63.9956	t	13	1
+3923438	Azurduy	-20.1061	-64.4140	v	20	2
+3923154	Bermejo	-22.7321	-64.3372	t	12	2
+3923015	Boyuibe	-20.4327	-63.2823	v	16	2
+3863491	Caimancito	-23.7408	-64.5932	t	12	1
+3863366	Calilegua	-23.7744	-64.7700	t	15	1
+3922441	Camatindi	-20.9833	-63.4333	v	18	2
+3922414	Camiri	-20.0406	-63.5240	t	16	2
+3922032	Carandayti	-20.7500	-63.0667	v	14	2
+3867411	Colonia Neuland	-22.6667	-60.1167	v	12	3
+3860184	Coronel Juan Solá	-23.4667	-62.8833	t	14	1
+3860177	Coronel Mollinedo	-24.5404	-64.1010	v	13	1
+3918678	Culpina	-20.8236	-64.9449	v	17	2
+3859108	Dragones	-23.2490	-63.3393	v	14	1
+3856231	Embarcación	-23.2100	-64.0996	t	11	1
 3917939	Entre Ríos	-21.5266	-64.1730	v	18	2
-3867291	Filadelfia	-22.3394	-60.0316	t	13	3
-3855394	Fraile Pintado	-23.9408	-64.7994	t	13	1
-3855115	General Enrique Mosconi	-23.2167	-62.3000	v	14	1
-3855116	General Enrique Mosconi	-22.5959	-63.8126	t	13	1
-3853788	Ingeniero Guillermo N. Juárez	-23.9000	-61.8500	t	13	1
-3849924	La Mendieta	-24.3119	-64.9638	v	13	1
-3850888	Laguna Yema	-24.2539	-61.2447	v	14	1
+3867291	Filadelfia	-22.3394	-60.0316	t	12	3
+3855394	Fraile Pintado	-23.9415	-64.8009	t	13	1
+3867283	General Eugenio A. Garay	-20.5167	-62.1333	v	14	3
+3855115	General Mosconi	-23.1845	-62.3070	v	14	1
+3855116	General Mosconi	-22.5962	-63.8110	t	13	1
+3855070	General Pizarro	-24.2275	-63.9886	v	13	1
+3854314	Hickmann	-23.2117	-63.5672	v	14	1
+12035900	Hipólito Yrigoyen	-23.2463	-64.2763	t	11	1
+3914988	Huajlaya	-20.6000	-64.5500	v	24	2
+3853788	Ingeniero Guillermo N. Juárez	-23.8986	-61.8550	t	13	1
+12594159	Isla de Cañas	-22.8991	-64.6652	v	13	1
+3912300	La Cueva	-20.9333	-64.9000	v	24	2
+3849924	La Mendieta	-24.3139	-64.9665	v	13	1
+12591449	La Merced	-22.2340	-62.6802	v	14	1
+3850888	Laguna Yema	-24.2557	-61.2445	v	14	1
 3848209	Las Lajitas	-24.7276	-64.1933	t	12	1
-3848164	Las Lomitas	-24.7096	-60.5930	t	13	1
-3846915	Libertador General San Martín	-23.8064	-64.7876	t	15	1
+3848164	Las Lomitas	-24.7082	-60.5924	t	13	1
+3846915	Libertador General San Martín	-23.8131	-64.7935	t	15	1
+3846411	Los Blancos	-23.6099	-62.5954	v	14	1
+3834259	Los Toldos	-22.2804	-64.6989	v	24	1
+3844131	Misión Chaqueña	-23.2609	-63.7404	v	12	1
 3842268	Palma Sola	-23.9777	-64.3031	t	15	1
-3840432	Pozo del Tigre	-24.8968	-60.3236	v	13	1
+3841390	Pichanal	-23.3164	-64.2183	t	11	1
+3907954	Pilaya	-20.9500	-64.7500	v	30	2
+3840432	Pozo del Tigre	-24.8975	-60.3239	v	13	1
+3840259	Profesor Salvador Mazza	-22.0490	-63.6908	t	14	1
 3838762	Rivadavia	-24.1855	-62.8854	v	14	1
+3906265	Rosario del Ingre	-20.5833	-63.9000	v	18	2
+3906025	Salitre	-20.8833	-64.9167	v	19	2
+3905705	San Francisco	-20.7167	-64.7000	v	24	2
 3836772	San Pedro de Jujuy	-24.2313	-64.8661	c	11	1
-3836620	San Ramón de la Nueva Orán	-23.1370	-64.3243	c	12	1
-3836407	Santa Clara	-24.3092	-64.6625	v	13	1
+3836620	San Ramón de la Nueva Orán	-23.1370	-64.3243	c	11	1
+3836407	Santa Clara	-24.3096	-64.6613	v	13	1
+3904890	Santa Elena	-20.5500	-64.7833	v	29	2
+3836144	Santa María	-22.1533	-62.8093	v	14	1
+3836011	Santa Rosa	-23.3943	-64.4251	t	11	1
 3835880	Santa Victoria	-22.2512	-64.9655	v	23	1
+12035921	Santa Victoria Este	-22.2736	-62.7129	v	14	1
 3903320	Tarija	-21.5355	-64.7296	c	14	2
-3834601	Tartagal	-22.5164	-63.8013	c	14	1
+3834601	Tartagal	-22.5168	-63.8056	c	14	1
+3833370	Urundel	-23.5562	-64.3978	v	11	1
 3833219	Valle Grande	-23.4760	-64.9482	v	22	1
 3901582	Villa Charcas	-20.7228	-64.8848	v	17	2
-3901547	Villamontes	-21.2624	-63.4690	t	17	2
+13645361	Villa Choferes del Chaco Sub-urbano	-22.4725	-60.0532	v	12	3
+3901547	Villamontes	-21.2624	-63.4690	t	16	2
 3901178	Yacuiba	-22.0164	-63.6775	c	14	2
-3832189	Yuto	-23.6434	-64.4719	t	12	1
+3832189	Yuto	-23.6428	-64.4716	t	11	1
 ]==],
 }

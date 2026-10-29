@@ -4,20 +4,42 @@
 return {
   regions = { "Bolivia", "Brazil" },
   places = [==[
+3473198	Acorizal	-15.2047	-56.3658	v	13	2
+6316428	Araputanga	-15.4711	-58.3531	t	12	2
 3470718	Barra do Bugres	-15.0725	-57.1811	t	12	2
-3470871	Barão de Melgaço	-16.1944	-55.9675	v	12	2
+3470871	Barão de Melgaço	-16.1944	-55.9675	t	12	2
+6316748	Campo Verde	-15.5467	-55.1689	t	12	2
 3466307	Chapada dos Guimarães	-15.4606	-55.7497	t	14	2
 3465342	Corumbá	-19.0092	-57.6533	c	12	2
 3465038	Cuiabá	-15.5961	-56.0967	c	10	2
+6316983	Curvelândia	-15.6025	-57.9228	v	12	2
+3468551	Cáceres	-16.0706	-57.6789	c	12	2
+6317141	Figueirópolis dOeste	-15.4450	-58.7403	v	13	2
+13111788	Glória d’Oeste	-15.7685	-58.3101	v	12	2
+6317287	Indiavaí	-15.4944	-58.5728	v	12	2
+3460165	Jangada	-15.2356	-56.4892	t	13	2
+6317376	Jauru	-15.3419	-58.8664	t	13	2
 3459352	Ladário	-19.0047	-57.6017	t	12	2
+6317459	Lambari d'Oeste	-15.3233	-58.0036	t	12	2
 3458397	Lucas	-16.3333	-55.9333	t	13	2
+8456884	Mirassol d'Oeste	-15.6757	-58.0902	t	12	2
+3456226	Nossa Senhora do Livramento	-15.7750	-56.3456	t	10	2
 3453315	Poconé	-16.2567	-56.6228	t	13	2
-3453060	Pontes e Lacerda	-15.2261	-59.3353	t	13	2
+3453060	Pontes e Lacerda	-15.2261	-59.3353	t	12	2
+3452786	Porto Esperidião	-15.8528	-58.4603	t	12	2
+3452785	Porto Estrela	-15.3244	-57.2275	v	13	2
 3444201	Puerto Quijarro	-17.7833	-57.7667	t	13	1
+3444199	Puerto Suárez	-18.9672	-57.8013	t	12	1
+13111728	Reserva do Cabaçal	-15.1222	-58.3828	v	14	2
+6318153	Rio Branco	-15.2408	-58.1156	v	12	2
 3444176	Roboré	-18.3347	-59.7614	t	16	1
-3444105	San Matías	-16.3667	-58.4000	t	14	1
-3444091	San Pedro	-18.2833	-59.8167	v	15	1
+6318206	Salto do Céu	-15.1297	-58.1267	v	13	2
+3444105	San Matías	-16.3597	-58.4004	t	14	1
+3444091	San Pedro	-18.2869	-59.8174	v	15	1
 3449502	Santo Antônio do Leverger	-15.8656	-56.0767	t	10	2
+6318522	São José dos Quatro Marcos	-15.6214	-58.1764	t	12	2
+6318404	Vale de São Domingos	-15.2978	-59.0670	v	12	2
+3457426	Vila Bela da Santíssima Trindade	-15.0081	-59.9506	t	14	2
 3445451	Várzea Grande	-15.6467	-56.1325	c	10	2
 ]==],
 }

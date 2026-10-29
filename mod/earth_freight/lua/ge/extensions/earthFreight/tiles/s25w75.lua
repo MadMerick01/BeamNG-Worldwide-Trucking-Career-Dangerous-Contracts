@@ -4,8 +4,11 @@
 return {
   regions = { "Chile" },
   places = [==[
-3899539	Antofagasta	-23.6524	-70.3954	c	16	1
-3887127	Iquique	-20.2133	-70.1503	c	18	1
+3899887	Alto Hospicio	-20.2687	-70.1049	c	18	1
+3899539	Antofagasta	-23.6509	-70.3975	c	16	1
+3895573	Chanavayita	-20.7052	-70.1892	v	14	1
+3887127	Iquique	-20.2133	-70.1503	c	17	1
+3880143	Mejillones	-23.1000	-70.4470	t	15	1
 3869716	Tocopilla	-22.0920	-70.1979	t	22	1
 ]==],
 }

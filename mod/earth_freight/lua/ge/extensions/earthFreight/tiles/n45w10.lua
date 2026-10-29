@@ -2,9 +2,10 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "United Kingdom" },
+  regions = { "France", "United Kingdom" },
   places = [==[
-8299858	Isles of Scilly	49.9252	-6.2989	v	14	1
-2644967	Landewednack	49.9697	-5.1972	v	11	1
+8299858	Isles of Scilly	49.9252	-6.2989	v	14	2
+2644967	Landewednack	49.9697	-5.1972	v	11	2
+6620083	Ouessant	48.4597	-5.0861	v	11	1
 ]==],
 }

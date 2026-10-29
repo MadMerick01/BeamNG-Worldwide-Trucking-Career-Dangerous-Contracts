@@ -5,6 +5,7 @@ return {
   regions = { "Canada" },
   places = [==[
 11837933	Behchokǫ̀	62.8025	-116.0464	v	14	1
+5955921	Fort Providence	61.3503	-117.6528	v	14	1
 6115754	Gamèti	64.1120	-117.3530	v	14	1
 5972762	Hay River	60.8156	-115.7999	v	14	1
 ]==],

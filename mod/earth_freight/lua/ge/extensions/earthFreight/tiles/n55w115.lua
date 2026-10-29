@@ -4,7 +4,12 @@
 return {
   regions = { "Canada" },
   places = [==[
+5886316	Anzac	56.4502	-111.0351	v	12	1
+5955793	Fort Chipewyan	58.7222	-111.1205	v	14	1
 5955895	Fort McMurray	56.7268	-111.3810	c	12	1
+5959476	Garden Creek	58.7002	-113.8856	v	14	1
+12076677	Saprae Creek	56.6515	-111.1426	v	12	1
 6149374	Slave Lake	55.2834	-114.7690	t	14	1
+6174738	Wabasca-Desmarais	55.9667	-113.8500	v	14	1
 ]==],
 }

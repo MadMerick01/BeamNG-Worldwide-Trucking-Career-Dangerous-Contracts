@@ -4,7 +4,14 @@
 return {
   regions = { "China" },
   places = [==[
-1280249	Qiemo	38.1341	85.5298	v	14	1
-1280122	Ruoqiang	39.0200	88.1646	v	14	1
+12420871	Aketikandun	38.3341	85.5700	v	12	1
+12420886	Bingtuan Sanshiliu Tuan	39.2438	88.8996	t	14	1
+11969454	Jiawa Airikecun	38.1684	85.5097	v	12	1
+1280249	Qiemo	38.1339	85.5299	t	12	1
+11969443	Qiongkulecun	38.0934	85.5377	t	12	1
+1280122	Ruoqiang	39.0197	88.1663	t	13	1
+1279903	Tatrang	38.4667	85.6333	v	12	1
+1279806	Waxxari	38.6891	87.3722	t	14	1
+11969456	Yingwusitangcun	38.1788	85.4151	t	12	1
 ]==],
 }

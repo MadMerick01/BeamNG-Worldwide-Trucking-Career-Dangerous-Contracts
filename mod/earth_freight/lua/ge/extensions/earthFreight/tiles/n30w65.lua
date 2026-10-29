@@ -4,7 +4,12 @@
 return {
   regions = { "Bermuda" },
   places = [==[
-3573197	Hamilton	32.2949	-64.7830	v	14	1
-3573061	Saint George	32.3817	-64.6781	v	14	1
+3573197	Hamilton	32.2949	-64.7830	v	12	1
+13353866	Hamilton Parish	32.3422	-64.7302	t	12	1
+3573061	Saint George	32.3817	-64.6781	v	12	1
+13353871	Sandys Parish	32.2964	-64.8693	t	12	1
+13353865	Smith's Parish	32.3139	-64.7390	t	12	1
+13353870	Southampton Parish	32.2516	-64.8547	t	12	1
+13353869	Warwick Parish	32.2657	-64.8092	t	12	1
 ]==],
 }

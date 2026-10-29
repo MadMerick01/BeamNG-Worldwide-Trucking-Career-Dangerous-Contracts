@@ -4,12 +4,14 @@
 return {
   regions = { "Russia" },
   places = [==[
-2123278	Mil’kovo	54.6961	158.6207	t	14	1
+2121385	Kasivobara	50.6733	156.1237	v	20	1
+2123278	Mil’kovo	54.6947	158.6188	t	14	1
 2122293	Ozernovskiy	51.4960	156.5010	v	16	1
 2122229	Paratunka	52.9620	158.2572	v	13	1
-2122104	Petropavlovsk-Kamchatsky	53.0444	158.6508	c	12	1
-2121385	Severo-Kuril’sk	50.6753	156.1269	v	20	1
-2118647	Vilyuchinsk	52.9311	158.4047	t	13	1
-2119538	Yelizovo	53.1891	158.3813	t	13	1
+2122104	Petropavlovsk-Kamchatsky	53.0639	158.6275	c	12	1
+2121114	Sobolevo	54.3005	155.9477	v	14	1
+2120063	Ust’-Bol’sheretsk	52.8258	156.2829	v	14	1
+2118647	Vilyuchinsk	52.9320	158.4058	t	13	1
+2119538	Yelizovo	53.1894	158.3828	t	13	1
 ]==],
 }

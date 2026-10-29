@@ -2,16 +2,20 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Qatar", "United Arab Emirates" },
+  regions = { "Qatar", "Saudi Arabia", "United Arab Emirates" },
   places = [==[
-292968	Abu Dhabi	24.4512	54.3970	c	10	2
-12047416	Al Shamkhah City	24.3927	54.7078	c	10	2
-292688	Ar Ruways	24.1103	52.7306	t	13	2
-12042052	Bani Yas City	24.3098	54.6294	c	10	2
-8057551	Khalifah A City	24.4259	54.6050	c	10	2
-12042053	Musaffah	24.3589	54.4827	c	10	2
+292968	Abu Dhabi	24.4512	54.3970	c	10	3
+398806	Abū Samrah	24.7437	50.8317	v	14	1
+12047416	Al Shamkhah City	24.3927	54.7078	c	10	3
+292688	Ar Ruways	24.1103	52.7306	t	13	3
+12042052	Bani Yas City	24.3098	54.6294	c	10	3
+8057551	Khalifah A City	24.4259	54.6050	c	10	3
+13118447	Mohammed Bin Zayed City	24.3479	54.5537	c	10	3
+12042053	Musaffah	24.3589	54.4827	c	10	3
 289525	Musay‘īd	24.9923	51.5507	t	10	1
-291279	Muzayri‘	23.1436	53.7881	t	13	2
-291580	Zayed City	23.6542	53.7052	c	12	2
+291279	Muzayri‘	23.1436	53.7881	t	13	3
+8057552	Shakhbout City	24.3673	54.6372	t	10	3
+7288343	Shaybah	22.5925	54.0960	v	14	2
+291580	Zayed City	23.6542	53.7052	c	12	3
 ]==],
 }

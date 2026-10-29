@@ -4,17 +4,23 @@
 return {
   regions = { "Brazil", "Colombia", "Peru" },
   places = [==[
+3665364	Amaturá	-3.3746	-68.2021	t	13	1
 3664659	Carauari	-4.8828	-66.8958	t	13	1
 3664207	Fonte Boa	-2.5139	-66.0917	t	13	1
-3676623	Leticia	-4.2153	-69.9406	t	12	2
-3663475	Maraã	-1.8240	-65.3588	v	14	1
-3692953	Ramón Castilla	-4.2607	-69.9571	t	12	3
-3662489	Santa Isabel do Rio Negro	-0.4139	-65.0192	v	14	1
-3662395	Santo Antônio do Içá	-3.1022	-67.9397	t	13	1
-3662342	São Gabriel da Cachoeira	-0.1181	-67.0853	t	13	1
-3662252	São Paulo de Olivença	-3.3783	-68.8725	t	13	1
+3663817	Japurá	-1.8261	-66.5989	t	14	1
+3663709	Juruá	-3.4811	-66.0689	t	13	1
+3663694	Jutaí	-2.7474	-66.7684	v	14	1
+3678176	La Pedrera	-1.3239	-69.5744	v	14	2
+3676623	Leticia	-4.2108	-69.9394	t	11	2
+3663475	Maraã	-1.8240	-65.3588	v	13	1
+6317525	Maraã	-1.8530	-65.5743	t	13	1
+3692953	Ramón Castilla	-4.2607	-69.9571	t	11	3
+3662489	Santa Isabel do Rio Negro	-0.4139	-65.0192	t	13	1
+3662395	Santo Antônio do Içá	-3.1022	-67.9397	t	12	1
+3662342	São Gabriel da Cachoeira	-0.1181	-67.0853	c	12	1
+3662252	São Paulo de Olivença	-3.3783	-68.8725	t	12	1
 3667410	Tarapacá	-2.8920	-69.7420	v	14	2
-3661894	Tonantins	-2.8731	-67.8022	v	13	1
-3661756	Uarini	-2.9900	-65.1083	v	14	1
+3661894	Tonantins	-2.8731	-67.8022	t	12	1
+3661756	Uarini	-2.9900	-65.1083	t	13	1
 ]==],
 }

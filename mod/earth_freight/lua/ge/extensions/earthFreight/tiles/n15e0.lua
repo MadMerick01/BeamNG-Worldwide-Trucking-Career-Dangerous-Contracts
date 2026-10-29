@@ -2,13 +2,17 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Mali" },
+  regions = { "Mali", "Niger" },
   places = [==[
 2596472	Abeïbara	19.1167	1.7500	v	14	1
+2461247	Aguelhok	19.4614	0.8589	t	14	1
+2461034	Andéranboukan	15.4275	3.0175	t	13	1
 2461003	Ansongo	15.6597	0.5022	v	14	1
+2447132	Bani Bangou	15.0416	2.7037	t	14	2
 2596483	Inékar	15.9594	3.1411	t	14	1
-2455290	Kidal	18.4411	1.4078	t	13	1
-2453514	Ménaka	15.9182	2.4022	t	14	1
+2455290	Kidal	18.4434	1.4092	t	12	1
+2453514	Ménaka	15.9199	2.3961	t	13	1
 8631807	Ti-n-Essako	18.4506	2.4880	v	14	1
+2438675	Tillia	16.1233	4.7897	v	14	2
 ]==],
 }

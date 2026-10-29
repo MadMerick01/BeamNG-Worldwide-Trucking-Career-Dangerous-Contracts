@@ -4,6 +4,6 @@
 return {
   regions = { "Chile" },
   places = [==[
-4030754	Hanga Roa	-27.1525	-109.4244	v	15	1
+4030754	Hanga Roa	-27.1525	-109.4244	t	14	1
 ]==],
 }

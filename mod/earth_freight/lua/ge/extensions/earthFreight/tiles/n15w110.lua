@@ -4,9 +4,14 @@
 return {
   regions = { "Mexico" },
   places = [==[
-4015974	Campo Acosta	19.7706	-105.2492	v	13	1
-4003867	José María Morelos	19.6780	-105.1847	v	13	1
+4015974	Campo Acosta	19.7705	-105.2484	v	13	1
+4003867	José María Morelos	19.6776	-105.1846	v	13	1
 8858536	José María Pino Suárez (Nuevo Nahuapa)	19.9489	-105.3278	v	13	1
+4002626	La Cumbre	19.8753	-105.3334	v	13	1
+4002257	La Gloria	19.9424	-105.3705	v	13	1
+3998702	Lázaro Cárdenas	19.8290	-105.1609	v	14	1
+3992872	Pérula	19.5903	-105.1239	v	13	1
+3985498	San Mateo	19.5772	-105.0860	v	13	1
 3981391	Tomatlán	19.9366	-105.2501	t	14	1
 ]==],
 }

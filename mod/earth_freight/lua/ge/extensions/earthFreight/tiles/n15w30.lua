@@ -4,8 +4,18 @@
 return {
   regions = { "Cabo Verde" },
   places = [==[
+11205741	Alto Mira	17.1000	-25.2170	v	23	1
+13665036	Cabo da Ribeira	17.1220	-25.0500	v	21	1
+3374748	Chã da Igreja	17.1579	-25.1639	v	21	1
+13646000	Chã de Pedras	17.1257	-25.1138	v	22	1
+13163025	Fajã de Domingas Bento	17.1528	-25.0715	v	21	1
+11125820	Garça de Cima	17.1140	-25.1650	v	22	1
+13162894	Lajedo	17.0200	-25.1724	v	23	1
 3374351	Pombas	17.1503	-25.0201	v	21	1
 3374346	Ponta do Sol	17.2017	-25.0922	v	17	1
 3374336	Porto Novo	17.0197	-25.0647	t	20	1
+3374275	Ribeira Grande	17.1825	-25.0650	v	21	1
+3374201	São Pedro	16.8289	-25.0658	v	11	1
+3374164	Tarrafal de Monte Trigo	16.9587	-25.3104	v	23	1
 ]==],
 }

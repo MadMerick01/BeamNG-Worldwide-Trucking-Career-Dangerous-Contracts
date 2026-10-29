@@ -4,6 +4,8 @@
 return {
   regions = { "Australia" },
   places = [==[
+8310726	Lajamanu	-18.3358	130.6383	v	14	1
+8349148	Miniyeri	-15.2255	134.0798	v	14	1
 2060436	Tennant Creek	-19.6497	134.1915	v	14	1
 ]==],
 }

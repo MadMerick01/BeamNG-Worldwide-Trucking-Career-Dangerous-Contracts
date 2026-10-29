@@ -5,7 +5,8 @@ return {
   regions = { "Canada" },
   places = [==[
 5933885	Cumberland	49.6163	-125.0361	v	18	1
-6114228	Puntledge	49.6617	-125.0569	v	16	1
+5962735	Gold River	49.7809	-126.0501	v	20	1
+6095875	Oyster River	49.8667	-125.1333	v	12	1
 6354950	Tofino	49.1531	-125.9074	v	15	1
 6171633	Ucluelet	48.9415	-125.5464	v	16	1
 ]==],

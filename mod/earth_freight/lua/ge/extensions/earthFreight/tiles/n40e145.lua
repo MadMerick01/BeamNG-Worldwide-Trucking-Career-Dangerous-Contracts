@@ -4,10 +4,12 @@
 return {
   regions = { "Japan", "Russia" },
   places = [==[
-2128975	Nemuro	43.3236	145.5750	t	13	1
+2130166	Hamanaka-sakuraminami	43.1534	145.1025	t	12	1
+2128975	Nemuro	43.3236	145.5750	t	12	1
 2122334	Otrada	44.0683	145.8645	v	14	2
-2128206	Shibetsu	43.6590	145.1320	t	13	1
+2128430	Rausu	44.0181	145.1920	t	19	1
+2128206	Shibetsu	43.6590	145.1320	t	12	1
 6930874	Shikotan	43.7992	146.7216	v	14	2
-2119447	Yuzhno-Kurilsk	44.0273	145.8615	t	14	2
+2119447	Yuzhno-Kurilsk	44.0273	145.8615	t	13	2
 ]==],
 }

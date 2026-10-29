@@ -4,8 +4,9 @@
 return {
   regions = { "Equatorial Guinea", "Gabon" },
   places = [==[
+2306737	Aual	-1.4456	5.6272	t	13	1
 2396853	Omboué	-1.5746	9.2618	v	14	2
-2396518	Port-Gentil	-0.7193	8.7815	c	12	2
-2306774	San Antonio de Palé	-1.4068	5.6318	v	14	1
+2396518	Port-Gentil	-0.7193	8.7815	c	11	2
+2306774	San Antonio de Palé	-1.4068	5.6320	v	13	1
 ]==],
 }

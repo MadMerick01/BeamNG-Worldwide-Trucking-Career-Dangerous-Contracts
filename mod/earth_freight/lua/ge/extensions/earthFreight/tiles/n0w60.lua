@@ -2,8 +2,12 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Guyana" },
+  regions = { "Brazil", "Guyana" },
   places = [==[
-3377425	Lethem	3.3833	-59.8000	v	14	1
+6316619	Bonfim	3.3597	-59.8333	t	13	1
+6316814	Caroebe	0.8839	-59.6956	t	13	1
+3377425	Lethem	3.3726	-59.7997	v	13	2
+6317687	Normandia	3.8811	-59.6228	t	13	1
+3408577	São João da Baliza	0.9500	-59.9118	t	13	1
 ]==],
 }

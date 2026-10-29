@@ -4,6 +4,10 @@
 return {
   regions = { "Iceland" },
   places = [==[
+3418130	Blönduós	65.6593	-20.2808	v	17	1
+3418112	Bolungarvík	66.1592	-23.2494	v	17	1
+3415811	Hvammstangi	65.3971	-20.9435	v	17	1
+3412173	Patreksfjörður	65.5978	-23.9960	v	16	1
 3412888	Stykkishólmur	65.0754	-22.7298	v	14	1
 3415667	Ísafjörður	66.0747	-23.1350	v	18	1
 ]==],

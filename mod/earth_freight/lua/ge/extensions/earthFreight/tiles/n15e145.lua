@@ -4,6 +4,9 @@
 return {
   regions = { "Northern Mariana Islands" },
   places = [==[
+13645573	Chalan Laulau Village	15.1808	145.7138	v	12	1
+13645574	Chalan Piao village	15.1412	145.7005	v	12	1
+13527050	Garapan	15.2111	145.7204	v	12	1
 7828758	Saipan	15.2123	145.7545	t	12	1
 ]==],
 }

@@ -4,6 +4,7 @@
 return {
   regions = { "Chad" },
   places = [==[
-2432678	Faya-Largeau	17.9257	19.1043	t	13	1
+2432678	Faya-Largeau	17.9257	19.1043	t	12	1
+12640347	Kirdimi	18.1522	18.5385	t	14	1
 ]==],
 }

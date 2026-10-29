@@ -4,8 +4,10 @@
 return {
   regions = { "Madagascar", "Mozambique" },
   places = [==[
+1069579	Antsalova	-18.6667	44.6167	c	12	1
 1067531	Belo sur Tsiribihina	-19.6979	44.5459	t	13	1
-1037390	Ilha de Moçambique	-15.0342	40.7358	c	12	2
+1066702	Besalampy	-16.7500	44.4833	t	13	1
 1061912	Maintirano	-18.0635	44.0295	t	13	1
+1037390	Mozambique	-15.0347	40.7345	c	12	2
 ]==],
 }

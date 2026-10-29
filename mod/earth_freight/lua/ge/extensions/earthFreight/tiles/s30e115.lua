@@ -4,6 +4,11 @@
 return {
   regions = { "Australia" },
   places = [==[
+2066591	Meekatharra	-26.5952	118.4939	v	14	1
 2066524	Melville	-28.1833	116.7333	v	14	1
+2065779	Morawa	-29.2134	116.0079	v	14	1
+2065578	Mount Magnet	-28.0648	117.8490	v	14	1
+2065390	Mullewa	-28.5395	115.5117	v	14	1
+2057633	Yalgoo	-28.3436	116.6825	v	14	1
 ]==],
 }

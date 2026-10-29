@@ -4,7 +4,9 @@
 return {
   regions = { "Kiribati" },
   places = [==[
+11185878	Banana	1.9687	-157.3936	v	14	1
 7521903	Banana Village	1.9833	-157.3653	v	14	1
+4030939	London Village	1.9849	-157.4750	v	14	1
 4030926	Napari Village	3.9081	-159.3883	v	14	1
 7521902	Tabwakea Village	2.0164	-157.4877	v	14	1
 ]==],

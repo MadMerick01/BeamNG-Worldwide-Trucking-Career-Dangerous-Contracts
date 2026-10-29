@@ -4,7 +4,23 @@
 return {
   regions = { "Brazil" },
   places = [==[
-6316343	Alta Floresta	-9.8756	-56.0861	v	14	1
-3397763	Jacareacanga	-6.2222	-57.7528	v	14	1
+6316343	Alta Floresta	-9.8756	-56.0861	v	13	1
+6316411	Apiacás	-9.5436	-57.4492	t	13	1
+12977271	Apiacás	-9.5622	-57.3901	v	13	1
+6316415	Apuí	-7.1972	-59.8914	t	13	1
+6316811	Carlinda	-9.9581	-55.8322	t	13	1
+12977076	Castelo dos Sonhos	-8.3168	-55.1000	t	13	1
+6316885	Colniza	-9.4092	-59.0250	t	12	1
+12966147	Colniza	-9.4553	-59.2185	v	12	1
+6316941	Cotriguaçu	-9.9023	-58.5685	t	13	1
+3397763	Jacareacanga	-6.2222	-57.7528	t	13	1
+6317710	Nova Bandeirantes	-9.8497	-57.8106	t	13	1
+6317754	Nova Monte Verde	-9.9822	-57.5347	t	13	1
+12969910	Nova Monte Verde	-9.9797	-57.4674	v	13	1
+6317795	Novo Mundo	-9.9503	-55.1983	t	12	1
+12969588	Novo Mundo	-9.9757	-55.1776	v	12	1
+6317800	Novo Progresso	-7.1478	-55.3811	t	13	1
+12962269	Novo Progresso	-7.0412	-55.4196	v	13	1
+6317869	Paranaíta	-9.6647	-56.4767	t	13	1
 ]==],
 }

@@ -4,8 +4,13 @@
 return {
   regions = { "Mauritania", "Morocco", "Western Sahara" },
   places = [==[
+2463112	Bir Ganduz	21.6034	-16.4502	v	14	3
+13645465	Bir Ghandouz	22.0532	-16.7484	v	14	3
+2597434	Boulenouar	21.2897	-16.5240	v	14	1
 2463447	Dakhla	23.6848	-15.9580	c	12	3
-11071896	Imlili	22.6558	-15.6072	v	14	2
-2377457	Nouadhibou	20.9419	-17.0384	c	12	1
+2462879	El Aargub	23.6088	-15.8673	t	12	3
+11071896	Imlili	23.2344	-16.0804	v	14	2
+2462651	La Güera	20.8323	-17.0899	v	11	3
+2377457	Nouadhibou	20.9419	-17.0384	c	11	1
 ]==],
 }

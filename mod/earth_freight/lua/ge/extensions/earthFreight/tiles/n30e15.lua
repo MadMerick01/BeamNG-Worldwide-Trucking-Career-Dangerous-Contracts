@@ -5,7 +5,8 @@ return {
   regions = { "Libya" },
   places = [==[
 2215210	Al Burayqah	30.4062	19.5739	t	13	1
-2214846	Mişrātah	32.3753	15.0925	c	11	1
+2218562	Bin Jawwād	30.8042	18.0772	t	13	1
+2214846	Misratah	32.3753	15.0925	c	11	1
 8354477	Qasr Abu Hadi	31.0593	16.6591	v	12	1
 2210554	Sirte	31.2089	16.5887	c	12	1
 ]==],

@@ -2,15 +2,19 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Russia" },
+  regions = { "Japan", "Russia" },
   places = [==[
-2051471	Dalnegorsk	44.5575	135.6209	t	15	1
-2023929	Gornorechenskiy	44.2655	135.1147	v	14	1
-2023249	Kamenka	44.4586	136.0140	v	15	1
-2023058	Kavalerovo	44.2722	135.0523	t	15	1
-2021613	Krasnorechenskiy	44.6281	135.3526	v	16	1
-2018553	Ol’ga	43.7473	135.2909	v	15	1
-2017912	Plastun	44.7608	136.2805	t	14	1
-2017384	Rudnaya Pristan’	44.3581	135.8148	v	13	1
+2051471	Dalnegorsk	44.5575	135.6209	t	15	2
+2038800	Fukaura	40.6413	139.9320	t	13	1
+2023929	Gornorechenskiy	44.2639	135.1143	v	14	2
+2023249	Kamenka	44.4574	136.0144	v	15	2
+2023058	Kavalerovo	44.2716	135.0514	t	15	2
+9814840	Kita	40.0286	139.9595	v	10	1
+2021613	Krasnorechenskiy	44.6268	135.3527	v	16	2
+2038728	Okushiri	42.1721	139.5123	v	15	1
+2018553	Ol’ga	43.7467	135.2942	v	15	2
+2017912	Plastun	44.7600	136.2842	t	14	2
+2017384	Rudnaya Pristan’	44.3581	135.8106	v	13	2
+2038715	Setana	42.4514	139.8514	t	13	1
 ]==],
 }

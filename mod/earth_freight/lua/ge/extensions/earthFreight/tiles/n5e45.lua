@@ -2,17 +2,39 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Somalia" },
+  regions = { "Ethiopia", "Somalia" },
   places = [==[
-63361	Adado	6.1360	46.6276	v	14	1
-63795	Burao	9.5221	45.5336	c	12	1
-62854	Ceek	8.9991	45.3582	v	14	1
-60928	Dhuusamarreeb	5.5360	46.3867	t	14	1
-60019	Eyl	7.9803	49.8164	t	13	1
-59611	Gaalkacyo	6.7697	47.4308	c	12	1
-58933	Garoowe	8.4021	48.4828	c	12	1
-57000	Hobyo	5.3505	48.5268	t	13	1
-400769	Laascaanood	8.4774	47.3597	c	12	1
-53372	Oodweyne	9.4092	45.0640	t	14	1
+63361	Adado	6.1360	46.6276	v	11	2
+342803	Balanbale	5.7690	45.7630	c	12	2
+63707	Buhodle	8.2306	46.3267	t	13	2
+63795	Burao	9.5221	45.5336	c	12	2
+63400	Cabudwaaq	6.2458	46.2247	c	11	2
+62854	Ceek	8.9991	45.3582	v	14	2
+6311126	Dhabad	6.4317	46.4619	t	11	2
+60998	Dhummay	8.3314	47.0635	v	12	2
+60928	Dhuusamarreeb	5.5360	46.3867	t	14	2
+12534558	Diga gaw	5.6993	48.4664	v	13	2
+10239401	Digih Habar Es	6.4426	45.9833	t	11	1
+6641073	Duuban	6.6799	46.0662	t	11	1
+335425	El Bahay	6.3466	45.4781	t	11	1
+60019	Eyl	7.9803	49.8164	t	13	2
+62780	Fadhigaradle	6.1756	45.2987	t	12	1
+59611	Gaalkacyo	6.7697	47.4308	c	12	2
+59140	Garadag	9.4883	46.8674	t	13	2
+58933	Garoowe	8.4021	48.4828	c	12	2
+338123	Golwayn	6.5073	45.8349	t	11	1
+57000	Hobyo	5.3505	48.5268	t	13	2
+6311119	Kahandhale	5.7528	45.6460	t	12	1
+400769	Laascaanood	8.4774	47.3597	c	12	2
+6311120	Lasoano	6.2553	45.3853	t	12	1
+6311121	Neefkuceliye	6.5546	45.3899	t	10	1
+53372	Oodweyne	9.4092	45.0640	t	14	2
+444998	Qorof	6.5822	46.4333	t	11	1
+336511	Raqo	6.4192	45.8525	t	11	1
+6311111	Saaxo	6.7729	46.7969	t	12	2
+53904	Waal	6.8866	46.2151	t	12	1
+326282	Warder	6.9744	45.3408	c	11	1
+49636	Yagoori	8.7517	46.9636	t	13	2
+6311122	Yamarugley	6.8077	46.0848	t	11	1
 ]==],
 }

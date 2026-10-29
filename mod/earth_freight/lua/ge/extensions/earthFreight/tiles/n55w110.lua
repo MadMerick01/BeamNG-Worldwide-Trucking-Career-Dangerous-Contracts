@@ -4,6 +4,7 @@
 return {
   regions = { "Canada" },
   places = [==[
+5910853	Buffalo Narrows	55.8609	-108.4790	v	14	1
 6050066	La Ronge	55.1001	-105.2842	t	14	1
 ]==],
 }

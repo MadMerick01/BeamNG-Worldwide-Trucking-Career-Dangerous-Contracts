@@ -2,31 +2,39 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Anguilla", "Antigua and Barbuda", "Bonaire, Saint Eustatius and Saba ", "British Virgin Islands", "Dominica", "Guadeloupe", "Montserrat", "Saint Barthelemy", "Saint Kitts and Nevis", "Sint Maarten", "U.S. Virgin Islands" },
+  regions = { "Anguilla", "Antigua and Barbuda", "Bonaire, Saint Eustatius and Saba ", "British Virgin Islands", "Dominica", "Guadeloupe", "Montserrat", "Saint Barthelemy", "Saint Kitts and Nevis", "Saint Martin", "Sint Maarten", "U.S. Virgin Islands" },
   places = [==[
-3576397	All Saints	17.0667	-61.7930	v	13	2
+3576397	All Saints	17.0667	-61.7930	v	12	2
 3579789	Anse-Bertrand	16.4724	-61.5074	t	11	6
 3579767	Baie-Mahault	16.2674	-61.5854	t	11	6
+13590583	Barbuda Parish	17.6240	-61.7765	v	14	2
 3579732	Basse-Terre	15.9971	-61.7321	t	17	6
-3575551	Basseterre	17.2955	-62.7250	t	15	9
+3575551	Basseterre	17.2955	-62.7250	t	14	9
 3579232	Beauséjour	16.3041	-61.0737	v	11	6
 3575899	Berekua	15.2333	-61.3167	v	17	5
 3573496	Blowing Point Village	18.1765	-63.0938	v	12	1
-3576361	Bolands	17.0657	-61.8747	v	13	2
+3576361	Bolands	17.0657	-61.8747	v	12	2
 3579642	Bouillante	16.1304	-61.7689	t	16	6
 7266440	Brades	16.7918	-62.2106	v	15	7
 3575882	Calibishie	15.5930	-61.3490	v	15	5
 3579585	Capesterre-Belle-Eau	16.0450	-61.5643	t	14	6
 3575870	Castle Bruce	15.4440	-61.2572	v	15	5
-4795467	Charlotte Amalie	18.3419	-64.9307	t	13	11
-3576311	Codrington	17.6333	-61.8333	v	14	2
+3575487	Cayon	17.3500	-62.7333	v	15	9
+4795467	Charlotte Amalie	18.3419	-64.9307	t	12	12
+4795479	Christiansted	17.7468	-64.7056	v	12	12
+3576311	Codrington	17.6394	-61.8244	v	14	2
 3575857	Colihaut	15.4848	-61.4622	v	18	5
+4795549	Coral Bay	18.3480	-64.7132	v	12	12
 3575458	Cotton Ground	17.1667	-62.6167	v	13	9
-4795577	Cruz Bay	18.3313	-64.7938	v	13	11
-3513794	Cul de Sac	18.0485	-63.0651	t	12	10
-3576260	Falmouth	17.0274	-61.7814	v	13	2
+4795577	Cruz Bay	18.3313	-64.7938	v	12	12
+3513794	Cul de Sac	18.0485	-63.0651	t	12	11
+3579429	Deshaies	16.3067	-61.7944	v	14	6
+3576260	Falmouth	17.0274	-61.7814	v	12	2
 3575423	Fig Tree	17.1262	-62.6026	v	13	9
+4795761	Frederiksted	17.7123	-64.8818	v	12	12
+3579267	Gourbeyre	15.9945	-61.6920	t	18	6
 3579250	Grand-Bourg	15.8840	-61.3148	t	11	6
+3579247	Grand-Case	18.1048	-63.0536	t	12	10
 3579132	Gustavia	17.8962	-62.8498	t	12	8
 3573456	Island Harbour	18.2560	-63.0102	v	12	1
 3575755	La Plaine	15.3277	-61.2475	v	18	5
@@ -35,39 +43,59 @@ return {
 3578967	Le Moule	16.3316	-61.3466	t	11	6
 3578959	Les Abymes	16.2730	-61.5051	c	11	6
 3575733	Mahaut	15.3636	-61.3970	v	17	5
-3575721	Marigot	15.5389	-61.2837	v	15	5
-3575292	Middle Island	17.3259	-62.8105	v	16	9
+3575721	Marigot	15.5374	-61.2820	v	15	5
+3575296	Market Shop	17.1322	-62.5727	v	13	9
+3575292	Middle Island	17.3259	-62.8105	v	15	9
+3575284	Monkey Hill	17.3233	-62.7291	v	15	9
+3576094	New Winthorpes	17.1457	-61.8134	v	12	2
 3575261	Newcastle	17.2000	-62.5833	v	13	9
-3575251	Nicola Town	17.3796	-62.7532	v	16	9
-3513426	Oranjestad	17.4830	-62.9864	v	13	3
+3575251	Nicola Town	17.3796	-62.7532	v	15	9
+3576085	Old Road	17.0168	-61.8358	v	12	2
+3513426	Oranjestad	17.4830	-62.9864	v	12	3
+3576074	Parham	17.0968	-61.7705	v	12	2
 3578682	Petit-Bourg	16.1916	-61.5914	t	11	6
 3578681	Petit-Canal	16.3791	-61.4872	t	11	6
 3578351	Petites Anses	15.8499	-61.6446	v	11	6
-3576057	Piggotts	17.1167	-61.8000	v	13	2
+3576057	Piggotts	17.1167	-61.8000	v	12	2
 3578069	Plymouth	16.7055	-62.2129	v	16	7
+3575660	Pointe Michel	15.2598	-61.3745	v	17	5
 3578594	Pointe-Noire	16.2322	-61.7892	t	14	6
-3578599	Pointe-à-Pitre	16.2413	-61.5361	t	11	6
+3578599	Pointe-à-Pitre	16.2364	-61.5346	t	11	6
 3575656	Pont Cassé	15.3667	-61.3500	v	18	5
 3578575	Port-Louis	16.4175	-61.5305	t	11	6
-3575654	Portsmouth	15.5833	-61.4667	v	15	5
-3577430	Road Town	18.4269	-64.6208	t	13	4
+3575654	Portsmouth	15.5829	-61.4559	v	15	5
+3578557	Quartier d’Orléans	18.0691	-63.0354	v	12	10
+3577430	Road Town	18.4269	-64.6208	t	12	4
 3575639	Rosalie	15.3667	-61.2667	v	18	5
 3575635	Roseau	15.3017	-61.3881	t	17	5
-4796512	Saint Croix	17.7275	-64.7470	c	12	11
-3576022	Saint John’s	17.1210	-61.8433	t	13	2
-3575624	Saint Joseph	15.4000	-61.4333	v	16	5
+3575186	Sadlers	17.4045	-62.7930	v	15	9
+4796512	Saint Croix	17.7275	-64.7470	c	12	12
+3576022	Saint John’s	17.1210	-61.8433	c	12	2
+3575624	Saint Joseph	15.4061	-61.4237	v	16	5
 3575170	Saint Paul’s	17.4061	-62.8356	v	15	9
 3578467	Saint-Claude	16.0252	-61.6998	t	18	6
 3578441	Saint-François	16.2524	-61.2733	t	11	6
 3578466	Sainte-Anne	16.2256	-61.3810	t	11	6
 3578447	Sainte-Rose	16.3326	-61.6969	t	13	6
 3575612	Salisbury	15.4369	-61.4364	v	18	5
+6984545	Sandy Ground	18.0585	-63.0994	v	12	10
+11205445	Sandy Hill	18.2210	-63.0133	v	12	1
 3575156	Sandy Point Town	17.3591	-62.8486	v	15	9
+3513236	Simson Bay Village	18.0378	-63.1185	v	12	11
 3575602	Soufrière	15.2337	-61.3588	v	16	5
+3577369	Spanish Town	18.4481	-64.4347	v	13	4
+13590585	St. Peter Parish	17.0849	-61.7122	t	12	2
+13590587	St. Philip Parish	17.0543	-61.7272	v	12	2
+13561025	Sugar Factory	17.0884	-61.8175	v	12	2
+3513173	The Bottom	17.6265	-63.2497	v	13	3
 3573374	The Valley	18.2170	-63.0578	v	12	1
-3575115	Trinity	17.3004	-62.7758	v	16	9
+3575115	Trinity	17.3004	-62.7758	v	15	9
 3578324	Trois-Rivières	15.9759	-61.6449	t	17	6
+4796736	Tutu	18.3388	-64.8865	t	12	12
 3513146	Upper Hell's Gate	17.6430	-63.2265	v	12	3
+3513144	Upper Prince’s Quarter	18.0328	-63.0307	v	12	11
+3575956	Urlings	17.0269	-61.8762	v	12	2
+3575573	Vieille Case	15.6142	-61.4082	v	14	5
 3578278	Vieux-Habitants	16.0587	-61.7667	t	17	6
 3575568	Wesley	15.5667	-61.3167	v	15	5
 3573364	West End Village	18.1719	-63.1494	v	12	1

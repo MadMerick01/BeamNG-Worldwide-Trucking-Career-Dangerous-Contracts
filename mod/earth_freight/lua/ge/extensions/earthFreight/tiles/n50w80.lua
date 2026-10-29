@@ -4,6 +4,7 @@
 return {
   regions = { "Canada" },
   places = [==[
+5921588	Chisasibi	53.7833	-78.9000	t	14	1
 6176563	Waskaganish	51.4833	-78.7500	v	14	1
 ]==],
 }

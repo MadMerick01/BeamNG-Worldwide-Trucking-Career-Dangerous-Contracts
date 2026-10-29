@@ -9,5 +9,6 @@ return {
 5855809	Hawaiian Paradise Park	19.5933	-154.9731	t	12	1
 5850212	Leilani Estates	19.4697	-154.9178	v	14	1
 5851364	Nanawale Estates	19.5061	-154.9119	v	13	1
+5851916	Pāhoa	19.4940	-154.9443	v	13	1
 ]==],
 }

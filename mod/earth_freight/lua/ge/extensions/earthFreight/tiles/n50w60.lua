@@ -4,7 +4,13 @@
 return {
   regions = { "Canada" },
   places = [==[
+5928474	Côte-Nord-du-Golfe-du-Saint-Laurent	50.4800	-59.6160	v	14	1
+6049580	L'Anse-au-Loup	51.5168	-56.8314	v	15	1
+6112018	Port Saunders	50.6501	-57.2982	v	14	1
+6111663	Port au Choix	50.7168	-57.3649	v	14	1
+6126959	Roddickton	50.8668	-56.1314	v	14	1
 6137462	Saint-Augustin	51.2260	-58.6502	v	14	1
 6155302	St. Anthony	51.3704	-55.5974	v	14	1
+6157013	St. Lunaire-Griquet	51.5168	-55.4646	v	14	1
 ]==],
 }

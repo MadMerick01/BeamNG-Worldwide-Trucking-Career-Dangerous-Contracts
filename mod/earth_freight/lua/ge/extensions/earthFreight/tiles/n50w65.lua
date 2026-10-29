@@ -4,7 +4,9 @@
 return {
   regions = { "Canada" },
   places = [==[
+6957320	Churchill Falls	53.5315	-64.0085	v	15	1
 5970458	Happy Valley-Goose Bay	53.3038	-60.3258	t	14	1
 5972291	Havre-Saint-Pierre	50.2434	-63.6026	v	14	1
+6947099	Sheshatshiu	53.5187	-60.1459	v	14	1
 ]==],
 }

@@ -5,11 +5,11 @@ return {
   regions = { "Norway" },
   places = [==[
 7626406	Breivikbotn	70.5888	22.2871	v	16	1
-779683	Hammerfest	70.6634	23.6821	t	15	1
+779683	Hammerfest	70.6631	23.6809	t	15	1
 779146	Kvalsund	70.5027	23.9797	v	16	1
 779082	Lakselv	70.0513	24.9718	v	17	1
 777682	Skjervøy	70.0311	20.9714	v	18	1
 779622	Ávanuorri	70.9963	24.6622	v	15	1
-778362	Øksfjord	70.2394	22.3507	v	18	1
+778362	Øksfjord	70.2394	22.3507	v	17	1
 ]==],
 }

@@ -4,7 +4,7 @@
 return {
   regions = { "Russia" },
   places = [==[
-2027968	Aldan	58.6102	125.3961	t	13	1
+2027968	Aldan	58.6123	125.4000	t	13	1
 2020871	Lebedinyy	58.4884	125.4942	v	14	1
 2020848	Leninskiy	58.5714	125.4392	v	14	1
 2019135	Nizhniy Kuranakh	58.8238	125.5228	t	13	1

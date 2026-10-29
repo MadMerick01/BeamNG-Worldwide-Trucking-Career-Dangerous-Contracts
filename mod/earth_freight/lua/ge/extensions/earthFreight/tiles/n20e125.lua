@@ -4,6 +4,6 @@
 return {
   regions = { "Japan" },
   places = [==[
-1862505	Hirara	24.8038	125.3022	t	13	1
+1862505	Hirara	24.8038	125.3022	t	12	1
 ]==],
 }

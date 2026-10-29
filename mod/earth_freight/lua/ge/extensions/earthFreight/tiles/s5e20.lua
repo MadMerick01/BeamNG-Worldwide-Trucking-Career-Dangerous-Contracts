@@ -4,9 +4,11 @@
 return {
   regions = { "Democratic Republic of the Congo" },
   places = [==[
-218680	Boende	-0.2816	20.8805	t	13	1
+218680	Boende	-0.2816	20.8805	c	12	1
 215976	Ilebo	-4.3311	20.5864	c	12	1
-211647	Lodja	-3.5210	23.6005	c	12	1
+215814	Isamba	-4.0333	21.9833	t	14	1
+211647	Lodja	-3.5210	23.6005	c	11	1
+210674	Lukula	-3.8688	23.8835	t	11	1
 210379	Lusambo	-4.9750	23.4439	t	12	1
 207596	Mweka	-4.8519	21.5595	c	12	1
 ]==],

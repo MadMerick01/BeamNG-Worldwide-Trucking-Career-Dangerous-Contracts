@@ -4,6 +4,14 @@
 return {
   regions = { "Mozambique" },
   places = [==[
+1045449	Homoíne	-23.8844	35.1514	t	11	1
+1045114	Inhambane	-23.8650	35.3833	c	11	1
+1045007	Inharrime	-24.4769	35.0303	t	13	1
+1044995	Inhassoro	-21.5347	35.2022	t	13	1
+1040201	Massinga	-23.3292	35.3814	t	12	1
 1039536	Maxixe	-23.8597	35.3472	c	11	1
+1037042	Morrumbene	-23.6578	35.3450	t	11	1
+1029537	Nova Mambone	-20.9881	35.0222	v	14	1
+1024683	Vilankulo	-22.0000	35.3167	t	12	1
 ]==],
 }

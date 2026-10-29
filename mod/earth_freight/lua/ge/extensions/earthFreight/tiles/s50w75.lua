@@ -4,15 +4,17 @@
 return {
   regions = { "Argentina", "Chile" },
   places = [==[
-3866035	Alto Río Senguer	-45.0410	-70.8198	v	14	1
+3866035	Alto Río Senguer	-45.0419	-70.8234	v	14	1
 3895113	Chile Chico	-46.5410	-71.7237	v	20	2
 3894483	Cochrane	-47.2557	-72.5695	v	21	2
 3894426	Coyhaique	-45.5752	-72.0662	t	19	2
-3854981	Gobernador Gregores	-48.7506	-70.2474	v	14	1
-3846484	Los Antiguos	-46.5497	-71.6309	v	15	1
-3841475	Perito Moreno	-46.5900	-70.9297	v	14	1
+6690180	El Chaltén	-49.3299	-72.8860	v	22	1
+3854981	Gobernador Gregores	-48.7506	-70.2474	t	14	1
+3851101	Lago Posadas	-47.5109	-71.7717	v	19	1
+3846484	Los Antiguos	-46.5489	-71.6312	v	14	1
+3841475	Perito Moreno	-46.5905	-70.9257	t	14	1
 3874997	Puerto Aysén	-45.4030	-72.6918	t	20	2
 3950166	Puerto Chacabuco	-45.4667	-72.8167	v	20	2
-3838840	Río Mayo	-45.6857	-70.2580	v	14	1
+3838840	Río Mayo	-45.6862	-70.2566	v	14	1
 ]==],
 }

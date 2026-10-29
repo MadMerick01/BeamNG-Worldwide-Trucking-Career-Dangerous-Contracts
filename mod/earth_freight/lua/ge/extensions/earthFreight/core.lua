@@ -737,10 +737,19 @@ function M.new(deps)
     return nil
   end
 
-  -- The job board of a place: its jobs, seeded by how many jobs the player has done.
+  -- The job board of a place: its jobs, seeded by how many jobs the player has done, in the band
+  -- picked on the Distance filter.
   function c:board(place)
     local progression = self.profile and self.profile.progression
-    return jobs.board(place, progression and progression.jobsDone or 0, self.needs, self.now(), progression and progression.contractsDone)
+    return jobs.board(place, progression and progression.jobsDone or 0, self.needs, self.now(),
+      progression and progression.contractsDone, self.jobDistance)
+  end
+
+  -- The Distance filter: 'short', 'medium' or 'long' sends every town job that far; anything else
+  -- shows the usual mix. The HUD keeps the choice and sends it again when it opens.
+  function c:setJobDistance(distance)
+    self.jobDistance = jobs.DISTANCES[distance] and distance or nil
+    return true
   end
 
   -- What a job on the board pays the player's car now: how many units of its good fit, and the pay.
@@ -1240,7 +1249,7 @@ function M.new(deps)
         distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
         units = q.units, kg = q.kg, unitSlots = good.slots, unitKg = good.kg,
         fluid = good.kind == 'fluid' or nil, unitLitres = good.litres, litres = good.litres and q.units * good.litres or nil,
-        shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road > 1.005 and q.road or nil,
+        shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road > 1.005 and q.road or nil, outside = job.outside,
         allowed = allowed and q.units > 0 and (not section or self:canAfford(contracts.FEE)) }
     end
     return out
@@ -1283,7 +1292,7 @@ function M.new(deps)
       town = {
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
         region = place.region, boost = jobs.roadBonusFor(places.boost(place)), character = characterText[kind],
-        jobs = self:boardView(place, problem == nil and not self.load),
+        jobs = self:boardView(place, problem == nil and not self.load), distance = self.jobDistance or 'any',
         delivery = delivery,
         refuel = refuel and { litres = refuel.litres, cost = refuel.cost, full = refuel.full } or nil,
         refuelAllowed = problem == nil and self.fuelTank ~= nil and refuel ~= nil and not refuel.full and refuel.litres > 0
@@ -1741,6 +1750,7 @@ function M.takeJob(job, share)
   local s = type(share) == 'number' and share >= jobs.SHARE_STEP and share <= 100 and share % jobs.SHARE_STEP == 0 and share or 100
   return safely(function() return ensure():takeJob(id(job), s) end)
 end
+function M.setJobDistance(distance) return safely(function() return ensure():setJobDistance(distance) end) end
 function M.deliverJob() return safely(function() return ensure():deliver() end) end
 function M.abandonJob() return safely(function() return ensure():abandonJob() end) end
 function M.claimInsurance() return safely(function() return ensure():claimInsurance() end) end

@@ -2,13 +2,18 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Niger" },
+  regions = { "Algeria", "Niger" },
   places = [==[
-2448245	Abalak	15.4509	6.2793	t	13	1
-2448085	Agadez	16.9733	7.9911	c	11	1
-2447938	Alaghsas	17.0187	8.0168	c	11	1
-2447513	Arlit	18.7369	7.3853	v	14	1
-2438974	Tchintabaraden	15.8969	5.7985	t	14	1
-8624379	Tchirozérine	17.2210	7.7614	v	11	1
+2448245	Abalak	15.4509	6.2793	t	13	2
+2448150	Adérbissinat	15.6275	7.8945	t	14	2
+2448085	Agadez	16.9733	7.9911	c	11	2
+2447938	Alaghsas	17.0187	8.0168	c	11	2
+2447513	Arlit	18.7369	7.3853	c	12	2
+2443192	I-n-Gall	16.7878	6.9342	t	13	2
+2443346	Iferouâne	19.0625	8.4200	v	14	2
+2493273	In Guezzam	19.5736	5.7681	t	14	1
+2439078	Tassara	16.8047	5.6442	v	14	2
+2438974	Tchin Tabaradèn	15.8969	5.7985	t	13	2
+8624379	Tchirozérine	17.2210	7.7614	t	11	2
 ]==],
 }

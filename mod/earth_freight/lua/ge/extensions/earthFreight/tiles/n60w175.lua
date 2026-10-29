@@ -2,8 +2,10 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Russia" },
+  regions = { "Russia", "United States" },
   places = [==[
+5862664	Gambell	63.7792	-171.7346	v	14	2
 4031574	Provideniya	64.4229	-173.2264	v	16	1
+5873445	Savoonga	63.6942	-170.4789	v	15	2
 ]==],
 }

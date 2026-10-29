@@ -75,7 +75,7 @@ The truck earns about 5 times more a run but far less a kg, so fuel, repairs and
 
 ### Towns
 
-Towns come from an **offline GeoNames list** (every place over 1,000 people, about 150,000 worldwide) bundled with the mod, built by a generator script in `tools/`. It is not read from BeamNG.Earth at runtime. Reasons, from the town-detection research:
+Towns come from an **offline GeoNames list** (every place over 500 people, about 237,000 worldwide) bundled with the mod, built by a generator script in `tools/`. It is not read from BeamNG.Earth at runtime. Reasons, from the town-detection research:
 
 - Earth's own town name (its status bar, via `require('beamngEarth/statusbar').location()`) comes from an online Photon lookup. It is online only, blank when "Place names" is off, lags up to ~1.5 km, and names the nearest village or county even out in the bush.
 - Earth bundles only ~6,770 big towns (Katoomba is in, Penrith is not).
@@ -83,7 +83,7 @@ Towns come from an **offline GeoNames list** (every place over 1,000 people, abo
 
 Earth's status bar name can still be shown on the HUD as flavour when it is available.
 
-**Thinning.** Raw GeoNames is mostly suburbs (899 places within 150 km of Sydney). The generator keeps the best-known places and spaces them about **4 km apart**, which gives road runs from about 5 km. Around Penrith that is 223 places in a 150 km circle.
+**Thinning.** Raw GeoNames is mostly suburbs (899 places within 150 km of Sydney). The generator keeps the best-known places and spaces them about **3 km apart** (4 km until the list went down to 500 people), which gives road runs from about 4 km. Around Penrith that is 223 places in a 150 km circle.
 
 Known data problems to handle in the generator:
 
@@ -361,6 +361,8 @@ Not in layer 1: supply and demand, rural pickup points, the planning map, roadsi
 ## Worldwide places as built
 
 - **The list:** `tools/make_places.py` merges GeoNames' `cities1000` (`tools/data/geonames_world.tsv.gz`, 135,000 places) with the Sydney extract, which replaces it within 150 km of Penrith. The overrides apply only there, so Liverpool and Richmond in England are not forced in. Places are thinned to 4 km apart worldwide (suburbs weighted down as before), which keeps **100,125 places**. All but one of the 223 Sydney places are unchanged (St. Georges Basin, on the edge, gives way to a place just outside the old circle).
+- **More places (500 people, 3 km):** the world extract is now cut from `cities500` (237,000 places, plus the 430 rows of the older `cities1000` cut that it no longer has), and places are thinned to 3 km apart, which keeps **178,689 places** in 12 MB of tiles (it was 100,125 in 6.6 MB). Before, about one place in five had no other within 15 km in a straight line, so its board had few towns to send jobs to. The ids of the 100,125 earlier places are in `tools/data/previous_places.txt.gz` and are kept first, so saved jobs still find their town: all but 40 are kept (GeoNames moved those closer to another kept place). Remoteness still counts only the places `cities1000` has (1,000 people or a seat of government), so the new small places do not make anywhere less remote. The newer GeoNames populations move a few boosts a little (Coroico 3.0x to 2.9x).
+- **Distance filter:** the Town tab has Any, Short, Medium and Long. A band other than Any sends all three town jobs into that band (`jobs.DISTANCES`), each to a different town where there are enough; with no town in the band, the town nearest the band is used and the job is marked `outside` ("nearest" on the board). The choice is kept by the HUD in browser storage and sent to Lua whenever the board it gets was built for another one, so takeJob always finds the job on the same board.
 - **Tiles:** the places are split into 5° tiles (841 of them, 4.5 MB in all, 2.3 MB in the mod zip), one compact text line per place in `tiles/<tile>.lua`, with `placesIndex.lua` listing which tiles have places. `places.lua` loads the tile the player is in and the eight around it as they drive, plus the tiles around the start and around the last save. Lookups go through a 0.25° grid, so only the places close by are looked at.
 - **Ids** stay GeoNames ids (`gn…`), so saves keep working.
 

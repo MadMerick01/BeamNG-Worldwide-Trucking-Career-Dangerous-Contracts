@@ -5,5 +5,7 @@ return {
   regions = { "United States" },
   places = [==[
 5860695	Dillingham	59.0397	-158.4575	v	14	1
+5869587	Naknek	58.7283	-157.0139	v	14	1
+5869874	New Stuyahok	59.4528	-157.3119	v	14	1
 ]==],
 }

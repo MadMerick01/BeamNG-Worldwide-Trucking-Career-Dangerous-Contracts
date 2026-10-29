@@ -4,7 +4,7 @@
 return {
   regions = { "United States" },
   places = [==[
-5879048	Akutan	54.1335	-165.7769	v	16	1
+5879048	Akutan	54.1343	-165.7751	v	16	1
 5877208	Unalaska	53.8741	-166.5341	v	16	1
 ]==],
 }

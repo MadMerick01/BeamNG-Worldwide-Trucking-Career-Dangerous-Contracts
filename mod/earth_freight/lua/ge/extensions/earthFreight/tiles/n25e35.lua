@@ -2,15 +2,18 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Jordan", "Saudi Arabia" },
+  regions = { "Israel", "Jordan", "Saudi Arabia" },
   places = [==[
-7031363	Ad Dīsah	29.6528	35.5112	v	15	1
-250462	Al Quwayrah	29.8005	35.3116	t	13	1
-108773	Al Wajh	26.2455	36.4525	t	13	2
-108841	Al-`Ula	26.6085	37.9232	t	15	2
-250774	Aqaba	29.5267	35.0078	c	17	1
-106909	Duba	27.3513	35.6901	t	13	2
-101628	Tabuk	28.3998	36.5715	c	11	2
-100926	Umluj	25.0213	37.2685	t	13	2
+7031363	Ad Dīsah	29.6528	35.5112	v	15	2
+250462	Al Quwayrah	29.8005	35.3116	t	13	2
+108773	Al Wajh	26.2309	36.4649	t	13	3
+108841	Al-`Ula	26.6085	37.9232	t	15	3
+250774	Aqaba	29.5267	35.0078	c	17	2
+106909	Duba	27.3513	35.6901	t	13	3
+104979	Khaybar	25.7134	39.2803	v	14	3
+101628	Tabuk	28.3998	36.5715	c	10	3
+101516	Taymā’	27.6223	38.5388	t	12	3
+100926	Umluj	25.0213	37.2685	t	13	3
+293148	Yotvata	29.8955	35.0613	v	14	1
 ]==],
 }

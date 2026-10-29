@@ -2,16 +2,36 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Botswana", "Namibia", "Zambia" },
+  regions = { "Angola", "Botswana", "Namibia", "Zambia" },
   places = [==[
-877349	Bagani	-18.1106	21.6165	v	14	2
-877178	Katima Mulilo	-17.5000	24.2667	t	12	2
-910361	Limulunga	-15.0969	23.1376	t	12	3
-933366	Maun	-19.9833	23.4167	t	12	1
-906054	Mongu	-15.2484	23.1274	c	12	3
-933211	Nokaneng	-19.6667	22.2667	v	14	1
-898947	Senanga	-16.1167	23.2667	t	13	3
-898905	Sesheke	-17.4759	24.2968	t	12	3
-933077	Shakawe	-18.3654	21.8422	t	14	1
+877349	Bagani	-18.1106	21.6165	v	13	3
+877338	Bukalo	-17.7180	24.5305	v	12	3
+876364	Chiúme	-15.1356	21.1760	v	14	1
+876318	Cunjamba	-15.3715	20.1392	v	14	1
+876312	Cutuile	-15.1187	20.9987	v	14	1
+876292	Dirico	-17.9838	20.7776	v	13	1
+11048946	Divundu	-18.0973	21.5475	v	13	3
+11205277	Gumare	-19.3692	22.1617	t	13	2
+876246	Jamba	-17.5000	22.6667	t	13	1
+933711	Kachikau	-18.1570	24.5040	v	14	2
+877178	Katima Mulilo	-17.5047	24.2757	t	12	3
+933662	Kavimba	-18.0750	24.5830	v	14	2
+910361	Limulunga	-15.0969	23.1376	t	12	4
+877130	Linyanti	-18.0723	24.0157	v	14	3
+876156	Luengue	-16.7019	20.2579	v	14	1
+876147	Luiana	-17.5085	22.7294	v	13	1
+933366	Maun	-19.9833	23.4167	c	12	2
+876019	Mavinga	-15.7935	20.3637	t	13	1
+906054	Mongu	-15.2484	23.1274	c	12	4
+875957	Mucusso	-18.0208	21.4257	v	14	1
+876961	Ndiyona	-18.0389	20.7006	t	13	3
+933211	Nokaneng	-19.6667	22.2667	v	13	2
+875820	Rivungo	-16.3342	22.0358	v	14	1
+898947	Senanga	-16.1167	23.2667	t	13	4
+898905	Sesheke	-17.4759	24.2968	t	12	4
+933077	Shakawe	-18.3654	21.8422	t	13	2
+876747	Tsumkwe	-19.5936	20.5020	v	14	3
+875627	Xamavera	-17.9050	20.4403	v	13	1
+13608157	Xipundo	-16.6709	22.2207	v	14	1
 ]==],
 }

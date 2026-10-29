@@ -5,8 +5,9 @@ return {
   regions = { "Norway" },
   places = [==[
 3162272	Austrheim	60.7774	4.9323	v	11	1
-3157766	Fedje	60.7789	4.7149	v	13	1
+3157766	Fedje	60.7789	4.7149	v	12	1
 3153869	Hardbakke	61.0756	4.8411	v	14	1
+3137753	Sollsvika	60.4361	4.9664	v	11	1
 3134552	Tjeldstø	60.5962	4.8445	v	11	1
 ]==],
 }

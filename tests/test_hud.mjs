@@ -575,6 +575,29 @@ test('a signal beacon shows in the middle of the screen, closes by itself, and i
     assert.ok(route.includes(part), part)
   }
 })
+test('the Distance filter sends its band to Lua, and is kept after a rebuild or a restart', () => {
+  const saved = {}
+  const storage = { getItem: k => (k in saved ? saved[k] : null), setItem: (k, v) => { saved[k] = String(v) } }
+  const a = app(storage)
+  assert.equal(a.scope.jobDistance(), 'any', 'starts at Any')
+  a.scope.setJobDistance('long')
+  assert.equal(a.commands.at(-1), fixed("setJobDistance('long')"))
+  assert.equal(a.scope.jobDistance(), 'long')
+  const sent = a.commands.length
+  a.scope.setJobDistance("x'); os.exit() --")
+  assert.equal(a.commands.length, sent, 'only the four choices are sent')
+  a.state({ state: 'READY', town: { distance: 'long', jobs: [] } })
+  assert.equal(a.commands.length, sent, 'nothing sent while Lua agrees')
+  assert.equal(a.remount().scope.jobDistance(), 'long', 'kept when BeamNG rebuilds the app')
+  const b = app(storage)
+  assert.equal(b.scope.jobDistance(), 'long', 'kept after the game restarts')
+  b.state({ state: 'READY', town: { distance: 'any', jobs: [] } })
+  assert.equal(b.commands.at(-1), fixed("setJobDistance('long')"), 'sent again when Lua has forgotten it')
+  assert.equal(app().scope.jobDistance(), 'any', 'Any without storage')
+  assert.equal(b.scope.hasOutside([{ outside: true }]), true)
+  assert.equal(b.scope.hasOutside([{}]), false)
+  assert.ok(html.includes('ng-click="setJobDistance(o.id)"') && html.includes('j.outside'), 'the Town tab shows the filter and marks jobs outside it')
+})
 test('arriving at the drop-off chimes once, and a minimised HUD button flashes until delivered', () => {
   const a = app()
   a.state({ state: 'READY', mode: 'free', arrived: true })

@@ -5,6 +5,6 @@ return {
   regions = { "Peru" },
   places = [==[
 3935288	Minas de Marcona	-15.2119	-75.1103	t	17	1
-3929520	San Juan de Marcona	-15.3653	-75.1622	v	14	1
+3929520	San Juan	-15.3653	-75.1622	t	14	1
 ]==],
 }

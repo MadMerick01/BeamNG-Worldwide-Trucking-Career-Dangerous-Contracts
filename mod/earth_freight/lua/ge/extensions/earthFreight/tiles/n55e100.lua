@@ -16,6 +16,6 @@ return {
 2013406	Vidim	56.4088	103.1106	v	14	1
 2013399	Vikhorevka	56.1213	101.1777	t	11	1
 2012561	Zheleznodorozhnyy	57.9053	102.7784	t	12	1
-2012557	Zheleznogorsk-Ilimskiy	56.5768	104.1217	t	13	1
+2012557	Zheleznogorsk-Ilimskiy	56.5767	104.1297	t	13	1
 ]==],
 }

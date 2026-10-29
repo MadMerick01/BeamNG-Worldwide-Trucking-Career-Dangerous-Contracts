@@ -2,11 +2,14 @@
 -- Place data (c) GeoNames (https://www.geonames.org/), CC BY 4.0.
 -- One place a line: GeoNames id, name, latitude, longitude, size (city, town or village), pay boost in tenths, region.
 return {
-  regions = { "Egypt" },
+  regions = { "Egypt", "Sudan" },
   places = [==[
 362041	Abu Simbel	22.3457	31.6162	t	14	1
-359792	Aswan	24.0908	32.8994	c	11	1
-355635	Idfū	24.9792	32.8772	c	11	1
-353802	Kawm Umbū	24.4767	32.9463	c	11	1
+360159	Ar Radīsīyah Qiblī	24.9065	32.8856	t	10	1
+359792	Aswān	24.0908	32.8994	c	10	1
+358388	Darāw	24.4080	32.9232	c	10	1
+355635	Edfu	24.9792	32.8772	c	10	1
+353802	Kom Ombo	24.4767	32.9463	c	10	1
+364132	Wadi Halfa	21.7958	31.3713	t	13	2
 ]==],
 }
