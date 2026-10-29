@@ -176,7 +176,7 @@ function M.new(deps)
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
     self.ourRespawn, self.rawDamage = nil, nil
-    self.autoSave, self.gpsTown, self.gpsFeedback = nil, nil, nil
+    self.autoSave, self.gpsTown, self.gpsContract, self.gpsFeedback = nil, nil, nil, nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
@@ -816,7 +816,7 @@ function M.new(deps)
     local gps = ''
     if self.configuration.autoGps and self.adapter.setDestination then
       local ok, why = self.adapter:setDestination(destination, destination.name)
-      self.gpsTown, self.gpsFeedback = ok and destination.id or nil, nil
+      self.gpsTown, self.gpsContract, self.gpsFeedback = ok and destination.id or nil, nil, nil
       gps = ok and ' The GPS is set to ' .. destination.name .. '.' or ' Set the GPS yourself: copy the drop-off coordinates on the Route tab.'
       self.diag:event('gps', ok and destination.id or tostring(why), ok and 'I' or 'W')
     end
@@ -851,9 +851,25 @@ function M.new(deps)
     end
     local ok, why = self.adapter:setDestination(place, place.name)
     self.diag:event('gps', ok and ('town:' .. place.id) or tostring(why), ok and 'I' or 'W')
-    self.gpsTown = ok and place.id or nil
+    self.gpsTown, self.gpsContract = ok and place.id or nil, nil
     self.gpsFeedback = ok and ('The GPS is set to ' .. place.name .. '.')
       or ('Could not set the GPS. Paste ' .. coordinates(place) .. ' into the BeamNG.Earth map instead.')
+    return ok == true
+  end
+
+  -- GPS on a dangerous contract on the job board: sets the GPS to the start of its road, so the
+  -- player can see where it is before paying for the relocation.
+  function c:gpsToContract(contractId)
+    local section = contractId and contracts.get(contractId)
+    if not section or not self.adapter.setDestination or self.state ~= 'READY' or not self.arrived or self.hire then
+      self.gpsFeedback = 'The GPS cannot be set right now.'
+      return false
+    end
+    local ok, why = self.adapter:setDestination(section.start, section.name .. ' start')
+    self.diag:event('gps', ok and ('contract_start:' .. section.id) or tostring(why), ok and 'I' or 'W')
+    self.gpsTown, self.gpsContract = nil, ok and section.id or nil
+    self.gpsFeedback = ok and ('The GPS is set to the start of ' .. section.name .. ', ' .. section.region .. '.')
+      or ('Could not set the GPS. Paste ' .. coordinates(section.start) .. ' into the BeamNG.Earth map instead.')
     return ok == true
   end
 
@@ -861,7 +877,7 @@ function M.new(deps)
   function c:gpsToFinish(section)
     if not self.adapter.setDestination then return false end
     local ok, why = self.adapter:setDestination(section.finish, section.name .. ' finish')
-    if ok then self.gpsTown, self.gpsFeedback = nil, nil end
+    if ok then self.gpsTown, self.gpsContract, self.gpsFeedback = nil, nil, nil end
     self.diag:event('gps', ok and ('contract:' .. section.id) or tostring(why), ok and 'I' or 'W')
     return ok == true
   end
@@ -1254,10 +1270,11 @@ function M.new(deps)
       local section = job.contract and contracts.get(job.contract)
       out[#out + 1] = { id = job.id, good = good.name, goodId = good.id,
         to = section and section.name or job.drop and 'Off-road drop' or to.name, toId = to.id,
-        -- A town job's GPS button routes to the drop-off town before the job is taken.
-        gps = not job.drop and not section and self.gpsTown == to.id or nil,
+        -- A job's GPS button, before it is taken: a town job's goes to the drop-off town, a dangerous
+        -- contract's to the start of its road. Off-road drops have no road to route along.
+        gps = (section and self.gpsContract == section.id or not job.drop and not section and self.gpsTown == to.id) or nil,
         size = not job.drop and to.size or nil, drop = job.drop ~= nil and not section or nil,
-        contract = section and { name = section.name, region = section.region, summary = section.summary,
+        contract = section and { id = section.id, name = section.name, region = section.region, summary = section.summary,
           fee = contracts.FEE, insurance = contracts.INSURANCE_FEE, pays = section.pay } or nil,
         direction = job.drop and not section and location.compassPoint(location.bearing(place, job.drop)) or nil,
         distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
@@ -1786,6 +1803,7 @@ function M.backToCar() return safely(function() return ensure():backToCar(false)
 -- A heli load's answer: what it weighs once its mass is set.
 function M.pickUpBeacon() return safely(function() return ensure():pickUpBeacon() end) end
 function M.ignoreBeacon() return safely(function() return ensure():ignoreBeacon() end) end
+function M.gpsToContract(contract) return safely(function() return ensure():gpsToContract(id(contract)) end) end
 function M.gpsToTown(place) return safely(function() return ensure():gpsToTown(id(place)) end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
 -- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.

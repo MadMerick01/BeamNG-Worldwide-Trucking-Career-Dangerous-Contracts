@@ -315,6 +315,18 @@ do
     else T.eq(j.gps, j.toId == stClair.id or nil, j.id .. ' marked only if it goes to St Clair') end
   end
   T.eq(v.gpsFeedback, 'The GPS is set to St Clair.', 'and says so')
+  -- A dangerous contract's GPS goes to the start of its road; an off-road drop has none.
+  local contract
+  for _, j in ipairs(v.town.jobs) do if j.contract then contract = j end end
+  T.check(contract ~= nil and contract.contract.id ~= nil, 'the board names the contract')
+  local section = contracts.get(contract.contract.id)
+  T.check(c:gpsToContract(section.id), 'GPS set to the contract')
+  T.near(a.gps[#a.gps].latitude, section.start.latitude, 1e-9, 'at the start of its road')
+  T.eq(a.gps[#a.gps].name, section.name .. ' start', 'named after it')
+  v = c:view()
+  for _, j in ipairs(v.town.jobs) do T.eq(j.gps, j.contract and true or nil, j.id .. ': only the contract is marked now') end
+  T.check(v.gpsFeedback:find(section.name) ~= nil, 'the message names the road')
+  T.eq(c.load, nil, 'nothing taken'); T.check(not c:gpsToContract('nowhere'), 'an unknown contract is refused')
 end
 
 -- Jobs need the car stopped in a town, fit the car, and must be driven.
