@@ -37,6 +37,10 @@ local NEARBY_COUNT = 6
 local FLASH_SECONDS = 8
 -- After Teleport there, the button waits this long for Earth to load the terrain and place the car.
 local TELEPORT_WAIT_SECONDS = 30
+-- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
+-- been stopped this long and nothing else is going on.
+local AUTOSAVE_SECONDS = 3
+M.AUTOSAVE_SECONDS = AUTOSAVE_SECONDS
 -- A puncture's tyre repair, as damage points, so every repair quote and bill includes it. Like
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
 local PUNCTURE_DAMAGE = punctures.TYRE_REPAIR_COST / pricing.REPAIR_COST_PER_DAMAGE
@@ -172,6 +176,7 @@ function M.new(deps)
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
     self.ourRespawn, self.rawDamage = nil, nil
+    self.autoSave, self.gpsTown, self.gpsFeedback = nil, nil, nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     self.profile, self.loadStatus = self.store:load()
@@ -494,6 +499,7 @@ function M.new(deps)
       end
       self:showFlash(lost ~= '' and 'cancelled' or 'delivered', 'RELOCATED TO ' .. b.name:upper(),
         'Welcome to ' .. b.region .. '. Find a load in town.' .. paid .. lost)
+      self:autoSaveSoon('your relocation')
       self.diag:event('shipped', b.id)
     elseif self.stranded and shipping.returned(to, self.stranded) then
       self:unstrand()
@@ -793,6 +799,7 @@ function M.new(deps)
     local gps = ''
     if self.configuration.autoGps and self.adapter.setDestination then
       local ok, why = self.adapter:setDestination(destination, destination.name)
+      self.gpsTown, self.gpsFeedback = ok and destination.id or nil, nil
       gps = ok and ' The GPS is set to ' .. destination.name .. '.' or ' Set the GPS yourself: copy the drop-off coordinates on the Route tab.'
       self.diag:event('gps', ok and destination.id or tostring(why), ok and 'I' or 'W')
     end
@@ -817,10 +824,27 @@ function M.new(deps)
     return true
   end
 
+  -- GPS on the Route tab's Nearby list: sets BeamNG.Earth's GPS to the middle of a town, where
+  -- it counts as being in town. A job's own GPS is set again with the button on its own row.
+  function c:gpsToTown(placeId)
+    local place = placeId and places.get(placeId)
+    if not place or not self.adapter.setDestination or self.state ~= 'READY' or not self.arrived or self.hire then
+      self.gpsFeedback = 'The GPS cannot be set right now.'
+      return false
+    end
+    local ok, why = self.adapter:setDestination(place, place.name)
+    self.diag:event('gps', ok and ('town:' .. place.id) or tostring(why), ok and 'I' or 'W')
+    self.gpsTown = ok and place.id or nil
+    self.gpsFeedback = ok and ('The GPS is set to ' .. place.name .. '.')
+      or ('Could not set the GPS. Paste ' .. coordinates(place) .. ' into the BeamNG.Earth map instead.')
+    return ok == true
+  end
+
   -- Sets the GPS to a dangerous contract's finish. Returns whether it was set.
   function c:gpsToFinish(section)
     if not self.adapter.setDestination then return false end
     local ok, why = self.adapter:setDestination(section.finish, section.name .. ' finish')
+    if ok then self.gpsTown, self.gpsFeedback = nil, nil end
     self.diag:event('gps', ok and ('contract:' .. section.id) or tostring(why), ok and 'I' or 'W')
     return ok == true
   end
@@ -911,15 +935,17 @@ function M.new(deps)
     local section = load.contract and contracts.get(load.contract)
     if load.beacon then
       self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), 'Dropped off. Nobody saw a thing, and nobody asked.'
-        .. refund .. ' Save to keep it.')
+        .. refund)
       self.tradeFeedback = nil
+      self:autoSaveSoon('your delivery')
       self.diag:event('job_delivered', 'beacon for ' .. load.pay)
       return true
     end
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units)
       .. (section and (' over ' .. section.name .. '. ' .. self:named('You made it') .. '.') or (' dropped off road. ' .. self:named('Nice driving') .. '.'))
-      .. refund .. ' Save to keep it.')
+      .. refund)
     self.tradeFeedback = nil
+    self:autoSaveSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> drop for %d', good.id, load.units, load.pay))
     return true
   end
@@ -948,8 +974,9 @@ function M.new(deps)
       self.offer = nil
     end
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' to ' .. place.name
-      .. '. ' .. self:named('Nice driving') .. '.' .. refund .. ' Save to keep it.')
+      .. '. ' .. self:named('Nice driving') .. '.' .. refund)
     self.tradeFeedback = nil
+    self:autoSaveSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> %s for %d', good.id, load.units, place.id, load.pay))
     return true
   end
@@ -1160,6 +1187,7 @@ function M.new(deps)
     self:watchFuel()
     self:watchInsurance()
     self:watchTow()
+    self:watchAutoSave()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
       self.refuelPending, self.fuelFeedback = nil, 'Refuelling did not go through. You have not been charged.'
@@ -1234,8 +1262,11 @@ function M.new(deps)
     local nearby = {}
     if current then
       for _, n in ipairs(places.nearest(current, NEARBY_COUNT, place and place.id)) do
+        local bearing = location.bearing(current, n.place)
         nearby[#nearby + 1] = { id = n.place.id, name = n.place.name, size = n.place.size,
           distanceMetres = n.metres * places.ROAD_FACTOR, dots = self:dots(n.place, now),
+          direction = location.compassPoint(bearing), letters = location.compassLetters(bearing),
+          gps = self.gpsTown == n.place.id or nil,
           destination = self.load ~= nil and not self.load.drop and self.load.to == n.place.id }
       end
     end
@@ -1411,6 +1442,8 @@ function M.new(deps)
       fuel = self.fuel and { litres = self.fuel.litres, capacity = self.fuel.capacity, pricePerLitre = fuel.PRICE_PER_LITRE } or nil,
       here = trade.here, region = trade.region, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
       shortages = trade.shortages,
+      gpsAllowed = self.adapter.setDestination ~= nil and self.state == 'READY' and self.arrived and not self.hire,
+      gpsFeedback = self.gpsFeedback,
       abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee,
       tradeFeedback = self.tradeFeedback,
       fuelFeedback = self.fuelFeedback,
@@ -1539,6 +1572,34 @@ function M.new(deps)
     self.feedback = self:named('Saved') .. '.'
     self.diag:clear('manual_save_succeeded'); self.diag:event('manual_save_succeeded', 'generation ' .. saved.generation)
     return true
+  end
+
+  -- Asks for a save once things have settled: see watchAutoSave. A later ask replaces it.
+  function c:autoSaveSoon(what)
+    if self.profile then self.autoSave = { what = what, since = nil } end
+  end
+
+  -- Called every tick: saves the game the player asked for with autoSaveSoon once the car has been
+  -- stopped for AUTOSAVE_SECONDS in its own car, with no bill, booking, respawn or claim waiting.
+  -- Until then it keeps waiting, so a player who drives straight off is saved at their next stop.
+  function c:watchAutoSave()
+    local due = self.autoSave
+    if not due then return end
+    local sample = self.lastSample
+    local settled = self.state == 'READY' and self.profile and not self.error and self.arrived
+      and not self.stranded and not self.booking and not self.hire
+      and not self.pendingParts and not self.pendingCar and not self.insurancePending and not self.towPending
+      and not self.refuelPending and not self.respawned and not self.partsCheckDue
+      and sample and sample.valid and self.odometer:stopped()
+    if not settled then due.since = nil; return end
+    due.since = due.since or self.clock
+    if self.clock - due.since < AUTOSAVE_SECONDS then return end
+    self.autoSave = nil
+    -- A save that fails says so, as Save does; the last save is untouched.
+    if self:manualSave() then
+      self.feedback = 'Saved automatically after ' .. due.what .. '.'
+      self.diag:event('auto_save', due.what)
+    end
   end
 
   function c:newGameAllowed()
@@ -1690,6 +1751,7 @@ function M.backToCar() return safely(function() return ensure():backToCar(false)
 -- A heli load's answer: what it weighs once its mass is set.
 function M.pickUpBeacon() return safely(function() return ensure():pickUpBeacon() end) end
 function M.ignoreBeacon() return safely(function() return ensure():ignoreBeacon() end) end
+function M.gpsToTown(place) return safely(function() return ensure():gpsToTown(id(place)) end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
 -- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.
 function M.bookShippingTo(latitude, longitude)

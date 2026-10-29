@@ -45,11 +45,18 @@ function M.destination(p, bearing, metres)
 end
 
 local POINTS = { 'north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west' }
+local LETTERS = { 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW' }
 
 -- The nearest of the eight compass points to a bearing in degrees.
 function M.compassPoint(bearing)
   if not M.finite(bearing) then return nil end
   return POINTS[math.floor(((bearing % 360) + 22.5) / 45) % 8 + 1]
+end
+
+-- The same compass point as letters: N, NE, E and so on.
+function M.compassLetters(bearing)
+  if not M.finite(bearing) then return nil end
+  return LETTERS[math.floor(((bearing % 360) + 22.5) / 45) % 8 + 1]
 end
 
 return M

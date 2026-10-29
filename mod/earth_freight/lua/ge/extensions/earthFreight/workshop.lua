@@ -143,7 +143,8 @@ function M.attach(c)
     end
     self:spend(cost, 'repair')
     self.quote, self.owedDamage, self.punctureDamage = nil, 0, 0
-    self.repairFeedback = 'Repaired for ' .. dollars(cost) .. '. Save to keep the new balance.'
+    self.repairFeedback = 'Repaired for ' .. dollars(cost) .. '.'
+    self:autoSaveSoon('your repair')
     return true
   end
 
@@ -582,7 +583,8 @@ function M.attach(c)
     end
     self:adoptParts(snapshot)
     self.owedDamage, self.punctureDamage, self.fuel = 0, 0, nil
-    self.carFeedback = 'Bought ' .. tostring(pending.name) .. ' for ' .. dollars(pending.cost) .. '. Save to keep it.'
+    self.carFeedback = 'Bought ' .. tostring(pending.name) .. ' for ' .. dollars(pending.cost) .. '.'
+    self:autoSaveSoon('buying your car')
     return true
   end
 
@@ -826,7 +828,8 @@ function M.attach(c)
     self:adoptParts(self.fittedParts)
     -- The bill paid the repair owed when it opened; a reset since then is still owed.
     self.owedDamage, self.punctureDamage = math.max(0, self.owedDamage - (pending.owedBefore or self.owedDamage)), 0
-    self.partsFeedback = 'Bought for ' .. dollars(pending.cost) .. '. Save to keep the new balance.'
+    self.partsFeedback = 'Bought for ' .. dollars(pending.cost) .. '.'
+    self:autoSaveSoon('buying parts')
     return true
   end
 

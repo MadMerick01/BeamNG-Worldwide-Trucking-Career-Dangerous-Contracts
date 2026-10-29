@@ -180,6 +180,36 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         for (var id in alerts) if (alerts[id](d)) return 'waiting'
         return ''
       }
+      // At the drop-off and stopped, so Deliver (or Pick it up) works: the player hears a chime, and a
+      // minimised HUD's button flashes until they do it.
+      scope.atDestination = function (d) {
+        d = d || scope.data || {}
+        return !!(d.town && d.town.delivery && d.town.delivery.allowed) ||
+          !!(d.load && d.load.drop && d.load.drop.delivery && d.load.drop.delivery.allowed) ||
+          !!(d.beacon && d.beacon.pickUpAllowed)
+      }
+      // Two short rising notes, made here so the mod needs no sound files. Where the game has no
+      // Web Audio it stays quiet; the flashing button still shows it.
+      var chime = function () {
+        kept.chimes = (kept.chimes || 0) + 1
+        try {
+          var Context = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)
+          if (!Context) return
+          var audio = kept.audio || (kept.audio = new Context())
+          if (audio.resume) audio.resume()
+          var start = audio.currentTime
+          ;[[880, 0], [1318.5, 0.16]].forEach(function (note) {
+            var tone = audio.createOscillator(), level = audio.createGain()
+            tone.type = 'sine'; tone.frequency.value = note[0]
+            level.gain.setValueAtTime(0.0001, start + note[1])
+            level.gain.exponentialRampToValueAtTime(0.25, start + note[1] + 0.02)
+            level.gain.exponentialRampToValueAtTime(0.0001, start + note[1] + 0.5)
+            tone.connect(level); level.connect(audio.destination)
+            tone.start(start + note[1]); tone.stop(start + note[1] + 0.55)
+          })
+        } catch (e) {}
+      }
+      scope.chimes = function () { return kept.chimes || 0 }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
@@ -190,6 +220,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var follow = function (previous, next) {
         // The start page opens once on a new game or on loading a save, until the player is there.
         if (next.arrived || (previous.mode && previous.mode !== next.mode)) kept.introShown = false
+        if (scope.atDestination(next) && !scope.atDestination(previous)) chime()
         if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
           kept.introShown = true; scope.openIntro(next); scope.setMinimised(false)
         }
@@ -233,7 +264,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
         'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
-        'Press Save often. Anything since your last Save is lost when you exit.'
+        'The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.'
       ]
       // While a text box has focus the game's keys are off, so typing does not drive the car.
       var typingNow = false
@@ -321,6 +352,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.pickUpBeacon = function () { if (scope.data.beacon && scope.data.beacon.pickUpAllowed) core('pickUpBeacon()') }
       scope.ignoreBeacon = function () { if (scope.data.beacon) core('ignoreBeacon()') }
       scope.claimInsurance = function () { if (scope.data.insurance && scope.data.insurance.allowed) core('claimInsurance()') }
+      // GPS on the Nearby list: the route to the middle of that town.
+      scope.gpsToTown = function (place) { if (scope.data.gpsAllowed && plainId(place)) core("gpsToTown('" + place + "')") }
       scope.bookShipping = function (destination) {
         if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")
       }
