@@ -28,6 +28,9 @@ M.MAX_KM = 20
 -- A board shows one job each of parts, bricks and the town's fluid, then the off-road drop. The
 -- three town jobs take these road-distance bands in turn, from a seeded start, where the towns allow.
 M.BANDS = { { 0, 8 }, { 8, 13 }, { 13, 20 } }
+-- The Distance filter on the Town tab: picking one sends all three town jobs to towns in that band,
+-- each to a different town where there are enough. 'any' (or nil) keeps the mix above.
+M.DISTANCES = { short = 1, medium = 2, long = 3 }
 -- Town need: a seeded start between NEED_LOW and NEED_HIGH, plus CHARACTER_BONUS for the good the
 -- town is known for, less what deliveries took. Always between MIN_NEED and MAX_NEED. The start
 -- leans a little above the base, so most towns have something worth carrying and red is rare
@@ -243,25 +246,52 @@ end
 -- The board of a town: one job each for its goods, then the off-road drop and the dangerous contract, fixed for a seed (the
 -- controller's count of jobs done), so it changes after every delivery or abandoned job. A good
 -- short in a town close by goes there; otherwise each job goes to a town in its distance band. At
--- least one job is decent: if none pays its base rate, the best one is raised to it.
-function M.board(from, seed, needs, now, contractsDone)
+-- least one job is decent: if none pays its base rate, the best one is raised to it. distance is
+-- the Distance filter (see DISTANCES): its band holds every town job, and a job that had to go
+-- outside it, for want of towns that far, is marked outside.
+function M.board(from, seed, needs, now, contractsDone, distance)
   local list = M.destinations(from)
   local wanted = M.boardGoods(from)
   if #list == 0 or #wanted == 0 then return {} end
   seed = tostring(seed or 0)
   local start = math.floor(hash01(from.id .. ':' .. seed .. ':band') * #M.BANDS)
-  local out = {}
+  local only = M.BANDS[M.DISTANCES[distance] or 0]
+  local function inBand(x, band) return x.km > band[1] and x.km <= band[2] end
+  local out, used = {}, {}
   for i, good in ipairs(wanted) do
-    local d
-    for _, x in ipairs(list) do if not d and M.shortage(x.place, good, now) then d = x end end
-    if not d then
-      local band = M.BANDS[(start + i - 1) % #M.BANDS + 1]
-      local pool = {}
-      for _, x in ipairs(list) do if x.km > band[1] and x.km <= band[2] then pool[#pool + 1] = x end end
-      if #pool == 0 then pool = list end
-      d = pool[math.floor(hash01(from.id .. ':' .. seed .. ':' .. good.id .. ':to') * #pool) + 1]
+    local d, outside
+    for _, x in ipairs(list) do
+      if not d and (not only or inBand(x, only) and not used[x.place.id]) and M.shortage(x.place, good, now) then d = x end
     end
-    out[#out + 1] = job(from, d, good, seed)
+    if not d then
+      local band = only or M.BANDS[(start + i - 1) % #M.BANDS + 1]
+      local pool = {}
+      for _, x in ipairs(list) do if inBand(x, band) then pool[#pool + 1] = x end end
+      outside = only and #pool == 0 or nil
+      if outside then
+        -- No town that far: the town closest to the band, a different one for each job where it can.
+        local function gap(x) return x.km <= band[1] and band[1] - x.km or x.km - band[2] end
+        for _, x in ipairs(list) do
+          local better = not d or (used[d.place.id] and not used[x.place.id])
+            or (not used[x.place.id] == not used[d.place.id] and gap(x) < gap(d))
+          if better then d = x end
+        end
+      else
+        if #pool == 0 then pool = list end
+        local at = math.floor(hash01(from.id .. ':' .. seed .. ':' .. good.id .. ':to') * #pool) + 1
+        if only then
+          for _ = 1, #pool do
+            if not used[pool[at].place.id] then break end
+            at = at % #pool + 1
+          end
+        end
+        d = pool[at]
+      end
+    end
+    used[d.place.id] = true
+    local j = job(from, d, good, seed)
+    j.outside = outside
+    out[#out + 1] = j
   end
   local best, bestFactor
   for _, j in ipairs(out) do

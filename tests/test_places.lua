@@ -201,4 +201,37 @@ do
   T.eq(jobs.steepBonus({ id = 'x', boost = 3 }), 2, 'at most twice')
 end
 T.near(jobs.drivenNeeded(penrith, near[1].place), near[1].metres * 0.7, 1e-6, '70% of the straight line must be driven')
+-- The Distance filter: every town job in the band picked, each to a different town where it can,
+-- and the town closest to the band, marked outside, when no town is that far.
+do
+  for name, band in pairs({ short = jobs.BANDS[1], medium = jobs.BANDS[2], long = jobs.BANDS[3] }) do
+    for _, n in ipairs(places.nearest(penrith, 10)) do
+      local list = jobs.destinations(n.place)
+      local count = 0
+      for _, x in ipairs(list) do if x.km > band[1] and x.km <= band[2] then count = count + 1 end end
+      for seed = 0, 4 do
+        local board = jobs.board(n.place, seed, {}, 5000, nil, name)
+        T.eq(#board, 5, 'still three town jobs, the drop and the contract')
+        local towns = {}
+        for i = 1, 3 do
+          local j = board[i]
+          if count > 0 then
+            T.check(j.km > band[1] and j.km <= band[2], n.place.name .. ' ' .. name .. ' job in its band: ' .. j.km)
+            T.check(not j.outside, 'not marked outside')
+          else
+            T.eq(j.outside, true, n.place.name .. ' ' .. name .. ' job outside its band is marked')
+          end
+          towns[j.to] = true
+        end
+        local distinct = 0
+        for _ in pairs(towns) do distinct = distinct + 1 end
+        T.check(distinct >= math.min(3, count > 0 and count or #list), n.place.name .. ' ' .. name .. ' jobs go to different towns')
+      end
+    end
+  end
+  local any, none = jobs.board(penrith, 3, {}, 5000), jobs.board(penrith, 3, {}, 5000, nil, 'any')
+  for i = 1, 3 do T.eq(none[i].id, any[i].id, 'Any keeps the usual mix'); T.eq(any[i].outside, nil, 'never outside') end
+  local far = jobs.board({ id = 'lonely', name = 'Lonely', latitude = penrith.latitude + 0.05, longitude = penrith.longitude, size = 'village' }, 0, {}, 5000)
+  T.check(#far >= 3, 'a board away from the list still has jobs')
+end
 T.done('places and jobs')

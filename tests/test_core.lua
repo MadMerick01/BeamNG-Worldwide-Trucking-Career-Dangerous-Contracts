@@ -186,6 +186,14 @@ do
     T.check(j.distanceMetres <= 20000 + 1e-6, j.id .. ' within 20 km')
   end
   T.check(v.bestJob ~= nil and v.bestJob.from == 'Penrith', 'the best job is suggested')
+  -- The Distance filter: the board is built for it, and a job taken comes from that board.
+  T.eq(v.town.distance, 'any', 'the filter starts at Any')
+  T.check(c:setJobDistance('long'), 'filter set'); T.eq(c:view().town.distance, 'long', 'the HUD is told')
+  for i = 1, 3 do
+    local j = c:view().town.jobs[i]
+    T.check(j.distanceMetres > jobs.BANDS[3][1] * 1000 or j.outside, j.id .. ' is a long run')
+  end
+  T.check(c:setJobDistance('nonsense'), 'anything else'); T.eq(c:view().town.distance, 'any', 'goes back to Any')
   local id = F.offer(c, stClair, 'food')
   local job = c:board(penrith)[1]
   local pay = jobs.quote(job, 2, c.needs, 50000).pay

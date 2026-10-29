@@ -11,6 +11,13 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   var KOFI = 'https://ko-fi.com/madmerick'
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
+  // The Town tab's Distance filter, kept the same way: any, short, medium or long.
+  var DISTANCE = 'earthFreight.jobDistance'
+  var DISTANCES = ['any', 'short', 'medium', 'long']
+  var storedDistance = function () {
+    try { var v = window.localStorage.getItem(DISTANCE); return DISTANCES.indexOf(v) >= 0 ? v : 'any' } catch (e) { return 'any' }
+  }
+  var storeDistance = function (v) { try { window.localStorage.setItem(DISTANCE, v) } catch (e) {} }
   // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
   // bill here and the box goes on the page itself, over the menu. It stays until the player closes
   // it, Lua says the bill was paid or undone, or the menu closes and the HUD is built again.
@@ -285,6 +292,21 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         taken.pay = units === job.units ? job.pay : Math.max(10, Math.floor(job.pay * units / job.units / 10 + 0.5) * 10)
         return taken
       }
+      // The Distance filter. Lua builds the board for it, and forgets it when the mod reloads, so the
+      // HUD sends it again whenever the board it gets was built for another one.
+      if (!kept.distance) kept.distance = storedDistance()
+      scope.distances = [{ id: 'any', label: 'Any' }, { id: 'short', label: 'Short' },
+        { id: 'medium', label: 'Medium' }, { id: 'long', label: 'Long' }]
+      scope.jobDistance = function () { return kept.distance }
+      scope.setJobDistance = function (v) {
+        if (DISTANCES.indexOf(v) < 0) return
+        kept.distance = v; storeDistance(v)
+        core("setJobDistance('" + v + "')")
+      }
+      var syncDistance = function (data) {
+        if (data && data.town && data.town.distance && data.town.distance !== kept.distance) core("setJobDistance('" + kept.distance + "')")
+      }
+      scope.hasOutside = function (list) { return (list || []).some(function (j) { return !!j.outside }) }
       scope.takeJob = function (job) {
         if (!scope.data.town || scope.data.load || !job || !job.allowed || !plainId(job.id)) return
         core("takeJob('" + job.id + "', " + scope.shareOf(job) + ')')
@@ -422,6 +444,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           if (disposed) return
           // Compared with the last state any app saw, so a rebuilt app does not reopen a tab.
           follow(kept.last || {}, data)
+          syncDistance(data)
           kept.last = data
           scope.data = data
         })
