@@ -175,14 +175,29 @@ test('insurance is only claimed when Lua offers it', () => {
   a.state({ state: 'READY', insurance: { allowed: true } }); a.scope.claimInsurance()
   assert.equal(a.commands.at(-1), fixed('claimInsurance()'))
 })
-test('a tow is only asked for when Lua allows it, from the Repair card', () => {
+test('towing is only asked for when Lua allows it, from the Repair card, with the steps shown', () => {
   const a = app()
-  a.state({ state: 'READY', tow: { allowed: false, fee: 500 } }); a.scope.towToRoad()
+  a.state({ state: 'READY', tow: { allowed: false, fee: 500 } }); a.scope.towHere(); a.scope.payTow(); a.scope.getOut()
   assert.equal(a.commands.length, 1)
-  a.state({ state: 'READY', tow: { allowed: true, fee: 500 } }); a.scope.towToRoad()
-  assert.equal(a.commands.at(-1), fixed('towToRoad()'))
+  a.state({ state: 'READY', tow: { allowed: true, payAllowed: true, getOutAllowed: true, fee: 500 } })
+  a.scope.towHere(); assert.equal(a.commands.at(-1), fixed('towHere()'))
+  a.scope.payTow(); assert.equal(a.commands.at(-1), fixed('payTow()'))
+  a.scope.getOut(); assert.equal(a.commands.at(-1), fixed('getOut()'))
   const repair = html.slice(html.indexOf('>Repair</div>'), html.indexOf('>Fuel</div>'))
-  assert.ok(repair.includes('ng-click="towToRoad()"'), 'the button is on the Repair card')
+  for (const part of ['ng-click="towHere()"', 'ng-click="payTow()"', 'ng-click="getOut()"', 'get out of your car', 'within {{data.tow.range}} m']) {
+    assert.ok(repair.includes(part), part)
+  }
+  assert.ok(!html.includes('towToRoad'), 'no Tow to road button')
+})
+test('a tow fee owed, or being on foot, turns off Buy parts and Buy new car', () => {
+  const a = app()
+  a.state({ state: 'READY', garageLocked: 'Pay the $500 tow fee on the Repair card first.' })
+  const before = a.commands.length
+  a.scope.openPartsMenu(); a.scope.openCarMenu()
+  assert.equal(a.commands.length, before, 'the game menus stay shut')
+  assert.ok(html.includes('ng-click="openPartsMenu()" ng-disabled="data.garageLocked"'), 'Buy parts off')
+  assert.ok(html.includes('ng-click="openCarMenu()" ng-disabled="data.garageLocked"'), 'Buy new car off')
+  assert.ok(html.includes('ng-click="openUsedCars(true)" ng-disabled="data.garageLocked"'), 'Buy second hand off')
 })
 test('colours: green above the usual pay, red below, gold for a shortage or jackpot', () => {
   const a = app()

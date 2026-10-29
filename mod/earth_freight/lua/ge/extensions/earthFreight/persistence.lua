@@ -52,13 +52,14 @@ M.plainConfig = plainConfig
 
 -- The money and distance driven, where the last puncture was, how many jobs are done (the job
 -- boards are seeded from it), the dangerous contract roads delivered, which are not offered
--- again (a list of section ids), and what is owed on a short term loan. Returns a clean copy, or nil.
+-- again (a list of section ids), and what is owed on a short term loan and for tows. Returns a clean copy, or nil.
 local function progression(p)
   if type(p) ~= 'table' or not integer(p.balance, 0) or not location.finite(p.totalDistanceKm)
       or p.totalDistanceKm < 0 or p.totalDistanceKm > MAX_INTEGER then return nil end
   if not amount(p.lastPunctureKm) then return nil end
   if p.jobsDone ~= nil and not integer(p.jobsDone, 0) then return nil end
   if p.loanOwed ~= nil and not integer(p.loanOwed, 1) then return nil end
+  if p.towOwed ~= nil and not integer(p.towOwed, 1) then return nil end
   local done
   if p.contractsDone ~= nil then
     if type(p.contractsDone) ~= 'table' or #p.contractsDone > 64 then return nil end
@@ -70,7 +71,7 @@ local function progression(p)
     end
   end
   return { balance = p.balance, totalDistanceKm = p.totalDistanceKm, lastPunctureKm = p.lastPunctureKm, jobsDone = p.jobsDone,
-    contractsDone = done, loanOwed = p.loanOwed }
+    contractsDone = done, loanOwed = p.loanOwed, towOwed = p.towOwed }
 end
 
 -- A saved position, with the altitude and heading when present. Returns a clean copy, or nil and why.

@@ -45,6 +45,33 @@ do
   T.eq(select(2, G.new(env()):toRoad()), 'road_unavailable', 'no spawn module, no move')
   T.eq(select(2, G.new(env({ spawn = function() return { teleportToLastRoad = function() error('x') end } end })):toRoad()), 'road_failed', 'errors contained')
 end
+-- Walking mode and the tow: the car is brought 4 m in front of the player, upright, and they are put back in.
+do
+  local function at(id, model, x, y)
+    return { getID = function() return id end, getJBeamFilename = function() return model end,
+      getPosition = function() return { x = x, y = y, z = 0 } end, getDirectionVector = function() return { x = 0, y = 2, z = 0 } end }
+  end
+  local walker, car = at(99, 'unicycle', 10, 0), at(7, 'pickup', 40, 40)
+  local teleported, entered, walking
+  local e = env({ vehicle = function() return walker end, objectById = function(id) return ({ [99] = walker, [7] = car })[id] end,
+    objects = function() return { [7] = { damage = 500 }, [99] = { damage = 0 } } end,
+    point = function(x, y, z) return { x = x, y = y, z = z } end, upright = function(dir) return { dir = dir } end,
+    spawn = function() return { safeTeleport = function(veh, pos, rot) teleported = { id = veh:getID(), pos = pos, rot = rot } end } end,
+    walk = function() return { isWalking = function() return walking end, setWalkingMode = function(on) walking = on end,
+      getInVehicle = function(veh) entered = veh:getID() end } end })
+  local w = G.new(e)
+  T.check(w:isWalker(99) and not w:isWalker(7), 'the unicycle is walking mode')
+  T.check(w:onFoot(), 'in the unicycle is on foot'); walking = true; T.check(w:onFoot(), 'and so is walking mode')
+  T.eq(w:inspect(7).damage, 500, 'the parked car is read by its id')
+  T.near(w:carDistance(7), 50, 1e-9, 'how far the car is')
+  T.check(w:towHere(7), 'towed'); T.eq(teleported.id, 7, 'the car')
+  T.eq(teleported.pos.x, 10, 'in front of the player'); T.eq(teleported.pos.y, 4, '4 m ahead'); T.eq(teleported.rot.dir.y, 1, 'facing their way')
+  T.eq(entered, 7, 'and the player is put back in it')
+  walking = false; T.check(w:getOut(), 'getting out'); T.check(walking, 'asks walking mode')
+  T.eq(select(2, G.new(env({ vehicle = function() return walker end, objectById = function() return car end })):towHere(7)), 'tow_unavailable', 'no spawn module, no tow')
+  T.eq(select(2, G.new(env({ vehicle = function() return walker end, objectById = function() return nil end })):towHere(7)), 'vehicle_gone', 'no car, no tow')
+  T.check(not G.new(env()):onFoot(), 'not on foot without walking mode')
+end
 -- Parts: flattens the 0.39 partsTree and prices parts from their jbeam information.value.
 local tree = { chosenPartName = 'pickup', path = '/', children = {
   pickup_engine = { chosenPartName = 'pickup_engine_v8', path = '/pickup_engine/', children = {

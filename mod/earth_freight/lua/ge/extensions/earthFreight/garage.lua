@@ -16,6 +16,11 @@ local function defaults()
     enter = function(vehicle) be:enterVehicle(0, vehicle) end,
     -- BeamNG's spawn module, whose teleportToLastRoad is the recovery menu's "teleport to last road".
     spawn = function() return rawget(_G, 'spawn') or (package.loaded and package.loaded.spawn) end,
+    -- BeamNG's walking mode, where the player is a unicycle beside their parked car.
+    walk = function() return rawget(_G, 'gameplay_walk') or (extensions and extensions.gameplay_walk) end,
+    -- An upright rotation facing along a direction, for a car put down on its wheels.
+    upright = function(dir) return quatFromDir(dir, vec3(0, 0, 1)) end,
+    point = function(x, y, z) return vec3(x, y, z) end,
   }
 end
 
@@ -84,9 +89,11 @@ function M.new(environment)
     return vehicle, id
   end
 
-  -- Returns { id, damage } for the player vehicle, or nil and a reason.
-  function g:inspect()
+  -- Returns { id, damage } for the player vehicle, or for the vehicle with carId (the parked car
+  -- while the player is on foot), or nil and a reason.
+  function g:inspect(carId)
     local vehicle, id = current()
+    if carId ~= nil then vehicle, id = true, carId end
     if not vehicle then return nil, 'vehicle_required' end
     local ok, objects = pcall(env.objects)
     local entry = ok and type(objects) == 'table' and objects[id] or nil
@@ -228,6 +235,74 @@ function M.new(environment)
     if not ok or type(spawn) ~= 'table' or type(spawn.teleportToLastRoad) ~= 'function' then return false, 'road_unavailable' end
     local moved, why = pcall(spawn.teleportToLastRoad, vehicle)
     if not moved then return false, 'road_failed', tostring(why) end
+    return true
+  end
+
+  -- Whether the vehicle with this id is the unicycle the game's walking mode puts the player in.
+  function g:isWalker(id)
+    local ok, vehicle = pcall(env.objectById, id)
+    if not ok or not vehicle then return false end
+    local read, model = pcall(function() return vehicle:getJBeamFilename() end)
+    return read and model == 'unicycle'
+  end
+
+  -- Whether the player is on foot, in the game's walking mode.
+  function g:onFoot()
+    local ok, walk = pcall(env.walk)
+    if ok and type(walk) == 'table' and type(walk.isWalking) == 'function' then
+      local asked, walking = pcall(walk.isWalking)
+      if asked and walking == true then return true end
+    end
+    local _, id = current()
+    return id ~= nil and self:isWalker(id)
+  end
+
+  -- How far the player, on foot, stands from the car with this id, in metres; nil when unreadable.
+  function g:carDistance(carId)
+    local walker = current()
+    local ok, car = pcall(env.objectById, carId)
+    if not walker or not ok or not car then return nil end
+    local read, d = pcall(function()
+      local a, b = walker:getPosition(), car:getPosition()
+      return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
+    end)
+    return read and type(d) == 'number' and d == d and d or nil
+  end
+
+  -- Tows the car with this id to the player on foot: it is put down on its wheels TOW_AHEAD metres
+  -- in front of them, by the game's safe teleport, which keeps it clear of walls and other cars,
+  -- and the player is put back in it. Returns true once the car was moved.
+  M.TOW_AHEAD = 4
+  function g:towHere(carId)
+    local walker = current()
+    if not walker then return false, 'vehicle_required' end
+    local found, car = pcall(env.objectById, carId)
+    if not found or not car then return false, 'vehicle_gone' end
+    local ok, spawn = pcall(env.spawn)
+    if not ok or type(spawn) ~= 'table' or type(spawn.safeTeleport) ~= 'function' then return false, 'tow_unavailable' end
+    local placed, why = pcall(function()
+      local dir, at = walker:getDirectionVector(), walker:getPosition()
+      local dx, dy = dir.x, dir.y
+      local length = math.sqrt(dx * dx + dy * dy)
+      if length < 1e-3 then dx, dy, length = 0, 1, 1 end
+      dx, dy = dx / length, dy / length
+      spawn.safeTeleport(car, env.point(at.x + dx * M.TOW_AHEAD, at.y + dy * M.TOW_AHEAD, at.z),
+        env.upright(env.point(dx, dy, 0)))
+    end)
+    if not placed then return false, 'tow_failed', tostring(why) end
+    -- Back in the car: walking mode's own way in first, as it also puts the unicycle away.
+    local walkOK, walk = pcall(env.walk)
+    local inCar = walkOK and type(walk) == 'table' and type(walk.getInVehicle) == 'function' and pcall(walk.getInVehicle, car)
+    if not inCar then pcall(env.enter, car) end
+    return true
+  end
+
+  -- Puts the player in walking mode, beside the car, as the game's own get out does.
+  function g:getOut()
+    local ok, walk = pcall(env.walk)
+    if not ok or type(walk) ~= 'table' or type(walk.setWalkingMode) ~= 'function' then return false, 'walk_unavailable' end
+    local done, why = pcall(walk.setWalkingMode, true)
+    if not done then return false, 'walk_failed', tostring(why) end
     return true
   end
 
