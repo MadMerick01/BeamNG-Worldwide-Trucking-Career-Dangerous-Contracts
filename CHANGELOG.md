@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Towing is free for now.** Tow car here no longer costs $500, so you can tow even with no money. If you owed a tow fee from the last build, it's cleared, and Buy parts, Buy new car and Buy second hand work again. Towing still doesn't fix any damage. Your saves still work.
+
 ## Build 101 · 29 Oct 2026
 
 - **Towing now brings your car to you, instead of back to the road.** Tow to road is gone. To tow, stop and press **Get out** on the Repair card (or use the game's walking mode key), walk to a clear, flat spot within 50 m of your car, and press **Tow car here**, then **Confirm tow**. Your car is put down on its wheels in front of you and you're put straight back in it. Use it to get past a bad patch of map, or to get your car out of somewhere it's stuck. The Repair card lists the steps and shows how far away your car is.

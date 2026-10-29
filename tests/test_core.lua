@@ -422,8 +422,11 @@ end
 
 -- Tow: get out, walk to within 50 m of the car and have it brought to you for $500. It keeps the
 -- job and fixes nothing: damage the game resets on the way stays owed. Short of $500, the fee is
--- owed, and parts and cars cannot be bought until it is paid.
+-- owed, and parts and cars cannot be bought until it is paid. Towing is free for now, so the fee is
+-- set here to test it.
 do
+  local W = require('earthFreight/workshop')
+  W.TOW_FEE = 500
   local c, io, a, g = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a job')
@@ -475,6 +478,21 @@ do
   -- A tow the game refuses costs nothing.
   c:getOut(); g.vehicleId, a.vehicle, g.towFails = 99, { id = 99, model = 'unicycle' }, true; c:tick(0.1)
   c:towHere(); T.check(not c:towHere(), 'refused'); T.eq(c:view().balance, 400, 'not charged'); T.eq(c:towOwed(), 0, 'nothing owed')
+  W.TOW_FEE = 0
+end
+
+-- Towing is free for now: nothing is charged or owed, and a fee owed from before is let off.
+do
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.towOwed = 500
+  T.eq(c:view().tow.fee, 0, 'free'); T.eq(c:view().tow.owed, nil, 'the old fee is let off'); T.eq(c:view().garageLocked, nil, 'garage open')
+  c.profile.progression.balance = 0
+  c:getOut(); g.vehicleId, a.vehicle, g.carAway = 99, { id = 99, model = 'unicycle' }, 10; c:tick(0.1)
+  T.check(c:view().tow.allowed, 'towing with no money')
+  c:towHere(); g.vehicleId = 1; T.check(c:towHere(), 'towed'); a.vehicle = { id = 1, model = 'pickup' }; c:tick(0.1)
+  T.eq(c:view().balance, 0, 'nothing taken'); T.eq(c:towOwed(), 0, 'nothing owed')
+  T.check(c:view().flash.text:find('free', 1, true), 'told it was free')
 end
 
 -- Insert, or the game's recovery, puts the car back as new: the repair it needed is still owed,
