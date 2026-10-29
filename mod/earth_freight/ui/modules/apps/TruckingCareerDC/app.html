@@ -330,10 +330,11 @@
             <li>Pay to keep it, or undo it.</li>
           </ol>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
-            <button type="button" ng-click="openPartsMenu()" style="flex:1;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy parts</button>
-            <button type="button" ng-click="openCarMenu()" style="flex:1;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy new car</button>
-            <button type="button" ng-click="openUsedCars(true)" style="flex:1;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy second hand</button>
+            <button type="button" ng-click="openPartsMenu()" ng-disabled="data.garageLocked" ng-style="{opacity: data.garageLocked ? 0.5 : 1}" style="flex:1;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy parts</button>
+            <button type="button" ng-click="openCarMenu()" ng-disabled="data.garageLocked" ng-style="{opacity: data.garageLocked ? 0.5 : 1}" style="flex:1;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy new car</button>
+            <button type="button" ng-click="openUsedCars(true)" ng-disabled="data.garageLocked" ng-style="{opacity: data.garageLocked ? 0.5 : 1}" style="flex:1;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy second hand</button>
           </div>
+          <div ng-if="data.garageLocked" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.garageLocked}}</div>
           <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Cargo: <span ng-if="data.space.boot">boot only</span><span ng-if="!data.space.boot">{{data.space.boxes.length}} {{data.space.boxes.length === 1 ? 'box' : 'boxes'}}</span> &middot; {{data.space.slots}} slots &middot; {{data.space.kg | number:0}} kg max<span ng-if="data.space.boot">. A Cargo Load box adds room.</span></div>
           <div style="font-size:13px;color:#c9d6d2;">Tank: <span ng-if="data.space.litres > 0">{{data.space.tanks.join(', ')}} &middot; {{data.space.litres | number:0}} L</span><span ng-if="!(data.space.litres > 0)">none. Press Buy parts, fit a Cargo Load fluid tank and pay for it here to take water and fuel jobs.</span></div>
         </div>
@@ -347,9 +348,24 @@
           <div style="display:flex;gap:8px;margin-top:6px;">
             <button type="button" ng-click="requestRepairQuote()" ng-disabled="!data.repairQuoteAllowed" style="padding:7px 12px;">Get repair quote</button>
             <button type="button" ng-click="repairVehicle()" ng-disabled="!data.repairAllowed" style="padding:7px 12px;">Repair</button>
-            <button type="button" ng-if="data.tow" ng-click="towToRoad()" ng-disabled="!data.tow.allowed" ng-style="data.tow.armed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:7px 12px;">{{data.tow.pending ? 'Towing...' : (data.tow.armed ? 'Confirm tow' : 'Tow to road')}} &middot; ${{data.tow.fee | number:0}}</button>
           </div>
-          <div ng-if="data.tow" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Stuck or off the road? Tow to road puts your car back on the road it was last on. It does not fix any damage.</div>
+          <div ng-if="data.tow" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(86,141,122,.6);">
+            <div style="font-weight:bold;">Stuck? Tow your car to you for ${{data.tow.fee | number:0}}</div>
+            <div ng-if="data.tow.owed" style="color:#f2c94c;">Tow fee owed: ${{data.tow.owed | number:0}}. Buying parts and cars is off until you pay it.</div>
+            <button type="button" ng-if="data.tow.owed" ng-click="payTow()" ng-disabled="!data.tow.payAllowed" style="margin-top:4px;padding:7px 12px;">Pay ${{data.tow.owed | number:0}}</button>
+            <ol style="margin:4px 0 0;padding-left:20px;font-size:13px;">
+              <li ng-style="data.tow.onFoot ? {color:'#7d8b88'} : {}">Stop and get out of your car: press Get out, or the game's walking mode key.</li>
+              <li>Walk to a clear, flat spot within {{data.tow.range}} m of your car.</li>
+              <li>Press Tow car here. Your car is put down in front of you, and you are back in it.</li>
+            </ol>
+            <div ng-if="data.tow.onFoot && data.tow.distance != null" style="margin-top:4px;">Your car is {{data.tow.distance}} m away<span ng-if="data.tow.distance <= data.tow.range">: you can tow it here.</span><span ng-if="data.tow.distance > data.tow.range">. Walk back to within {{data.tow.range}} m.</span></div>
+            <div ng-if="data.tow.onFoot && data.tow.problem && data.tow.distance == null" style="margin-top:4px;color:#f2c94c;">{{data.tow.problem}}</div>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+              <button type="button" ng-if="!data.tow.onFoot" ng-click="getOut()" ng-disabled="!data.tow.getOutAllowed" style="padding:7px 12px;">Get out</button>
+              <button type="button" ng-if="data.tow.onFoot" ng-click="towHere()" ng-disabled="!data.tow.allowed" ng-style="data.tow.armed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:7px 12px;">{{data.tow.armed ? 'Confirm tow' : 'Tow car here'}} &middot; ${{data.tow.fee | number:0}}</button>
+            </div>
+            <div style="margin-top:4px;font-size:13px;color:#c9d6d2;">You keep your job, on a dangerous contract too. Towing does not fix any damage.<span ng-if="data.tow.short && !data.tow.owed"> Short of money? You can still tow and pay the fee back later.</span></div>
+          </div>
           <div ng-if="data.loan" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(86,141,122,.6);">
             <div ng-if="!data.loan.owed" style="font-size:13px;color:#c9d6d2;">Short of money? A short term loan gives you ${{data.loan.amount | number:0}} now, and you pay back ${{data.loan.repay | number:0}}.</div>
             <div ng-if="data.loan.owed">Short term loan owed: ${{data.loan.owed | number:0}}</div>

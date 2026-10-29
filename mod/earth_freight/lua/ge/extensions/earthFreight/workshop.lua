@@ -26,10 +26,10 @@ M.STARTER_CONFIG = 'vehicles/burnside/earth_freight_starter.pc'
 M.SERIOUS_DAMAGE = 15000
 M.INSURANCE_FEE = 1000
 M.ROAD_SECONDS, M.GRACE_SECONDS = 1.5, 10
--- Tow to road: BeamNG's "teleport to last road" for a flat fee, charged once the car has moved
--- further than TOW_MOVED_METRES; a car that has not moved in TOW_SECONDS is not charged.
+-- Tow: on foot, within TOW_RANGE metres of the car, the player pays TOW_FEE to have it brought to
+-- them. Short of the fee, it is owed instead, and parts and cars cannot be bought until it is paid.
 M.TOW_FEE = 500
-M.TOW_SECONDS, M.TOW_MOVED_METRES = 5, 0.5
+M.TOW_RANGE = 50
 -- A drop in the car's damage bigger than this, with no repair or respawn, is the game resetting it.
 M.RESET_DAMAGE_DROP = 1
 -- How long the HUD app has to show the parts bill box before a corner pop-up shows it instead.
@@ -65,6 +65,7 @@ function M.attach(c)
     if not self.profile or self.error then return nil, 'unavailable' end
     if not self.garage then return nil, 'repair_unavailable' end
     if self.hire then return nil, 'heli' end
+    if self.onFoot then return nil, 'on_foot' end
     local vehicle, why = self:inspectDamage()
     if not vehicle then return nil, why end
     return vehicle, pricing.repairCost(vehicle.damage, self:carValueOf(vehicle.id))
@@ -74,6 +75,7 @@ function M.attach(c)
     unavailable = 'Repairs are unavailable right now. Check the status above.',
     heli = 'Repairs are for your own car. Press Back to my car on the Heli tab first.',
     vehicle_required = 'Enter a vehicle to get a repair quote.',
+    on_foot = 'Get back in your car to get a repair quote.',
   }
   local function repairProblem(why)
     return repairMessages[why] or 'Could not read the vehicle damage. Try again in a moment.'
@@ -100,6 +102,10 @@ function M.attach(c)
   -- Charges the quoted price and repairs. A changed vehicle or new damage needs a fresh quote first,
   -- and the player is only charged once the game has accepted the repair.
   function c:repairVehicle()
+    if self.onFoot then
+      self.repairFeedback = 'Get back in your car to repair it.'
+      return false
+    end
     if self.pendingCar then
       self.repairFeedback = 'Pay for the new car or get your own back first.'
       return false
@@ -164,7 +170,7 @@ function M.attach(c)
 
   function c:insuranceAllowed()
     return self.profile ~= nil and not self.error and self.garage ~= nil and self.arrived and self:seriousCrash()
-      and not self.hire and not self.pendingParts and not self.pendingCar and not self.insurancePending
+      and not self.hire and not self.onFoot and not self.pendingParts and not self.pendingCar and not self.insurancePending
   end
 
   -- Claims: the first press asks to confirm. The car goes back to the road (BeamNG's own "teleport
@@ -236,83 +242,133 @@ function M.attach(c)
       repair = d and pricing.repairCost(d.damage, self:carValueOf(d.id)) or nil }
   end
 
-  -- Tow to road, on the Garage tab's Repair card: the car goes back to the road it was last on
-  -- for M.TOW_FEE. Towing fixes nothing: if the game resets the car on the way, watchResets keeps
-  -- the damage owed, as after Insert.
-  function c:towAllowed()
-    return self.profile ~= nil and not self.error and self.garage ~= nil and self.arrived and not self.hire
-      and not self.pendingParts and not self.pendingCar and not self.insurancePending and not self.towPending
+  -- Tow, on the Garage tab's Repair card: the player gets out, walks to a clear spot within
+  -- M.TOW_RANGE of the car, and has it brought to them for M.TOW_FEE. Towing fixes nothing: if
+  -- the game resets the car on the way, watchResets keeps the damage owed, as after Insert. It
+  -- keeps the job, on a dangerous contract too.
+  function c:towOwed()
+    return self.profile and self.profile.progression.towOwed or 0
   end
 
-  -- The first press asks to confirm; the fee is taken once the car has moved.
-  function c:towToRoad()
-    if not self:towAllowed() then
-      self.towArmed = false
-      self.repairFeedback = self.towPending and 'Your car is being towed.'
-        or ((self.pendingParts or self.pendingCar) and 'Pay for your changes or undo them first.' or 'Towing is unavailable right now.')
+  -- How far the player on foot is from their car, or nil when not on foot or unreadable.
+  function c:carDistance()
+    if not self.onFoot or not self.ownedParts or not self.garage.carDistance then return nil end
+    return self.garage:carDistance(self.ownedParts.id)
+  end
+
+  -- Why the car cannot be towed now, or nil when it can.
+  function c:towProblem()
+    if not self.profile or self.error or not self.garage or not self.arrived or not self.ownedParts or self.hire then
+      return 'Towing is unavailable right now.'
+    end
+    if self.pendingParts or self.pendingCar then return 'Pay for your changes or undo them first.' end
+    if self.insurancePending then return 'Your insurance claim is going through.' end
+    if not self.onFoot then return 'Get out of your car first.' end
+    local away = self:carDistance()
+    if not away then return 'Could not find your car. Walk back to it and try again.' end
+    if away > M.TOW_RANGE then
+      return string.format('Your car is %d m away. Walk back to within %d m of it.', math.floor(away + 0.5), M.TOW_RANGE)
+    end
+    return nil
+  end
+
+  -- Gets the player out of the car, into the game's walking mode.
+  function c:getOut()
+    if not self.garage or not self.garage.getOut or self.onFoot or self.hire then return false end
+    local vehicle = self.lastSample and self.lastSample.valid and self.lastSample.vehicle
+    if not self.ownedParts or not vehicle or vehicle.id ~= self.ownedParts.id then return false end
+    if not self.odometer:stopped() then
+      self.repairFeedback = 'Stop the car to get out.'
       return false
     end
-    if not self:canAfford(M.TOW_FEE) then
-      self.towArmed = false
-      self.repairFeedback = 'Not enough money. A tow to the road costs ' .. dollars(M.TOW_FEE) .. '.'
+    local ok, why, detail = self.garage:getOut()
+    if not ok then
+      self.repairFeedback = 'The game did not let you get out. Use its own walking mode key instead.'
+      self.diag:event('get_out_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
       return false
     end
-    if not self.towArmed then
-      self.towArmed = true
-      self.repairFeedback = 'Press Confirm tow: your car is put back on the road for ' .. dollars(M.TOW_FEE)
-        .. '. Towing does not fix any damage.'
-      return false
-    end
-    self.towArmed = false
-    local from = self.lastSample and location.valid(self.lastSample) and location.copy(self.lastSample) or nil
-    local moved, why, detail = false, 'road_unavailable', nil
-    if self.garage.toRoad then moved, why, detail = self.garage:toRoad() end
-    if not moved then
-      self.repairFeedback = 'There is no road to tow your car to. You have not been charged.'
-      self.diag:event('tow_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
-      return false
-    end
-    -- The move back to the road is a jump, but not a teleport.
-    self.insuredUntil = self.clock + M.GRACE_SECONDS
-    self.towPending = { at = self.clock, from = from }
-    self.repairFeedback = 'Towing your car back to the road...'
-    self.diag:event('tow_requested', 'to road')
+    self.repairFeedback = nil
     return true
   end
 
-  -- Called every tick: charges for the tow once the car has moved, or gives up uncharged.
-  function c:watchTow()
-    if self.towArmed and not self:towAllowed() then self.towArmed = false end
-    local pending = self.towPending
-    if not pending then return end
-    local here = self.lastSample
-    local gap = pending.from and here and location.valid(here) and location.distance(pending.from, here) or nil
-    if gap and gap > M.TOW_MOVED_METRES then
-      self.towPending = nil
-      self.insuredUntil = self.clock + M.GRACE_SECONDS
-      self:spend(M.TOW_FEE, 'tow')
-      self.repairFeedback = nil
-      self.diag:event('towed', string.format('%.0f m', gap))
-      self:showFlash('delivered', 'TOWED TO THE ROAD', 'Your car is back on the road for ' .. dollars(M.TOW_FEE)
-        .. '. Towing does not fix damage: repair it on the Garage tab. Save to keep the new balance.')
-    elseif self.clock - pending.at >= M.TOW_SECONDS then
-      self.towPending = nil
-      self.repairFeedback = 'The game could not find a road to tow your car to. You have not been charged.'
-      self.diag:event('tow_failed', 'not_moved', 'W')
+  -- The first press asks to confirm. The fee is paid now, or owed when the player is short.
+  function c:towHere()
+    local problem = self:towProblem()
+    if problem then
+      self.towArmed, self.repairFeedback = false, problem
+      return false
     end
+    local fee, short = M.TOW_FEE, not self:canAfford(M.TOW_FEE)
+    if not self.towArmed then
+      self.towArmed = true
+      self.repairFeedback = 'Press Confirm tow: your car is brought to you for ' .. dollars(fee)
+        .. (short and ', which you owe until you pay it' or '') .. '. Towing does not fix any damage.'
+      return false
+    end
+    self.towArmed = false
+    local ok, why, detail = self.garage:towHere(self.ownedParts.id)
+    if not ok then
+      self.repairFeedback = 'The tow did not go through. You have not been charged.'
+      self.diag:event('tow_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
+      return false
+    end
+    local paid = not short and self:spend(fee, 'tow')
+    if not paid then self.profile.progression.towOwed = self:towOwed() + fee end
+    self.towedAt, self.repairFeedback = self.clock, nil
+    self.diag:event('towed', paid and 'paid' or 'owed')
+    self:showFlash('delivered', 'TOWED', 'Your car is here' .. (paid and (' for ' .. dollars(fee)) or
+      (': you owe ' .. dollars(self:towOwed()) .. '. Pay it on the Garage tab before buying parts or cars'))
+      .. '. Towing does not fix damage. Save to keep it.')
+    return true
   end
 
-  -- The Tow to road button on the Repair card.
+  function c:payTowAllowed()
+    return self:towOwed() > 0 and self:canAfford(self:towOwed())
+  end
+
+  -- Pays back what is owed for tows.
+  function c:payTow()
+    local owed = self:towOwed()
+    if owed == 0 then return false end
+    if not self:spend(owed, 'tow') then
+      self.repairFeedback = 'Not enough money. You need ' .. dollars(owed - self.profile.progression.balance) .. ' more.'
+      return false
+    end
+    self.profile.progression.towOwed = nil
+    self.repairFeedback = 'Tow fee paid. Save to keep it.'
+    return true
+  end
+
+  -- Called every tick: a confirm waiting on a tow that is no longer possible is dropped.
+  function c:watchTow()
+    if self.towArmed and self:towProblem() then self.towArmed = false end
+  end
+
+  -- Why buying parts or cars is not possible while a tow is owed, or nil.
+  function c:towDebtProblem()
+    local owed = self:towOwed()
+    return owed > 0 and ('Pay the ' .. dollars(owed) .. ' tow fee on the Repair card first.') or nil
+  end
+
+  -- The Tow card on the Garage tab.
   function c:towView()
-    if not self.garage or not self.arrived then return nil end
-    return { fee = M.TOW_FEE, armed = self.towArmed, pending = self.towPending ~= nil, allowed = self:towAllowed() }
+    if not self.garage or not self.arrived or not self.ownedParts then return nil end
+    local away = self:carDistance()
+    local owed = self:towOwed()
+    return { fee = M.TOW_FEE, range = M.TOW_RANGE, onFoot = self.onFoot == true, armed = self.towArmed,
+      distance = away and math.floor(away + 0.5) or nil, allowed = self:towProblem() == nil,
+      problem = self.onFoot and self:towProblem() or nil, short = not self:canAfford(M.TOW_FEE),
+      owed = owed > 0 and owed or nil, payAllowed = self:payTowAllowed(),
+      getOutAllowed = not self.onFoot and not self.hire and self.garage.getOut ~= nil }
   end
 
   -- Parts. The parts menu is BeamNG's own and changes parts for free; every change respawns the
   -- vehicle, so the HUD compares the fitted parts with the ones paid for after each spawn. The
   -- difference is billed on Pay, or the paid parts are put back on Undo. The respawn also mends
   -- all damage, so the bill includes the repair the car needed just before its first change.
-  function c:vehicleSpawned()
+  function c:vehicleSpawned(vehicleId)
+    -- Getting out spawns the walking mode's unicycle: the car is left as it was.
+    if vehicleId ~= nil and self.garage and self.garage.isWalker and self.garage:isWalker(vehicleId) then return end
     self.partsCheckDue, self.respawned, self.wearDue = true, true, true
     if self.secondHand then self.secondHand.spawned = true end
   end
@@ -347,7 +403,8 @@ function M.attach(c)
     self.diag:event('reset_owed', string.format('%.1f damage', before.damage - raw.damage))
     local owed = pricing.repairCost(self.owedDamage, owned.value)
     if owed > 0 then
-      self:showFlash('cancelled', 'REPAIR STILL OWED', 'Resetting the car does not fix it for free. '
+      local towed = self.towedAt and self.clock - self.towedAt <= M.GRACE_SECONDS
+      self:showFlash('cancelled', 'REPAIR STILL OWED', (towed and 'Towing does not fix the car. ' or 'Resetting the car does not fix it for free. ')
         .. dollars(owed) .. ' is still owed on the Garage tab.')
     end
   end
@@ -542,7 +599,7 @@ function M.attach(c)
   end
 
   function c:buyCarAllowed()
-    return self.pendingCar ~= nil and not self.load and self:canAfford(self.pendingCar.cost)
+    return self.pendingCar ~= nil and not self.load and self:canAfford(self.pendingCar.cost) and self:towOwed() == 0
   end
 
   function c:buyCar()
@@ -557,6 +614,10 @@ function M.attach(c)
     end
     if self.load then
       self.carFeedback = 'Deliver or abandon your job before changing cars.'
+      return false
+    end
+    if self:towDebtProblem() then
+      self.carFeedback = self:towDebtProblem()
       return false
     end
     if not self:checkParts() then
@@ -616,6 +677,8 @@ function M.attach(c)
       return 'Second-hand cars are unavailable right now.'
     end
     if self.hire then return 'Press Back to my car on the Heli tab first.' end
+    if self.onFoot then return 'Get back in your car first.' end
+    if self:towDebtProblem() then return self:towDebtProblem() end
     if self.load then return 'Deliver or abandon your job before changing cars.' end
     if self.pendingCar or self.pendingParts then return 'Pay for or undo the bill above first.' end
     if self.secondHand then return 'Bringing the car out...' end
@@ -743,8 +806,10 @@ function M.attach(c)
   -- Called every tick: checks parts after a spawn or vehicle switch, notes the damage the vehicle has
   -- before a change, and puts the paid parts back if the player drives off without paying.
   function c:watchParts()
-    -- A hired helicopter is not a car the player is buying: the garage waits for their car.
-    if not self.garage or self.hire then return end
+    -- A hired helicopter, or the player on foot, is not a car the player is buying: the garage
+    -- waits for them to be back in their car. Its last damage reading is kept, so a reset while
+    -- they are out (as a tow can do) is still owed once they are back in.
+    if not self.garage or self.hire or self.onFoot then return end
     local used = self.secondHand
     if used and not used.spawned and self.clock - used.at >= M.USED_SPAWN_SECONDS then
       self.secondHand, self.ourRespawn = nil, nil
@@ -806,13 +871,17 @@ function M.attach(c)
   end
 
   function c:buyPartsAllowed()
-    return self.pendingParts ~= nil and self:canAfford(self.pendingParts.cost)
+    return self.pendingParts ~= nil and self:canAfford(self.pendingParts.cost) and self:towOwed() == 0
       and (not self.fittedParts or self:loadFits(self.fittedParts))
   end
 
   function c:buyParts()
     if not self.profile or self.error then
       self.partsFeedback = 'Buying parts is unavailable right now. Check the status above.'
+      return false
+    end
+    if self:towDebtProblem() then
+      self.partsFeedback = self:towDebtProblem()
       return false
     end
     local pending = currentBill(self)

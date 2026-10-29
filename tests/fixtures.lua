@@ -117,6 +117,23 @@ function F.garage()
   function g:configs() return self.configList end
   g.wears = {}
   function g:wear(km, look) self.wears[#self.wears + 1] = { km = km, look = look, model = self.model }; return true end
+  -- Walking mode: getOut puts the player on foot, carAway metres from the car, in unicycle 99;
+  -- towHere brings the car to them (resetting it when towResets) and puts them back in.
+  g.carAway, g.tows, g.walkerId = 0, 0, 99
+  function g:isWalker(id) return id == self.walkerId end
+  function g:onFoot() return self.walking == true end
+  function g:getOut()
+    if self.noWalking then return false, 'walk_unavailable' end
+    self.walking = true
+    return true
+  end
+  function g:carDistance() return self.walking and self.carAway or nil end
+  function g:towHere(id)
+    if self.towFails then return false, 'tow_failed', 'rejected' end
+    self.tows, self.walking, self.carAway = self.tows + 1, false, 0
+    if self.towResets then self.damage = 0 end
+    return true
+  end
   -- The recovery menu's teleport to the last road: moves the car back to the road it was on.
   g.roadTrips = 0
   function g:toRoad()

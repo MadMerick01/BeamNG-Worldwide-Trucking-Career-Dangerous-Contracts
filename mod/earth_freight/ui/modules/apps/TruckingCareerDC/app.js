@@ -409,7 +409,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
       scope.takeLoan = function () { if (scope.data.loan && scope.data.loan.takeAllowed) core('takeLoan()') }
       scope.repayLoan = function () { if (scope.data.loan && scope.data.loan.repayAllowed) core('repayLoan()') }
-      scope.towToRoad = function () { if (scope.data.tow && scope.data.tow.allowed) core('towToRoad()') }
+      scope.towHere = function () { if (scope.data.tow && scope.data.tow.allowed) core('towHere()') }
+      scope.payTow = function () { if (scope.data.tow && scope.data.tow.payAllowed) core('payTow()') }
+      scope.getOut = function () { if (scope.data.tow && scope.data.tow.getOutAllowed) core('getOut()') }
       // Paying for a bill takes two presses: the first asks to confirm that total, and a changed
       // total asks again.
       scope.confirming = { kind: null, cost: null }
@@ -427,12 +429,14 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       // Open the game's own parts menu (Ctrl+W) and car selector (Ctrl+E); the bill then shows up on the Garage tab.
       scope.openPartsMenu = function () {
+        if (scope.data.garageLocked) return
         call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
           "elseif guihooks then guihooks.trigger('ChangeState', {state = 'menu.vehicleconfig.parts'}) end")
       }
       // Runs the game's own Ctrl+E action: changing the UI state to the old menu.vehicles route hides
       // the whole UI in this game version instead of opening the car selector.
       scope.openCarMenu = function () {
+        if (scope.data.garageLocked) return
         call("if core_input_actions and core_input_actions.triggerDownUp then core_input_actions.triggerDownUp('vehicle_selector') end")
       }
       // The first press asks Lua to confirm; the second wipes the save.
