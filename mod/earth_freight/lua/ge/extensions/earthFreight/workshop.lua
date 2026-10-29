@@ -28,7 +28,8 @@ M.INSURANCE_FEE = 1000
 M.ROAD_SECONDS, M.GRACE_SECONDS = 1.5, 10
 -- Tow: on foot, within TOW_RANGE metres of the car, the player pays TOW_FEE to have it brought to
 -- them. Short of the fee, it is owed instead, and parts and cars cannot be bought until it is paid.
-M.TOW_FEE = 500
+-- Towing is free for now: with no fee, nothing is charged or owed.
+M.TOW_FEE = 0
 M.TOW_RANGE = 50
 -- A drop in the car's damage bigger than this, with no repair or respawn, is the game resetting it.
 M.RESET_DAMAGE_DROP = 1
@@ -247,7 +248,10 @@ function M.attach(c)
   -- the game resets the car on the way, watchResets keeps the damage owed, as after Insert. It
   -- keeps the job, on a dangerous contract too.
   function c:towOwed()
-    return self.profile and self.profile.progression.towOwed or 0
+    if not self.profile then return 0 end
+    -- While towing is free, a fee owed from before is let off.
+    if M.TOW_FEE == 0 then self.profile.progression.towOwed = nil end
+    return self.profile.progression.towOwed or 0
   end
 
   -- How far the player on foot is from their car, or nil when not on foot or unreadable.
@@ -301,7 +305,7 @@ function M.attach(c)
     local fee, short = M.TOW_FEE, not self:canAfford(M.TOW_FEE)
     if not self.towArmed then
       self.towArmed = true
-      self.repairFeedback = 'Press Confirm tow: your car is brought to you for ' .. dollars(fee)
+      self.repairFeedback = 'Press Confirm tow: your car is brought to you' .. (fee > 0 and (' for ' .. dollars(fee)) or ', free')
         .. (short and ', which you owe until you pay it' or '') .. '. Towing does not fix any damage.'
       return false
     end
@@ -312,13 +316,14 @@ function M.attach(c)
       self.diag:event('tow_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
       return false
     end
-    local paid = not short and self:spend(fee, 'tow')
+    local paid = fee == 0 or (not short and self:spend(fee, 'tow'))
     if not paid then self.profile.progression.towOwed = self:towOwed() + fee end
     self.towedAt, self.repairFeedback = self.clock, nil
-    self.diag:event('towed', paid and 'paid' or 'owed')
-    self:showFlash('delivered', 'TOWED', 'Your car is here' .. (paid and (' for ' .. dollars(fee)) or
-      (': you owe ' .. dollars(self:towOwed()) .. '. Pay it on the Garage tab before buying parts or cars'))
-      .. '. Towing does not fix damage. Save to keep it.')
+    self.diag:event('towed', fee == 0 and 'free' or (paid and 'paid' or 'owed'))
+    local cost = fee == 0 and ', free' or (paid and (' for ' .. dollars(fee))
+      or (': you owe ' .. dollars(self:towOwed()) .. '. Pay it on the Garage tab before buying parts or cars'))
+    self:showFlash('delivered', 'TOWED', 'Your car is here' .. cost .. '. Towing does not fix damage.'
+      .. (fee > 0 and ' Save to keep it.' or ''))
     return true
   end
 

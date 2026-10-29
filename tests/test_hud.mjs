@@ -188,6 +188,7 @@ test('towing is only asked for when Lua allows it, from the Repair card, with th
     assert.ok(repair.includes(part), part)
   }
   assert.ok(!html.includes('towToRoad'), 'no Tow to road button')
+  assert.ok(repair.includes('<span ng-if="!(data.tow.fee > 0)">, free</span>'), 'a free tow says so')
 })
 test('a tow fee owed, or being on foot, turns off Buy parts and Buy new car', () => {
   const a = app()
