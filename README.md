@@ -1,6 +1,7 @@
 # BeamNG Worldwide Trucking Career: Dangerous Contracts
 
 **Haul cargo anywhere on Earth. Start in a rust bucket with no radiator or front brakes**
+https://www.youtube.com/watch?v=_CPI1Gn0XDQ
 
 A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive.
 
