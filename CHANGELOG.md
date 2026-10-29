@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 101 · 29 Oct 2026
+
 - **Towing now brings your car to you, instead of back to the road.** Tow to road is gone. To tow, stop and press **Get out** on the Repair card (or use the game's walking mode key), walk to a clear, flat spot within 50 m of your car, and press **Tow car here**, then **Confirm tow**. Your car is put down on its wheels in front of you and you're put straight back in it. Use it to get past a bad patch of map, or to get your car out of somewhere it's stuck. The Repair card lists the steps and shows how far away your car is.
 - A tow costs $500. You keep your job, on a dangerous contract too, but towing doesn't fix anything: any damage is still owed on the Repair card. If you're short of $500 you can still tow, and the fee is owed instead. Pay it with **Pay** on the Repair card. Until you do, Buy parts, Buy new car and Buy second hand are switched off. Save keeps what you owe, and your saves still work.
 - **The mod now copes with you getting out of your car.** While you're on foot, getting out is no longer treated as buying a new vehicle, walking doesn't count as distance driven, and your cargo stays in the car. Saving, jobs, deliveries, refuelling, repairs, insurance, relocation and changing parts or cars all wait until you're back in your car, and the HUD tells you so.
