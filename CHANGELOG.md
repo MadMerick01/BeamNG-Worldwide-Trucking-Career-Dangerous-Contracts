@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Getting caught by the police now costs $200.** With police switched on in the game's traffic settings, being pulled over and ticketed, or arrested after a chase, takes $200 off your money. A box like the parts bill pops up in the middle of the screen to tell you you've been ticketed (or arrested), how much was taken and how much you have left. It closes by itself after 15 seconds, or click it. If you have less than $200, the police take what you have and your money never goes below zero. The fine is saved the next time your car stops, so reloading won't undo it. Getting away from the police costs nothing. Your saves still work.
+
 ## Build 107 · 30 Oct 2026
 
 - **See a job's route before you take it.** Each job to a town on the Town tab's job board now has a **GPS** button next to **Take job**. Press it to set BeamNG.Earth's GPS to that town and see the route on the map, with nothing taken and nothing to pay. Dangerous contracts have one too: it sets the GPS to the start of the road, so you can see where it is before paying for the relocation. The button turns gold for the one the GPS is set to. Off-road drops don't have one, since there's no road to follow. Your saves still work.

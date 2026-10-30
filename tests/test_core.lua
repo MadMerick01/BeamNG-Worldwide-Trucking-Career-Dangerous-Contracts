@@ -1332,4 +1332,31 @@ do
   T.check(r:view().loan.takeAllowed, 'a new loan can be taken')
 end
 
+-- Caught by the game's traffic police: a ticket or an arrest takes $200, never more than the player
+-- has, shows a box like the parts bill, and saves once the car is stopped. Nothing before arriving.
+do
+  local c, _, a = F.controller()
+  a.pose = F.copy(F.PENRITH)
+  local sent = {}
+  c.trigger = function(name, data) sent[#sent + 1] = { name = name, data = data } end
+  T.check(not c:policeAction('arrest', { mode = 1 }), 'no fine before the session starts')
+  c:tick(0.1); c:vehicleSpawned(); c:tick(0.1)
+  local start = c:view().balance
+  T.check(not c:policeAction('start', { mode = 1 }), 'a pursuit starting costs nothing')
+  T.check(not c:policeAction('evade', { mode = 2 }), 'getting away costs nothing')
+  T.check(c:policeAction('arrest', { mode = 1 }), 'ticketed')
+  T.eq(c:view().balance, start - Core.POLICE_FINE, '$200 taken')
+  T.eq(c:view().flash.title, 'POLICE TICKET', 'the HUD says so')
+  T.eq(sent[#sent].name, 'EarthFreightTicket', 'the centre-screen box')
+  T.eq(sent[#sent].data.total, '-$200', 'with the fine')
+  T.check(sent[#sent].data.text:find('ticketed by the police', 1, true) ~= nil, 'saying they were ticketed')
+  T.check(c.autoSave ~= nil, 'saved once the car stops')
+  c:policeAction('arrest', { mode = 3 })
+  T.eq(c:view().flash.title, 'ARRESTED BY THE POLICE', 'an arrest costs the same')
+  c.profile.progression.balance = 50
+  c:policeAction('arrest', { mode = 1 })
+  T.eq(c:view().balance, 0, 'never below zero')
+  T.eq(sent[#sent].data.total, '-$50', 'only what the player had')
+end
+
 T.done('Earth Freight controller')
