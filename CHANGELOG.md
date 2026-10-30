@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 115 · 30 Oct 2026
+
 - **The distance left to your drop-off is now big and easy to read.** While you have a job, the job card under your money shows how far you still have to go, such as "2.5 km", in type nearly as large as your money. Under 1 km it counts down in metres. This works for town deliveries, off-road drops and dangerous contracts. Your saves still work.
 - **No more repeated job message under Abandon job.** After you take a job, the HUD no longer adds a line like "Loaded 2 bricks (300 kg) for Servoz. It pays $4,490 on delivery." at the bottom of the Route and Town tabs, because the job card already shows all of that. You still get a message when something needs you, such as setting the GPS yourself when it couldn't be set, or pressing Teleport to the start of a dangerous contract.
 
