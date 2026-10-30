@@ -4,7 +4,6 @@
 https://www.youtube.com/watch?v=_CPI1Gn0XDQ
 
 A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive.
-https://discord.gg/eYJCfXNGbP
 
 <img width="1650" height="1100" alt="wwtcDCtitle" src="https://github.com/user-attachments/assets/18fa1fa3-ff30-460b-a18f-791cb1303c4f" />
 
