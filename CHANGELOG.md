@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 114 · 30 Oct 2026
+
 - **The short term loan is gone.** The Garage tab no longer has a Short term loan section, so the only money you can owe is for a repair or a tow. This keeps money simple.
 - Your saves still work. If a save had a loan you hadn't repaid yet, that debt is cleared when you load it and you keep the money you borrowed.
 
