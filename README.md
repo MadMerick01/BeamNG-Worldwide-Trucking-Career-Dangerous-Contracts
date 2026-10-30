@@ -49,6 +49,10 @@ Download the new `worldwide-trucking-dangerous-contracts.zip`, delete the old on
 
 Found a bug or have an idea? Open an [issue on GitHub](../../issues). Say what you were doing, and if something broke, attach your `beamng.log` (in your BeamNG user folder).
 
+## Licence
+
+The code is public so you can read it, but it isn't open source. You're welcome to download the mod, play it, and make videos and streams of it. Copying the code into another mod, sharing a changed version, or re-uploading it needs my written permission first: open an [issue](../../issues) and ask. The full terms are in [LICENSE](LICENSE).
+
 ## What's new
 
 Every change, in plain English: [CHANGELOG.md](CHANGELOG.md). Each build is also on the [Releases](../../releases/latest) page.
