@@ -333,7 +333,8 @@ function M.new(deps)
 
   -- The game's traffic police caught the player's car: 'arrest' ends every pursuit they win, and a
   -- pursuit at its first level (mode 1) is a ticket. Takes POLICE_FINE, or all the money when the
-  -- player has less, and shows a box like the parts bill. Nothing before the player has arrived.
+  -- player has less. The game shows its own arrest message, which says nothing of money, so the fine
+  -- goes on a line of its own under it, and on the HUD. Nothing before the player has arrived.
   function c:policeAction(action, data)
     if action ~= 'arrest' or not self.profile or self.error or not self.arrived then return false end
     local ticket = type(data) ~= 'table' or tonumber(data.mode) == nil or tonumber(data.mode) <= 1
@@ -341,14 +342,12 @@ function M.new(deps)
     local taken = math.min(POLICE_FINE, progression.balance)
     progression.balance = progression.balance - taken
     self.diag:event('police_fine', (ticket and 'ticket:' or 'arrest:') .. tostring(taken))
-    local title = ticket and 'POLICE TICKET' or 'ARRESTED BY THE POLICE'
-    local text = (ticket and 'You have been ticketed by the police.' or 'You have been arrested by the police.')
-      .. (taken < POLICE_FINE and (' The fine is ' .. dollars(POLICE_FINE) .. ', but you only had ' .. dollars(taken) .. '.')
-        or (' The fine is ' .. dollars(POLICE_FINE) .. '.'))
-    self:showFlash('cancelled', title, text)
+    local text = 'Police fine: ' .. dollars(taken) .. ' taken'
+      .. (taken < POLICE_FINE and (' (all you had, of ' .. dollars(POLICE_FINE) .. ')') or '')
+      .. '. You have ' .. dollars(progression.balance) .. ' left.'
+    self:showFlash('cancelled', ticket and 'POLICE TICKET' or 'ARRESTED BY THE POLICE', text)
     if self.trigger then
-      pcall(self.trigger, 'EarthFreightTicket', { title = title, total = '-' .. dollars(taken), text = text,
-        money = 'You have ' .. dollars(progression.balance) .. ' left.' })
+      pcall(self.trigger, 'Message', { msg = text, ttl = 8, category = 'earthFreightPoliceFine', icon = 'warning' })
     end
     self:autoSaveSoon('your police fine')
     return true

@@ -568,20 +568,6 @@ test('the Heli tab hires, goes back to the car, and opens when a hire starts', (
   assert.ok(route.includes('Heli hired.'), 'the Route tab says a heli is hired')
 })
 
-test('a police fine shows in the middle of the screen and closes by itself or on a click', () => {
-  const a = app()
-  a.root.EarthFreightTicket({}, { title: 'POLICE TICKET', total: '-$200', text: 'You have been ticketed by the police.', money: 'You have $800 left.' })
-  const box = a.document.body.children[0]
-  assert.ok(box, 'box shown'); assert.equal(box.children[1].textContent, 'POLICE TICKET')
-  assert.equal(box.children[2].textContent, '-$200', 'with the fine')
-  assert.equal(a.timeouts.at(-1).ms, 15000, 'closes after 15 seconds')
-  a.timeouts.at(-1).fn()
-  assert.equal(a.document.body.children.length, 0, 'closed by itself')
-  a.root.EarthFreightTicket({}, { title: 'X', total: '-$1', text: 'Y' })
-  a.document.body.children[0].onclick()
-  assert.equal(a.document.body.children.length, 0, 'a click closes it')
-})
-
 test('a signal beacon shows in the middle of the screen, closes by itself, and is picked up or ignored', () => {
   const a = app()
   a.root.EarthFreightBeacon({}, { title: 'SIGNAL BEACON PICKED UP', text: 'Coordinates for a job.' })

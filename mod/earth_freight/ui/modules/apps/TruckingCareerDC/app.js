@@ -117,41 +117,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     beacon = box
     setTimeout(function () { if (beacon === box) closeBeacon() }, BEACON_MS)
   }
-  // A police fine: a box like the parts bill, with the amount taken and the money left. Like the
-  // beacon it closes by itself after TICKET_MS, or on a click.
-  var TICKET_MS = 15000
-  var ticket = null
-  var closeTicket = function () {
-    if (ticket && ticket.parentNode) ticket.parentNode.removeChild(ticket)
-    ticket = null
-  }
-  var showTicket = function (data) {
-    closeTicket()
-    if (typeof document === 'undefined' || !document.body) return
-    var red = '#eb5757'
-    var box = document.createElement('div')
-    box.setAttribute('role', 'alert')
-    box.style.cssText = 'position:fixed;top:12%;left:50%;transform:translateX(-50%);z-index:2147483647;' +
-      'width:440px;max-width:80vw;padding:14px 18px;background:rgba(12,19,24,.96);color:#f2f6f5;' +
-      'border:3px solid ' + red + ';border-radius:10px;box-shadow:0 0 24px rgba(0,0,0,.7);' +
-      'font:15px/1.4 sans-serif;pointer-events:auto;cursor:pointer;'
-    var close = document.createElement('button')
-    close.type = 'button'
-    close.textContent = 'Close'
-    close.style.cssText = 'float:right;margin-left:10px;padding:5px 12px;background:' + red + ';color:#0c1318;' +
-      'font-weight:bold;border:none;border-radius:4px;cursor:pointer;'
-    box.appendChild(close)
-    line(box, String(data.title || ''), 'font-weight:bold;letter-spacing:1px;font-size:13px;color:' + red + ';')
-    line(box, String(data.total || ''), 'font-weight:bold;font-size:22px;color:' + red + ';margin-top:2px;')
-    line(box, String(data.text || ''), 'margin-top:4px;')
-    if (data.money) line(box, String(data.money), 'font-weight:bold;margin-top:6px;')
-    box.onclick = closeTicket
-    document.body.appendChild(box)
-    ticket = box
-    setTimeout(function () { if (ticket === box) closeTicket() }, TICKET_MS)
-  }
   $rootScope.$on('EarthFreightBeacon', function (event, data) { if (data) showBeacon(data) })
-  $rootScope.$on('EarthFreightTicket', function (event, data) { if (data) showTicket(data) })
   $rootScope.$on('EarthFreightPartsBill', function (event, data) {
     if (data && data.open) showBill(data); else closeBill()
   })
