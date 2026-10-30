@@ -6,7 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 107 · 30 Oct 2026
+
 - **See a job's route before you take it.** Each job to a town on the Town tab's job board now has a **GPS** button next to **Take job**. Press it to set BeamNG.Earth's GPS to that town and see the route on the map, with nothing taken and nothing to pay. Dangerous contracts have one too: it sets the GPS to the start of the road, so you can see where it is before paying for the relocation. The button turns gold for the one the GPS is set to. Off-road drops don't have one, since there's no road to follow. Your saves still work.
+
 ## Build 106 · 30 Oct 2026
 
 - **Your car now stays where you left it when you walk away from it.** With the game's traffic switched on, walking more than about 50 m from your parked car could make it vanish and turn up a few hundred metres away in a different colour, because the game's traffic treated it as an empty traffic car. While you are on foot your car is now kept out of traffic, and it goes back to normal once you get back in. Your saves still work.
