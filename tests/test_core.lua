@@ -299,6 +299,36 @@ do
   for _, p in ipairs(v.nearby) do T.eq(p.gps, p.id == stClair.id or nil, p.name .. ' marked only if it is the drop-off') end
 end
 
+-- A town job's GPS button routes to its drop-off before the job is taken.
+do
+  local c, _, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local id = F.offer(c, stClair, 'food')
+  local job
+  for _, j in ipairs(c:view().town.jobs) do if j.id == id then job = j end end
+  T.eq(job.toId, stClair.id, 'the job names its drop-off town'); T.eq(job.gps, nil, 'its GPS is not set yet')
+  T.check(c:gpsToTown(job.toId), 'GPS set from the job')
+  T.eq(a.gps[#a.gps].name, 'St Clair', 'to the drop-off'); T.eq(c.load, nil, 'without taking the job')
+  local v = c:view()
+  for _, j in ipairs(v.town.jobs) do
+    if j.drop or j.contract then T.eq(j.gps, nil, j.id .. ': no GPS mark on a drop or contract')
+    else T.eq(j.gps, j.toId == stClair.id or nil, j.id .. ' marked only if it goes to St Clair') end
+  end
+  T.eq(v.gpsFeedback, 'The GPS is set to St Clair.', 'and says so')
+  -- A dangerous contract's GPS goes to the start of its road; an off-road drop has none.
+  local contract
+  for _, j in ipairs(v.town.jobs) do if j.contract then contract = j end end
+  T.check(contract ~= nil and contract.contract.id ~= nil, 'the board names the contract')
+  local section = contracts.get(contract.contract.id)
+  T.check(c:gpsToContract(section.id), 'GPS set to the contract')
+  T.near(a.gps[#a.gps].latitude, section.start.latitude, 1e-9, 'at the start of its road')
+  T.eq(a.gps[#a.gps].name, section.name .. ' start', 'named after it')
+  v = c:view()
+  for _, j in ipairs(v.town.jobs) do T.eq(j.gps, j.contract and true or nil, j.id .. ': only the contract is marked now') end
+  T.check(v.gpsFeedback:find(section.name) ~= nil, 'the message names the road')
+  T.eq(c.load, nil, 'nothing taken'); T.check(not c:gpsToContract('nowhere'), 'an unknown contract is refused')
+end
+
 -- Jobs need the car stopped in a town, fit the car, and must be driven.
 do
   local c, _, a = F.controller()
