@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Your car now stays where you left it when you walk away from it.** With the game's traffic switched on, walking more than about 50 m from your parked car could make it vanish and turn up a few hundred metres away in a different colour, because the game's traffic treated it as an empty traffic car. While you are on foot your car is now kept out of traffic, and it goes back to normal once you get back in. Your saves still work.
+
 ## Build 105 · 30 Oct 2026
 
 - **Two new dangerous contracts in Peru: Anta and Marcará.** Both are steep climbs of tight hairpins near Carhuaz, below the Cordillera Blanca, and both pay 6 times the base rate. Anta is about 1.6 km from start to finish, and Marcará about 2.4 km. Like the other dangerous contracts, each can be done once per game. Your saves still work.

@@ -1200,6 +1200,10 @@ function M.new(deps)
     self.clock = self.clock + dt
     -- On foot, in the game's walking mode, the car waits where it was left.
     self.onFoot = self.garage ~= nil and self.garage.onFoot ~= nil and self.garage:onFoot() or false
+    if self.garage and self.garage.keepParked then
+      if not self.onFoot then self.garage:releaseParked()
+      elseif self.ownedParts then self.garage:keepParked(self.ownedParts.id) end
+    end
     self:observe(self.adapter:sample(), dt)
     self:provideVehicle()
     self:watchHire()
