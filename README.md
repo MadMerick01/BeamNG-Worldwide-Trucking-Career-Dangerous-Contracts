@@ -3,6 +3,8 @@
 **Haul cargo anywhere on Earth. Start in a rust bucket with no radiator or front brakes**
 https://www.youtube.com/watch?v=_CPI1Gn0XDQ
 
+Join the Discord for bug reports, ideas and updates: https://discord.gg/eYJCfXNGbP
+
 A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), the real-world map for BeamNG.drive.
 
 <img width="1650" height="1100" alt="wwtcDCtitle" src="https://github.com/user-attachments/assets/18fa1fa3-ff30-460b-a18f-791cb1303c4f" />
