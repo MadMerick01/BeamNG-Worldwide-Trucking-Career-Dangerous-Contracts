@@ -463,8 +463,6 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
-      scope.takeLoan = function () { if (scope.data.loan && scope.data.loan.takeAllowed) core('takeLoan()') }
-      scope.repayLoan = function () { if (scope.data.loan && scope.data.loan.repayAllowed) core('repayLoan()') }
       scope.towHere = function () { if (scope.data.tow && scope.data.tow.allowed) core('towHere()') }
       scope.payTow = function () { if (scope.data.tow && scope.data.tow.payAllowed) core('payTow()') }
       scope.getOut = function () { if (scope.data.tow && scope.data.tow.getOutAllowed) core('getOut()') }
