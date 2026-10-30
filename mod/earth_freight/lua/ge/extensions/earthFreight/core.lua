@@ -30,6 +30,9 @@ M.STARTING_MONEY = STARTING_MONEY
 -- go, and no second loan until it is.
 local LOAN_AMOUNT, LOAN_REPAY = 1000, 1350
 M.LOAN_AMOUNT, M.LOAN_REPAY = LOAN_AMOUNT, LOAN_REPAY
+-- What the game's traffic police take when they catch the player, for a ticket or an arrest.
+local POLICE_FINE = 200
+M.POLICE_FINE = POLICE_FINE
 M.STARTER_MODEL, M.STARTER_CONFIG = workshop.STARTER_MODEL, workshop.STARTER_CONFIG
 -- How many places the nearby list shows.
 local NEARBY_COUNT = 6
@@ -325,6 +328,28 @@ function M.new(deps)
     end
     self.profile.progression.loanOwed = nil
     self.loanFeedback = 'Loan repaid. You can take another one when you need it.'
+    return true
+  end
+
+  -- The game's traffic police caught the player's car: 'arrest' ends every pursuit they win, and a
+  -- pursuit at its first level (mode 1) is a ticket. Takes POLICE_FINE, or all the money when the
+  -- player has less. The game shows its own arrest message, which says nothing of money, so the fine
+  -- goes on a line of its own under it, and on the HUD. Nothing before the player has arrived.
+  function c:policeAction(action, data)
+    if action ~= 'arrest' or not self.profile or self.error or not self.arrived then return false end
+    local ticket = type(data) ~= 'table' or tonumber(data.mode) == nil or tonumber(data.mode) <= 1
+    local progression = self.profile.progression
+    local taken = math.min(POLICE_FINE, progression.balance)
+    progression.balance = progression.balance - taken
+    self.diag:event('police_fine', (ticket and 'ticket:' or 'arrest:') .. tostring(taken))
+    local text = 'Police fine: ' .. dollars(taken) .. ' taken'
+      .. (taken < POLICE_FINE and (' (all you had, of ' .. dollars(POLICE_FINE) .. ')') or '')
+      .. '. You have ' .. dollars(progression.balance) .. ' left.'
+    self:showFlash('cancelled', ticket and 'POLICE TICKET' or 'ARRESTED BY THE POLICE', text)
+    if self.trigger then
+      pcall(self.trigger, 'Message', { msg = text, ttl = 8, category = 'earthFreightPoliceFine', icon = 'warning' })
+    end
+    self:autoSaveSoon('your police fine')
     return true
   end
 
@@ -1837,6 +1862,15 @@ end
 function M.onVehicleSpawned(vehicleId) return safely(function() if active then active:vehicleSpawned(vehicleId) end end) end
 function M.onVehicleResetted(vehicleId) return safely(function() if active then active:vehicleReset(vehicleId) end end) end
 function M.reload() return safely(function() ensure():reload() end) end
+-- The game's traffic police (gameplay_police) hook this when a pursuit starts, ends or catches someone.
+function M.onPursuitAction(vehicleId, action, data)
+  return safely(function()
+    if not active then return end
+    local player = getPlayerVehicle and getPlayerVehicle(0)
+    if not player or player:getID() ~= vehicleId then return end
+    active:policeAction(action, data)
+  end)
+end
 function M.payPartsBill(serial) return safely(function() return ensure():payPartsBill(serial) end) end
 function M.partsBillShown(serial) return safely(function() if active then active:partsBillShown(serial) end end) end
 function M.uiMounted(on) return safely(function() ensure():mount(on == true) end) end
