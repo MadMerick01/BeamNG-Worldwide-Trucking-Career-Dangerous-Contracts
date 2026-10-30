@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 113 · 30 Oct 2026
+
 - **The HUD is cleaner, with your money in big type at the top.** Under it you see your fuel as a small gauge, your car and the km you've driven. Your job sits in one card with where it goes, how far and what it pays. Every tab and button is still there, but the details now fold away: Nearby, Drop-off coordinates and Abandon job on the Route tab, and Cargo space, Repair, Tow, Short term loan and Fuel on the Garage tab. Each folded section still shows its key number, such as "quote $730" or "19.0 L for $40". Click a heading to open or close it, and the HUD remembers how you left them. A section that needs you, such as a repair still owed, a puncture or a tow fee, opens by itself.
 - **Town jobs are one line each.** Each line shows the cargo, where it goes, how far, the pay and Take job. Click a job to see its load slider, GPS button and the small print.
 - **The HUD shows where you are.** At the top you see the town, or how far you are from the nearest one, such as "2.1 km west of Servoz", with the state and country under it and the road you're on. These names come from BeamNG.Earth, the same ones as in its bar at the top of the screen. If BeamNG.Earth has none (its place names are switched off, you're offline, or after a teleport), the HUD uses its own town list and shows the town and country. Road names only come from BeamNG.Earth.
