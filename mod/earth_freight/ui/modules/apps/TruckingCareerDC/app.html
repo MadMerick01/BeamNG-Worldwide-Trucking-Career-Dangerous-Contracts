@@ -243,6 +243,7 @@
                 <div style="font-size:12px;color:#c9d6d2;"><span ng-if="j.units > 0 && !j.fluid">{{taken(j).units}} {{j.good | lowercase}}, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units > 0 && j.fluid">{{taken(j).units * j.unitLitres | number:0}} L, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units === 0 && j.fluid" style="color:#eb5757;">Needs a tank</span><span ng-if="j.units === 0 && !j.fluid" style="color:#eb5757;">Needs {{j.unitSlots}} {{j.unitSlots === 1 ? 'slot' : 'slots'}} and {{j.unitKg}} kg: fit a cargo box</span><span ng-if="j.shortage" style="color:#f2c94c;"> &middot; shortage &times;2</span><span ng-if="j.jackpot" style="color:#f2c94c;"> &middot; jackpot &times;{{j.jackpot | number:1}}</span><span ng-if="j.road && !j.drop && !j.contract"> &middot; rough road &times;{{j.road | number:1}}</span><span ng-if="j.road && j.drop"> &middot; steep ground &times;{{j.road | number:1}}</span></div>
               </div>
               <div ng-if="j.units > 0" ng-style="{color: dotColor(j.level)}" style="font-weight:bold;text-align:right;" title="Usually ${{j.base | number:0}} for a full load">${{taken(j).pay | number:0}}</div>
+              <button type="button" ng-if="!j.drop" aria-label="Set the GPS to {{j.contract ? 'the start of ' + j.to : j.to}} to see the route" title="See where {{j.contract ? 'the start of ' + j.to + ' is' : 'the route to ' + j.to + ' goes'}} before you take the job" ng-click="j.contract ? gpsToContract(j.contract.id) : gpsToTown(j.toId)" ng-disabled="!data.gpsAllowed" ng-style="j.gps ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:4px 6px;font-size:12px;">GPS</button>
               <button type="button" ng-click="takeJob(j)" ng-disabled="!j.allowed" style="padding:4px 8px;">Take job</button>
              </div>
              <div ng-if="j.units > 1" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c9d6d2;">
@@ -253,6 +254,7 @@
           </div>
         </div>
         <p role="status" ng-if="data.tradeFeedback" style="margin:6px 0;">{{data.tradeFeedback}}</p>
+        <p role="status" ng-if="data.gpsFeedback" style="margin:6px 0;">{{data.gpsFeedback}}</p>
       </div>
       <div ng-if="tab === 'garage'">
         <div ng-if="data.insurance" role="alert" style="margin:0 0 8px;padding:10px;border:2px solid #eb5757;border-radius:6px;">
