@@ -19,7 +19,7 @@ M.START_RADIUS = 1000
 -- checked in game. km is the road length, shown on the board. pay is how many times what the same
 -- load pays at the base rate over a normal 5 km job. driveKm, where set, is the least distance
 -- driven before the load delivers, for a road whose finish is close to its start as the crow
--- flies (a stack of hairpins). Only checked roads are offered: left
+-- flies (a stack of hairpins); no road sets it now. Only checked roads are offered: left
 -- out for now are Fairy Meadows Road (no dangerous 2 km found), Skippers Canyon (not dangerous
 -- enough), Atigun Pass and Transfăgărășan (not checked).
 M.LIST = {
@@ -32,15 +32,21 @@ M.LIST = {
   { id = 'zoji_la', name = 'Zoji La', region = 'Kashmir and Ladakh, India', km = 2, pay = 4,
     summary = 'Muddy one-lane ledge climbing out of Baltal over the Sind valley.',
     start = { latitude = 34.261686, longitude = 75.423010 }, finish = { latitude = 34.261200, longitude = 75.442761 } },
-  { id = 'carhuaz', name = 'Carhuaz', region = 'Cordillera Blanca, Ancash, Peru', km = 2, pay = 8, driveKm = 1.5,
+  { id = 'carhuaz', name = 'Carhuaz', region = 'Cordillera Blanca, Ancash, Peru', km = 2, pay = 6,
     summary = 'Steep, tight hairpins stacked one above the other up the mountainside above Carhuaz, climbing on and on with no end in sight.',
-    start = { latitude = -9.33159, longitude = -77.63108 }, finish = { latitude = -9.33145, longitude = -77.63152 } },
+    start = { latitude = -9.348192, longitude = -77.608967 }, finish = { latitude = -9.346662, longitude = -77.624370 } },
   { id = 'grimsel_pass', name = 'Grimsel Pass', region = 'Obergoms, Switzerland', km = 8, pay = 2.5,
     summary = 'Over the top from the Grimsel Hospiz lakes, then down the tight stack of Alpine switchbacks to Gletsch, with bare granite and long drops beside the road.',
     start = { latitude = 46.579575, longitude = 8.334592 }, finish = { latitude = 46.561997, longitude = 8.361186 } },
   { id = 'ravin_de_piquet', name = 'Ravin de Piquet', region = 'Hautes-Pyrénées, France', km = 5, pay = 4,
     summary = 'Down from the Ravin de Piquet through the steep, wooded mountain valley to the spa town of Cauterets, deep in the French Pyrenees.',
     start = { latitude = 42.924296, longitude = -0.090329 }, finish = { latitude = 42.889783, longitude = -0.091451 } },
+  { id = 'anta', name = 'Anta', region = 'Cordillera Blanca, Ancash, Peru', km = 2, pay = 6,
+    summary = 'Tight hairpins up the steep valley side above Anta, in the Callejón de Huaylas below the Cordillera Blanca.',
+    start = { latitude = -9.333995, longitude = -77.621378 }, finish = { latitude = -9.332517, longitude = -77.635877 } },
+  { id = 'marcara', name = 'Marcará', region = 'Cordillera Blanca, Ancash, Peru', km = 3, pay = 6,
+    summary = 'Up from Marcará into the foothills of the Cordillera Blanca, on a steep mountain road of tight hairpins.',
+    start = { latitude = -9.330824, longitude = -77.598798 }, finish = { latitude = -9.343490, longitude = -77.580823 } },
 }
 
 local byId = {}

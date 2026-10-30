@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Two new dangerous contracts in Peru: Anta and Marcará.** Both are steep climbs of tight hairpins near Carhuaz, below the Cordillera Blanca, and both pay 6 times the base rate. Anta is about 1.6 km from start to finish, and Marcará about 2.4 km. Like the other dangerous contracts, each can be done once per game. Your saves still work.
+- **The Carhuaz dangerous contract now starts and finishes on the right road.** Taking it sends you to a new start on the hairpin climb in Peru's Cordillera Blanca, and the finish is about 1.7 km away across the mountainside. It now pays 6 times the base rate instead of 8. It no longer asks you to drive an extra 1.5 km before the load delivers: drive the climb to the finish and stop there. Your saves still work. If you saved partway through a Carhuaz contract, it now uses the new start and finish when you load.
+
 ## Build 103 · 29 Oct 2026
 
 - **Towing is free for now.** Tow car here no longer costs $500, so you can tow even with no money. If you owed a tow fee from the last build, it's cleared, and Buy parts, Buy new car and Buy second hand work again. Towing still doesn't fix any damage. Your saves still work.
