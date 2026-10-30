@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The mod now has a licence.** You can still download it, play it and make videos of it for free. Copying its code into other mods, sharing a changed version or re-uploading it now needs the author's written permission. The download includes a LICENSE file with the full terms. Nothing changes in the game, and your saves still work.
+
 ## Build 105 · 30 Oct 2026
 
 - **Two new dangerous contracts in Peru: Anta and Marcará.** Both are steep climbs of tight hairpins near Carhuaz, below the Cordillera Blanca, and both pay 6 times the base rate. Anta is about 1.6 km from start to finish, and Marcará about 2.4 km. Like the other dangerous contracts, each can be done once per game. Your saves still work.
