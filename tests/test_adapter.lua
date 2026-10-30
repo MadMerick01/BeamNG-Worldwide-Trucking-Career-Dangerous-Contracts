@@ -108,4 +108,24 @@ do
   car.getDirectionVector = function() error('changed') end
   T.check(g:sample().valid and g:sample().heading == nil, 'no heading without the call, and the sample still stands')
 end
+-- Earth's status bar names, read only and tidied; nil when Earth has none.
+do
+  local bar = { loc = { street = '  Thames\nStreet ', place = 'Baltimore', region = 'Maryland', country = '' } }
+  bar.location = function() return bar.loc end
+  local mods = { statusbar = bar }
+  local e = Adapter.new({ core = function() return {} end, module = function(n) return mods[n] end, vehicle = function() return nil end,
+    load = function() error('never loads an Earth module for names') end })
+  local n = e:placeNames()
+  T.eq(n.street, 'Thames Street', 'street tidied'); T.eq(n.place, 'Baltimore', 'town'); T.eq(n.region, 'Maryland', 'state')
+  T.eq(n.country, nil, 'empty parts left out')
+  bar.loc = { street = '', place = '', region = '', country = '' }; T.eq(e:placeNames(), nil, 'nothing found yet')
+  bar.loc = { place = string.rep('a', 80) }; T.eq(#e:placeNames().place, 60, 'long names cut short')
+  bar.loc = { place = string.rep('a', 59) .. 'é' }; T.eq(e:placeNames().place, string.rep('a', 59), 'never half a letter')
+  bar.loc = { place = 42 }; T.eq(e:placeNames(), nil, 'only text')
+  bar.location = function() error('changed') end; T.eq(e:placeNames(), nil, 'a changed status bar is skipped')
+  mods.statusbar = nil; T.eq(e:placeNames(), nil, 'no status bar loaded')
+  local gone = Adapter.new({ core = function() return nil end, module = function(n) return mods[n] end, vehicle = function() return nil end })
+  T.eq(gone:placeNames(), nil, 'no Earth')
+end
+
 T.done('Earth adapter (mocked engine)')

@@ -107,6 +107,30 @@ function M.new(environment)
     return result
   end
 
+  -- Where the car is, by name, as Earth's own status bar at the top of the screen shows it: the
+  -- street from Earth's road data, and the town, state and country Earth looks up online. Read
+  -- only, from what Earth already has, so it asks nothing new of Earth or the internet. Each part is
+  -- a short string or nil; the whole is nil when Earth has none of them (its status bar or online
+  -- place names are off, an older Earth, or nothing found yet after a teleport).
+  local function clean(value)
+    if type(value) ~= 'string' then return nil end
+    value = value:gsub('[%c]', ' '):gsub('%s+', ' '):match('^%s*(.-)%s*$')
+    if value == '' then return nil end
+    if #value > 60 then value = value:sub(1, 60):gsub('[\128-\191]*$', ''):gsub('[\192-\255]$', '') end
+    return value
+  end
+  function a:placeNames()
+    local okCore, core = pcall(env.core)
+    if not okCore or type(core) ~= 'table' then return nil end
+    local bar = env.module and env.module('statusbar')
+    if type(bar) ~= 'table' or type(bar.location) ~= 'function' then return nil end
+    local ok, l = pcall(bar.location)
+    if not ok or type(l) ~= 'table' then return nil end
+    local names = { street = clean(l.street), place = clean(l.place), region = clean(l.region), country = clean(l.country) }
+    if not (names.street or names.place or names.region or names.country) then return nil end
+    return names
+  end
+
   -- Sets Earth's GPS destination: Earth plans a road route there, draws it on its map and puts
   -- the game's route arrows on the road. Guarded like the reads: with no Earth, no GPS module or
   -- a changed setDestination it does nothing and returns false and why. Returns true once called.

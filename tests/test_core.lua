@@ -1359,4 +1359,30 @@ do
   T.eq(sent[#sent].data.msg, 'Police fine: $50 taken (all you had, of $200). You have $0 left.', 'only what the player had')
 end
 
+-- Where you are, by name: Earth's street, town, state and country first, the mod's own towns when
+-- Earth has none.
+do
+  local c, io, a = F.controller()
+  c:tick(0.1); c:tick(0.6)
+  local w = c:view().where
+  T.eq(w.title, 'Penrith', 'in a town, its name'); T.eq(w.area, 'Australia', 'and its country from the mod')
+  T.eq(w.street, nil, 'no street without Earth'); T.eq(w.fromEarth, false, 'the mod filled it in')
+  a.names = { street = 'High Street', place = 'Penrith', region = 'New South Wales', country = 'Australia' }
+  w = c:view().where
+  T.eq(w.street, 'High Street', "Earth's street"); T.eq(w.area, 'New South Wales, Australia', "Earth's state and country")
+  T.check(w.fromEarth, 'from Earth')
+  a.names = { street = 'Great Western Highway' }
+  w = c:view().where
+  T.eq(w.area, 'Australia', 'a street alone keeps the country from the mod'); T.eq(w.street, 'Great Western Highway', 'with the street')
+  a.pose = { latitude = -33.75, longitude = 150.55 }; a.names = nil
+  c:tick(0.6)
+  w = c:view().where
+  T.check(w.title:match('^%d+%.%d km [a-z-]+ of .+$') ~= nil, 'between towns, how far from the nearest: ' .. w.title)
+  a.names = { place = 'Blaxland', region = 'New South Wales', country = 'Australia' }
+  T.eq(c:view().where.title, 'Blaxland', "between the mod's towns, Earth's town")
+  a.pose = { latitude = 23.0, longitude = 2.0 }; a.names = nil
+  c:tick(0.6)
+  T.eq(c:view().where.title, 'Far from any town', 'deep in the Sahara')
+end
+
 T.done('Earth Freight controller')

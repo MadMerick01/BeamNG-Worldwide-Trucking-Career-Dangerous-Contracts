@@ -91,6 +91,8 @@ end
 
 -- A start this far from every town is called "your start", not after a town far away.
 local START_TOWN_METRES = 20000
+-- Farther than this from every town, the HUD says you are far from any town.
+local WHERE_NEAR_METRES = 50000
 
 -- The name of the town at a point, or of the nearest one close enough; nil when there is none.
 local function townName(point)
@@ -1326,6 +1328,31 @@ function M.new(deps)
     return best and { good = best.good, from = place.name, to = best.to, pay = best.pay, distanceMetres = best.distanceMetres } or nil
   end
 
+  -- Where the car is, by name, for the top of the HUD and the minimised strip. Earth's names come
+  -- first (its status bar's street, town, state and country); the mod's own towns fill in whatever
+  -- Earth has not got. In a town, it is the town the Town tab trades in.
+  function c:whereView(current, place, anchor)
+    if not current then return nil end
+    local earth = self.adapter.placeNames and self.adapter:placeNames() or nil
+    local title = place and place.name or (earth and earth.place)
+    if not title then
+      local near = places.nearest(current, 1)[1]
+      if near and near.metres <= WHERE_NEAR_METRES then
+        local km = near.metres / 1000
+        title = string.format(km < 10 and '%.1f km %s of %s' or '%.0f km %s of %s', km,
+          location.compassPoint(location.bearing(near.place, current)) or 'away', near.place.name)
+      else
+        title = 'Far from any town'
+      end
+    end
+    local area = {}
+    for _, part in ipairs({ earth and earth.region, earth and earth.country }) do
+      if part and part ~= title and part ~= area[#area] then area[#area + 1] = part end
+    end
+    if #area == 0 and anchor and anchor.region then area[1] = anchor.region end
+    return { title = title, area = table.concat(area, ', '), street = earth and earth.street or nil, fromEarth = earth ~= nil }
+  end
+
   function c:tradeView(current)
     local now = self.now()
     local place = current and self:here()
@@ -1406,6 +1433,7 @@ function M.new(deps)
       here = place and { id = place.id, name = place.name, size = place.size } or nil,
       -- The region you are in, from the nearest place, and what its roads add to a job's pay.
       region = anchor and { name = anchor.region, boost = jobs.roadBonusFor(places.boost(anchor)) } or nil,
+      where = self:whereView(current, place, anchor),
       nearby = nearby, town = town, load = loadView,
       bestJob = not self.load and anchor and self:bestJob(anchor) or nil,
       shortages = anchor and self:shortagesNear(anchor, now) or {},
@@ -1511,7 +1539,7 @@ function M.new(deps)
       -- Cargo space from the boxes on the car, the fuel in the tank, and trading.
       space = { slots = space.slots, kg = space.kg, boxes = space.boxes, boot = space.boot, litres = space.litres, tanks = space.tanks },
       fuel = self.fuel and { litres = self.fuel.litres, capacity = self.fuel.capacity, pricePerLitre = fuel.PRICE_PER_LITRE } or nil,
-      here = trade.here, region = trade.region, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
+      here = trade.here, region = trade.region, where = trade.where, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
       shortages = trade.shortages,
       gpsAllowed = self.adapter.setDestination ~= nil and self.state == 'READY' and self.arrived and not self.hire,
       gpsFeedback = self.gpsFeedback,

@@ -54,6 +54,8 @@ function F.adapter(pose)
     self.gps[#self.gps + 1] = { latitude = point.latitude, longitude = point.longitude, name = name }
     return true
   end
+  -- Earth's status bar names: nil unless a test sets them.
+  function a:placeNames() return self.names end
   function a:teleport(point, name)
     if self.teleportRefused then return false, 'teleport_refused' end
     self.teleports[#self.teleports + 1] = { latitude = point.latitude, longitude = point.longitude, name = name }
