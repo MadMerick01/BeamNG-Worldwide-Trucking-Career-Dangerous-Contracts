@@ -128,6 +128,10 @@ function F.garage()
     return true
   end
   function g:carDistance() return self.walking and self.carAway or nil end
+  -- Traffic: keepParked takes the car out of the game's traffic while on foot; releaseParked gives it back.
+  g.parked, g.unparked = {}, 0
+  function g:keepParked(id) self.parked[#self.parked + 1] = id; return true end
+  function g:releaseParked() self.unparked = self.unparked + 1; return true end
   function g:towHere(id)
     if self.towFails then return false, 'tow_failed', 'rejected' end
     self.tows, self.walking, self.carAway = self.tows + 1, false, 0

@@ -439,6 +439,7 @@ do
   T.check(c:getOut(), 'out'); g.vehicleId, a.vehicle = 99, { id = 99, model = 'unicycle' }
   c:vehicleSpawned(99); c:tick(0.1); c:tick(0.1)
   T.check(c:view().onFoot, 'on foot'); T.eq(c.pendingCar, nil, 'the unicycle is not a car to pay for')
+  T.eq(g.parked[#g.parked], 1, 'the parked car is kept out of traffic, so it is not respawned elsewhere')
   T.check(c:view().garageLocked ~= nil, 'parts and cars wait until back in the car')
   T.check(not c:view().saveAllowed, 'no saving on foot'); T.check(not c:manualSave(), 'save refused')
   local km = c.profile.progression.totalDistanceKm
@@ -460,6 +461,7 @@ do
   T.check(c.load ~= nil, 'the job is kept'); T.eq(c.owedDamage, 8000, 'the damage is still owed')
   T.eq(c:view().flash.title, 'REPAIR STILL OWED', 'told so'); T.check(c:view().flash.text:find('Towing', 1, true), 'by the tow')
   T.check(not c:view().onFoot, 'back in the car'); T.eq(c.pendingCar, nil, 'no car bill'); T.eq(c:view().garageLocked, nil, 'garage open')
+  local parked = #g.parked; c:tick(0.1); T.eq(#g.parked, parked, 'not held while in it'); T.check(g.unparked > 0, 'given back to traffic')
   -- Short of $500: the tow still works, and the fee is owed.
   c.profile.progression.balance = 300
   c:getOut(); g.vehicleId, a.vehicle, g.carAway = 99, { id = 99, model = 'unicycle' }, 10; c:tick(0.1)

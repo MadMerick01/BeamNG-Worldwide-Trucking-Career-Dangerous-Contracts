@@ -72,6 +72,25 @@ do
   T.eq(select(2, G.new(env({ vehicle = function() return walker end, objectById = function() return nil end })):towHere(7)), 'vehicle_gone', 'no car, no tow')
   T.check(not G.new(env()):onFoot(), 'not on foot without walking mode')
 end
+-- Traffic: on foot, the parked car is taken out of the game's traffic, which would otherwise
+-- respawn it elsewhere in a new paint, and given back once the player is in it again.
+do
+  local inTraffic, removed, inserted, driving = { [7] = {} }, {}, {}, 99
+  local car = { getID = function() return driving end }
+  local e = env({ vehicle = function() return car end, traffic = function() return {
+    getTrafficData = function() return inTraffic end,
+    removeTraffic = function(id) removed[#removed + 1] = id; inTraffic[id] = nil end,
+    insertTraffic = function(id, ignoreAi) inserted[#inserted + 1] = { id = id, ignoreAi = ignoreAi }; inTraffic[id] = {} end } end })
+  local w = G.new(e)
+  T.check(w:keepParked(7), 'the parked car leaves traffic'); T.eq(removed[1], 7, 'by its id')
+  T.check(not w:keepParked(7), 'once'); T.eq(#removed, 1, 'not again')
+  T.check(not w:releaseParked(), 'not given back while the player is on foot'); T.eq(#inserted, 0, 'nothing inserted')
+  driving = 7
+  T.check(w:releaseParked(), 'given back once in it'); T.eq(inserted[1].id, 7, 'the car'); T.check(inserted[1].ignoreAi, 'without the AI driving it')
+  T.check(not w:releaseParked(), 'only once')
+  T.check(not G.new(env()):keepParked(7), 'no traffic, nothing to do')
+  T.check(not G.new(env({ traffic = function() return { getTrafficData = function() error('x') end, removeTraffic = function() end } end })):keepParked(7), 'errors contained')
+end
 -- Parts: flattens the 0.39 partsTree and prices parts from their jbeam information.value.
 local tree = { chosenPartName = 'pickup', path = '/', children = {
   pickup_engine = { chosenPartName = 'pickup_engine_v8', path = '/pickup_engine/', children = {
