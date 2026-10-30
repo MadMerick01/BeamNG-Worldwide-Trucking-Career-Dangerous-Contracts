@@ -70,17 +70,6 @@ test('buttons only send fixed commands when Lua enabled them', () => {
     assert.equal(a.commands.at(-1), fixed(body), name)
   }
 })
-test('the short term loan is only taken or repaid when Lua allows it', () => {
-  const a = app()
-  const count = a.commands.length
-  a.state({ state: 'READY' }); a.scope.takeLoan(); a.scope.repayLoan()
-  a.state({ state: 'READY', loan: { takeAllowed: false, repayAllowed: false } }); a.scope.takeLoan(); a.scope.repayLoan()
-  assert.equal(a.commands.length, count, 'refused when not allowed')
-  a.state({ state: 'READY', loan: { takeAllowed: true } }); a.scope.takeLoan(); assert.equal(a.commands.at(-1), fixed('takeLoan()'))
-  a.state({ state: 'READY', loan: { repayAllowed: true } }); a.scope.repayLoan(); assert.equal(a.commands.at(-1), fixed('repayLoan()'))
-  const repair = html.slice(html.indexOf('>Repair</div>'), html.indexOf('>Fuel</div>'))
-  for (const action of ['cancelPay(); takeLoan()', 'repayLoan()']) assert.ok(repair.includes(`ng-click="${action}"`), action + ' on the Repair card')
-})
 test('Buy second hand opens the list, and a car is only bought by its slot when Lua allows it', () => {
   const a = app()
   a.scope.openUsedCars(true); assert.equal(a.commands.at(-1), fixed('openUsedCars(true)'))
@@ -675,8 +664,8 @@ test('folding sections remember how the player left them, and open by themselves
   assert.equal(b.scope.isOpen('repair', true), true, 'money owed keeps it open')
   saved['earthFreight.hudFolds'] = 'not json'
   assert.equal(app(storage).scope.isOpen('nearby'), true, 'bad storage falls back to the defaults')
-  assert.equal(app().scope.isOpen('loan'), false, 'and so does no storage')
-  for (const id of ['nearby', 'dropoff', 'abandon', 'cargo', 'repair', 'tow', 'loan', 'fuel', 'helitowns', 'heliboard']) {
+  assert.equal(app().scope.isOpen('fuel'), false, 'and so does no storage')
+  for (const id of ['nearby', 'dropoff', 'abandon', 'cargo', 'repair', 'tow', 'fuel', 'helitowns', 'heliboard']) {
     assert.ok(html.includes(`ng-click="toggle('${id}')"`), id + ' folds')
   }
   assert.ok(html.includes("isOpen('repair', data.repairOwed > 0 || data.puncture)"), 'a repair owed or a puncture opens Repair')

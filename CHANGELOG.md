@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The short term loan is gone.** The Garage tab no longer has a Short term loan section, so the only money you can owe is for a repair or a tow. This keeps money simple.
+- Your saves still work. If a save had a loan you hadn't repaid yet, that debt is cleared when you load it and you keep the money you borrowed.
+
 ## Build 113 · 30 Oct 2026
 
 - **The HUD is cleaner, with your money in big type at the top.** Under it you see your fuel as a small gauge, your car and the km you've driven. Your job sits in one card with where it goes, how far and what it pays. Every tab and button is still there, but the details now fold away: Nearby, Drop-off coordinates and Abandon job on the Route tab, and Cargo space, Repair, Tow, Short term loan and Fuel on the Garage tab. Each folded section still shows its key number, such as "quote $730" or "19.0 L for $40". Click a heading to open or close it, and the HUD remembers how you left them. A section that needs you, such as a repair still owed, a puncture or a tow fee, opens by itself.

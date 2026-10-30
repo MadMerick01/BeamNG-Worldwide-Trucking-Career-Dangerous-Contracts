@@ -34,7 +34,7 @@ local edits = {
   function(s) s.load={ good='food', slots=1, from='gn1', to='gn2' } end,
   function(s) s.load={ good='food', slots=1, pay=1.5, from='gn1', to='gn2' } end,
   function(s) s.load={ good='food', slots=1, units=0, pay=100, from='gn1', to='gn2' } end,
-  function(s) s.progression.jobsDone=-1 end, function(s) s.progression.loanOwed=0 end, function(s) s.progression.loanOwed=1.5 end, function(s) s.needs='x' end,
+  function(s) s.progression.jobsDone=-1 end, function(s) s.needs='x' end,
   function(s) s.needs={ { place='gn1', good='food', drop=0/0, at=1 } } end,
   function(s) s.needs={ { place='gn1', drop=0.1, at=1 } } end,
 }
@@ -54,7 +54,7 @@ do
   s.progression.jobsDone=4; s.needs={ { place='gn2', good='food', drop=0.15, at=1761400000 } }
   local v=P.validate(s)
   T.eq(v.load.pay,2000,'pay kept'); T.eq(v.load.units,10,'units kept'); T.eq(v.progression.jobsDone,4,'jobs done kept')
-  s.progression.loanOwed=1350; T.eq(P.validate(s).progression.loanOwed,1350,'loan owed kept')
+  s.progression.loanOwed=1350; T.check(P.validate(s)~=nil,'an old save with a loan still loads'); T.eq(P.validate(s).progression.loanOwed,nil,'and the loan is cleared')
   T.eq(v.needs[1].place,'gn2','recent delivery kept'); T.eq(v.needs[1].drop,0.15,'with how much it took')
 end
 -- A saved car config is kept as plain data.

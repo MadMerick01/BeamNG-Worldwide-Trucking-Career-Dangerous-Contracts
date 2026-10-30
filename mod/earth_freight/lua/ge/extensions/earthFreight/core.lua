@@ -26,10 +26,6 @@ local M = {}
 local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and some fuel
 local MAX_BALANCE = 9007199254740991
 M.STARTING_MONEY = STARTING_MONEY
--- A short term loan on the Garage tab's Repair card: this much now, LOAN_REPAY to pay back in one
--- go, and no second loan until it is.
-local LOAN_AMOUNT, LOAN_REPAY = 1000, 1350
-M.LOAN_AMOUNT, M.LOAN_REPAY = LOAN_AMOUNT, LOAN_REPAY
 -- What the game's traffic police take when they catch the player, for a ticket or an arrest.
 local POLICE_FINE = 200
 M.POLICE_FINE = POLICE_FINE
@@ -170,7 +166,7 @@ function M.new(deps)
     self.adapter:invalidate()
     self.odometer:reset()
     self.sessionVerified, self.lastSample, self.error = false, nil, nil
-    self.quote, self.repairFeedback, self.loanFeedback = nil, nil, nil
+    self.quote, self.repairFeedback = nil, nil
     self.partsFeedback, self.carFeedback, self.tradeFeedback, self.fuelFeedback = nil, nil, nil, nil
     self.vehicleProvided, self.arrivingModel, self.arrivingValue, self.arrived = false, nil, nil, false
     self.newGameArmed, self.flash, self.refunded = false, nil, nil
@@ -292,44 +288,6 @@ function M.new(deps)
     end
     self.profile.progression.balance = self.profile.progression.balance - amount
     self.diag:event('spend', tostring(label) .. ':' .. tostring(amount))
-    return true
-  end
-
-  -- What the player still owes on a short term loan, or 0. Like money, it is kept by Save.
-  function c:loanOwed()
-    return self.profile and self.profile.progression.loanOwed or 0
-  end
-
-  function c:takeLoanAllowed()
-    return self.profile ~= nil and not self.error and self:loanOwed() == 0
-  end
-
-  function c:takeLoan()
-    if not self:takeLoanAllowed() then
-      self.loanFeedback = self:loanOwed() > 0 and ('Repay the ' .. dollars(self:loanOwed()) .. ' you owe before taking another loan.') or nil
-      self.diag:event('loan_rejected', tostring(self:loanOwed()), 'W')
-      return false
-    end
-    self:addMoney(LOAN_AMOUNT)
-    self.profile.progression.loanOwed = LOAN_REPAY
-    self.loanFeedback = 'Loan taken: ' .. dollars(LOAN_AMOUNT) .. ' added. You owe ' .. dollars(LOAN_REPAY) .. '.'
-    self.diag:event('loan_taken', tostring(LOAN_AMOUNT))
-    return true
-  end
-
-  function c:repayLoanAllowed()
-    return self:loanOwed() > 0 and self:canAfford(self:loanOwed())
-  end
-
-  function c:repayLoan()
-    local owed = self:loanOwed()
-    if owed == 0 then return false end
-    if not self:spend(owed, 'loan') then
-      self.loanFeedback = 'Not enough money. You need ' .. dollars(owed - self.profile.progression.balance) .. ' more.'
-      return false
-    end
-    self.profile.progression.loanOwed = nil
-    self.loanFeedback = 'Loan repaid. You can take another one when you need it.'
     return true
   end
 
@@ -1552,10 +1510,6 @@ function M.new(deps)
       repairOwed = self.owedDamage > 0 and pricing.repairCost(self.owedDamage, self:carValueOf(self.ownedParts and self.ownedParts.id)) or nil,
       repairAllowed = quote ~= nil and not self.pendingParts and not self.pendingCar and not self.onFoot,
       repairFeedback = self.repairFeedback,
-      loan = active and {
-        amount = LOAN_AMOUNT, repay = LOAN_REPAY, owed = self:loanOwed() > 0 and self:loanOwed() or nil,
-        takeAllowed = self:takeLoanAllowed(), repayAllowed = self:repayLoanAllowed(), feedback = self.loanFeedback,
-      } or nil,
       insurance = self:insuranceView(),
       tow = self:towView(),
       onFoot = self.onFoot == true,
@@ -1660,7 +1614,7 @@ function M.new(deps)
     local saved, why = self:record({
       base = self.profile.base, resume = location.copy(fresh),
       progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm,
-        jobsDone = progression.jobsDone, contractsDone = copy(progression.contractsDone), loanOwed = progression.loanOwed,
+        jobsDone = progression.jobsDone, contractsDone = copy(progression.contractsDone),
         towOwed = progression.towOwed },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres,
@@ -1824,8 +1778,6 @@ function M.onPreRender(dtReal)
 end
 function M.save() return safely(function() return ensure():manualSave() end) end
 function M.requestRepairQuote() return safely(function() return ensure():requestRepairQuote() end) end
-function M.takeLoan() return safely(function() return ensure():takeLoan() end) end
-function M.repayLoan() return safely(function() return ensure():repayLoan() end) end
 function M.repairVehicle() return safely(function() return ensure():repairVehicle() end) end
 function M.buyParts() return safely(function() return ensure():buyParts() end) end
 function M.revertParts() return safely(function() return ensure():revertParts(false) end) end
