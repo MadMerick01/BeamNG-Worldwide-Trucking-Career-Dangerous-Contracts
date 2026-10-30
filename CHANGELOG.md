@@ -7,6 +7,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **Getting caught by the police now costs $200.** With police switched on in the game's traffic settings, being pulled over and ticketed, or arrested after a chase, takes $200 off your money. The game still shows its own police message, and a line under it tells you the fine and how much money you have left, such as "Police fine: $200 taken. You have $1,250 left." The HUD shows it too. If you have less than $200, the police take what you have and your money never goes below zero. The fine is saved the next time your car stops, so reloading won't undo it. Getting away from the police costs nothing. Your saves still work.
+## Build 108 · 30 Oct 2026
+
+- **The mod now has a licence.** You can still download it, play it and make videos of it for free. Copying its code into other mods, sharing a changed version or re-uploading it now needs the author's written permission. The download includes a LICENSE file with the full terms. Nothing changes in the game, and your saves still work.
 
 ## Build 107 · 30 Oct 2026
 
