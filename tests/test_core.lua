@@ -1311,28 +1311,6 @@ do
   T.eq(#U.offers('x', {}), 0, 'nothing to sell, no offers')
 end
 
--- A short term loan: $1,000 now, $1,350 to pay back, no second loan until it is, kept by Save.
-do
-  local c, io, a, g = F.controller()
-  a.pose = F.copy(F.PENRITH); c:tick(0.1); c:vehicleSpawned(); c:tick(0.1)
-  local start = c:view().balance
-  T.check(c:view().loan.takeAllowed, 'a loan is offered'); T.eq(c:view().loan.owed, nil, 'nothing owed yet')
-  T.check(c:takeLoan(), 'loan taken'); T.eq(c:view().balance, start + Core.LOAN_AMOUNT, '$1,000 added')
-  T.eq(c:view().loan.owed, Core.LOAN_REPAY, '$1,350 owed'); T.eq(Core.LOAN_REPAY, 1350, 'the loan costs $1,350')
-  T.check(not c:view().loan.takeAllowed, 'no second loan'); T.check(not c:takeLoan(), 'a second loan is refused')
-  T.eq(c:view().balance, start + Core.LOAN_AMOUNT, 'nothing more added')
-  T.check(c:manualSave(), 'saved'); T.eq(io.files[A].progression.loanOwed, 1350, 'the loan is saved')
-  local r = F.controller({ io = io })
-  T.eq(r:view().loan.owed, 1350, 'still owed after a reload'); T.check(not r:view().loan.takeAllowed, 'still no second loan')
-  r.profile.progression.balance = 1000
-  T.check(not r:view().loan.repayAllowed, 'cannot repay while short'); T.check(not r:repayLoan(), 'repay refused')
-  T.eq(r:view().balance, 1000, 'nothing taken'); T.eq(r:view().loan.owed, 1350, 'still owed')
-  r.profile.progression.balance = 2000
-  T.check(r:view().loan.repayAllowed, 'can repay'); T.check(r:repayLoan(), 'repaid')
-  T.eq(r:view().balance, 650, '$1,350 paid'); T.eq(r:view().loan.owed, nil, 'nothing owed')
-  T.check(r:view().loan.takeAllowed, 'a new loan can be taken')
-end
-
 -- Caught by the game's traffic police: a ticket or an arrest takes $200, never more than the player
 -- has, adds a line under the game's own arrest message, and saves once the car stops. Nothing before arriving.
 do

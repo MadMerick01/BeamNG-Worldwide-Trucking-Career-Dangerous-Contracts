@@ -429,24 +429,6 @@
             <div style="margin-top:4px;font-size:13px;color:#c9d6d2;">You keep your job, on a dangerous contract too. Towing does not fix any damage.<span ng-if="data.tow.fee > 0 && data.tow.short && !data.tow.owed"> Short of money? You can still tow and pay the fee back later.</span></div>
           </div>
         </div>
-        <div ng-if="data.loan" class="ef-sec" ng-class="{'ef-need': data.loan.owed}">
-          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('loan')" aria-expanded="{{isOpen('loan', !!data.loan.owed || isConfirming('loan', data.loan.amount))}}"><span class="ef-ar" aria-hidden="true">{{isOpen('loan', !!data.loan.owed || isConfirming('loan', data.loan.amount)) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Short term loan</div><span class="ef-sum"><span ng-if="data.loan.owed">${{data.loan.owed | number:0}} owed</span><span ng-if="!data.loan.owed">${{data.loan.amount | number:0}} now, repay ${{data.loan.repay | number:0}}</span></span></div></div>
-          <div ng-if="isOpen('loan', !!data.loan.owed || isConfirming('loan', data.loan.amount))" class="ef-sb">
-            <div ng-if="!data.loan.owed" style="font-size:13px;color:#c9d6d2;">Short of money? A short term loan gives you ${{data.loan.amount | number:0}} now, and you pay back ${{data.loan.repay | number:0}}.</div>
-            <div ng-if="data.loan.owed">Short term loan owed: ${{data.loan.owed | number:0}}</div>
-            <div ng-if="data.loan.owed && !data.loan.repayAllowed" style="font-size:13px;color:#c9d6d2;">Repay it here once you have ${{data.loan.owed | number:0}}. No new loan until then.</div>
-            <div ng-if="!data.loan.owed && !isConfirming('loan', data.loan.amount)" style="margin-top:6px;">
-              <button type="button" ng-click="askToPay('loan', data.loan.amount)" ng-disabled="!data.loan.takeAllowed" style="padding:5px 12px;">Short term loan</button>
-            </div>
-            <div ng-if="!data.loan.owed && isConfirming('loan', data.loan.amount)" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;">
-              <span style="font-weight:bold;">Borrow ${{data.loan.amount | number:0}} and owe ${{data.loan.repay | number:0}}?</span>
-              <button type="button" ng-click="cancelPay(); takeLoan()" ng-disabled="!data.loan.takeAllowed" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Yes, borrow</button>
-              <button type="button" ng-click="cancelPay()" style="padding:5px 12px;">Cancel</button>
-            </div>
-            <button type="button" ng-if="data.loan.owed" ng-click="repayLoan()" ng-disabled="!data.loan.repayAllowed" style="margin-top:6px;padding:5px 12px;">Repay ${{data.loan.owed | number:0}}</button>
-          </div>
-          <div ng-if="data.loan.feedback" role="status" style="margin:0 0 6px;">{{data.loan.feedback}}</div>
-        </div>
         <div class="ef-sec">
           <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('fuel')" aria-expanded="{{isOpen('fuel')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('fuel') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Fuel</div><span class="ef-sum"><span ng-if="!data.town">stop in a town<span ng-if="data.fuel"> &middot; ${{data.fuel.pricePerLitre | number:2}} a litre</span></span><span ng-if="data.town && data.town.refuel && data.town.refuel.full">tank full</span><span ng-if="data.town && data.town.refuel && !data.town.refuel.full">{{data.town.refuel.litres | number:1}} L for ${{data.town.refuel.cost | number:0}}</span></span></div>
             <button type="button" ng-click="refuel()" ng-disabled="!(data.town && data.town.refuelAllowed)" style="flex:none;padding:3px 10px;">Refuel</button></div>
