@@ -18,6 +18,19 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     try { var v = window.localStorage.getItem(DISTANCE); return DISTANCES.indexOf(v) >= 0 ? v : 'any' } catch (e) { return 'any' }
   }
   var storeDistance = function (v) { try { window.localStorage.setItem(DISTANCE, v) } catch (e) {} }
+  // Which folding sections the player opened or closed, by name, kept the same way. Nearby and the
+  // heli's towns and jobs start open; the rest start closed.
+  var FOLDS = 'earthFreight.hudFolds'
+  var FOLD_DEFAULTS = { nearby: true, helitowns: true, heliboard: true }
+  var storedFolds = function () {
+    try {
+      var v = JSON.parse(window.localStorage.getItem(FOLDS) || '{}')
+      var folds = {}
+      if (v && typeof v === 'object') for (var k in v) if (typeof v[k] === 'boolean') folds[k] = v[k]
+      return folds
+    } catch (e) { return {} }
+  }
+  var storeFolds = function (folds) { try { window.localStorage.setItem(FOLDS, JSON.stringify(folds)) } catch (e) {} }
   // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
   // bill here and the box goes on the page itself, over the menu. It stays until the player closes
   // it, Lua says the bill was paid or undone, or the menu closes and the HUD is built again.
@@ -283,6 +296,48 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // Dot and pay colours: green pays above the usual, red below, gold for a shortage or a jackpot.
       var colors = { high: '#6fcf97', low: '#eb5757', sweet: '#f2c94c' }
       scope.dotColor = function (level) { return colors[level] || '#7d8b88' }
+      // Folding sections. One that needs the player (money owed, a puncture, a confirm waiting) is
+      // open whatever was chosen, until it is dealt with.
+      if (!kept.folds) kept.folds = storedFolds()
+      scope.isOpen = function (id, needed) {
+        if (needed) return true
+        var v = kept.folds[id]
+        return typeof v === 'boolean' ? v : !!FOLD_DEFAULTS[id]
+      }
+      scope.toggle = function (id) { kept.folds[id] = !scope.isOpen(id); storeFolds(kept.folds) }
+      // One town job at a time shows its details, load slider and GPS.
+      scope.jobOpen = function (id) { return kept.openJob === id }
+      scope.toggleJob = function (id) { kept.openJob = kept.openJob === id ? null : id }
+      scope.goodNames = function (dots) { return (dots || []).map(function (g) { return g.name }).join(', ') }
+      // The fuel gauge's fill: red under a sixth of a tank.
+      var gauge = {}
+      scope.fuelStyle = function (f) {
+        var share = f && f.capacity > 0 ? Math.max(0, Math.min(1, f.litres / f.capacity)) : 0
+        gauge.width = Math.round(share * 100) + '%'
+        gauge.background = share < 1 / 6 ? '#eb5757' : '#a7e5c9'
+        return gauge
+      }
+      scope.distance = function (metres) {
+        if (typeof metres !== 'number' || !isFinite(metres)) return ''
+        return metres < 1000 ? Math.round(metres) + ' m' : scope.km(metres) + ' km'
+      }
+      var LETTERS = { north: 'N', 'north-east': 'NE', east: 'E', 'south-east': 'SE', south: 'S', 'south-west': 'SW', west: 'W', 'north-west': 'NW' }
+      // The job for the minimised strip: where it goes, how far and what it pays. One object is reused,
+      // as Angular watches it by reference.
+      var trip = {}
+      scope.trip = function (d) {
+        var l = d && d.load
+        if (!l) return null
+        var started = !l.contract || l.contract.started
+        var drop = l.drop && started ? l.drop : null
+        trip.to = l.contract ? l.contract.name + (started ? '' : ' start') : (l.drop || l.beacon ? 'off-road drop' : l.to)
+        trip.metres = drop ? drop.distanceMetres : (started ? l.distanceMetres : null)
+        trip.letters = LETTERS[l.direction] || ''
+        trip.pay = l.pay
+        trip.danger = !!(l.contract || l.beacon)
+        return trip
+      }
+      scope.flashBad = function (d) { return !!(d && d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) }
       scope.km = function (metres) { return typeof metres === 'number' && isFinite(metres) ? (metres / 1000).toFixed(1) : '' }
       // The one message under the header: what just happened, then what to do. One object is
       // reused, as Angular watches it by reference.

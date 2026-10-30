@@ -459,10 +459,10 @@ test('a minimised HUD lights its dot for anything waiting and opens only for wha
 })
 test('the Garage tab card has Buy parts and Buy new car buttons, and no shortcut keys are shown', () => {
   const a = app()
-  const card = html.indexOf('Change parts or buy a car')
-  const end = html.indexOf('</div>\n        <div ng-if="(!data.carChange && !data.partsChange) || data.repairOwed', card)
-  const inside = html.slice(card, end)
-  assert.ok(card > html.indexOf("tab === 'garage'") && end > card, 'the card is on the Garage tab')
+  const garage = html.slice(html.indexOf("tab === 'garage'"), html.indexOf("tab === 'relocate'"))
+  const card = garage.indexOf('ng-if="!data.carChange && !data.partsChange && !data.usedCars"')
+  const inside = garage.slice(card, garage.indexOf('Cargo space'))
+  assert.ok(card > 0, 'the buttons are on the Garage tab')
   assert.ok(inside.includes('ng-click="openPartsMenu()"') && inside.includes('>Buy parts</button>'), 'Buy parts is in the card')
   assert.ok(inside.includes('ng-click="openCarMenu()"') && inside.includes('>Buy new car</button>'), 'Buy new car is in the card')
   assert.doesNotMatch(html, /Ctrl\+[WE]/)
@@ -658,4 +658,52 @@ test('each town job and dangerous contract has a GPS button to see where it goes
   a.scope.gpsToContract('death_road')
   assert.ok(a.commands.includes(fixed("gpsToContract('death_road')")), 'a dangerous contract sends its road')
   assert.ok(html.includes('ng-click="j.contract ? gpsToContract(j.contract.id) : gpsToTown(j.toId)"') && html.includes('ng-if="!j.drop" aria-label="Set the GPS'), 'no button on off-road drops')
+})
+
+test('folding sections remember how the player left them, and open by themselves when they need the player', () => {
+  const saved = {}
+  const storage = { getItem: k => (k in saved ? saved[k] : null), setItem: (k, v) => { saved[k] = String(v) } }
+  const a = app(storage)
+  assert.equal(a.scope.isOpen('nearby'), true, 'Nearby starts open')
+  assert.equal(a.scope.isOpen('repair'), false, 'the rest start closed')
+  a.scope.toggle('nearby'); a.scope.toggle('repair')
+  assert.equal(a.scope.isOpen('nearby'), false); assert.equal(a.scope.isOpen('repair'), true)
+  assert.equal(a.remount().scope.isOpen('repair'), true, 'kept when BeamNG rebuilds the app')
+  const b = app(storage)
+  assert.equal(b.scope.isOpen('nearby'), false, 'kept after the game restarts'); assert.equal(b.scope.isOpen('repair'), true)
+  b.scope.toggle('repair')
+  assert.equal(b.scope.isOpen('repair', true), true, 'money owed keeps it open')
+  saved['earthFreight.hudFolds'] = 'not json'
+  assert.equal(app(storage).scope.isOpen('nearby'), true, 'bad storage falls back to the defaults')
+  assert.equal(app().scope.isOpen('loan'), false, 'and so does no storage')
+  for (const id of ['nearby', 'dropoff', 'abandon', 'cargo', 'repair', 'tow', 'loan', 'fuel', 'helitowns', 'heliboard']) {
+    assert.ok(html.includes(`ng-click="toggle('${id}')"`), id + ' folds')
+  }
+  assert.ok(html.includes("isOpen('repair', data.repairOwed > 0 || data.puncture)"), 'a repair owed or a puncture opens Repair')
+})
+test('one town job at a time opens to show its load slider and GPS', () => {
+  const a = app()
+  assert.equal(a.scope.jobOpen('bricks_gn1'), false)
+  a.scope.toggleJob('bricks_gn1'); assert.equal(a.scope.jobOpen('bricks_gn1'), true)
+  a.scope.toggleJob('parts_gn1'); assert.equal(a.scope.jobOpen('bricks_gn1'), false, 'opening another closes it')
+  a.scope.toggleJob('parts_gn1'); assert.equal(a.scope.jobOpen('parts_gn1'), false, 'a second press closes it')
+  const town = html.slice(html.indexOf("tab === 'town'"), html.indexOf("tab === 'garage'"))
+  assert.ok(town.indexOf('ng-click="takeJob(j)"') < town.indexOf('ng-if="jobOpen(j.id)"'), 'Take job is on the row, not hidden')
+})
+test('the minimised strip shows money, the job and where you are', () => {
+  const a = app()
+  assert.equal(a.scope.trip({}), null, 'no job')
+  const t = a.scope.trip({ load: { to: 'Servoz', distanceMetres: 4900, direction: 'west', pay: 4490 } })
+  assert.deepEqual({ ...t }, { to: 'Servoz', metres: 4900, letters: 'W', pay: 4490, danger: false })
+  const contract = { name: 'Grimsel Pass', started: false }
+  assert.equal(a.scope.trip({ load: { contract, drop: { distanceMetres: 800 }, pay: 1 } }).to, 'Grimsel Pass start', 'a contract not started yet')
+  assert.equal(a.scope.trip({ load: { contract, drop: { distanceMetres: 800 }, pay: 1 } }).metres, null, 'with no distance')
+  const road = a.scope.trip({ load: { contract: { name: 'Grimsel Pass', started: true }, drop: { distanceMetres: 800 }, pay: 1 } })
+  assert.equal(road.metres, 800, 'then the distance to the finish'); assert.equal(road.danger, true, 'in red')
+  assert.equal(a.scope.distance(800), '800 m'); assert.equal(a.scope.distance(4900), '4.9 km'); assert.equal(a.scope.distance(null), '')
+  assert.equal(a.scope.fuelStyle({ litres: 30, capacity: 60 }).width, '50%')
+  assert.equal(a.scope.fuelStyle({ litres: 5, capacity: 60 }).background, '#eb5757', 'red when nearly empty')
+  assert.equal(a.scope.flashBad({ flash: { kind: 'puncture' } }), true); assert.equal(a.scope.flashBad({ flash: { kind: 'delivered' } }), false)
+  const strip = html.slice(html.indexOf('ng-if="hud.minimised"'), html.indexOf('<div ng-if="!hud.minimised">'))
+  for (const part of ['data.balance', 'trip(data).to', 'data.where.title', 'data.where.area', 'data.where.street', 'DELIVER HERE']) assert.ok(strip.includes(part), part)
 })
