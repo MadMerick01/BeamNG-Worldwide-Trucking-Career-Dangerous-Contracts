@@ -256,7 +256,7 @@ test('the Ko-fi link sits only at the bottom of the start page, opens the browse
 })
 test('the HUD keeps money, Save, the message and the load outside the tabs', () => {
   const panels = html.indexOf('role="tabpanel"')
-  for (const always of ['ng-click="save()"', 'data.balance', 'notice(data)', 'data.load.to', 'data.fuel.litres', 'copyCoordinates(data.resume)']) {
+  for (const always of ['ng-click="save()"', 'data.balance', 'notice(data)', 'trip(data).to', 'data.fuel.litres', 'copyCoordinates(data.resume)']) {
     assert.ok(html.indexOf(always) > -1 && html.indexOf(always) < panels, always)
   }
   for (const id of ['route', 'town', 'garage', 'relocate', 'heli']) assert.ok(html.includes(`ng-if="tab === '${id}'"`), id)
@@ -695,4 +695,13 @@ test('the minimised strip shows money, the job and where you are', () => {
   assert.equal(a.scope.flashBad({ flash: { kind: 'puncture' } }), true); assert.equal(a.scope.flashBad({ flash: { kind: 'delivered' } }), false)
   const strip = html.slice(html.indexOf('ng-if="hud.minimised"'), html.indexOf('<div ng-if="!hud.minimised">'))
   for (const part of ['data.balance', 'trip(data).to', 'data.where.title', 'data.where.area', 'data.where.street', 'DELIVER HERE']) assert.ok(strip.includes(part), part)
+})
+
+test('while on a job, the distance left shows big in the job card, almost as large as the money', () => {
+  const panels = html.indexOf('role="tabpanel"')
+  const card = html.slice(html.indexOf('<div ng-if="data.load" style="margin:8px 0 0'), panels)
+  const big = card.indexOf('distance(trip(data).metres)')
+  assert.ok(big > 0, 'in the job card, above the tabs')
+  assert.ok(card.lastIndexOf('font-size:28px', big) > card.lastIndexOf('<div', big), 'in 28 px type, next to the 32 px money')
+  assert.ok(card.includes('ng-if="trip(data).metres != null"'), 'hidden until there is a distance, such as before a dangerous contract starts')
 })

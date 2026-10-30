@@ -792,23 +792,21 @@ function M.new(deps)
     if job.contract then return self:takeContract(job, good, quote) end
     self:applyWeight()
     if job.drop then
-      -- No GPS: an off-road drop is found by the arrow on the Route tab.
-      self.tradeFeedback = 'Loaded ' .. amount(good, quote.units) .. ' (' .. quote.kg .. ' kg) for an off-road drop '
-        .. string.format('%.1f', job.km) .. ' km to the ' .. location.compassPoint(location.bearing(place, job.drop))
-        .. '. Follow the arrow on the Route tab and stop within ' .. jobs.DROP_RADIUS .. ' m of the spot. It pays ' .. dollars(quote.pay) .. '.'
+      -- No GPS: an off-road drop is found by the arrow on the Route tab, whose card says so. The job
+      -- card above the tabs already shows the load, where it goes and the pay, so no message repeats it.
+      self.tradeFeedback = nil
       self.diag:event('job_taken', string.format('%s x%d %s -> drop %.5f,%.5f for %d', good.id, quote.units, place.id,
         job.drop.latitude, job.drop.longitude, quote.pay))
       return true
     end
-    local gps = ''
+    -- The job card shows the load and the pay; a message is only needed when the GPS could not be set.
+    self.tradeFeedback = nil
     if self.configuration.autoGps and self.adapter.setDestination then
       local ok, why = self.adapter:setDestination(destination, destination.name)
       self.gpsTown, self.gpsContract, self.gpsFeedback = ok and destination.id or nil, nil, nil
-      gps = ok and ' The GPS is set to ' .. destination.name .. '.' or ' Set the GPS yourself: copy the drop-off coordinates on the Route tab.'
+      if not ok then self.tradeFeedback = 'Set the GPS yourself: copy the drop-off coordinates on the Route tab.' end
       self.diag:event('gps', ok and destination.id or tostring(why), ok and 'I' or 'W')
     end
-    self.tradeFeedback = 'Loaded ' .. amount(good, quote.units) .. ' (' .. quote.kg .. ' kg) for ' .. destination.name
-      .. '. It pays ' .. dollars(quote.pay) .. ' on delivery.' .. gps
     self.diag:event('job_taken', string.format('%s x%d %s -> %s for %d', good.id, quote.units, place.id, destination.id, quote.pay))
     return true
   end
@@ -820,11 +818,12 @@ function M.new(deps)
     self.load.contract, self.load.started, self.load.fee = section.id, false, contracts.FEE
     self:applyWeight()
     self.diag:event('job_taken', string.format('%s x%d %s -> contract %s for %d', good.id, quote.units, job.from, section.id, quote.pay))
-    local teleported = self:teleportToContract()
-    self.tradeFeedback = 'Loaded ' .. amount(good, quote.units) .. ' (' .. quote.kg .. ' kg) for the dangerous contract on '
-      .. section.name .. '. You paid ' .. dollars(contracts.FEE) .. ' to be relocated to the start'
-      .. (teleported and '. Teleporting now.' or ': press Teleport to the start on the Route tab, or copy its coordinates into the BeamNG.Earth map.')
-      .. ' It pays ' .. dollars(quote.pay) .. ' at the finish.'
+    -- The job card and the contract card on the Route tab show the rest; a message is only needed
+    -- when Earth is not taking the car there now (teleportToContract may already have said why).
+    self.tradeFeedback = nil
+    if not self:teleportToContract() and not self.tradeFeedback then
+      self.tradeFeedback = 'Press Teleport to the start on the Route tab, or copy its coordinates into the BeamNG.Earth map.'
+    end
     return true
   end
 

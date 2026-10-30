@@ -142,9 +142,10 @@
     </div>
     <div ng-if="data.load" style="margin:8px 0 0;padding:7px 10px;border:2px solid #f2c94c;border-radius:6px;">
       <div style="display:flex;align-items:baseline;gap:8px;">
-        <div style="flex:1;min-width:0;font-size:18px;font-weight:bold;overflow-wrap:anywhere;"><span ng-if="!data.load.beacon">&rarr; {{data.load.to}}</span><span ng-if="data.load.beacon" style="color:#eb5757;">&rarr; off-road drop</span><span ng-if="data.load.distanceMetres != null" style="font-size:14px;font-weight:normal;color:#c9d6d2;"> &asymp; {{km(data.load.distanceMetres)}} km<span ng-if="data.load.direction"> {{data.load.direction}}</span></span></div>
+        <div style="flex:1;min-width:0;font-size:16px;font-weight:bold;overflow-wrap:anywhere;" ng-style="{color: trip(data).danger ? '#eb5757' : '#f2f6f5'}">&rarr; {{trip(data).to}}</div>
         <div title="Paid on delivery" style="flex:none;font-size:18px;font-weight:900;color:#6fcf97;">${{data.load.pay | number:0}}</div>
       </div>
+      <div ng-if="trip(data).metres != null" title="{{data.load.drop ? 'Distance left to the spot, in a straight line' : 'Distance left by road, roughly: straight line × 1.3'}}" style="margin:2px 0 1px;line-height:1;"><span ng-if="!data.load.drop" style="font-size:18px;font-weight:bold;color:#c9d6d2;">&asymp;</span> <span style="font-size:28px;font-weight:900;">{{distance(trip(data).metres)}}</span><span ng-if="data.load.direction" style="font-size:15px;color:#c9d6d2;"> {{data.load.direction}}</span></div>
       <div style="font-size:12px;color:#c9d6d2;"><span ng-if="data.load.beacon" style="color:#eb5757;">A package, no questions</span><span ng-if="!data.load.beacon && !data.load.litres">{{data.load.units}} {{data.load.good | lowercase}}</span><span ng-if="!data.load.beacon && data.load.litres">{{data.load.litres | number:0}} L of {{data.load.good | lowercase}}</span> &middot; {{data.load.kg | number:0}} kg &middot; from {{data.load.from}} &middot; driven {{data.load.drivenKm | number:1}} km</div>
     </div>
     <div role="tablist" style="display:flex;gap:3px;margin-top:10px;border-bottom:1px solid #568d7a;">
