@@ -141,7 +141,8 @@ function M.new(deps)
   end
 
   -- A saved job is kept only when its good and both its towns are known to this version, and an
-  -- off-road drop's spot is a real position, and a dangerous contract's section is known.
+  -- off-road drop's spot is a real position, and a dangerous contract's section is known. A
+  -- contract's finish is taken from its section, so a road moved since the save finishes in its new place.
   local function knownLoad(l)
     if type(l) ~= 'table' or not l.pay or not goods.get(l.good) or not places.get(l.from) or not places.get(l.to) then return nil end
     if l.drop ~= nil and not location.valid(l.drop) then return nil end
@@ -149,6 +150,7 @@ function M.new(deps)
     if l.pickup ~= nil and not location.valid(l.pickup) then return nil end
     local out = copy(l)
     out.paid = nil
+    if l.contract ~= nil then out.drop = location.copy(contracts.get(l.contract).finish) end
     return out
   end
 
@@ -1214,6 +1216,10 @@ function M.new(deps)
     self.clock = self.clock + dt
     -- On foot, in the game's walking mode, the car waits where it was left.
     self.onFoot = self.garage ~= nil and self.garage.onFoot ~= nil and self.garage:onFoot() or false
+    if self.garage and self.garage.keepParked then
+      if not self.onFoot then self.garage:releaseParked()
+      elseif self.ownedParts then self.garage:keepParked(self.ownedParts.id) end
+    end
     self:observe(self.adapter:sample(), dt)
     self:provideVehicle()
     self:watchHire()

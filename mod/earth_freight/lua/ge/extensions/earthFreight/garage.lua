@@ -18,6 +18,8 @@ local function defaults()
     spawn = function() return rawget(_G, 'spawn') or (package.loaded and package.loaded.spawn) end,
     -- BeamNG's walking mode, where the player is a unicycle beside their parked car.
     walk = function() return rawget(_G, 'gameplay_walk') or (extensions and extensions.gameplay_walk) end,
+    -- BeamNG's traffic, which moves and repaints any of its cars nobody is in once out of sight.
+    traffic = function() return rawget(_G, 'gameplay_traffic') or (extensions and extensions.gameplay_traffic) end,
     -- An upright rotation facing along a direction, for a car put down on its wheels.
     upright = function(dir) return quatFromDir(dir, vec3(0, 0, 1)) end,
     point = function(x, y, z) return vec3(x, y, z) end,
@@ -304,6 +306,34 @@ function M.new(environment)
     local done, why = pcall(walk.setWalkingMode, true)
     if not done then return false, 'walk_failed', tostring(why) end
     return true
+  end
+
+  -- BeamNG's traffic counts the player's car among its own. Once the player gets out, it is an
+  -- empty traffic car, and out of sight traffic respawns it on another road in a new paint. While
+  -- the player is on foot the car is taken out of traffic, so it waits where it was left; it is
+  -- given back once they are in it again. Returns true when the car was taken out.
+  local parked
+  function g:keepParked(carId)
+    if carId == nil then return false end
+    local ok, traffic = pcall(env.traffic)
+    if not ok or type(traffic) ~= 'table' or type(traffic.getTrafficData) ~= 'function'
+      or type(traffic.removeTraffic) ~= 'function' then return false end
+    local read, data = pcall(traffic.getTrafficData)
+    if not read or type(data) ~= 'table' or data[carId] == nil then return false end
+    local done = pcall(traffic.removeTraffic, carId)
+    if done then parked = carId end
+    return done
+  end
+
+  -- Gives the car back to traffic once the player is in it again. Returns true when it was.
+  function g:releaseParked()
+    if parked == nil then return false end
+    local _, id = current()
+    if id ~= parked then return false end
+    parked = nil
+    local ok, traffic = pcall(env.traffic)
+    if not ok or type(traffic) ~= 'table' or type(traffic.insertTraffic) ~= 'function' then return false end
+    return (pcall(traffic.insertTraffic, id, true))
   end
 
   -- Replaces the player vehicle where it stands with a config: a .pc file path, such as the
