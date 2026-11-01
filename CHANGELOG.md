@@ -6,6 +6,15 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Trailers are here.** On the Garage tab, open the new **Trailer** section and press **Buy new trailer** to see every trailer in the game at its full price. Pick one, press **Buy**, and it's paid for straight away and put down behind your car. Back up to it slowly and it hitches itself, or use the game's couple key. You can own one trailer at a time.
+- You need the right hitch on your car to pull a trailer. Small trailers take a ball hitch and semi trailers a fifth wheel. Fit one with **Buy parts** like any other part.
+- While your trailer is hitched, its cargo space adds to your car's, and jobs on the Town tab fill the trailer first, then your car. The trailer carries the weight, so a full trailer really pulls. A trailer that isn't hitched adds no space, and if part of your job is in it you can't deliver until you hitch it again. Dangerous contracts only load your car, because their teleport leaves the trailer behind.
+- **Store trailer** puts it in your garage for free, so you can drive just your car or truck. The garage goes everywhere with you: press **Bring out** in any town, any time, and it's put down behind you again. If part of your job is in the trailer, Store trailer first warns you in red, and storing it then loses your whole load and costs the $1,000 abandon fee.
+- A trailer keeps its damage. If you store it damaged it stays damaged: **Repair trailer** fixes it, and **Sell** (on a stored trailer) pays 75% of what you paid, less any repair it needs.
+- Save keeps your trailer, hitched or in the garage, and **Teleport to last save** puts a hitched trailer back behind your car. Save asks you to hitch your trailer or store it first if it's standing on its own. Teleporting or relocating puts the trailer in your garage. Hire a helicopter only once your trailer is stored.
+- A trailer spawned from the game's own vehicle menu can still be towed, but it isn't yours, so it adds no cargo space.
+- Your saves still work. If you buy a trailer and then go back to an older download, the older one won't know about it, and you'll lose the trailer the next time you save.
+
 ## Build 115 · 30 Oct 2026
 
 - **The distance left to your drop-off is now big and easy to read.** While you have a job, the job card under your money shows how far you still have to go, such as "2.5 km", in type nearly as large as your money. Under 1 km it counts down in metres. This works for town deliveries, off-road drops and dangerous contracts. Your saves still work.

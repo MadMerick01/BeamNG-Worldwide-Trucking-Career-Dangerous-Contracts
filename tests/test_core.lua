@@ -1364,4 +1364,88 @@ do
   T.eq(c:view().where.title, 'Far from any town', 'deep in the Sahara')
 end
 
+-- Trailers: bought new, hitched behind the car, loaded first, stored, brought out, sold.
+do
+  local TR = require('earthFreight/trailers')
+  local c, io, a, g, w = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 100000
+  T.eq(c:view().trailer.owned, nil, 'no trailer to start with'); T.eq(c:view().trailer.offers, nil, 'the list is closed')
+  c:openTrailers(true)
+  local offers = c:view().trailer.offers
+  T.eq(#offers, 2, 'every vanilla trailer with a price, no cars'); T.eq(offers[1].name, 'Flatbed', 'cheapest first')
+  T.eq(offers[2].price, 30000, 'at its game price'); T.check(offers[1].allowed, 'affordable')
+  T.check(c:buyTrailer(1), 'bought'); T.eq(c:view().balance, 95000, 'paid')
+  local id = c.trailerOut.id
+  T.eq(g.trailers[id].config, 'vehicles/flatbed/long.pc', 'spawned behind the car')
+  T.check(not c:buyTrailer(2), 'one trailer at a time'); T.check(c.trailerFeedback:find('already own'), 'told why')
+  -- A spawn of the trailer is not a change to the car.
+  c:vehicleSpawned(id); T.check(not c.partsCheckDue, 'no parts check for the trailer')
+  local v = c:view().trailer
+  T.check(v.owned.out and not v.owned.hitched, 'out, not hitched yet'); T.eq(v.owned.space.slots, 100, 'its space read')
+  -- Unhitched, it adds nothing; hitched, its space comes first.
+  local to = F.offer(c, stClair, 'parts')
+  T.eq(c:jobQuote(c:board(penrith)[1]).units, 2, 'only the car (its boot) while unhitched')
+  c:couplerChanged(1, id, true)
+  T.check(c:view().trailer.owned.hitched, 'hitched')
+  local q = c:jobQuote(c:board(penrith)[1])
+  T.eq(q.units, 102, 'trailer and car'); T.eq(q.trailerUnits, 100, 'the trailer first')
+  -- A part load fills the trailer, not the car.
+  T.check(c:takeJob(to, 50), 'half a load taken'); T.eq(c.load.units, 51, 'half'); T.eq(c.load.trailerUnits, 51, 'all in the trailer')
+  T.eq(w.trailerWeights[#w.trailerWeights].kg, 51 * 15, 'its weight on the trailer'); T.eq(w.trailerWeights[#w.trailerWeights].id, id, 'that trailer')
+  T.eq(w.weights[#w.weights].kg, 0, 'none in the car')
+  -- Save keeps it hitched, but not unhitched.
+  c:couplerChanged(id, 1, false)
+  T.check(not c:manualSave(), 'no save unhitched'); T.check(c.feedback:find('Hitch your trailer'), 'told to hitch or store')
+  F.drive(c, a, stClair)
+  T.check(not c:deliver(), 'not delivered unhitched'); T.check(c.tradeFeedback:find('Hitch your trailer'), 'told to hitch')
+  c:couplerChanged(1, id, true)
+  T.check(c:manualSave(), 'saved hitched')
+  local saved = io.files[A].trailer or io.files[B].trailer
+  T.eq(saved.model, 'flatbed', 'trailer saved'); T.eq(saved.stored, false, 'out'); T.eq(saved.paid, 5000, 'with its price')
+  T.eq((io.files[A].load or io.files[B].load).trailerUnits, 51, 'the load in it saved')
+  -- A reload brings it back out once the car is back.
+  local r, _, ra, rg = F.controller({ io = io })
+  ra.pose = F.copy(a.pose); r:tick(0.1); r:vehicleSpawned(); r:tick(0.1); r:tick(0.1)
+  T.check(r.trailerOut ~= nil, 'trailer back out'); T.eq(rg.trailers[r.trailerOut.id].model, 'flatbed', 'the same trailer')
+  T.eq(r.load.trailerUnits, 51, 'with its load')
+  T.check(c:deliver(), 'delivered hitched')
+  -- Storing it with a job in it: a warning first, then the load is lost and the fee charged.
+  T.check(c:takeJob(F.offer(c, penrith, 'parts')), 'another job'); T.check(c.load.trailerUnits > 0, 'in the trailer')
+  local before = c:view().balance
+  g.trailers[id].damage = 4000; F.advance(c, 1.2)
+  T.check(not c:storeTrailer(), 'asks first'); T.check(c:view().trailer.storeArmed, 'warning shown')
+  T.check(c.trailerFeedback:find('loses the whole load'), 'the warning says so')
+  T.check(c:storeTrailer(), 'stored'); T.eq(c.load, nil, 'load lost'); T.eq(c:view().balance, before - 1000, 'abandon fee charged')
+  T.eq(g.trailers[id], nil, 'taken out of the world'); T.check(c:view().trailer.owned.stored, 'in the garage')
+  -- It keeps its damage: the repair comes off the sale.
+  local repair = c:view().trailer.owned.repair
+  T.check(repair and repair > 0, 'stored damaged'); T.eq(c:view().trailer.owned.sale, TR.salePrice(5000, repair), '75% less the repair')
+  -- Bring out works anywhere and it still needs its repair.
+  T.check(c:bringOutTrailer(), 'brought out'); T.check(c:view().trailer.owned.repair == repair, 'still damaged')
+  T.check(not c:sellTrailer(), 'only a stored trailer sells')
+  T.check(c:storeTrailer(), 'stored with no job, no warning')
+  T.check(c:repairTrailer(), 'repaired'); T.eq(c:view().trailer.owned.repair, nil, 'nothing owed')
+  before = c:view().balance
+  T.check(not c:sellTrailer(), 'asks first'); T.check(c:sellTrailer(), 'sold')
+  T.eq(c:view().balance, before + 3750, 'for 75%'); T.eq(c.trailer, nil, 'gone')
+  -- A trailer that disappears goes back to the garage.
+  T.check(c:buyTrailer(1), 'bought again'); local again = c.trailerOut.id
+  g.trailers[again] = nil; F.advance(c, 1.2)
+  T.eq(c.trailerOut, nil, 'no longer out'); T.check(c.trailer.stored, 'in the garage')
+  -- A trailer the player did not buy is noticed but adds nothing.
+  c:couplerChanged(1, 777, true)
+  T.check(c:view().trailer.foreign, 'not theirs'); T.eq(c:trailerSpace(), nil, 'no space from it')
+end
+
+-- A saved trailer is checked like the rest of the save.
+do
+  local P2 = require('earthFreight/persistence')
+  local s = F.save(1)
+  s.trailer = { model = 'flatbed', config = 'vehicles/flatbed/long.pc', name = 'Flatbed', paid = 5000, stored = true }
+  T.check(P2.validate(s) ~= nil, 'a stored trailer loads'); T.eq(P2.validate(s).trailer.paid, 5000, 'its price kept')
+  s.trailer.paid = -1
+  local ok, why = P2.validate(s); T.eq(ok, nil, 'a bad price is refused'); T.eq(why, 'invalid_trailer', 'and says why')
+end
+
 T.done('Earth Freight controller')

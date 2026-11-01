@@ -21,6 +21,7 @@ local contracts = require('earthFreight/contracts')
 local beacons = require('earthFreight/beacons')
 local flights = require('earthFreight/flights')
 local aircraft = require('earthFreight/aircraft')
+local trailers = require('earthFreight/trailers')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and some fuel
@@ -134,6 +135,7 @@ function M.new(deps)
   }
   workshop.attach(c)
   flights.attach(c)
+  trailers.attach(c)
 
   function c:transition(nextState, reason)
     if self.state == nextState and self.reason == reason then return end
@@ -182,7 +184,13 @@ function M.new(deps)
     self.autoSave, self.gpsTown, self.gpsContract, self.gpsFeedback = nil, nil, nil, nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
+    -- A trailer still in the world from before is taken away: the save says where it is.
+    if self.trailerOut and self.garage and self.garage.removeVehicle then self.garage:removeVehicle(self.trailerOut.id) end
     self.profile, self.loadStatus = self.store:load()
+    -- The trailer owned: one saved out comes back behind the car once it is back (watchTrailer).
+    self.trailer = self.profile and trailers.clean(self.profile.trailer) or nil
+    self.trailerOut, self.trailerRestored, self.foreignTrailer, self.trailersOpen = nil, nil, nil, false
+    self.trailerFeedback, self.storeArmed, self.sellArmed = nil, false, false
     -- A paid-shipping offer the player shipped in on, paid back by their first delivery near it.
     self.offer = self.profile and copy(self.profile.offer) or nil
     -- The saved load's places are near where the player left off.
@@ -361,12 +369,15 @@ function M.new(deps)
     if not self.cargo or self.hire or self.onFoot then return end
     local kg = self.load and self.load.kg or 0
     local good = self.load and goods.get(self.load.good)
-    local key = tostring(kg) .. ':' .. tostring(good and good.id)
+    local key = tostring(kg) .. ':' .. tostring(good and good.id) .. ':' .. tostring(self.trailerOut and self.trailerOut.id)
     if not force and self.appliedWeight == key then return end
     local space = self:space()
+    -- The trailer's share goes on the trailer; the rest is in the car.
+    kg = self:applyTrailerWeight(kg, good)
+    local carUnits = self.load and (self.load.units - (self.load.trailerUnits or 0)) or 0
     local fluid = { litres = 0, density = 1, tanks = space.tankParts }
     if good and good.kind == 'fluid' then
-      fluid.litres = self.load.units * good.litres
+      fluid.litres = carUnits * good.litres
       fluid.density = good.kg / good.litres
     end
     local ok, why, detail = self.cargo:setWeight(kg, cargo.partsFor(space, good), fluid)
@@ -459,6 +470,9 @@ function M.new(deps)
   -- anything else strands the player until they go back or book shipping. A dangerous contract not
   -- yet started is relocated to its start by a teleport that lands there, and starts.
   function c:teleported(from, to)
+    -- The trailer is left behind, so it goes into the garage.
+    local trailerNote = self:trailerTeleported()
+    if trailerNote ~= '' then self.trailerFeedback = trailerNote:gsub('^ ', '') end
     local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
     if section and contracts.atStart(to, section) then
       self.load.started, self.load.drivenKm, self.stranded = true, 0, nil
@@ -750,9 +764,11 @@ function M.new(deps)
   -- What a job on the board pays the player's car now: how many units of its good fit, and the pay.
   function c:jobQuote(job)
     local good = goods.get(job.good)
-    local units, slots, kg = cargo.fits(self:space(), good)
+    -- A hitched trailer is loaded first, then the car. A dangerous contract only loads the car: its
+    -- teleport to the start leaves the trailer behind.
+    local units, slots, kg, inTrailer = trailers.fits(self:space(), not job.contract and self:trailerSpace() or nil, good)
     local quote = jobs.quote(job, units, self.needs, self.now())
-    quote.units, quote.slots, quote.kg = units, slots, kg
+    quote.units, quote.slots, quote.kg, quote.trailerUnits = units, slots, kg, inTrailer
     return quote
   end
 
@@ -788,6 +804,9 @@ function M.new(deps)
     quote.units, quote.slots, quote.kg, quote.pay = units, units * good.slots, units * good.kg, pay
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
       from = place.id, to = destination.id, drivenKm = 0, drop = location.copy(job.drop) }
+    -- The trailer is filled first; a part load leaves the car empty before the trailer.
+    local inTrailer = math.min(quote.trailerUnits or 0, units)
+    if inTrailer > 0 then self.load.trailerUnits = inTrailer end
     self.abandonArmed = false
     if job.contract then return self:takeContract(job, good, quote) end
     self:applyWeight()
@@ -889,6 +908,8 @@ function M.new(deps)
   function c:deliveryProblem(place)
     if not self.load or not place then return 'You have no job to deliver.' end
     if place.id ~= self.load.to then return nil end
+    local trailerProblem = self:trailerDeliveryProblem()
+    if trailerProblem then return trailerProblem end
     local needed = jobs.drivenNeeded(places.get(self.load.from), place)
     if self.load.drivenKm * 1000 < needed then
       return 'Drive it here: you have driven ' .. string.format('%.1f', self.load.drivenKm) .. ' km of the '
@@ -917,6 +938,8 @@ function M.new(deps)
     end
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    local trailerProblem = self:trailerDeliveryProblem()
+    if trailerProblem then return trailerProblem end
     local needed = jobs.drivenNeeded(section and section.start or load.pickup or places.get(load.from), load.drop)
     if section and section.driveKm then needed = math.max(needed, section.driveKm * 1000) end
     if load.drivenKm * 1000 < needed then
@@ -1210,6 +1233,7 @@ function M.new(deps)
     self:watchBeacon(dt)
     self:watchParts()
     self:watchPartsBill()
+    self:watchTrailer()
     self:afterRespawn()
     self:watchFuel()
     self:watchInsurance()
@@ -1528,6 +1552,7 @@ function M.new(deps)
         used = self.pendingCar.used and { km = self.pendingCar.used.km, newPrice = self.pendingCar.used.newPrice } or nil,
       } or nil,
       usedCars = self:usedCarsView(),
+      trailer = self:trailerView(),
       buyCarAllowed = self:buyCarAllowed(),
       revertCarAllowed = self.pendingCar ~= nil,
       carFeedback = self.carFeedback,
@@ -1599,6 +1624,12 @@ function M.new(deps)
       self.diag:event('manual_save_rejected', 'not_arrived', 'W')
       return false
     end
+    local trailerProblem = self:trailerSaveProblem()
+    if trailerProblem then
+      self.feedback = trailerProblem
+      self.diag:event('manual_save_rejected', 'trailer_unhitched', 'W')
+      return false
+    end
     -- Read the vehicle position at click time so the saved location is current.
     local fresh = self.adapter:sample()
     if not fresh.valid or not location.valid(fresh) then
@@ -1619,6 +1650,7 @@ function M.new(deps)
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres,
         value = self:savedVehicleUsed() and self.ownedParts.value or nil, km = self:savedVehicleUsed() and self.ownedParts.km or nil },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
+      trailer = self:savedTrailer(),
       beacon = self.beacon and { pickup = location.copy(self.beacon.pickup), drop = location.copy(self.beacon.drop),
         line = self.beacon.line, left = math.ceil(self.beacon.left) } or nil,
     })
@@ -1651,6 +1683,7 @@ function M.new(deps)
       and not self.stranded and not self.booking and not self.hire and not self.onFoot
       and not self.pendingParts and not self.pendingCar and not self.insurancePending
       and not self.refuelPending and not self.respawned and not self.partsCheckDue
+      and not self:trailerSaveProblem()
       and sample and sample.valid and self.odometer:stopped()
     if not settled then due.since = nil; return end
     due.since = due.since or self.clock
@@ -1788,6 +1821,20 @@ function M.buyUsedCar(slot)
   if type(slot) ~= 'number' or slot ~= math.floor(slot) or slot < 1 or slot > 9 then return false end
   return safely(function() return ensure():buyUsedCar(slot) end)
 end
+function M.openTrailers(open) return safely(function() return ensure():openTrailers(open == true) end) end
+-- index is the trailer's place in the Buy new trailer list, from 1.
+function M.buyTrailer(index)
+  if type(index) ~= 'number' or index ~= math.floor(index) or index < 1 or index > 999 then return false end
+  return safely(function() return ensure():buyTrailer(index) end)
+end
+function M.storeTrailer() return safely(function() return ensure():storeTrailer() end) end
+function M.cancelStoreTrailer() return safely(function() return ensure():cancelStoreTrailer() end) end
+function M.bringOutTrailer() return safely(function() return ensure():bringOutTrailer() end) end
+function M.sellTrailer() return safely(function() return ensure():sellTrailer() end) end
+function M.repairTrailer() return safely(function() return ensure():repairTrailer() end) end
+-- The game calls these when two vehicles couple or uncouple, such as a car and its trailer.
+function M.onCouplerAttached(a, b) return safely(function() if active then active:couplerChanged(a, b, true) end end) end
+function M.onCouplerDetached(a, b) return safely(function() if active then active:couplerChanged(a, b, false) end end) end
 function M.newGame() return safely(function() return ensure():newGame() end) end
 function M.cancelNewGame() return safely(function() return ensure():cancelNewGame() end) end
 function M.startHere() return safely(function() return ensure():startHere() end) end

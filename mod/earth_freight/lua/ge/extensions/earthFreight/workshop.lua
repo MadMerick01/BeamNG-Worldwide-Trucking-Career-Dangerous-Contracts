@@ -374,6 +374,8 @@ function M.attach(c)
   function c:vehicleSpawned(vehicleId)
     -- Getting out spawns the walking mode's unicycle: the car is left as it was.
     if vehicleId ~= nil and self.garage and self.garage.isWalker and self.garage:isWalker(vehicleId) then return end
+    -- The player's trailer coming out is not a change to their car.
+    if self.trailerSpawning or (vehicleId ~= nil and self.trailerOut and vehicleId == self.trailerOut.id) then return end
     self.partsCheckDue, self.respawned, self.wearDue = true, true, true
     if self.secondHand then self.secondHand.spawned = true end
   end
@@ -871,8 +873,12 @@ function M.attach(c)
     if not self.load then return true end
     local space = cargo.capacity(snapshot)
     local good = goods.get(self.load.good)
-    if good and good.kind == 'fluid' then return self.load.slots <= space.litres and self.load.kg <= space.tankKg end
-    return self.load.slots <= space.slots and self.load.kg <= space.kg
+    -- What is in the trailer does not need room in the car.
+    local inTrailer = good and (self.load.trailerUnits or 0) or 0
+    local slots = self.load.slots - inTrailer * (good and good.slots or 0)
+    local kg = self.load.kg - inTrailer * (good and good.kg or 0)
+    if good and good.kind == 'fluid' then return slots <= space.litres and kg <= space.tankKg end
+    return slots <= space.slots and kg <= space.kg
   end
 
   function c:buyPartsAllowed()

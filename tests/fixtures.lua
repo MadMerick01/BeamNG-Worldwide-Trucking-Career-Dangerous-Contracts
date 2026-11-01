@@ -79,7 +79,8 @@ function F.garage()
     self.vehicleId, self.model, self.fitted, self.damage = id, car.model, car.fitted, car.damage
     return true
   end
-  function g:inspect()
+  function g:inspect(id)
+    if id ~= nil and self.trailers[id] then return { id = id, damage = self.trailers[id].damage } end
     if self.unreadable then return nil, 'damage_unavailable' end
     return { id = self.vehicleId, damage = self.damage }
   end
@@ -114,7 +115,21 @@ function F.garage()
     { model = 'pickup', key = 'd15', config = 'vehicles/pickup/d15.pc', name = 'Pickup D15', value = 20000, type = 'Truck', source = 'BeamNG - Official' },
     { model = 'flatbed', key = 'long', config = 'vehicles/flatbed/long.pc', name = 'Flatbed', value = 5000, type = 'Trailer', source = 'BeamNG - Official' },
     { model = 'modcar', key = 'x', config = 'vehicles/modcar/x.pc', name = 'Mod car', value = 1000, type = 'Car', source = 'Mod' },
+    { model = 'tanker', key = 'fuel', config = 'vehicles/tanker/fuel.pc', name = 'Fuel tanker', value = 30000, type = 'Trailer', source = 'BeamNG - Official' },
   }
+  -- Trailers: spawnTrailer puts one behind the car with an id from 500; storage is its containers.
+  g.trailers, g.nextTrailerId, g.removed = {}, 500, {}
+  g.storage = { { kind = 'parcel', capacity = 100 } }
+  function g:spawnTrailer(model, config)
+    if self.trailerFails then return nil, 'spawn_failed' end
+    local id = self.nextTrailerId
+    self.nextTrailerId = id + 1
+    self.trailers[id] = { model = model, config = config, damage = 0 }
+    return id
+  end
+  function g:exists(id) return self.trailers[id] ~= nil end
+  function g:removeVehicle(id) self.trailers[id] = nil; self.removed[#self.removed + 1] = id; return true end
+  function g:cargoStorage() return F.copy(self.storage) end
   g.configParts = { ['vehicles/sport/gt.pc'] = { engine = 'sport_engine' }, ['vehicles/pickup/d15.pc'] = { engine = 'pickup_engine_v8' } }
   function g:configs() return self.configList end
   g.wears = {}
@@ -171,6 +186,8 @@ end
 function F.cargo()
   local c = { weights = {}, tankReads = 0 }
   function c:setWeight(kg, parts, fluid) self.weights[#self.weights + 1] = { kg = kg, parts = F.copy(parts), fluid = F.copy(fluid) }; return true end
+  c.trailerWeights = {}
+  function c:setWeightOn(id, kg, parts, fluid) self.trailerWeights[#self.trailerWeights + 1] = { id = id, kg = kg, fluid = F.copy(fluid) }; return true end
   function c:readTanks() self.tankReads = self.tankReads + 1; return true end
   return c
 end
