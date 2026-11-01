@@ -481,6 +481,16 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.buyUsedCar = function (offer) {
         if (offer && offer.allowed && [1, 2, 3, 4, 5, 6, 7, 8, 9].indexOf(offer.slot) >= 0) core('buyUsedCar(' + offer.slot + ')')
       }
+      // Trailer: Buy new trailer opens the list; a trailer is picked by its place in it.
+      scope.openTrailers = function (open) { core('openTrailers(' + (open ? 'true' : 'false') + ')') }
+      scope.buyTrailer = function (offer) {
+        if (offer && offer.allowed && Number.isInteger(offer.index) && offer.index >= 1 && offer.index <= 999) core('buyTrailer(' + offer.index + ')')
+      }
+      scope.storeTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeAllowed) core('storeTrailer()') }
+      scope.cancelStoreTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeArmed) core('cancelStoreTrailer()') }
+      scope.bringOutTrailer = function () { if (scope.data.trailer && scope.data.trailer.bringOutAllowed) core('bringOutTrailer()') }
+      scope.sellTrailer = function () { if (scope.data.trailer && scope.data.trailer.sellAllowed) core('sellTrailer()') }
+      scope.repairTrailer = function () { if (scope.data.trailer && scope.data.trailer.repairAllowed) core('repairTrailer()') }
       // Open the game's own parts menu (Ctrl+W) and car selector (Ctrl+E); the bill then shows up on the Garage tab.
       scope.openPartsMenu = function () {
         if (scope.data.garageLocked) return

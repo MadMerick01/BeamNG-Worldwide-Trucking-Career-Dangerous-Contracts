@@ -81,6 +81,28 @@ test('Buy second hand opens the list, and a car is only bought by its slot when 
   a.scope.buyUsedCar({ slot: 2, allowed: true }); assert.equal(a.commands.at(-1), fixed('buyUsedCar(2)'))
 })
 
+test('Trailer buttons only call Lua when it allows them, and a trailer is bought by its place in the list', () => {
+  const a = app()
+  a.scope.openTrailers(true); assert.equal(a.commands.at(-1), fixed('openTrailers(true)'))
+  let count = a.commands.length
+  a.scope.buyTrailer({ index: 1, allowed: false }); a.scope.buyTrailer({ index: '1); x(', allowed: true })
+  a.scope.buyTrailer({ index: 1.5, allowed: true }); a.scope.buyTrailer(null)
+  assert.equal(a.commands.length, count, 'refused unless allowed, with a whole index')
+  a.scope.buyTrailer({ index: 3, allowed: true }); assert.equal(a.commands.at(-1), fixed('buyTrailer(3)'))
+  const buttons = {
+    storeTrailer: ['storeAllowed', 'storeTrailer()'], cancelStoreTrailer: ['storeArmed', 'cancelStoreTrailer()'],
+    bringOutTrailer: ['bringOutAllowed', 'bringOutTrailer()'], sellTrailer: ['sellAllowed', 'sellTrailer()'],
+    repairTrailer: ['repairAllowed', 'repairTrailer()']
+  }
+  for (const [name, [flag, body]] of Object.entries(buttons)) {
+    count = a.commands.length
+    a.state({ state: 'READY', trailer: {} }); a.scope[name]()
+    assert.equal(a.commands.length, count, name + ' refused when not allowed')
+    a.state({ state: 'READY', trailer: { [flag]: true } }); a.scope[name]()
+    assert.equal(a.commands.at(-1), fixed(body), name)
+  }
+})
+
 test('paying a bill asks to confirm that total, and a new total asks again', () => {
   const a = app()
   a.state({ state: 'READY', partsChange: { cost: 500 }, buyPartsAllowed: true })

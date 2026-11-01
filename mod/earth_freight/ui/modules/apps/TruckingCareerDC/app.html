@@ -396,6 +396,48 @@
             <div>Tank: <span ng-if="data.space.litres > 0">{{data.space.tanks.join(', ')}} &middot; {{data.space.litres | number:0}} L</span><span ng-if="!(data.space.litres > 0)">none. Press Buy parts, fit a Cargo Load fluid tank and pay for it here to take water and fuel jobs.</span></div>
           </div>
         </div>
+        <div ng-if="!data.carChange && !data.partsChange && !data.usedCars && data.trailer" class="ef-sec" ng-class="{'ef-need': data.trailer.storeArmed || (data.trailer.owned && data.trailer.owned.out && !data.trailer.owned.hitched)}">
+          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('trailer')" aria-expanded="{{isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Trailer</div><span class="ef-sum"><span ng-if="!data.trailer.owned">none</span><span ng-if="data.trailer.owned">{{data.trailer.owned.name}} &middot; <span ng-if="data.trailer.owned.stored">in the garage</span><span ng-if="data.trailer.owned.out && data.trailer.owned.hitched">hitched</span><span ng-if="data.trailer.owned.out && !data.trailer.owned.hitched" style="color:#f2c94c;">not hitched</span></span></span></div></div>
+          <div ng-if="isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed)" class="ef-sb" style="font-size:13px;">
+            <div ng-if="!data.trailer.owned && !data.trailer.open">
+              <div style="color:#c9d6d2;">A trailer adds cargo space. Jobs fill the trailer first, then your car. You need the right hitch on your car for it: fit one with Buy parts.</div>
+              <button type="button" ng-click="openTrailers(true)" ng-disabled="data.garageLocked" ng-style="{opacity: data.garageLocked ? 0.5 : 1}" style="margin-top:4px;padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy new trailer</button>
+            </div>
+            <div ng-if="!data.trailer.owned && data.trailer.open">
+              <div style="display:flex;gap:8px;align-items:baseline;"><span style="flex:1;min-width:0;font-weight:bold;color:#a7e5c9;">New trailers</span><button type="button" ng-click="openTrailers(false)" style="padding:3px 10px;">Close</button></div>
+              <div style="font-size:12px;color:#7d8b88;">Every trailer in the game. Check it suits your hitch before you buy: small trailers take a ball hitch, semi trailers a fifth wheel.</div>
+              <div ng-if="data.trailer.offers.length === 0" style="margin-top:6px;color:#c9d6d2;">No trailers found.</div>
+              <div style="max-height:260px;overflow-y:auto;">
+                <div ng-repeat="offer in data.trailer.offers track by offer.index" style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(167,229,201,.3);align-items:center;">
+                  <img ng-if="offer.preview" ng-src="{{offer.preview}}" alt="" style="width:72px;height:40px;object-fit:cover;border-radius:4px;flex:none;">
+                  <div style="flex:1;min-width:0;"><div style="font-weight:bold;overflow-wrap:anywhere;">{{offer.name}}</div><div>${{offer.price | number:0}}<span ng-if="offer.short" style="color:#eb5757;"> &middot; ${{offer.short | number:0}} short</span></div></div>
+                  <button type="button" ng-click="buyTrailer(offer)" ng-disabled="!offer.allowed" ng-style="offer.allowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="flex:none;padding:5px 10px;border:1px solid #568d7a;border-radius:4px;">Buy</button>
+                </div>
+              </div>
+              <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Buy pays straight away and puts the trailer behind your car.</div>
+            </div>
+            <div ng-if="data.trailer.owned">
+              <div>Your {{data.trailer.owned.name}}, bought for ${{data.trailer.owned.paid | number:0}}.</div>
+              <div ng-if="data.trailer.owned.out && data.trailer.owned.space" style="color:#c9d6d2;">Cargo: {{data.trailer.owned.space.slots}} slots &middot; {{data.trailer.owned.space.kg | number:0}} kg<span ng-if="data.trailer.owned.space.litres > 0"> &middot; {{data.trailer.owned.space.litres | number:0}} L tank</span><span ng-if="!(data.trailer.owned.space.slots > 0) && !(data.trailer.owned.space.litres > 0)">: none for our jobs</span>.</div>
+              <div ng-if="data.trailer.owned.out && data.trailer.owned.hitched" style="color:#6fcf97;">Hitched. Jobs fill it first, then your car.</div>
+              <div ng-if="data.trailer.owned.out && !data.trailer.owned.hitched" style="color:#f2c94c;">Not hitched. Back up to it slowly and it hitches itself, or use the game's couple key. It adds no cargo space until it is hitched<span ng-if="data.trailer.owned.loaded">, and you can't deliver until it is</span>.</div>
+              <div ng-if="data.trailer.owned.stored" style="color:#c9d6d2;">In the garage. Bring it out anywhere, any time, for free.</div>
+              <div ng-if="data.trailer.owned.repair">Repair needed: ${{data.trailer.owned.repair | number:0}}<span ng-if="data.trailer.owned.out && !(data.trailer.owned.owed > 0)">, once it is stored</span>.</div>
+              <div ng-if="data.trailer.storeArmed" style="margin-top:4px;color:#eb5757;font-weight:bold;">Storing your trailer now loses your whole load and costs the abandon fee.</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                <button type="button" ng-if="data.trailer.owned.out" ng-click="storeTrailer()" ng-disabled="!data.trailer.storeAllowed" ng-style="data.trailer.storeArmed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="padding:5px 12px;">{{data.trailer.storeArmed ? 'Confirm store' : 'Store trailer'}}</button>
+                <button type="button" ng-if="data.trailer.storeArmed" ng-click="cancelStoreTrailer()" style="padding:5px 12px;">Keep it out</button>
+                <button type="button" ng-if="data.trailer.owned.stored" ng-click="bringOutTrailer()" ng-disabled="!data.trailer.bringOutAllowed" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Bring out</button>
+                <button type="button" ng-if="data.trailer.owned.owed > 0" ng-click="repairTrailer()" ng-disabled="!data.trailer.repairAllowed" style="padding:5px 12px;">Repair trailer &middot; ${{data.trailer.owned.owed | number:0}}</button>
+                <button type="button" ng-if="data.trailer.owned.stored" ng-click="sellTrailer()" ng-disabled="!data.trailer.sellAllowed" ng-style="data.trailer.sellArmed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:5px 12px;">{{data.trailer.sellArmed ? 'Confirm sale' : 'Sell'}} &middot; ${{data.trailer.owned.sale | number:0}}</button>
+              </div>
+              <div ng-if="data.trailer.owned.stored" style="margin-top:4px;font-size:12px;color:#7d8b88;">Sell pays 75% of what you paid, less any repair it needs.</div>
+            </div>
+            <div ng-if="data.trailer.foreign" style="margin-top:4px;color:#f2c94c;">The trailer you are towing isn't yours, so it adds no cargo space. Buy one with Buy new trailer.</div>
+            <div ng-if="data.trailer.problem && (data.trailer.open || (data.trailer.owned && data.trailer.owned.stored))" style="margin-top:4px;color:#f2c94c;">{{data.trailer.problem}}</div>
+            <div ng-if="data.trailer.feedback" role="status" style="margin-top:4px;">{{data.trailer.feedback}}</div>
+          </div>
+        </div>
         <div ng-if="(!data.carChange && !data.partsChange) || data.repairOwed > 0 || data.puncture
           || (data.partsChange && data.balance < data.partsChange.cost) || (data.carChange && data.balance < data.carChange.cost)" class="ef-sec" ng-class="{'ef-need': data.repairOwed > 0 || data.puncture}">
           <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('repair')" aria-expanded="{{isOpen('repair', data.repairOwed > 0 || data.puncture)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('repair', data.repairOwed > 0 || data.puncture) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Repair</div><span class="ef-sum"><span ng-if="data.repairOwed > 0">${{data.repairOwed | number:0}} owed</span><span ng-if="!(data.repairOwed > 0) && data.puncture" style="color:#eb5757;">puncture</span><span ng-if="!(data.repairOwed > 0) && !data.puncture && data.repairQuote != null">quote ${{data.repairQuote | number:0}}</span><span ng-if="!(data.repairOwed > 0) && !data.puncture && data.repairQuote == null">get a quote</span></span></div></div>

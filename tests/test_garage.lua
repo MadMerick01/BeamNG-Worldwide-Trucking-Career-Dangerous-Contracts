@@ -200,4 +200,34 @@ T.eq(types.flatbed, 'Trailer', 'trailer type from the model'); T.eq(types.cones,
 T.eq(types.pickup, 'Truck', 'the config type kept')
 local U = require('earthFreight/usedCars')
 T.eq(#U.candidates(G.new(typedEnv):configs()), 1, 'only the truck is for sale')
+-- Trailers: spawned behind the car facing the same way, nose to its tail; containers read by type.
+do
+  local function box(length) return { getHalfExtents = function() return { x = 1, y = length / 2, z = 1 } end } end
+  local commands, spawned, teleported = {}, nil, nil
+  local car = { getID = function() return 7 end, getPosition = function() return { x = 0, y = 0, z = 10 } end,
+    getDirectionVector = function() return { x = 0, y = 1, z = 0 } end, getSpawnWorldOOBB = function() return box(4) end,
+    queueLuaCommand = function(_, c) commands[#commands + 1] = 'car:' .. c end }
+  local trailer = { getID = function() return 42 end, getSpawnWorldOOBB = function() return box(8) end,
+    queueLuaCommand = function(_, c) commands[#commands + 1] = 'trailer:' .. c end }
+  local tg = G.new(env({
+    vehicle = function() return car end,
+    objectById = function(id) return id == 42 and trailer or nil end,
+    point = function(x, y, z) return { x = x, y = y, z = z } end,
+    upright = function(dir) return dir end,
+    vehicles = function() return { spawnNewVehicle = function(model, options) spawned = { model = model, options = options }; return trailer end } end,
+    spawn = function() return { safeTeleport = function(veh, pos) teleported = pos end } end,
+    manager = function() return { getVehicleData = function(id)
+      return id == 42 and { config = {}, vdata = { cargoStorage = {
+        { capacity = 60, cargoTypes = { 'parcel' } }, { capacity = 800, cargoTypes = { 'fluid' } },
+        { capacity = 5, cargoTypes = { 'unknown' } }, { capacity = 0 / 0, cargoTypes = { 'parcel' } } } } } or nil end } end,
+  }))
+  T.eq(tg:spawnTrailer('flatbed', 'vehicles/flatbed/long.pc'), 42, 'the trailer spawned')
+  T.eq(spawned.options.config, 'vehicles/flatbed/long.pc', 'its config'); T.eq(spawned.options.autoEnterVehicle, false, 'the player stays in the car')
+  T.near(teleported.y, -(2 + G.TRAILER_GAP + 4), 1e-9, 'nose up to the car tail'); T.eq(teleported.x, 0, 'straight behind')
+  T.check(commands[1]:find('activateAutoCoupling') and commands[2]:find('activateAutoCoupling'), 'both asked to couple')
+  local storage = tg:cargoStorage(42)
+  T.eq(#storage, 2, 'parcel and fluid containers kept'); T.eq(storage[1].kind, 'parcel', 'parcel'); T.eq(storage[2].capacity, 800, 'tank litres')
+  T.check(tg:exists(42) and not tg:exists(43), 'knows which vehicles exist')
+  T.eq(select(2, G.new(env()):spawnTrailer('x', 'y')), 'spawn_unavailable', 'no spawn function, no trailer')
+end
 T.done('garage')

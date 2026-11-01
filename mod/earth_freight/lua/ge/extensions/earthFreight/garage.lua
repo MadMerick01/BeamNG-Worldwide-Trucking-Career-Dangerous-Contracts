@@ -467,6 +467,112 @@ function M.new(environment)
     return g:repair(config)
   end
 
+  -- Trailers. The player's trailer is a vehicle of its own, spawned behind their car. Every call is
+  -- guarded: a missing or changed game function makes it fail without touching the money.
+
+  -- The length of a vehicle, in metres, from its bounding box; nil when unreadable.
+  local function length(vehicle)
+    local ok, l = pcall(function()
+      local box = vehicle:getSpawnWorldOOBB()
+      local half = box:getHalfExtents()
+      return math.max(half.x, half.y) * 2
+    end)
+    return ok and type(l) == 'number' and l == l and l > 0 and l < 100 and l or nil
+  end
+
+  -- How far behind the car a trailer is put down, between the car's tail and the trailer's nose.
+  M.TRAILER_GAP = 1
+  -- A trailer whose length cannot be read is put this far behind the car's middle.
+  M.TRAILER_BACK = 12
+
+  -- Spawns a trailer config (a .pc path) behind the player vehicle, facing the same way, and asks
+  -- both to couple once it is close. The player stays in their car. Returns the trailer's id once
+  -- the game spawned it.
+  function g:spawnTrailer(model, config)
+    local car = current()
+    if not car then return nil, 'vehicle_required' end
+    local vehicles = env.vehicles()
+    if type(vehicles) ~= 'table' or type(vehicles.spawnNewVehicle) ~= 'function' then return nil, 'spawn_unavailable' end
+    local ok, result = pcall(function()
+      local dir, at = car:getDirectionVector(), car:getPosition()
+      local dx, dy = dir.x, dir.y
+      local size = math.sqrt(dx * dx + dy * dy)
+      if size < 1e-3 then dx, dy, size = 0, 1, 1 end
+      dx, dy = dx / size, dy / size
+      local back = M.TRAILER_BACK
+      local rotation = env.upright(env.point(dx, dy, 0))
+      local trailer = vehicles.spawnNewVehicle(model, { config = config, pos = env.point(at.x - dx * back, at.y - dy * back, at.z + 0.5),
+        rot = rotation, autoEnterVehicle = false, cling = true })
+      if not trailer then return nil end
+      -- Now its length is known: nose up to the car's tail, with a small gap.
+      local carLength, trailerLength = length(car), length(trailer)
+      if carLength and trailerLength then
+        back = carLength / 2 + M.TRAILER_GAP + trailerLength / 2
+        local spawn = env.spawn()
+        if type(spawn) == 'table' and type(spawn.safeTeleport) == 'function' then
+          spawn.safeTeleport(trailer, env.point(at.x - dx * back, at.y - dy * back, at.z), rotation)
+        end
+      end
+      return trailer:getID()
+    end)
+    if not ok then return nil, 'spawn_failed', tostring(result) end
+    if result == nil then return nil, 'spawn_failed' end
+    -- If the game put the player in the trailer anyway, back to the car.
+    local _, nowId = current()
+    if nowId == result then pcall(env.enter, car) end
+    g:hitch(result)
+    return result
+  end
+
+  -- Asks the trailer and the player vehicle to couple as soon as their hitches touch, as the game's
+  -- couple key does. Returns true once asked.
+  function g:hitch(trailerId)
+    local car = current()
+    local found, trailer = pcall(env.objectById, trailerId)
+    if not car or not found or not trailer then return false end
+    local command = 'if beamstate and beamstate.activateAutoCoupling then beamstate.activateAutoCoupling() end'
+    pcall(function() trailer:queueLuaCommand(command) end)
+    pcall(function() car:queueLuaCommand(command) end)
+    return true
+  end
+
+  -- Whether a vehicle with this id is still in the world.
+  function g:exists(id)
+    if id == nil then return false end
+    local ok, vehicle = pcall(env.objectById, id)
+    return ok and vehicle ~= nil
+  end
+
+  -- Takes the vehicle with this id out of the world. Returns true once it is gone.
+  function g:removeVehicle(id)
+    local ok, vehicle = pcall(env.objectById, id)
+    if not ok or not vehicle then return true end
+    local done = pcall(function() vehicle:delete() end)
+    return done
+  end
+
+  -- The cargo containers of a vehicle (its jbeam's cargoStorage): a list of { kind, capacity },
+  -- kind being 'parcel', 'fluid' or 'dryBulk'. Empty when there are none or they are unreadable.
+  function g:cargoStorage(id)
+    local data = vehicleData(id)
+    local storage = data and type(data.vdata) == 'table' and data.vdata.cargoStorage or nil
+    local out = {}
+    for _, c in pairs(type(storage) == 'table' and storage or {}) do
+      local capacity = type(c) == 'table' and tonumber(c.capacity) or nil
+      if capacity and capacity == capacity and capacity > 0 and capacity < 1e6 then
+        local kind
+        for _, t in pairs(type(c.cargoTypes) == 'table' and c.cargoTypes or {}) do
+          local text = type(t) == 'string' and t:lower() or ''
+          if text:find('fluid', 1, true) then kind = 'fluid'
+          elseif text:find('bulk', 1, true) then kind = kind or 'dryBulk'
+          elseif text:find('parcel', 1, true) then kind = kind or 'parcel' end
+        end
+        if kind then out[#out + 1] = { kind = kind, capacity = capacity } end
+      end
+    end
+    return out
+  end
+
   -- Puts the player back in the vehicle with this id, if it still exists.
   function g:enter(id)
     local ok, vehicle = pcall(env.objectById, id)

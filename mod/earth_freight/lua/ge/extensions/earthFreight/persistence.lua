@@ -2,6 +2,7 @@
 -- Copied from Enduro: the slots, validation and vehicle config copy are the same, and the schema
 -- holds Earth Freight's money, vehicle and current load.
 local location = require('earthFreight/location')
+local trailers = require('earthFreight/trailers')
 local M = { DIRECTORY = '/settings/earthFreight/', SCHEMA = 1 }
 local MAX_INTEGER = 9007199254740991
 
@@ -110,12 +111,14 @@ local function load(l)
   if l.drop ~= nil and not drop(l.drop) then return nil end
   if l.pickup ~= nil and (not drop(l.pickup) or l.drop == nil) then return nil end
   if l.beacon ~= nil and (l.beacon ~= true or l.pickup == nil) then return nil end
+  -- How many of the units are in the player's trailer.
+  if l.trailerUnits ~= nil and (not integer(l.trailerUnits, 1) or not integer(l.units, 1) or l.trailerUnits > l.units) then return nil end
   if l.contract ~= nil and (type(l.contract) ~= 'string' or not optionalString(l.contract) or l.drop == nil
       or (l.started ~= nil and type(l.started) ~= 'boolean') or (l.fee ~= nil and not integer(l.fee, 0))) then return nil end
   return { good = l.good, units = l.units, slots = l.slots, kg = l.kg or 0, pay = l.pay, paid = l.paid,
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
-    pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon }
+    pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits }
 end
 
 -- A "don't ask questions" job found and not yet picked up: its pickup and drop spots, which line
@@ -183,6 +186,12 @@ function M.validate(s)
     found = beacon(s.beacon)
     if not found then return nil, 'invalid_beacon' end
   end
+  -- The trailer owned, out (hitched) or stored in the garage.
+  local trailer = nil
+  if s.trailer ~= nil then
+    trailer = trailers.clean(s.trailer)
+    if not trailer then return nil, 'invalid_trailer' end
+  end
   local recent = nil
   if s.needs ~= nil then
     recent = needs(s.needs)
@@ -194,6 +203,7 @@ function M.validate(s)
     vehicle = { model = s.vehicle.model, configuration = s.vehicle.configuration, config = vehicleConfig,
       damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres, value = s.vehicle.value, km = s.vehicle.km },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
+    trailer = trailer,
   }
 end
 
@@ -259,6 +269,7 @@ function M.new(io)
       progression = candidate.progression, vehicle = candidate.vehicle,
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
+      trailer = candidate.trailer,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

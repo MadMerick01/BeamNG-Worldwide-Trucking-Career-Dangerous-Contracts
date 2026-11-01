@@ -100,7 +100,7 @@ function M.partsFor(space, good)
 end
 
 local function defaults()
-  return { player = function() return getPlayerVehicle(0) end }
+  return { player = function() return getPlayerVehicle(0) end, byId = function(id) return getObjectByID(id) end }
 end
 
 -- Runs inside the car. Finds the car's fluid containers: the cargoStorage entries of its jbeam
@@ -242,8 +242,10 @@ function M.new(environment)
   local env = environment or defaults()
   local c = {}
 
-  local function send(build)
-    local okVehicle, vehicle = pcall(env.player)
+  -- Sends a command to the player car, or to the vehicle with vehicleId (the trailer).
+  local function send(build, vehicleId)
+    local okVehicle, vehicle
+    if vehicleId ~= nil then okVehicle, vehicle = pcall(env.byId, vehicleId) else okVehicle, vehicle = pcall(env.player) end
     if not okVehicle or not vehicle then return false, 'vehicle_required' end
     local idOK, id = pcall(function() return vehicle:getID() end)
     local ok, why = pcall(function() vehicle:queueLuaCommand(build(idOK and type(id) == 'number' and tostring(id) or 'nil')) end)
@@ -262,6 +264,17 @@ function M.new(environment)
       return 'local id, tanks, parts = ' .. id .. ', ' .. partSet(fluid.tanks) .. ', ' .. partSet(parts) .. '\n'
         .. CONTAINERS .. string.format(LOAD, number(kg), number(fluid.litres), number(fluid.density or 1))
     end)
+  end
+
+  -- The same for the player's trailer, by its vehicle id: a trailer's fluid containers are found by
+  -- their cargo types, and other loads spread over the trailer when parts names none of its parts.
+  function c:setWeightOn(vehicleId, kg, parts, fluid)
+    if vehicleId == nil then return false, 'vehicle_required' end
+    fluid = type(fluid) == 'table' and fluid or {}
+    return send(function(id)
+      return 'local id, tanks, parts = ' .. id .. ', ' .. partSet(fluid.tanks) .. ', ' .. partSet(parts) .. '\n'
+        .. CONTAINERS .. string.format(LOAD, number(kg), number(fluid.litres), number(fluid.density or 1))
+    end, vehicleId)
   end
 
   -- Asks the player car how many litres its fluid containers hold; the answer comes back through
