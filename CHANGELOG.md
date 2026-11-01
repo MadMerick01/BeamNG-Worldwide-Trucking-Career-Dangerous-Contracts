@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 116 · 1 Nov 2026
+
 - **Trailers are here.** On the Garage tab, open the new **Trailer** section and press **Buy new trailer** to see every trailer in the game at its full price. Pick one, press **Buy**, and it's paid for straight away and put down behind your car. Back up to it slowly and it hitches itself, or use the game's couple key. You can own one trailer at a time.
 - You need the right hitch on your car to pull a trailer. Small trailers take a ball hitch and semi trailers a fifth wheel. Fit one with **Buy parts** like any other part.
 - While your trailer is hitched, its cargo space adds to your car's, and jobs on the Town tab fill the trailer first, then your car. The trailer carries the weight, so a full trailer really pulls. A trailer that isn't hitched adds no space, and if part of your job is in it you can't deliver until you hitch it again. Dangerous contracts only load your car, because their teleport leaves the trailer behind.
