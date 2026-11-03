@@ -602,6 +602,7 @@ function M.attach(c)
   end
 
   -- Pay on the parts bill box. Only pays the bill the box showed; says how it went in a corner pop-up.
+  -- Once paid, the game's parts menu closes and the player is back driving the car.
   function c:payPartsBill(serial)
     if not self.partsBill or self.partsBill.serial ~= serial then
       self:toast('warning', 'Parts bill', 'The bill changed. Check the new one and pay again.')
@@ -609,6 +610,7 @@ function M.attach(c)
     end
     local ok = self:buyParts()
     self:toast(ok and 'success' or 'warning', 'Parts bill', self.partsFeedback or 'Could not pay. Try again on the Garage tab.')
+    if ok and self.trigger then pcall(self.trigger, 'ChangeState', { state = 'play', params = {} }) end
     return ok
   end
 

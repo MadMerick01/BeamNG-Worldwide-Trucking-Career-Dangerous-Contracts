@@ -687,10 +687,11 @@ end
 do
   local Workshop = require('earthFreight/workshop')
   local c, _, _, g = F.controller()
-  local bills, toasts = {}, {}
+  local bills, toasts, states = {}, {}, {}
   c.trigger = function(name, data)
     if name == 'EarthFreightPartsBill' then bills[#bills + 1] = data end
     if name == 'toastrMsg' then toasts[#toasts + 1] = data end
+    if name == 'ChangeState' then states[#states + 1] = data end
   end
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
@@ -721,10 +722,12 @@ do
   local shown = bills[#bills]
   T.check(shown.open and shown.payAllowed, 'a bill the player can pay')
   T.check(not c:payPartsBill(shown.serial - 1), 'an older bill is not paid'); T.eq(c.profile.progression.balance, 5000, 'nothing charged')
+  T.eq(#states, 0, 'an unpaid bill leaves the parts menu open')
   local count = #bills
   T.check(c:payPartsBill(shown.serial), 'paid from the box'); T.eq(c.profile.progression.balance, 4400, 'charged the bill')
   T.check(toasts[#toasts].msg:find('Bought for $600'), 'says it was paid'); F.advance(c, 1)
   T.eq(#bills, count + 1, 'paying closes the box'); T.eq(bills[#bills].open, false, 'closed')
+  T.eq(states[#states] and states[#states].state, 'play', 'and closes the parts menu, back to the car')
 end
 
 -- Repairs are priced by the car's Value, as in Enduro.
