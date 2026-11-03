@@ -1448,4 +1448,31 @@ do
   local ok, why = P2.validate(s); T.eq(ok, nil, 'a bad price is refused'); T.eq(why, 'invalid_trailer', 'and says why')
 end
 
+-- The start page's Your truck card and career: the car once the player is in it, its worth, the
+-- repair it needs now and how far it is along the Rust Bucket to Rig line.
+do
+  local W = require('earthFreight/workshop')
+  T.eq(W.climb(W.RUST_VALUE), 0, 'the starter is a rust bucket'); T.eq(W.climb(W.RIG_VALUE), 1, 'a rig is at the end')
+  T.eq(W.climb(W.RIG_VALUE * 10), 1, 'and no further'); T.eq(W.climb(1000), 0, 'nor below the start')
+  local mid = W.climb(math.sqrt(W.RUST_VALUE * W.RIG_VALUE)); T.check(math.abs(mid - 0.5) < 1e-9, 'halfway by value on a log scale')
+  T.eq(W.climb(nil), nil, 'unknown worth, no marker'); T.eq(W.climb(0 / 0), nil, 'nor for a bad number')
+  local c, io, a, g = F.controller()
+  a.pose = F.position(-33.9, 151.2); g.starter = { engine = 'burnside_engine_i6' }
+  c:tick(0.1)
+  T.eq(c:view().car, nil, 'no card before the player is in their car')
+  T.eq(c:view().career.jobsDone, 0, 'no jobs yet'); T.eq(c:view().career.contractsDone, 0, 'no dangerous roads yet')
+  T.eq(c:view().career.contractsTotal, #contracts.LIST, 'out of every dangerous road')
+  a.pose = F.copy(F.PENRITH); c:tick(0.1); c:vehicleSpawned(); c:tick(0.1)
+  local card = c:view().car
+  T.check(card ~= nil, 'the card once in the starter car'); T.eq(card.value, 3500, 'its worth')
+  T.eq(card.repair, 0, 'no damage'); T.eq(card.preview, nil, 'no picture where the garage has none')
+  T.eq(card.climb, W.climb(3500), 'on the line by its worth')
+  g.preview = function(_, model, config) return '/vehicles/' .. model .. '/picture.jpg' end
+  T.eq(c:view().car.preview, '/vehicles/burnside/picture.jpg', 'the picture from the garage')
+  g.preview = function() error('changed') end
+  T.eq(c:view().car.preview, nil, 'a broken picture lookup leaves the card without one')
+  g.damage = 5000; c:tick(0.1)
+  T.check(c:view().car.repair > 0, 'damage shows as the repair it needs')
+end
+
 T.done('Earth Freight controller')

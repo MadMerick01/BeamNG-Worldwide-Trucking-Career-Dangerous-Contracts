@@ -192,8 +192,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           boxSize = null
         }
       }
-      scope.setMinimised = function (on) { scope.hud.minimised = !!on; store(!!on); fitBox(!!on) }
-      fitBox(scope.hud.minimised)
+      // The start page has its own window in the middle of the screen, so the box shrinks for it too.
+      var fit = function () { fitBox(!!scope.hud.minimised || !!(scope.intro && scope.intro.open)) }
+      scope.setMinimised = function (on) { scope.hud.minimised = !!on; store(!!on); fit() }
       scope.hudAlert = function (d) {
         d = d || scope.data || {}
         if (d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) return 'bad'
@@ -237,13 +238,16 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         ['heli', function (d) { return !!(d.heli && d.heli.hired) }],
         ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.startHereAllowed || !!d.stranded }]
       ]
+      var urgent = function (d) { return !!(d.partsChange || d.carChange || d.insurance || d.stranded) }
       var follow = function (previous, next) {
         // The start page opens once on a new game or on loading a save, until the player is there.
         if (next.arrived || (previous.mode && previous.mode !== next.mode)) kept.introShown = false
         if (scope.atDestination(next) && !scope.atDestination(previous)) chime()
         if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
-          kept.introShown = true; scope.openIntro(next); scope.setMinimised(false)
+          kept.introShown = true; scope.openIntro(next)
         }
+        // A bill, an insurance offer or being stranded needs the HUD, so the start page makes way.
+        if (scope.intro.open && urgent(next) && !urgent(previous)) scope.closeIntro()
         for (var i = 0; i < autoOpen.length; i++) {
           if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) {
             scope.setTab(autoOpen[i][0])
@@ -255,11 +259,17 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         }
         if (scope.tab === 'town' && !next.town) scope.setTab('route')
       }
-      // The start page: the player's name and how to play. It covers the rest of the HUD while open.
+      // The start page: the player's name, how to play, their truck and their career. It fills a big
+      // window in the middle of the screen, so it is moved onto the page body, out of the small app
+      // box, and the HUD is hidden until Back to the road. Parts bills and beacons still show over it.
       scope.intro = kept.intro
+      var startPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-start') : null
+      if (startPage && typeof document !== 'undefined' && document.body) document.body.appendChild(startPage)
+      fit()
       scope.openIntro = function (d) {
         scope.intro.name = ((d || scope.data || {}).playerName) || ''
         scope.intro.open = true
+        fit()
       }
       // Letters in any alphabet, digits, spaces, dots, apostrophes and hyphens; at most 20 of them.
       var notInName
@@ -272,8 +282,17 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var name = scope.cleanName(scope.intro.name)
         if (name !== ((scope.data && scope.data.playerName) || '')) core('setPlayerName("' + name + '")')
         scope.typing(false)
+        // On a new game the player heads for the map, then needs Start here on the HUD.
+        if (scope.intro.open && scope.firstLaunch(scope.data)) scope.setMinimised(false)
         scope.intro.open = false
+        fit()
         scope.cancelNewGame()
+      }
+      // The Rust Bucket to Rig line: where the car's marker sits, and what it says under it.
+      scope.climbAt = function (share) { return Math.round(Math.max(0, Math.min(1, Number(share) || 0)) * 100) + '%' }
+      scope.climbLabel = function (share) {
+        share = Number(share) || 0
+        return share >= 1 ? 'You drive a rig.' : share < 0.05 ? 'Still a rust bucket.' : Math.round(share * 100) + '% of the way to a rig'
       }
       // Loaded from a save and not back at it yet: the start page shows where to go.
       scope.returning = function (d) { return !!d && d.mode === 'resume' && !d.arrived && !!d.resume }
@@ -519,7 +538,12 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         if (scope.intro.open) scope.closeIntro()
         core('startHere()')
       }
-      scope.teleportToResume = function () { if (scope.data && scope.data.teleportAllowed) core('teleportToResume()') }
+      // From the start page, the page closes so the player sees the world load.
+      scope.teleportToResume = function () {
+        if (!scope.data || !scope.data.teleportAllowed) return
+        if (scope.intro.open) scope.closeIntro()
+        core('teleportToResume()')
+      }
       // ...and to the start of a dangerous contract just taken.
       scope.teleportToContract = function () {
         var load = scope.data && scope.data.load
@@ -567,6 +591,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.$on('$destroy', function () {
         disposed = true
         fitBox(false)
+        if (startPage && startPage.parentNode) startPage.parentNode.removeChild(startPage)
         scope.typing(false)
         clearInterval(heartbeat)
         mount(false)

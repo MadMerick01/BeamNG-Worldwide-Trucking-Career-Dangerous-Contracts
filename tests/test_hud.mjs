@@ -271,7 +271,7 @@ test('the Ko-fi link sits only at the bottom of the start page, opens the browse
   a.scope.openKofi()
   assert.equal(a.commands.at(-1), 'if openWebBrowser then openWebBrowser("https://ko-fi.com/madmerick") end setClipboard("https://ko-fi.com/madmerick")')
   assert.equal(a.scope.intro.kofiOpened, true)
-  const start = html.indexOf('<div ng-if="intro.open">'), rest = html.indexOf('<div ng-if="!intro.open">', start)
+  const start = html.indexOf('class="ef-start"'), rest = html.indexOf('<div ng-if="!hud.minimised && !intro.open">', start)
   const at = html.indexOf('ng-click="openKofi()"')
   assert.ok(at > start && at < rest && at > html.indexOf('ng-click="newGame()"'), 'below Start over, on the start page')
   assert.equal(html.split('openKofi()').length, 2, 'nowhere else in the HUD')
@@ -328,7 +328,7 @@ test('the start page opens once on a new game, and again after the next new game
   assert.equal(b.scope.intro.open, true, 'opens from the Profile button')
   b.scope.closeIntro(); b.state({ state: 'READY', mode: 'resume', arrived: false })
   assert.equal(b.scope.intro.open, true, 'opens again on the next load')
-  assert.ok(html.includes("firstLaunch(data) ? 'Let’s go' : 'Continue'"), 'Continue, except on a brand new game')
+  assert.ok(html.includes("firstLaunch(data) ? 'Choose my start on the map' : 'Back to the road'"), 'Back to the road, except on a brand new game')
   assert.ok(html.includes('ng-click="openIntro()"'), 'Profile button')
 })
 test('starting over lives on the start page behind a confirm, and closing the page cancels it', () => {
@@ -427,11 +427,10 @@ test('the HUD minimises to a Worldwide Trucking button, and stays that way after
   a.scope.setMinimised(false)
   assert.equal(app(storage).scope.hud.minimised, false)
   assert.equal(app().scope.hud.minimised, false, 'starts open without storage')
-  assert.ok(html.includes('ng-if="hud.minimised" ng-click="setMinimised(false)"') && html.includes('>Worldwide Trucking<'))
+  assert.ok(html.includes('ng-if="hud.minimised && !intro.open" ng-click="setMinimised(false)"') && html.includes('>Worldwide Trucking<'))
   assert.ok(html.includes('ng-click="setMinimised(true)"'), 'the header has a minimise button')
-  assert.ok(/ng-style="hud\.minimised \? \{[^}]*\} : \{height:'100%'[^}]*background:'rgba/.test(html), 'the full HUD gets its look back when reopened')
-  assert.ok(html.indexOf('ng-click="setMinimised(true)"') > html.indexOf('ng-if="!intro.open"') &&
-    html.indexOf('ng-click="setMinimised(true)"') < html.indexOf('ng-if="intro.open"'), 'hidden while the start page is open')
+  assert.ok(/ng-style="hud\.minimised \|\| intro\.open \? \{[^}]*\} : \{height:'100%'[^}]*background:'rgba/.test(html), 'the full HUD gets its look back when reopened')
+  assert.ok(html.indexOf('ng-click="setMinimised(true)"') > html.indexOf('<div ng-if="!hud.minimised && !intro.open">'), 'hidden while the start page is open')
 })
 test('a minimised HUD shrinks its box to the button, so no empty outline is left behind', () => {
   const box = { style: { width: '380px', height: '620px' } }
@@ -466,7 +465,8 @@ test('a minimised HUD lights its dot for anything waiting and opens only for wha
   }
   a.state({ state: 'READY', mode: 'free' }); a.scope.setMinimised(true)
   a.state({ state: 'READY', mode: 'start' })
-  assert.equal(a.scope.hud.minimised, false, 'the start page opens it'); assert.equal(a.scope.intro.open, true)
+  assert.equal(a.scope.intro.open, true, 'the start page opens')
+  assert.equal(a.scope.hud.minimised, true, 'over a HUD that stays minimised for after')
 })
 test('the Garage tab card has Buy parts and Buy new car buttons, and no shortcut keys are shown', () => {
   const a = app()
@@ -715,7 +715,7 @@ test('the minimised strip shows money, the job and where you are', () => {
   assert.equal(a.scope.fuelStyle({ litres: 30, capacity: 60 }).width, '50%')
   assert.equal(a.scope.fuelStyle({ litres: 5, capacity: 60 }).background, '#eb5757', 'red when nearly empty')
   assert.equal(a.scope.flashBad({ flash: { kind: 'puncture' } }), true); assert.equal(a.scope.flashBad({ flash: { kind: 'delivered' } }), false)
-  const strip = html.slice(html.indexOf('ng-if="hud.minimised"'), html.indexOf('<div ng-if="!hud.minimised">'))
+  const strip = html.slice(html.indexOf('ng-if="hud.minimised && !intro.open"'), html.indexOf('class="ef-start"'))
   for (const part of ['data.balance', 'trip(data).to', 'data.where.title', 'data.where.area', 'data.where.street', 'DELIVER HERE']) assert.ok(strip.includes(part), part)
 })
 
@@ -726,4 +726,59 @@ test('while on a job, the distance left shows big in the job card, almost as lar
   assert.ok(big > 0, 'in the job card, above the tabs')
   assert.ok(card.lastIndexOf('font-size:28px', big) > card.lastIndexOf('<div', big), 'in 28 px type, next to the 32 px money')
   assert.ok(card.includes('ng-if="trip(data).metres != null"'), 'hidden until there is a distance, such as before a dangerous contract starts')
+})
+
+test('the start page opens in a big window in the middle of the screen, with the HUD hidden until Back to the road', () => {
+  const box = { style: { width: '380px', height: '620px' } }
+  const startPage = { tag: 'div', parentNode: null }
+  const element = [{ parentElement: box, querySelector: q => (q === '.ef-start' ? startPage : null) }]
+  const a = app(undefined, element)
+  assert.equal(startPage.parentNode, a.document.body, 'moved onto the page, out of the small app box')
+  a.state({ state: 'READY', mode: 'resume', arrived: false, resume: {} })
+  assert.equal(a.scope.intro.open, true)
+  assert.deepEqual(box.style, { width: 'auto', height: 'auto' }, 'the app box shrinks while it is open')
+  a.scope.closeIntro()
+  assert.deepEqual(box.style, { width: '380px', height: '620px' }, 'and the HUD comes back')
+  a.scope.openIntro(); a.remount()
+  assert.equal(a.document.body.children.filter(c => c === startPage).length, 1, 'a rebuilt app puts back the one page')
+  a.handlers.$destroy()
+  assert.equal(startPage.parentNode, null, 'a removed app takes its page away')
+  const page = html.slice(html.indexOf('class="ef-start"'), html.indexOf('<div ng-if="!hud.minimised && !intro.open">'))
+  assert.ok(page.includes('position:fixed') && page.includes('z-index:2147483646'), 'over the game, under the parts bill and beacon boxes')
+  assert.ok(source.includes('z-index:2147483647'), 'which sit one higher')
+  for (const part of ['YOUR TRUCK', 'data.car.preview', 'data.car.name', 'data.car.value', 'data.car.repair', 'data.space.slots', 'data.trailer.owned.name',
+    'YOUR CAREER', 'data.career.jobsDone', 'data.career.contractsDone', 'climbAt(data.car.climb)', 'RUST BUCKET', 'Welcome back', 'ng-model="intro.name"',
+    'ng-click="newGame()"', 'ng-click="closeIntro()"', 'earth_freight_starter.jpg']) assert.ok(page.includes(part), part)
+})
+test('on a new game the page sends the player to the map and opens the HUD for Start here', () => {
+  const a = app()
+  a.state({ state: 'READY', mode: 'free' }); a.scope.setMinimised(true)
+  a.state({ state: 'READY', mode: 'start', arrived: false, startHereAllowed: true })
+  assert.equal(a.scope.intro.open, true)
+  a.scope.closeIntro()
+  assert.equal(a.scope.hud.minimised, false, 'Choose my start on the map opens the HUD, where Start here is')
+  const b = app()
+  b.state({ state: 'READY', mode: 'free' }); b.scope.setMinimised(true); b.scope.openIntro(); b.scope.closeIntro()
+  assert.equal(b.scope.hud.minimised, true, 'Back to the road leaves a minimised HUD minimised')
+})
+test('teleporting from the start page closes it, and a bill, insurance or being stranded closes it too', () => {
+  const a = app()
+  a.state({ state: 'READY', mode: 'resume', arrived: false, resume: {} })
+  a.scope.teleportToResume()
+  assert.equal(a.scope.intro.open, true, 'nothing happens while Lua does not allow it')
+  a.state({ state: 'READY', mode: 'resume', arrived: false, resume: {}, teleportAllowed: true })
+  a.scope.teleportToResume()
+  assert.equal(a.commands.at(-1), fixed('teleportToResume()')); assert.equal(a.scope.intro.open, false, 'closed so the world can be seen loading')
+  for (const extra of [{ partsChange: {} }, { carChange: {} }, { insurance: {} }, { stranded: {} }]) {
+    a.state({ state: 'READY', mode: 'free', arrived: true }); a.scope.openIntro()
+    a.state({ state: 'READY', mode: 'free', arrived: true, ...extra })
+    assert.equal(a.scope.intro.open, false, Object.keys(extra)[0] + ' closes the page')
+  }
+  a.scope.openIntro(); a.state({ state: 'READY', mode: 'free', arrived: true, stranded: {} })
+  assert.equal(a.scope.intro.open, true, 'opened again by the player, it stays open')
+})
+test('the Rust Bucket to Rig marker sits by the car value', () => {
+  const a = app()
+  assert.equal(a.scope.climbAt(0), '0%'); assert.equal(a.scope.climbAt(0.5), '50%'); assert.equal(a.scope.climbAt(3), '100%'); assert.equal(a.scope.climbAt('x'), '0%')
+  assert.equal(a.scope.climbLabel(0), 'Still a rust bucket.'); assert.equal(a.scope.climbLabel(0.42), '42% of the way to a rig'); assert.equal(a.scope.climbLabel(1), 'You drive a rig.')
 })
