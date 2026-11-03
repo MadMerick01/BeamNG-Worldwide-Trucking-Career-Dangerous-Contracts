@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 124 · 3 Nov 2026
+
 - **Buy new trailer now offers just two trailers built for freight**, instead of every trailer in the game (log carriers and the like). One is a small utility trailer with two XL cargo boxes for parcels, the other the same trailer with two XL fluid tanks. Both cost $6,000 and take a ball hitch. More will be added later.
 - A trailer you already own stays yours, even if it's no longer in the list, and your saves still work.
 
