@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 121 · 3 Nov 2026
+
 - **New players are now told to fit cargo boxes.** The starter car only has its boot, which holds 2 slots, so its jobs pay very little. The **How to play** steps on the start page now say to fit **Cargo Load** boxes in the rear seat slot with **Buy parts**, right after the radiator. While your car only has its boot, the **Town** tab also shows a gold line saying so, with its own **Buy parts** button. Your saves still work.
 
 ## Build 120 · 3 Nov 2026
