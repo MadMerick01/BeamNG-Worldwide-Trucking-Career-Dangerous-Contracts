@@ -87,8 +87,8 @@
             </div>
           </div>
           <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:14px;">
-            <button type="button" ng-click="closeIntro()" style="padding:9px 20px;background:#a7e5c9;color:#0c1318;font-weight:bold;font-size:16px;border:1px solid #a7e5c9;border-radius:4px;">{{firstLaunch(data) ? 'Choose my start on the map' : 'Back to the road'}}</button>
-            <div ng-if="firstLaunch(data)" style="flex:1;min-width:200px;font-size:13px;color:#c9d6d2;">This closes the page. Open the BeamNG.Earth map, teleport anywhere and press Start here on the HUD.</div>
+            <button type="button" ng-click="firstLaunch(data) ? openMap() : closeIntro()" style="padding:9px 20px;background:#a7e5c9;color:#0c1318;font-weight:bold;font-size:16px;border:1px solid #a7e5c9;border-radius:4px;">{{firstLaunch(data) ? 'Choose my start on the map' : 'Back to the road'}}</button>
+            <div ng-if="firstLaunch(data)" style="flex:1;min-width:200px;font-size:13px;color:#c9d6d2;">This opens the BeamNG.Earth map. Teleport anywhere, then press Start here on the HUD. If the map doesn't open, press M.</div>
           </div>
         </div>
         <div style="flex:1 1 320px;min-width:0;">

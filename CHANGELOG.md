@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Choose my start on the map now opens the BeamNG.Earth map for you.** On a new game, pressing it on the start page closes the page and opens Earth's world map, so you can teleport anywhere and press **Start here** on the HUD. If the map doesn't open, press M. Your saves still work.
+
 ## Build 119 · 3 Nov 2026
 
 - **Pressing Pay on the parts bill now closes the parts menu and puts you back in your car,** ready to drive. If the payment doesn't go through, the menu stays open so you can change your parts or undo them. Your saves still work.

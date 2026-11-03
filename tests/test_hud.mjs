@@ -748,15 +748,18 @@ test('the start page opens in a big window in the middle of the screen, with the
   assert.ok(source.includes('z-index:2147483647'), 'which sit one higher')
   for (const part of ['YOUR TRUCK', 'data.car.preview', 'data.car.name', 'data.car.value', 'data.car.repair', 'data.space.slots', 'data.trailer.owned.name',
     'YOUR CAREER', 'data.career.jobsDone', 'data.career.contractsDone', 'climbAt(data.car.climb)', 'RUST BUCKET', 'Welcome back', 'ng-model="intro.name"',
-    'ng-click="newGame()"', 'ng-click="closeIntro()"', 'earth_freight_starter.jpg']) assert.ok(page.includes(part), part)
+    'ng-click="newGame()"', 'openMap() : closeIntro()', 'earth_freight_starter.jpg']) assert.ok(page.includes(part), part)
 })
 test('on a new game the page sends the player to the map and opens the HUD for Start here', () => {
   const a = app()
   a.state({ state: 'READY', mode: 'free' }); a.scope.setMinimised(true)
   a.state({ state: 'READY', mode: 'start', arrived: false, startHereAllowed: true })
   assert.equal(a.scope.intro.open, true)
-  a.scope.closeIntro()
-  assert.equal(a.scope.hud.minimised, false, 'Choose my start on the map opens the HUD, where Start here is')
+  a.scope.openMap()
+  assert.equal(a.scope.intro.open, false, 'Choose my start on the map closes the page')
+  assert.equal(a.scope.hud.minimised, false, 'and opens the HUD, where Start here is')
+  assert.match(a.commands.at(-1), /freeroam_bigMapMode\.enterBigMap/, 'and opens the map, which on Earth is Earth\'s own')
+  assert.ok(html.includes('ng-click="firstLaunch(data) ? openMap() : closeIntro()"'), 'from the big button on a new game')
   const b = app()
   b.state({ state: 'READY', mode: 'free' }); b.scope.setMinimised(true); b.scope.openIntro(); b.scope.closeIntro()
   assert.equal(b.scope.hud.minimised, true, 'Back to the road leaves a minimised HUD minimised')
