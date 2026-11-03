@@ -1,0 +1,23 @@
+{
+  "Configuration": "Fluid Tanks XL",
+  "Value": 6000,
+  "defaultMultiPaintSetup": {
+    "name": "earth_freight_trailer_fluid Multi Paint Setup",
+    "paint1": {
+      "baseColor": [
+        0.21899999678135,
+        0.23999999463558,
+        0.27700001001358,
+        1.2000000476837
+      ],
+      "class": "hidden",
+      "clearcoat": 0,
+      "clearcoatRoughness": 0,
+      "metallic": 0,
+      "name": "earth_freight_trailer_fluid Paint 1",
+      "roughness": 0.0700000003
+    },
+    "paint2": "Black",
+    "paint3": "Brilliant Burgundy"
+  }
+}

@@ -24,7 +24,7 @@ local aircraft = require('earthFreight/aircraft')
 local trailers = require('earthFreight/trailers')
 local M = {}
 -- Money a new game starts with.
-local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and some fuel
+local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
 local MAX_BALANCE = 9007199254740991
 M.STARTING_MONEY = STARTING_MONEY
 -- What the game's traffic police take when they catch the player, for a ticket or an arrest.
@@ -524,6 +524,7 @@ function M.new(deps)
     if self.hire then return FLYING end
     if self.onFoot then return ON_FOOT end
     if self.load then return 'Deliver or abandon your job first: cargo cannot be relocated.' end
+    if self.trailerShop then return 'Finish with your trailer parts on the Garage tab first.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     if self.booking then return 'You already have a relocation booked to ' .. self.booking.name .. '.' end
     return nil
@@ -742,6 +743,7 @@ function M.new(deps)
     if not place then return 'Drive into a town to find a job.' end
     if not self.odometer:stopped() then return 'Stop the car to take or deliver a job.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if self.trailerShop then return 'Finish with your trailer parts on the Garage tab first.' end
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
     return nil
   end
@@ -790,7 +792,7 @@ function M.new(deps)
       problem = good.name .. ' needs a fluid tank. Press Buy parts on the Garage tab, fit a Cargo Load fluid tank and pay for it there.'
     elseif quote and quote.units == 0 then
       problem = 'Not enough cargo space or payload for ' .. good.name:lower() .. ': one unit takes ' .. good.slots
-        .. (good.slots == 1 and ' slot' or ' slots') .. ' and ' .. good.kg .. ' kg. Fit a cargo box in the parts menu.'
+        .. (good.slots == 1 and ' slot' or ' slots') .. ' and ' .. string.format('%g', good.kg) .. ' kg. Fit a cargo box in the parts menu.'
     end
     if not problem and job.contract and not self:canAfford(contracts.FEE) then
       problem = 'Not enough money. The relocation to the start of a dangerous contract costs ' .. dollars(contracts.FEE) .. '.'
@@ -1148,7 +1150,8 @@ function M.new(deps)
   -- through fuelReading. Refuel fills the tank as far as the money goes, inside a place's arrival
   -- circle, stopped, and is charged when the car reports how much went in.
   function c:watchFuel()
-    if not self.fuelTank or self.state ~= 'READY' or not self.arrived or self.partsCheckDue or self.hire or self.onFoot then return end
+    if not self.fuelTank or self.state ~= 'READY' or not self.arrived or self.partsCheckDue or self.hire or self.onFoot
+      or self.trailerShop then return end
     if self.fuelReadAt and self.clock - self.fuelReadAt < fuel.READ_EVERY_SECONDS then return end
     self.fuelReadAt = self.clock
     local ok, why = self.fuelTank:read()
@@ -1543,7 +1546,8 @@ function M.new(deps)
       tow = self:towView(),
       onFoot = self.onFoot == true,
       -- Why Buy parts, Buy new car and Buy second hand are off, or nil when they are on.
-      garageLocked = self.onFoot and 'Get back in your car to change parts or cars.' or self:towDebtProblem(),
+      garageLocked = self.onFoot and 'Get back in your car to change parts or cars.'
+        or (self.trailerShop and 'Finish with your trailer parts first.') or self:towDebtProblem(),
       partsChange = self.pendingParts and {
         added = self.pendingParts.added, removed = self.pendingParts.removed,
         partsCost = self.pendingParts.partsCost, repair = self.pendingParts.repair, cost = self.pendingParts.cost,
@@ -1737,6 +1741,10 @@ function M.new(deps)
     -- The new game starts in a stock starter, so an old photo of an upgraded one would be wrong.
     if self.garage and self.garage.removePhoto then self.garage:removePhoto(workshop.STARTER_MODEL) end
     self.photoAt, self.photoStamp = nil, nil
+    -- The old game's bills and damage readings go with it: nothing it owed carries over.
+    self.pendingParts, self.pendingCar, self.secondHand, self.lastDamage = nil, nil, nil, nil
+    if self.partsBill and self.trigger then pcall(self.trigger, 'EarthFreightPartsBill', { open = false }) end
+    self.partsBill = nil
     self:reload()
     self.feedback = string.format('New game started. Teleport to %s at %.8f, %.8f (Copy is just below) to get your starter car,'
       .. ' or teleport anywhere in the BeamNG.Earth map and press Start here.', town, start.latitude, start.longitude)
@@ -1840,6 +1848,9 @@ function M.storeTrailer() return safely(function() return ensure():storeTrailer(
 function M.cancelStoreTrailer() return safely(function() return ensure():cancelStoreTrailer() end) end
 function M.bringOutTrailer() return safely(function() return ensure():bringOutTrailer() end) end
 function M.sellTrailer() return safely(function() return ensure():sellTrailer() end) end
+function M.buyTrailerParts() return safely(function() return ensure():buyTrailerParts() end) end
+function M.payTrailerParts() return safely(function() return ensure():payTrailerParts() end) end
+function M.undoTrailerParts() return safely(function() return ensure():undoTrailerParts() end) end
 function M.repairTrailer() return safely(function() return ensure():repairTrailer() end) end
 -- The game calls these when two vehicles couple or uncouple, such as a car and its trailer.
 function M.onCouplerAttached(a, b) return safely(function() if active then active:couplerChanged(a, b, true) end end) end

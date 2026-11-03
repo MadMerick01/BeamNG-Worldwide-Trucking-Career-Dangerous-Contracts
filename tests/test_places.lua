@@ -48,13 +48,13 @@ local starter = { slots = 20, kg = 1000 }
 T.eq(cargo.fits(starter, parts), 20, 'the starter car takes 20 parts')
 T.eq(cargo.fits(starter, food), 10, '10 food')
 local units, slots, kg = cargo.fits(starter, bricks)
-T.eq(units, 6, '6 bricks: the weight runs out first'); T.eq(slots, 18, 'in 18 slots'); T.eq(kg, 900, 'weighing 900 kg')
+T.eq(units, 6, '6 bricks: the slots run out first'); T.eq(slots, 18, 'in 18 slots'); T.eq(kg, 765, 'weighing 765 kg')
 T.eq(cargo.fits({ slots = 2, kg = 60 }, bricks), 0, 'no bricks in the boot')
 T.near(jobs.basePay(parts, 20, 5), 2000 * 300 / 780, 1e-6, '20 slots of parts (300 kg) pay about $770 over 5 km')
 -- The starter Burnside with 52 slots of boxes (3 L and an M: 1,330 kg).
 local big = { slots = 52, kg = 3 * cargo.BOXES[2].kg + cargo.BOXES[3].kg }
 T.eq(big.kg, 1330, 'L boxes take 400 kg and M 130 kg')
-T.eq(cargo.fits(big, parts), 52, '52 parts'); T.eq(cargo.fits(big, bricks), 8, '8 bricks: the weight runs out first')
+T.eq(cargo.fits(big, parts), 52, '52 parts'); T.eq(cargo.fits(big, bricks), 10, '10 bricks: the weight runs out first')
 T.near(jobs.basePay(parts, 52, 5), 2000, 1e-6, '52 slots of parts (780 kg) pay $2,000 over 5 km')
 T.near(jobs.basePay(bricks, 8, 5), 2624, 1, 'bricks (1,200 kg) about $2,620')
 T.near(jobs.basePay(parts, 52, 20), 12000, 1e-6, 'parts $12,000 over 20 km')
@@ -75,10 +75,14 @@ local water, fuel = goods.get('water'), goods.get('fuel')
 local tank = { slots = 20, kg = 1000, litres = 800, tankKg = 800 }
 T.eq(cargo.fits(starter, water), 0, 'no fluid without a tank')
 units, slots, kg = cargo.fits(tank, water)
-T.eq(units, 80, '80 units of 10 L'); T.eq(slots, 800, 'filling 800 L'); T.eq(kg, 800, 'weighing 800 kg')
-units, slots, kg = cargo.fits(tank, fuel); T.eq(slots, 800, 'fuel fills the tank too'); T.eq(kg, 600, 'lighter: 600 kg')
+T.eq(units, 80, '80 units of 10 L'); T.eq(slots, 800, 'filling 800 L'); T.eq(kg, 680, 'weighing 680 kg, 15% under a kg a litre')
+units, slots, kg = cargo.fits(tank, fuel); T.eq(slots, 800, 'fuel fills the tank too'); T.eq(kg, 510, 'lighter: 510 kg')
 T.near(jobs.basePay(water, 80, 5), 2000 * (800 / 780) ^ 0.63, 1e-6, 'a full tank of water (800 kg) pays about $2,030 over 5 km')
 T.near(jobs.basePay(fuel, 80, 5), 2000 * 600 / 780, 1e-6, 'fuel (600 kg) about $1,540')
+-- Goods weigh 15% less than their pay weight, so a unit pays what it did.
+T.eq(goods.WEIGHT_PERCENT, 85, 'goods are 15% lighter')
+T.near(parts.kg, 12.75, 1e-9, 'a part weighs 12.75 kg'); T.eq(parts.payKg, 15, 'and pays as 15 kg')
+T.near(bricks.kg, 127.5, 1e-9, 'a brick weighs 127.5 kg'); T.eq(bricks.payKg, 150, 'and pays as 150 kg')
 T.check(goods.get('food').retired and not goods.ofKind('parcel')[3], 'food is no longer posted, but still known')
 local fluidsSeen = {}
 for _, n in ipairs(places.nearest(penrith, 40)) do fluidsSeen[jobs.fluid(n.place).id] = true end

@@ -19,7 +19,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 - **178,700 real earth towns, each with a job board.** Move parts, bricks, water and fuel.
 - **Garage - Build your Rig.** Upgrade parts, buy and sell **new** and **second hand** vehicles.
-- **Trailers.** Buy any trailer in the game, hitch it for extra cargo space, or keep it in your garage, which goes everywhere with you.
+- **Trailers.** Buy a utility trailer with cargo boxes or fluid tanks, hitch it for extra cargo space, or keep it in your garage, which goes everywhere with you.
 - **Off-road drops.** No GPS route: follow the arrow on the Route tab to a spot off the road.
 - **Dangerous highly paid contracts.** Death Road, Carhuaz, Anta, Marcará, Zoji La, Ravin de Piquet, Sani Pass and Grimsel, for up to **8x the pay**. Each one can be done once per game.
 - **Dynamic economy.** Towns want different goods, repeat runs pay less, shortages pay double.
@@ -37,11 +37,12 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 ## How to Start
 
-1. Load the BeamNG.Earth Freeroam level and type your name. Open the BeamNG.Earth map, teleport anywhere on Earth, such as your home town, and press **Start here**. You start there with a rusty Burnside and $2,500.
+1. Load the BeamNG.Earth Freeroam level and type your name. Open the BeamNG.Earth map, teleport anywhere on Earth, such as your home town, and press **Start here**. You start there with a rusty Burnside and $6,000.
 2. Fit a radiator first: **Buy parts** on the Garage tab. The starter car needs one.
-3. Stop in any town, open the **Town** tab, pick a job and press **Take job**. The GPS is set for you.
-4. Drive it there in one piece and press **Deliver**.
-5. Press **Save** often. Next time, **Teleport to last save** puts you right back.
+3. Then fit cargo boxes. The starter car only has its boot (2 slots), so in **Buy parts** put **Cargo Load** boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.
+4. Stop in any town, open the **Town** tab, pick a job and press **Take job**. The GPS is set for you.
+5. Drive it there in one piece and press **Deliver**.
+6. Press **Save** often. Next time, **Teleport to last save** puts you right back.
 
 
 ## Updating

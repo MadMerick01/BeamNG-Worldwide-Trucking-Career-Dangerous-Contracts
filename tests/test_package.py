@@ -61,6 +61,21 @@ class PackageTest(unittest.TestCase):
         self.assertEqual(thumbnail[:3], b'\xff\xd8\xff')
         self.assertIn(b"'" + (prefix + 'earth_freight_starter.pc').encode() + b"'", workshop)
 
+    def test_trailers_for_sale_are_packaged(self):
+        prefix = 'vehicles/boxutility/'
+        with ZipFile(self.output) as archive:
+            trailers = archive.read('lua/ge/extensions/earthFreight/trailers.lua')
+            for key, name in (('earth_freight_trailer_boxes', 'Cargo Boxes XL'), ('earth_freight_trailer_fluid', 'Fluid Tanks XL')):
+                config = json.loads(archive.read(prefix + key + '.pc'))
+                info = json.loads(archive.read(prefix + 'info_' + key + '.json'))
+                thumbnail = archive.read(prefix + key + '.jpg')
+                self.assertEqual(config['model'], 'boxutility')
+                self.assertIsInstance(config['parts'], dict)
+                self.assertEqual(info['Configuration'], name)
+                self.assertGreater(info['Value'], 0)
+                self.assertEqual(thumbnail[:3], b'\xff\xd8\xff')
+                self.assertIn(b"'boxutility/" + key.encode() + b"'", trailers)
+
     def test_png_is_complete_with_valid_checksums(self):
         with ZipFile(self.output) as archive:
             data = archive.read('ui/modules/apps/TruckingCareerDC/app.png')

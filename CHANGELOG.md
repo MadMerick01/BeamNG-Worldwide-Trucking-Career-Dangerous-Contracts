@@ -7,6 +7,28 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **Choose my start on the map now opens the BeamNG.Earth map for you.** On a new game, pressing it on the start page closes the page and opens Earth's world map, so you can teleport anywhere and press **Start here** on the HUD. If the map doesn't open, press M. Your saves still work.
+- **The starter Burnside Rusty has a new picture again,** on the start page's **Your truck** card and in BeamNG's vehicle menu. Your saves still work.
+
+## Build 124 · 3 Nov 2026
+
+- **Buy new trailer now offers just two trailers built for freight**, instead of every trailer in the game (log carriers and the like). One is a small utility trailer with two XL cargo boxes for parcels, the other the same trailer with two XL fluid tanks. Both cost $6,000 and take a ball hitch. More will be added later.
+- A trailer you already own stays yours, even if it's no longer in the list, and your saves still work.
+
+## Build 123 · 3 Nov 2026
+
+- **You can now fit cargo boxes and fluid tanks to your trailer.** With your trailer out, press **Buy trailer parts** in the Trailer section of the Garage tab. You're put in the trailer and the parts menu opens, so you can fit boxes or tanks to any trailer that has room for them, such as a flatbed. The bill shows up on the Trailer card and is priced like car parts. Press **Pay** to keep the parts, or **Undo** to put the old ones back, and either one puts you back in your car. Back up to the trailer to hitch it again. The new boxes add to the trailer's cargo space.
+- Before, a bare flatbed carried nothing. Now its cargo space comes from the boxes and tanks you fit to it.
+- You can't take a job, save or relocate until you've paid for or undone the trailer parts. You also need to deliver or abandon your job before you start. Save keeps your trailer's parts, and your saves still work.
+
+## Build 121 · 3 Nov 2026
+
+- **New players are now told to fit cargo boxes.** The starter car only has its boot, which holds 2 slots, so its jobs pay very little. The **How to play** steps on the start page now say to fit **Cargo Load** boxes in the rear seat slot with **Buy parts**, right after the radiator. While your car only has its boot, the **Town** tab also shows a gold line saying so, with its own **Buy parts** button. Your saves still work.
+- **A new game now starts with $6,000 instead of $2,500**, enough for the radiator, fuel and a few cargo boxes. Games already under way keep the money they have; pressing **New game** gives you the new amount.
+- **All cargo is 15% lighter.** Parts now weigh 12.75 kg a unit instead of 15, bricks 127.5 kg instead of 150, water 8.5 kg per 10 L and fuel about 6.4 kg per 10 L. Jobs still pay what they did for the same number of units, and because bricks are lighter a cargo box fits more of them, so brick jobs in a full box pay a little more. A single brick now fits in one **Cargo box M**. A job you have already taken keeps its old weight until you deliver it. Your saves still work.
+
+## Build 120 · 3 Nov 2026
+
+- **A new game no longer carries over your old repair bill.** Before, if your truck was damaged when you pressed **Yes, start over**, the teleport to your start counted that damage as still owed, so the fresh starter car arrived with the old game's repair on the **Garage** tab and a "Repair still owed" warning. Now the new game starts with nothing to pay, and any open parts or car bill from the old game is cleared too. Your saves still work. If a new game you already started is showing the old bill, press **New game** and **Yes, start over** again once you're on this build.
 
 ## Build 119 · 3 Nov 2026
 

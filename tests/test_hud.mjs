@@ -92,7 +92,7 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
   const buttons = {
     storeTrailer: ['storeAllowed', 'storeTrailer()'], cancelStoreTrailer: ['storeArmed', 'cancelStoreTrailer()'],
     bringOutTrailer: ['bringOutAllowed', 'bringOutTrailer()'], sellTrailer: ['sellAllowed', 'sellTrailer()'],
-    repairTrailer: ['repairAllowed', 'repairTrailer()']
+    repairTrailer: ['repairAllowed', 'repairTrailer()'], buyTrailerParts: ['partsAllowed', 'buyTrailerParts()']
   }
   for (const [name, [flag, body]] of Object.entries(buttons)) {
     count = a.commands.length
@@ -101,6 +101,18 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
     a.state({ state: 'READY', trailer: { [flag]: true } }); a.scope[name]()
     assert.equal(a.commands.at(-1), fixed(body), name)
   }
+})
+
+test('trailer parts: Pay and Undo only while in the trailer, and Pay only when Lua allows it', () => {
+  const a = app()
+  let count = a.commands.length
+  a.state({ state: 'READY', trailer: {} }); a.scope.payTrailerParts(); a.scope.undoTrailerParts()
+  assert.equal(a.commands.length, count, 'nothing to pay or undo outside the trailer')
+  a.state({ state: 'READY', trailer: { shop: { payAllowed: false } } }); a.scope.payTrailerParts()
+  assert.equal(a.commands.length, count, 'Pay refused when short')
+  a.scope.undoTrailerParts(); assert.equal(a.commands.at(-1), fixed('undoTrailerParts()'))
+  a.state({ state: 'READY', trailer: { shop: { payAllowed: true } } }); a.scope.payTrailerParts()
+  assert.equal(a.commands.at(-1), fixed('payTrailerParts()'))
 })
 
 test('paying a bill asks to confirm that total, and a new total asks again', () => {
@@ -400,6 +412,14 @@ test('a changed name lights up Save', () => {
   const a = app()
   assert.equal(a.scope.unsaved({ nameUnsaved: true }), true)
   assert.equal(a.scope.unsaved({ nameUnsaved: false }), false)
+})
+test('With only the boot, the Town tab and the start steps say to fit cargo boxes', () => {
+  const a = app()
+  const town = html.slice(html.indexOf("tab === 'town'"), html.indexOf("tab === 'garage'"))
+  const hint = town.slice(town.indexOf('ng-if="data.space.boot"'), town.indexOf('aria-label="Distance"'))
+  assert.ok(hint.includes('rear seat slot') && hint.includes('ng-click="openPartsMenu()"'), 'a boot-only hint with Buy parts')
+  const radiator = a.scope.introSteps.findIndex(s => s.includes('radiator'))
+  assert.match(a.scope.introSteps[radiator + 1], /cargo boxes.*rear seat slot/, 'cargo boxes come right after the radiator')
 })
 test('Refuel sits on the Garage tab, and the Town tab has no cargo slots card', () => {
   const a = app()

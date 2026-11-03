@@ -73,6 +73,16 @@ function F.garage()
     carValues = { pickup = 20000, burnside = 3500, sport = 40000 }, parked = {} }
   function g:carValue(model) return self.carValues[model], model end
   function g:enter(id)
+    -- Into the trailer and back: the player vehicle becomes that id; the car keeps its parts.
+    if self.trailers[id] then
+      self.inTrailer = { id = self.vehicleId, model = self.model, fitted = self.fitted }
+      self.vehicleId = id
+      return true
+    end
+    if self.inTrailer and id == self.inTrailer.id then
+      self.vehicleId, self.inTrailer = id, nil
+      return true
+    end
     local car = self.parked[id]
     if not car then return false, 'vehicle_gone' end
     self.parked[id] = nil
@@ -84,7 +94,14 @@ function F.garage()
     if self.unreadable then return nil, 'damage_unavailable' end
     return { id = self.vehicleId, damage = self.damage }
   end
-  function g:parts()
+  function g:parts(id)
+    if id ~= nil and self.trailers[id] then
+      local t = self.trailers[id]
+      local names = {}
+      for _, part in pairs(t.fitted) do names[part] = self.names[part] or part end
+      return { id = id, model = t.model, config = { model = t.model, parts = F.copy(t.fitted) },
+        parts = F.copy(t.fitted), values = F.copy(self.values), names = names, name = t.model }
+    end
     if self.partsUnreadable then return nil, 'parts_unavailable' end
     local names = {}
     for _, part in pairs(self.fitted) do names[part] = self.names[part] or part end
@@ -113,9 +130,11 @@ function F.garage()
   g.configList = {
     { model = 'sport', key = 'gt', config = 'vehicles/sport/gt.pc', name = 'Sport GT', value = 40000, type = 'Car', source = 'BeamNG - Official' },
     { model = 'pickup', key = 'd15', config = 'vehicles/pickup/d15.pc', name = 'Pickup D15', value = 20000, type = 'Truck', source = 'BeamNG - Official' },
-    { model = 'flatbed', key = 'long', config = 'vehicles/flatbed/long.pc', name = 'Flatbed', value = 5000, type = 'Trailer', source = 'BeamNG - Official' },
+    { model = 'boxutility', key = 'earth_freight_trailer_boxes', config = 'vehicles/boxutility/earth_freight_trailer_boxes.pc', name = 'Cargo Boxes XL', value = 5000, type = 'Trailer', source = 'Mod' },
+    { model = 'flatbed', key = 'logs', config = 'vehicles/flatbed/logs.pc', name = 'Log trailer', value = 4000, type = 'Trailer', source = 'BeamNG - Official' },
     { model = 'modcar', key = 'x', config = 'vehicles/modcar/x.pc', name = 'Mod car', value = 1000, type = 'Car', source = 'Mod' },
-    { model = 'tanker', key = 'fuel', config = 'vehicles/tanker/fuel.pc', name = 'Fuel tanker', value = 30000, type = 'Trailer', source = 'BeamNG - Official' },
+    { model = 'boxutility', key = 'earth_freight_trailer_fluid', config = 'vehicles/boxutility/earth_freight_trailer_fluid.pc', name = 'Fluid Tanks XL', value = 30000, type = 'Trailer' },
+    { model = 'tanker', key = 'fuel', config = 'vehicles/tanker/fuel.pc', name = 'Fuel tanker', value = 3000, type = 'Trailer', source = 'BeamNG - Official' },
   }
   -- Trailers: spawnTrailer puts one behind the car with an id from 500; storage is its containers.
   g.trailers, g.nextTrailerId, g.removed = {}, 500, {}
@@ -124,7 +143,8 @@ function F.garage()
     if self.trailerFails then return nil, 'spawn_failed' end
     local id = self.nextTrailerId
     self.nextTrailerId = id + 1
-    self.trailers[id] = { model = model, config = config, damage = 0 }
+    self.trailers[id] = { model = model, config = config, damage = 0,
+      fitted = type(config) == 'table' and F.copy(config.parts) or { deck = 'flatbed_deck' } }
     return id
   end
   function g:exists(id) return self.trailers[id] ~= nil end
@@ -162,8 +182,14 @@ function F.garage()
     self.roadTrips = self.roadTrips + 1
     return true
   end
+  g.partsMenus = 0
+  function g:openPartsMenu() self.partsMenus = self.partsMenus + 1; return true end
   function g:repair(config)
     if not self.accepts then return false, 'repair_failed', 'rejected' end
+    if self.trailers[self.vehicleId] then
+      if config then self.trailers[self.vehicleId].fitted = F.copy(config.parts) end
+      return true
+    end
     self.repairs, self.damage = self.repairs + 1, 0
     if config then self.fitted = F.copy(config.parts) end
     return true

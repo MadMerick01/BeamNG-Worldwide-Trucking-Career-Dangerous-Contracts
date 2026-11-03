@@ -309,6 +309,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.introSteps = [
         'open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
+        'Then fit cargo boxes: the starter car only has its boot, which takes 2 slots. In Buy parts, put Cargo Load boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.',
         'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
         'The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.'
@@ -517,10 +518,13 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.cancelStoreTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeArmed) core('cancelStoreTrailer()') }
       scope.bringOutTrailer = function () { if (scope.data.trailer && scope.data.trailer.bringOutAllowed) core('bringOutTrailer()') }
       scope.sellTrailer = function () { if (scope.data.trailer && scope.data.trailer.sellAllowed) core('sellTrailer()') }
+      scope.buyTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.partsAllowed) core('buyTrailerParts()') }
+      scope.payTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.shop && scope.data.trailer.shop.payAllowed) core('payTrailerParts()') }
+      scope.undoTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.shop) core('undoTrailerParts()') }
       scope.repairTrailer = function () { if (scope.data.trailer && scope.data.trailer.repairAllowed) core('repairTrailer()') }
       // Open the game's own parts menu (Ctrl+W) and car selector (Ctrl+E); the bill then shows up on the Garage tab.
-      scope.openPartsMenu = function () {
-        if (scope.data.garageLocked) return
+      scope.openPartsMenu = function (forTrailer) {
+        if (scope.data.garageLocked && !(forTrailer && scope.data.trailer && scope.data.trailer.shop)) return
         call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
           "elseif guihooks then guihooks.trigger('ChangeState', {state = 'menu.vehicleconfig.parts'}) end")
       }

@@ -302,6 +302,10 @@
             <div ng-if="data.town.delivery.problem" style="color:#c9d6d2;">{{data.town.delivery.problem}}</div>
             <button type="button" ng-click="deliverJob()" ng-disabled="!data.town.delivery.allowed" style="margin-top:6px;padding:7px 12px;background:#6fcf97;color:#0c1318;font-weight:bold;border:1px solid #6fcf97;border-radius:4px;">Deliver</button>
           </div>
+          <div ng-if="data.space.boot" style="margin:8px 0;padding:8px 10px;border:1px solid #f2c94c;border-radius:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;">
+            <div style="flex:1;min-width:180px;"><span style="color:#f2c94c;font-weight:bold;">Only your boot: {{data.space.slots}} slots.</span> Fit Cargo Load boxes for bigger loads and bigger pay. The rear seat slot is the best place to start.</div>
+            <button type="button" ng-click="openPartsMenu()" ng-disabled="data.garageLocked" ng-style="{opacity: data.garageLocked ? 0.5 : 1}" style="flex:none;padding:5px 10px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">Buy parts</button>
+          </div>
           <div style="margin:8px 0;">
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:12px;color:#c9d6d2;" role="group" aria-label="Distance">
               <span style="flex:1;min-width:0;font-size:14px;font-weight:bold;color:#f2f6f5;">Jobs</span>
@@ -318,7 +322,7 @@
                   <div ng-if="j.contract"><span style="padding:0 4px;border-radius:3px;background:#eb5757;color:#0c1318;font-size:10px;font-weight:bold;">DANGEROUS CONTRACT</span> <b>{{j.good}}</b> over {{j.to}} <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km</span></div>
                   <div ng-if="!j.drop && !j.contract"><span ng-style="{background: dotColor(j.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> <b>{{j.good}}</b> &rarr; {{j.to}} <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km</span><span ng-if="j.outside" style="color:#f2c94c;font-size:12px;"> &middot; nearest</span></div>
                   <div ng-if="j.drop"><span ng-style="{background: dotColor(j.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> <b>{{j.good}}</b>, off-road drop <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km {{j.direction}}</span></div>
-                  <div ng-if="j.units === 0" style="font-size:12px;color:#eb5757;"><span ng-if="j.fluid">Needs a tank</span><span ng-if="!j.fluid">Needs {{j.unitSlots}} {{j.unitSlots === 1 ? 'slot' : 'slots'}} and {{j.unitKg}} kg: fit a cargo box</span></div>
+                  <div ng-if="j.units === 0" style="font-size:12px;color:#eb5757;"><span ng-if="j.fluid">Needs a tank</span><span ng-if="!j.fluid">Needs {{j.unitSlots}} {{j.unitSlots === 1 ? 'slot' : 'slots'}} and {{j.unitKg | number}} kg: fit a cargo box</span></div>
                 </div>
               </div>
               <div ng-if="j.units > 0" ng-style="{color: dotColor(j.level)}" style="flex:none;font-weight:bold;text-align:right;" title="Usually ${{j.base | number:0}} for a full load">${{taken(j).pay | number:0}}</div>
@@ -431,15 +435,15 @@
           </div>
         </div>
         <div ng-if="!data.carChange && !data.partsChange && !data.usedCars && data.trailer" class="ef-sec" ng-class="{'ef-need': data.trailer.storeArmed || (data.trailer.owned && data.trailer.owned.out && !data.trailer.owned.hitched)}">
-          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('trailer')" aria-expanded="{{isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Trailer</div><span class="ef-sum"><span ng-if="!data.trailer.owned">none</span><span ng-if="data.trailer.owned">{{data.trailer.owned.name}} &middot; <span ng-if="data.trailer.owned.stored">in the garage</span><span ng-if="data.trailer.owned.out && data.trailer.owned.hitched">hitched</span><span ng-if="data.trailer.owned.out && !data.trailer.owned.hitched" style="color:#f2c94c;">not hitched</span></span></span></div></div>
-          <div ng-if="isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed)" class="ef-sb" style="font-size:13px;">
+          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('trailer')" aria-expanded="{{isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed || data.trailer.shop)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed || data.trailer.shop) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Trailer</div><span class="ef-sum"><span ng-if="!data.trailer.owned">none</span><span ng-if="data.trailer.owned">{{data.trailer.owned.name}} &middot; <span ng-if="data.trailer.owned.stored">in the garage</span><span ng-if="data.trailer.owned.out && data.trailer.owned.hitched">hitched</span><span ng-if="data.trailer.owned.out && !data.trailer.owned.hitched" style="color:#f2c94c;">not hitched</span></span></span></div></div>
+          <div ng-if="isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed || data.trailer.shop)" class="ef-sb" style="font-size:13px;">
             <div ng-if="!data.trailer.owned && !data.trailer.open">
               <div style="color:#c9d6d2;">A trailer adds cargo space. Jobs fill the trailer first, then your car. You need the right hitch on your car for it: fit one with Buy parts.</div>
               <button type="button" ng-click="openTrailers(true)" ng-disabled="data.garageLocked" ng-style="{opacity: data.garageLocked ? 0.5 : 1}" style="margin-top:4px;padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy new trailer</button>
             </div>
             <div ng-if="!data.trailer.owned && data.trailer.open">
               <div style="display:flex;gap:8px;align-items:baseline;"><span style="flex:1;min-width:0;font-weight:bold;color:#a7e5c9;">New trailers</span><button type="button" ng-click="openTrailers(false)" style="padding:3px 10px;">Close</button></div>
-              <div style="font-size:12px;color:#7d8b88;">Every trailer in the game. Check it suits your hitch before you buy: small trailers take a ball hitch, semi trailers a fifth wheel.</div>
+              <div style="font-size:12px;color:#7d8b88;">Utility trailers built for freight. They take a ball hitch, so check your car has one before you buy.</div>
               <div ng-if="data.trailer.offers.length === 0" style="margin-top:6px;color:#c9d6d2;">No trailers found.</div>
               <div style="max-height:260px;overflow-y:auto;">
                 <div ng-repeat="offer in data.trailer.offers track by offer.index" style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(167,229,201,.3);align-items:center;">
@@ -455,10 +459,26 @@
               <div ng-if="data.trailer.owned.out && data.trailer.owned.space" style="color:#c9d6d2;">Cargo: {{data.trailer.owned.space.slots}} slots &middot; {{data.trailer.owned.space.kg | number:0}} kg<span ng-if="data.trailer.owned.space.litres > 0"> &middot; {{data.trailer.owned.space.litres | number:0}} L tank</span><span ng-if="!(data.trailer.owned.space.slots > 0) && !(data.trailer.owned.space.litres > 0)">: none for our jobs</span>.</div>
               <div ng-if="data.trailer.owned.out && data.trailer.owned.hitched" style="color:#6fcf97;">Hitched. Jobs fill it first, then your car.</div>
               <div ng-if="data.trailer.owned.out && !data.trailer.owned.hitched" style="color:#f2c94c;">Not hitched. Back up to it slowly and it hitches itself, or use the game's couple key. It adds no cargo space until it is hitched<span ng-if="data.trailer.owned.loaded">, and you can't deliver until it is</span>.</div>
+              <div ng-if="data.trailer.owned.out && !data.trailer.shop" style="font-size:12px;color:#7d8b88;">Buy trailer parts puts you in the trailer and opens the parts menu, so you can fit cargo boxes or tanks to it. They're billed like car parts.</div>
               <div ng-if="data.trailer.owned.stored" style="color:#c9d6d2;">In the garage. Bring it out anywhere, any time, for free.</div>
               <div ng-if="data.trailer.owned.repair">Repair needed: ${{data.trailer.owned.repair | number:0}}<span ng-if="data.trailer.owned.out && !(data.trailer.owned.owed > 0)">, once it is stored</span>.</div>
+              <div ng-if="data.trailer.shop" style="margin:6px 0;padding:8px;border:2px solid #f2c94c;border-radius:6px;">
+                <div style="font-weight:bold;color:#f2c94c;">Trailer parts<span ng-if="data.trailer.shop.bill"> &middot; not paid yet</span></div>
+                <div ng-if="data.trailer.shop.due" style="color:#c9d6d2;">Working out the bill...</div>
+                <div ng-if="!data.trailer.shop.due && !data.trailer.shop.bill" style="color:#c9d6d2;">You are in your trailer. Fit cargo boxes or tanks in the parts menu, or go back to your car.</div>
+                <div ng-repeat="part in data.trailer.shop.bill.added" style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">+ {{part.name}}</span><span>${{part.price | number:0}}</span></div>
+                <div ng-repeat="part in data.trailer.shop.bill.removed" style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">&minus; {{part.name}} <span style="color:#c9d6d2;font-size:12px;">(sold back)</span></span><span ng-if="part.refund != null">&minus;${{part.refund | number:0}}</span></div>
+                <div ng-if="data.trailer.shop.bill" style="display:flex;gap:8px;margin-top:4px;padding-top:4px;border-top:1px solid rgba(242,201,76,.5);font-weight:bold;"><span style="flex:1;">Total</span><span>${{data.trailer.shop.bill.cost | number:0}}</span></div>
+                <div ng-if="data.trailer.shop.bill && data.balance < data.trailer.shop.bill.cost" style="font-size:13px;color:#eb5757;">You have ${{data.balance | number:0}}: ${{data.trailer.shop.bill.cost - data.balance | number:0}} short.</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+                  <button type="button" ng-click="payTrailerParts()" ng-disabled="!data.trailer.shop.payAllowed" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;"><span ng-if="data.trailer.shop.bill">Pay ${{data.trailer.shop.bill.cost | number:0}}</span><span ng-if="!data.trailer.shop.bill">Back to my car</span></button>
+                  <button type="button" ng-if="data.trailer.shop.bill" ng-click="undoTrailerParts()" style="padding:5px 12px;">Undo</button>
+                  <button type="button" ng-click="openPartsMenu(true)" style="padding:5px 12px;">Parts menu</button>
+                </div>
+              </div>
               <div ng-if="data.trailer.storeArmed" style="margin-top:4px;color:#eb5757;font-weight:bold;">Storing your trailer now loses your whole load and costs the abandon fee.</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                <button type="button" ng-if="data.trailer.owned.out && !data.trailer.shop" ng-click="buyTrailerParts()" ng-disabled="!data.trailer.partsAllowed" style="padding:5px 12px;">Buy trailer parts</button>
                 <button type="button" ng-if="data.trailer.owned.out" ng-click="storeTrailer()" ng-disabled="!data.trailer.storeAllowed" ng-style="data.trailer.storeArmed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="padding:5px 12px;">{{data.trailer.storeArmed ? 'Confirm store' : 'Store trailer'}}</button>
                 <button type="button" ng-if="data.trailer.storeArmed" ng-click="cancelStoreTrailer()" style="padding:5px 12px;">Keep it out</button>
                 <button type="button" ng-if="data.trailer.owned.stored" ng-click="bringOutTrailer()" ng-disabled="!data.trailer.bringOutAllowed" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Bring out</button>

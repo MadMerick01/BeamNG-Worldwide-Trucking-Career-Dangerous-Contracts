@@ -440,7 +440,11 @@ function M.attach(c)
     -- Getting out spawns the walking mode's unicycle: the car is left as it was.
     if vehicleId ~= nil and self.garage and self.garage.isWalker and self.garage:isWalker(vehicleId) then return end
     -- The player's trailer coming out is not a change to their car.
-    if self.trailerSpawning or (vehicleId ~= nil and self.trailerOut and vehicleId == self.trailerOut.id) then return end
+    if self.trailerSpawning or (vehicleId ~= nil and self.trailerOut and vehicleId == self.trailerOut.id) then
+      -- A part change in the parts menu respawns the trailer: its bill is worked out next tick.
+      if self.trailerShop then self.trailerShop.due = true end
+      return
+    end
     self.partsCheckDue, self.respawned, self.wearDue = true, true, true
     if self.secondHand then self.secondHand.spawned = true end
   end
@@ -461,6 +465,13 @@ function M.attach(c)
   -- (Earth's teleport places the car with a reset); its damage can be unreadable while Earth loads
   -- the terrain, so the last reading is kept until it can be read again.
   function c:watchResets()
+    -- Before the car of this game is given (the starter, or the car of the last save), the player
+    -- is in a car that is about to be replaced, such as the old game's car after New game: a reset
+    -- on the way to the start, as Earth's teleport does, owes nothing.
+    if not self.vehicleProvided then
+      self.rawDamage = nil
+      return
+    end
     local raw, owned = self.garage:inspect(), self.ownedParts
     if not raw and owned and not self.ourRespawn and not self.insurancePending then return end
     if not raw or not owned or raw.id ~= owned.id or self.ourRespawn or self.insurancePending then
@@ -488,6 +499,8 @@ function M.attach(c)
   end
 
   function c:checkParts()
+    -- While the player is in their trailer for its parts, the vehicle they are in is not a car to buy.
+    if self.trailerShop then return false end
     local snapshot = self.garage:parts()
     if not snapshot then return false end
     -- A second-hand car is priced once it has spawned (watchParts drops one that never does).
@@ -1036,6 +1049,10 @@ function M.attach(c)
       self.diag:event(label .. '_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
       return
     end
+    -- The car given is all that is owed for: the starter is new, and the saved car owes what it was
+    -- saved with. Nothing the car it replaced needed carries over.
+    self.owedDamage = self.mode == 'start' and 0 or (saved and saved.damage or 0)
+    self.punctureDamage, self.lastDamage, self.rawDamage, self.quote = 0, nil, nil, nil
     self.diag:event(label, 'spawned')
   end
 

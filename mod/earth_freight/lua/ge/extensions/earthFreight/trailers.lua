@@ -1,5 +1,5 @@
 -- Trailers: the player can own one trailer at a time, bought new with Buy new trailer on the Garage
--- tab from every vanilla trailer the game has. It is either out (spawned behind the car, hitched or
+-- tab from the trailers in FOR_SALE. It is either out (spawned behind the car, hitched or
 -- not) or stored in the garage, which goes everywhere with the player: Bring out puts it behind the
 -- car in any town, any time, for free. While it is hitched its cargo space adds to the car's, and a
 -- job loads the trailer first, then the car. Storing it with part of a job in it loses the whole job
@@ -10,6 +10,7 @@
 local pricing = require('earthFreight/pricing')
 local cargo = require('earthFreight/cargo')
 local jobs = require('earthFreight/jobs')
+local persistence -- required when first needed: persistence requires this file
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
@@ -24,11 +25,20 @@ M.SPAWN_SECONDS = 5
 
 local dollars = pricing.dollars
 
--- Whether a config from the game's list is a vanilla trailer with a price.
+-- The trailers for sale, as model/config key: our own configs, shipped in the mod's vehicles
+-- folder next to the starter car, picked to carry the goods jobs pay for. Add more here, with
+-- their .pc, info json (its Value is the price) and picture.
+M.FOR_SALE = {
+  'boxutility/earth_freight_trailer_boxes', -- two Cargo Load boxes XL
+  'boxutility/earth_freight_trailer_fluid', -- two Cargo Load fluid tanks XL
+}
+local forSale = {}
+for _, id in ipairs(M.FOR_SALE) do forSale[id] = true end
+
+-- Whether a config from the game's list is one of the trailers for sale, with a price.
 function M.sellable(info)
   if type(info) ~= 'table' or type(info.model) ~= 'string' or type(info.key) ~= 'string' then return false end
-  if type(info.type) ~= 'string' or not info.type:lower():find('trailer', 1, true) then return false end
-  if type(info.source) == 'string' and not info.source:find('BeamNG', 1, true) then return false end
+  if not forSale[info.model .. '/' .. info.key] then return false end
   local value = tonumber(info.value)
   return value ~= nil and value == value and value > 0 and value ~= math.huge
 end
@@ -62,6 +72,18 @@ function M.space(storage)
     elseif c.kind == 'fluid' then litres = litres + math.floor(c.capacity) end
   end
   return { slots = slots, kg = slots * M.PARCEL_KG_PER_SLOT, litres = litres, tankKg = litres }
+end
+
+-- A trailer's space from its containers, or, when they give none, from the cargo boxes and fluid
+-- tanks fitted to it, as for a car (a parts snapshot; a trailer has no boot).
+function M.spaceWith(storage, snapshot)
+  local space = M.space(storage)
+  if snapshot then
+    local fitted = cargo.capacity(snapshot)
+    if space.slots == 0 and not fitted.boot then space.slots, space.kg = fitted.slots, fitted.kg end
+    if space.litres == 0 and fitted.litres > 0 then space.litres, space.tankKg = fitted.litres, fitted.tankKg end
+  end
+  return space
 end
 
 -- How a good loads into a hitched trailer and the car: the trailer is filled first, then the car.
@@ -144,11 +166,130 @@ function M.attach(c)
       self.diag:event('trailer_spawn_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
       return false
     end
-    self.trailerOut = { id = id, at = self.clock, spawned = true, hitched = false, damage = 0,
-      space = M.space(self.garage.cargoStorage and self.garage:cargoStorage(id) or {}) }
+    self.trailerOut = { id = id, at = self.clock, spawned = true, hitched = false, damage = 0 }
+    self:readTrailerSpace()
     t.stored = false
     self.appliedWeight = nil
     self.diag:event('trailer_out', t.model .. ' #' .. tostring(id))
+    return true
+  end
+
+  -- Reads the trailer's cargo space from its containers and fitted parts.
+  function c:readTrailerSpace(snapshot)
+    local out = self.trailerOut
+    if not out then return end
+    if not snapshot and self.garage.parts then snapshot = self.garage:parts(out.id) end
+    out.space = M.spaceWith(self.garage.cargoStorage and self.garage:cargoStorage(out.id) or {}, snapshot)
+    self.appliedWeight = nil
+  end
+
+  -- Trailer parts. Buy trailer parts puts the player in their trailer and opens the game's parts
+  -- menu on it, as Buy parts does for the car, so they can fit cargo boxes or tanks. Each change
+  -- respawns the trailer; the bill (parts added less the trade-in of parts taken off, as for the car) is
+  -- worked out in watchTrailerShop. Pay keeps the parts, Undo puts the paid ones back, and both put
+  -- the player back in their car. While in the trailer, nothing counts as changing car.
+  -- self.trailerShop = { carId, paid (parts snapshot paid for), fitted, bill, due }
+
+  -- Why Buy trailer parts cannot be pressed now, or nil.
+  function c:trailerShopProblem()
+    if not self.trailer or not self.trailerOut then return 'Bring your trailer out first.' end
+    local problem = self:trailerProblem()
+    if problem then return problem end
+    if self.load then return 'Deliver or abandon your job before changing trailer parts.' end
+    return nil
+  end
+
+  function c:buyTrailerParts()
+    local problem = self:trailerShopProblem()
+    if problem then
+      self.trailerFeedback = problem
+      return false
+    end
+    local out = self.trailerOut
+    local paid = self.garage.parts and self.garage:parts(out.id)
+    if not paid then
+      self.trailerFeedback = 'Could not read your trailer\'s parts. Try again in a moment.'
+      return false
+    end
+    local carId = self.ownedParts.id
+    local ok = self.garage:enter(out.id)
+    if not ok then
+      self.trailerFeedback = 'Could not get into your trailer. Try again in a moment.'
+      return false
+    end
+    self.trailerShop = { carId = carId, paid = paid, fitted = paid }
+    self.trailerFeedback = 'Fit cargo boxes or tanks to your trailer in the parts menu. The bill shows up here.'
+    if self.garage.openPartsMenu then self.garage:openPartsMenu() end
+    self.diag:event('trailer_parts_open', tostring(out.id))
+    return true
+  end
+
+  -- Called every tick while in the trailer: after a part change, prices it.
+  function c:watchTrailerShop()
+    local shop, out = self.trailerShop, self.trailerOut
+    if not shop or not shop.due or not out then return end
+    local snapshot = self.garage:parts(out.id)
+    if not snapshot then return end
+    shop.due, shop.fitted = false, snapshot
+    shop.bill = pricing.partsDiff(shop.paid, snapshot)
+    self:readTrailerSpace(snapshot)
+    self.diag:event('trailer_parts_quote', shop.bill and tostring(shop.bill.cost) or 'none')
+  end
+
+  -- Back in the car, which is asked to hitch the trailer again.
+  local function backToCar(self)
+    local shop = self.trailerShop
+    self.trailerShop = nil
+    if not shop then return end
+    if not self.garage:enter(shop.carId) then self.diag:event('trailer_parts_back_failed', tostring(shop.carId), 'W') end
+    if self.trailerOut and self.garage.hitch then self.garage:hitch(self.trailerOut.id) end
+  end
+
+  -- Pays the trailer parts bill (or takes the refund) and keeps the parts.
+  function c:payTrailerParts()
+    local shop, t = self.trailerShop, self.trailer
+    if not shop or not t then return false end
+    if shop.due then
+      self.trailerFeedback = 'Working out the bill...'
+      return false
+    end
+    local bill = shop.bill
+    if not bill then
+      backToCar(self)
+      self.trailerFeedback = 'No changes to your trailer. Nothing to pay.'
+      return true
+    end
+    if bill.cost > 0 and not self:spend(bill.cost, 'trailer_parts') then
+      self.trailerFeedback = 'Not enough money. You need ' .. dollars(bill.cost - self.profile.progression.balance)
+        .. ' more. Undo some changes, or press Undo.'
+      return false
+    end
+    local config = shop.fitted.config
+    persistence = persistence or require('earthFreight/persistence')
+    local kept = persistence.plainConfig({ model = config.model or t.model, parts = config.parts, partsTree = config.partsTree,
+      partConfigFilename = config.partConfigFilename, vars = config.vars, paints = config.paints })
+    if kept then t.config = kept else self.diag:event('trailer_config_unsaved', t.model, 'W') end
+    backToCar(self)
+    self.trailerFeedback = 'Trailer parts paid: ' .. dollars(bill.cost) .. '. Back up to your trailer to hitch it again.'
+    self:autoSaveSoon('your trailer parts')
+    return true
+  end
+
+  -- Undo: puts the paid-for parts back on the trailer, then the player back in their car.
+  function c:undoTrailerParts()
+    local shop = self.trailerShop
+    if not shop then return false end
+    if shop.bill and self.garage.repair then
+      local ok, why = self.garage:repair(shop.paid.config)
+      if not ok then
+        self.trailerFeedback = 'Could not undo the changes. Try again in a moment.'
+        self.diag:event('trailer_parts_undo_failed', tostring(why), 'W')
+        return false
+      end
+    end
+    self:readTrailerSpace(shop.paid)
+    backToCar(self)
+    self.trailerFeedback = 'Trailer part changes undone. Nothing to pay.'
     return true
   end
 
@@ -206,6 +347,7 @@ function M.attach(c)
   function c:storeTrailer()
     if not self.trailer or not self.trailerOut or not self.profile or self.error then return false end
     if self.hire then self.trailerFeedback = 'Press Back to my car on the Heli tab first.'; return false end
+    if self.trailerShop then self.trailerFeedback = 'Pay for or undo your trailer parts first.'; return false end
     if inTrailer(self) > 0 and not self.storeArmed then
       self.storeArmed = true
       self.trailerFeedback = 'Warning: your trailer has part of your job in it. Storing it loses the whole load and costs '
@@ -306,6 +448,7 @@ function M.attach(c)
   function c:watchTrailer()
     local t = self.trailer
     if not t or not self.garage then return end
+    self:watchTrailerShop()
     local out = self.trailerOut
     if not out then
       if t.stored or self.trailerRestored or self.state ~= 'READY' or not self.arrived or not self.ownedParts
@@ -368,6 +511,7 @@ function M.attach(c)
 
   -- Why Save cannot keep the trailer as it is, or nil.
   function c:trailerSaveProblem()
+    if self.trailerShop then return 'Pay for or undo your trailer parts on the Garage tab before saving.' end
     if self.trailerOut and not self.trailerOut.hitched then
       return 'Hitch your trailer, or store it on the Garage tab, before saving.'
     end
@@ -398,7 +542,14 @@ function M.attach(c)
         sale = M.salePrice(t.paid, repair), space = out and out.space or nil,
         loaded = inTrailer(self) > 0,
       }
-      view.storeAllowed = out ~= nil and not self.hire
+      view.storeAllowed = out ~= nil and not self.hire and not self.trailerShop
+      view.partsAllowed = self:trailerShopProblem() == nil
+      local shop = self.trailerShop
+      if shop then
+        view.shop = { due = shop.due == true, bill = shop.bill and { added = shop.bill.added, removed = shop.bill.removed,
+          cost = shop.bill.cost } or nil }
+        view.shop.payAllowed = not shop.due and (not shop.bill or shop.bill.cost <= balance)
+      end
       view.storeArmed = self.storeArmed == true
       view.bringOutAllowed = t.stored == true and problem == nil
       view.sellAllowed = t.stored == true
@@ -419,7 +570,8 @@ end
 -- The saved trailer, cleaned: { model, config, name, paid, damage, stored }, or nil when unusable.
 function M.clean(t)
   if type(t) ~= 'table' or type(t.model) ~= 'string' or t.model == '' or #t.model > 128 or t.model:find('%c')
-      or type(t.config) ~= 'string' or t.config == '' or #t.config > 512 or t.config:find('%c')
+      or not ((type(t.config) == 'string' and t.config ~= '' and #t.config <= 512 and not t.config:find('%c'))
+        or (type(t.config) == 'table' and type(t.config.model) == 'string'))
       or type(t.name) ~= 'string' or t.name == '' or #t.name > 256 or t.name:find('%c')
       or not finite(t.paid) or t.paid < 0 or t.paid ~= math.floor(t.paid) or t.paid > 9007199254740991
       or (t.damage ~= nil and (not finite(t.damage) or t.damage < 0))
