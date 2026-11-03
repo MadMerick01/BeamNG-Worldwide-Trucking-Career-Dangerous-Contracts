@@ -461,6 +461,13 @@ function M.attach(c)
   -- (Earth's teleport places the car with a reset); its damage can be unreadable while Earth loads
   -- the terrain, so the last reading is kept until it can be read again.
   function c:watchResets()
+    -- Before the car of this game is given (the starter, or the car of the last save), the player
+    -- is in a car that is about to be replaced, such as the old game's car after New game: a reset
+    -- on the way to the start, as Earth's teleport does, owes nothing.
+    if not self.vehicleProvided then
+      self.rawDamage = nil
+      return
+    end
     local raw, owned = self.garage:inspect(), self.ownedParts
     if not raw and owned and not self.ourRespawn and not self.insurancePending then return end
     if not raw or not owned or raw.id ~= owned.id or self.ourRespawn or self.insurancePending then
@@ -1034,6 +1041,10 @@ function M.attach(c)
       self.diag:event(label .. '_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
       return
     end
+    -- The car given is all that is owed for: the starter is new, and the saved car owes what it was
+    -- saved with. Nothing the car it replaced needed carries over.
+    self.owedDamage = self.mode == 'start' and 0 or (saved and saved.damage or 0)
+    self.punctureDamage, self.lastDamage, self.rawDamage, self.quote = 0, nil, nil, nil
     self.diag:event(label, 'spawned')
   end
 
