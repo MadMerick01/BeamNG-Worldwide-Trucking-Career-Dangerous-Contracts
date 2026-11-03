@@ -35,6 +35,8 @@ M.TOW_RANGE = 50
 M.RESET_DAMAGE_DROP = 1
 -- How long the HUD app has to show the parts bill box before a corner pop-up shows it instead.
 M.BILL_FALLBACK_SECONDS = 1.5
+-- After paying on the parts bill box, how long until the camera is checked once more.
+M.CAMERA_CHECK_SECONDS = 0.5
 -- How long a second-hand car has to spawn before its sale is dropped.
 M.USED_SPAWN_SECONDS = 5
 -- The Rust Bucket to Rig line on the start page: a car worth RUST_VALUE (the starter Burnside)
@@ -608,7 +610,9 @@ function M.attach(c)
   end
 
   -- Pay on the parts bill box. Only pays the bill the box showed; says how it went in a corner pop-up.
-  -- Once paid, the game's parts menu closes and the player is back driving the car.
+  -- Once paid, the game's parts menu closes and the player is back driving the car, on the car's
+  -- own camera rather than the menu's free camera. The camera is checked again a moment later, in
+  -- case the menu closing turns the free camera back on.
   function c:payPartsBill(serial)
     if not self.partsBill or self.partsBill.serial ~= serial then
       self:toast('warning', 'Parts bill', 'The bill changed. Check the new one and pay again.')
@@ -616,7 +620,11 @@ function M.attach(c)
     end
     local ok = self:buyParts()
     self:toast(ok and 'success' or 'warning', 'Parts bill', self.partsFeedback or 'Could not pay. Try again on the Garage tab.')
-    if ok and self.trigger then pcall(self.trigger, 'ChangeState', { state = 'play', params = {} }) end
+    if ok then
+      if self.trigger then pcall(self.trigger, 'ChangeState', { state = 'play', params = {} }) end
+      self:cameraBackToCar()
+      self.cameraCheckAt = self.clock + M.CAMERA_CHECK_SECONDS
+    end
     return ok
   end
 
@@ -627,7 +635,15 @@ function M.attach(c)
 
   -- Called every tick: closes the parts bill box once the bill is paid or undone, and falls back to
   -- a corner pop-up when the box did not show.
+  function c:cameraBackToCar()
+    if self.camera and self.camera.backToCar then pcall(self.camera.backToCar) end
+  end
+
   function c:watchPartsBill()
+    if self.cameraCheckAt and self.clock >= self.cameraCheckAt then
+      self.cameraCheckAt = nil
+      self:cameraBackToCar()
+    end
     local open = self.partsBill
     if not open then return end
     if not self.pendingParts then
