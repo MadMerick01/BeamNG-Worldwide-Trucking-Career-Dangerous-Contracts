@@ -302,6 +302,10 @@
             <div ng-if="data.town.delivery.problem" style="color:#c9d6d2;">{{data.town.delivery.problem}}</div>
             <button type="button" ng-click="deliverJob()" ng-disabled="!data.town.delivery.allowed" style="margin-top:6px;padding:7px 12px;background:#6fcf97;color:#0c1318;font-weight:bold;border:1px solid #6fcf97;border-radius:4px;">Deliver</button>
           </div>
+          <div ng-if="data.space.boot" style="margin:8px 0;padding:8px 10px;border:1px solid #f2c94c;border-radius:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;">
+            <div style="flex:1;min-width:180px;"><span style="color:#f2c94c;font-weight:bold;">Only your boot: {{data.space.slots}} slots.</span> Fit Cargo Load boxes for bigger loads and bigger pay. The rear seat slot is the best place to start.</div>
+            <button type="button" ng-click="openPartsMenu()" ng-disabled="data.garageLocked" ng-style="{opacity: data.garageLocked ? 0.5 : 1}" style="flex:none;padding:5px 10px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">Buy parts</button>
+          </div>
           <div style="margin:8px 0;">
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:12px;color:#c9d6d2;" role="group" aria-label="Distance">
               <span style="flex:1;min-width:0;font-size:14px;font-weight:bold;color:#f2f6f5;">Jobs</span>

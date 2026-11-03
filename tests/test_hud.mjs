@@ -401,6 +401,14 @@ test('a changed name lights up Save', () => {
   assert.equal(a.scope.unsaved({ nameUnsaved: true }), true)
   assert.equal(a.scope.unsaved({ nameUnsaved: false }), false)
 })
+test('With only the boot, the Town tab and the start steps say to fit cargo boxes', () => {
+  const a = app()
+  const town = html.slice(html.indexOf("tab === 'town'"), html.indexOf("tab === 'garage'"))
+  const hint = town.slice(town.indexOf('ng-if="data.space.boot"'), town.indexOf('aria-label="Distance"'))
+  assert.ok(hint.includes('rear seat slot') && hint.includes('ng-click="openPartsMenu()"'), 'a boot-only hint with Buy parts')
+  const radiator = a.scope.introSteps.findIndex(s => s.includes('radiator'))
+  assert.match(a.scope.introSteps[radiator + 1], /cargo boxes.*rear seat slot/, 'cargo boxes come right after the radiator')
+})
 test('Refuel sits on the Garage tab, and the Town tab has no cargo slots card', () => {
   const a = app()
   const town = html.slice(html.indexOf("tab === 'town'"), html.indexOf("tab === 'garage'"))

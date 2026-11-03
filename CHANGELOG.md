@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New players are now told to fit cargo boxes.** The starter car only has its boot, which holds 2 slots, so its jobs pay very little. The **How to play** steps on the start page now say to fit **Cargo Load** boxes in the rear seat slot with **Buy parts**, right after the radiator. While your car only has its boot, the **Town** tab also shows a gold line saying so, with its own **Buy parts** button. Your saves still work.
+
 ## Build 120 · 3 Nov 2026
 
 - **A new game no longer carries over your old repair bill.** Before, if your truck was damaged when you pressed **Yes, start over**, the teleport to your start counted that damage as still owed, so the fresh starter car arrived with the old game's repair on the **Garage** tab and a "Repair still owed" warning. Now the new game starts with nothing to pay, and any open parts or car bill from the old game is cleared too. Your saves still work. If a new game you already started is showing the old bill, press **New game** and **Yes, start over** again once you're on this build.
