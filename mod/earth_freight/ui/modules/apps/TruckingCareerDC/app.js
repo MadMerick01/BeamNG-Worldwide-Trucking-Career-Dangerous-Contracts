@@ -510,10 +510,13 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.cancelStoreTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeArmed) core('cancelStoreTrailer()') }
       scope.bringOutTrailer = function () { if (scope.data.trailer && scope.data.trailer.bringOutAllowed) core('bringOutTrailer()') }
       scope.sellTrailer = function () { if (scope.data.trailer && scope.data.trailer.sellAllowed) core('sellTrailer()') }
+      scope.buyTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.partsAllowed) core('buyTrailerParts()') }
+      scope.payTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.shop && scope.data.trailer.shop.payAllowed) core('payTrailerParts()') }
+      scope.undoTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.shop) core('undoTrailerParts()') }
       scope.repairTrailer = function () { if (scope.data.trailer && scope.data.trailer.repairAllowed) core('repairTrailer()') }
       // Open the game's own parts menu (Ctrl+W) and car selector (Ctrl+E); the bill then shows up on the Garage tab.
-      scope.openPartsMenu = function () {
-        if (scope.data.garageLocked) return
+      scope.openPartsMenu = function (forTrailer) {
+        if (scope.data.garageLocked && !(forTrailer && scope.data.trailer && scope.data.trailer.shop)) return
         call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
           "elseif guihooks then guihooks.trigger('ChangeState', {state = 'menu.vehicleconfig.parts'}) end")
       }

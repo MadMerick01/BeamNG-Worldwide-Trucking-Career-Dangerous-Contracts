@@ -1441,6 +1441,45 @@ do
   T.check(c:view().trailer.foreign, 'not theirs'); T.eq(c:trailerSpace(), nil, 'no space from it')
 end
 
+-- Trailer parts: cargo boxes fitted to a trailer in the parts menu, billed like car parts, saved.
+do
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 100000
+  g.storage = {}
+  T.check(c:buyTrailer(1), 'flatbed bought'); local id = c.trailerOut.id
+  c:couplerChanged(1, id, true)
+  T.eq(c:view().trailer.owned.space.slots, 0, 'a bare flatbed carries nothing')
+  c.load = { good = 'parts', units = 1, slots = 1, kg = 15 }
+  T.check(not c:buyTrailerParts(), 'not with a job'); T.check(c.trailerFeedback:find('job'), 'told why')
+  c.load = nil
+  local before = c:view().balance
+  T.check(c:buyTrailerParts(), 'in the trailer'); T.eq(g.vehicleId, id, 'the player is in it'); T.eq(g.partsMenus, 1, 'parts menu opened')
+  T.check(c:view().garageLocked, 'car parts and cars wait'); T.check(not c:manualSave(), 'no save mid-shop')
+  -- Fitting a box respawns the trailer: billed, not taken as a car purchase.
+  g.trailers[id].fitted.box = 'pickup_cargo_load_box_l'
+  c:vehicleSpawned(id); c:tick(0.1)
+  T.eq(c.pendingCar, nil, 'not a car bill'); T.eq(c:view().trailer.shop.bill.cost, 1500, 'the box billed at its price')
+  T.eq(c:view().trailer.owned.space.slots, 16, 'its space counted')
+  T.check(c:payTrailerParts(), 'paid'); T.eq(c:view().balance, before - 1500, 'charged')
+  T.eq(g.vehicleId, 1, 'back in the car'); T.eq(c.trailerShop, nil, 'done')
+  T.eq(type(c.trailer.config), 'table', 'the fitted parts kept')
+  c:couplerChanged(1, id, true); c:tick(0.6); c:tick(0.6)
+  T.check(c:manualSave(), 'saved')
+  local saved = io.files[A].trailer and io.files[A] or io.files[B]
+  T.eq(saved.trailer.config.parts.box, 'pickup_cargo_load_box_l', 'the box saved')
+  local r, _, ra, rg = F.controller({ io = io })
+  ra.pose = F.copy(a.pose); rg.storage = {}; r:tick(0.1); r:vehicleSpawned(); r:tick(0.1); r:tick(0.1)
+  T.eq(rg.trailers[r.trailerOut.id].fitted.box, 'pickup_cargo_load_box_l', 'it comes back with its box')
+  -- Undo puts the paid parts back, for nothing.
+  before = c:view().balance
+  T.check(c:buyTrailerParts(), 'in again')
+  g.trailers[id].fitted.box = nil; c:vehicleSpawned(id); c:tick(0.1)
+  T.eq(#c:view().trailer.shop.bill.removed, 1, 'taking it off shows on the bill'); T.eq(c:view().trailer.shop.bill.cost, 0, 'never below $0, as for car parts')
+  T.check(c:undoTrailerParts(), 'undone'); T.eq(g.trailers[id].fitted.box, 'pickup_cargo_load_box_l', 'box back on')
+  T.eq(c:view().balance, before, 'nothing paid'); T.eq(g.vehicleId, 1, 'back in the car')
+end
+
 -- A saved trailer is checked like the rest of the save.
 do
   local P2 = require('earthFreight/persistence')

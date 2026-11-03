@@ -92,7 +92,7 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
   const buttons = {
     storeTrailer: ['storeAllowed', 'storeTrailer()'], cancelStoreTrailer: ['storeArmed', 'cancelStoreTrailer()'],
     bringOutTrailer: ['bringOutAllowed', 'bringOutTrailer()'], sellTrailer: ['sellAllowed', 'sellTrailer()'],
-    repairTrailer: ['repairAllowed', 'repairTrailer()']
+    repairTrailer: ['repairAllowed', 'repairTrailer()'], buyTrailerParts: ['partsAllowed', 'buyTrailerParts()']
   }
   for (const [name, [flag, body]] of Object.entries(buttons)) {
     count = a.commands.length
@@ -101,6 +101,18 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
     a.state({ state: 'READY', trailer: { [flag]: true } }); a.scope[name]()
     assert.equal(a.commands.at(-1), fixed(body), name)
   }
+})
+
+test('trailer parts: Pay and Undo only while in the trailer, and Pay only when Lua allows it', () => {
+  const a = app()
+  let count = a.commands.length
+  a.state({ state: 'READY', trailer: {} }); a.scope.payTrailerParts(); a.scope.undoTrailerParts()
+  assert.equal(a.commands.length, count, 'nothing to pay or undo outside the trailer')
+  a.state({ state: 'READY', trailer: { shop: { payAllowed: false } } }); a.scope.payTrailerParts()
+  assert.equal(a.commands.length, count, 'Pay refused when short')
+  a.scope.undoTrailerParts(); assert.equal(a.commands.at(-1), fixed('undoTrailerParts()'))
+  a.state({ state: 'READY', trailer: { shop: { payAllowed: true } } }); a.scope.payTrailerParts()
+  assert.equal(a.commands.at(-1), fixed('payTrailerParts()'))
 })
 
 test('paying a bill asks to confirm that total, and a new total asks again', () => {
