@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The starter Burnside Rusty has a new picture,** on the start page's **Your truck** card and in BeamNG's vehicle menu. Your saves still work.
+
 ## Build 117 · 3 Nov 2026
 
 - **The start page now opens in a big window in the middle of the screen,** like a real game's title screen. The HUD hides while it's open and comes back when you press **Back to the road**, which replaces Continue. If you had the HUD minimised, it stays minimised.
