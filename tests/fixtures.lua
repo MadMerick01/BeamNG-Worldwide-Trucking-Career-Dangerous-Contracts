@@ -130,9 +130,11 @@ function F.garage()
   g.configList = {
     { model = 'sport', key = 'gt', config = 'vehicles/sport/gt.pc', name = 'Sport GT', value = 40000, type = 'Car', source = 'BeamNG - Official' },
     { model = 'pickup', key = 'd15', config = 'vehicles/pickup/d15.pc', name = 'Pickup D15', value = 20000, type = 'Truck', source = 'BeamNG - Official' },
-    { model = 'flatbed', key = 'long', config = 'vehicles/flatbed/long.pc', name = 'Flatbed', value = 5000, type = 'Trailer', source = 'BeamNG - Official' },
+    { model = 'boxutility', key = 'earth_freight_trailer_boxes', config = 'vehicles/boxutility/earth_freight_trailer_boxes.pc', name = 'Cargo Boxes XL', value = 5000, type = 'Trailer', source = 'Mod' },
+    { model = 'flatbed', key = 'logs', config = 'vehicles/flatbed/logs.pc', name = 'Log trailer', value = 4000, type = 'Trailer', source = 'BeamNG - Official' },
     { model = 'modcar', key = 'x', config = 'vehicles/modcar/x.pc', name = 'Mod car', value = 1000, type = 'Car', source = 'Mod' },
-    { model = 'tanker', key = 'fuel', config = 'vehicles/tanker/fuel.pc', name = 'Fuel tanker', value = 30000, type = 'Trailer', source = 'BeamNG - Official' },
+    { model = 'boxutility', key = 'earth_freight_trailer_fluid', config = 'vehicles/boxutility/earth_freight_trailer_fluid.pc', name = 'Fluid Tanks XL', value = 30000, type = 'Trailer' },
+    { model = 'tanker', key = 'fuel', config = 'vehicles/tanker/fuel.pc', name = 'Fuel tanker', value = 3000, type = 'Trailer', source = 'BeamNG - Official' },
   }
   -- Trailers: spawnTrailer puts one behind the car with an id from 500; storage is its containers.
   g.trailers, g.nextTrailerId, g.removed = {}, 500, {}
