@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 123 · 3 Nov 2026
+
 - **You can now fit cargo boxes and fluid tanks to your trailer.** With your trailer out, press **Buy trailer parts** in the Trailer section of the Garage tab. You're put in the trailer and the parts menu opens, so you can fit boxes or tanks to any trailer that has room for them, such as a flatbed. The bill shows up on the Trailer card and is priced like car parts. Press **Pay** to keep the parts, or **Undo** to put the old ones back, and either one puts you back in your car. Back up to the trailer to hitch it again. The new boxes add to the trailer's cargo space.
 - Before, a bare flatbed carried nothing. Now its cargo space comes from the boxes and tanks you fit to it.
 - You can't take a job, save or relocate until you've paid for or undone the trailer parts. You also need to deliver or abandon your job before you start. Save keeps your trailer's parts, and your saves still work.
