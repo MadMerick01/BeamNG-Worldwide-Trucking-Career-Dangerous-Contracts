@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 117 · 3 Nov 2026
+
 - **The start page now opens in a big window in the middle of the screen,** like a real game's title screen. The HUD hides while it's open and comes back when you press **Back to the road**, which replaces Continue. If you had the HUD minimised, it stays minimised.
 - **Your truck is on the start page,** like a character in a role-playing game: its picture, name, what it's worth, its condition with any repair it needs, the fuel in its tank, its cargo space and your trailer. A marker on the **Rust Bucket ▶ Rig** line shows how far your truck has come, from the starter Burnside to a rig worth $100,000 or more.
 - **Your career is on the start page too:** your money, the km you've driven, the jobs you've done and how many of the dangerous roads you've driven.
