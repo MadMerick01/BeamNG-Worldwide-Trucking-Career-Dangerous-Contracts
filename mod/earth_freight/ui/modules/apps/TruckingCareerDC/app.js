@@ -301,6 +301,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.introSteps = [
         'open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
+        'Then fit cargo boxes: the starter car only has its boot, which takes 2 slots. In Buy parts, put Cargo Load boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.',
         'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
         'The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.'

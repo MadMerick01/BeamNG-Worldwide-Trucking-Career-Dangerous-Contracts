@@ -39,9 +39,10 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 1. Load the BeamNG.Earth Freeroam level and type your name. Open the BeamNG.Earth map, teleport anywhere on Earth, such as your home town, and press **Start here**. You start there with a rusty Burnside and $2,500.
 2. Fit a radiator first: **Buy parts** on the Garage tab. The starter car needs one.
-3. Stop in any town, open the **Town** tab, pick a job and press **Take job**. The GPS is set for you.
-4. Drive it there in one piece and press **Deliver**.
-5. Press **Save** often. Next time, **Teleport to last save** puts you right back.
+3. Then fit cargo boxes. The starter car only has its boot (2 slots), so in **Buy parts** put **Cargo Load** boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.
+4. Stop in any town, open the **Town** tab, pick a job and press **Take job**. The GPS is set for you.
+5. Drive it there in one piece and press **Deliver**.
+6. Press **Save** often. Next time, **Teleport to last save** puts you right back.
 
 
 ## Updating
