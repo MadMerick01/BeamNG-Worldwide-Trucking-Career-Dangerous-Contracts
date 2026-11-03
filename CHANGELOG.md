@@ -7,6 +7,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **New players are now told to fit cargo boxes.** The starter car only has its boot, which holds 2 slots, so its jobs pay very little. The **How to play** steps on the start page now say to fit **Cargo Load** boxes in the rear seat slot with **Buy parts**, right after the radiator. While your car only has its boot, the **Town** tab also shows a gold line saying so, with its own **Buy parts** button. Your saves still work.
+- **A new game now starts with $6,000 instead of $2,500**, enough for the radiator, fuel and a few cargo boxes. Games already under way keep the money they have; pressing **New game** gives you the new amount.
+- **All cargo is 15% lighter.** Parts now weigh 12.75 kg a unit instead of 15, bricks 127.5 kg instead of 150, water 8.5 kg per 10 L and fuel about 6.4 kg per 10 L. Jobs still pay what they did for the same number of units, and because bricks are lighter a cargo box fits more of them, so brick jobs in a full box pay a little more. A single brick now fits in one **Cargo box M**. A job you have already taken keeps its old weight until you deliver it. Your saves still work.
 
 ## Build 120 · 3 Nov 2026
 

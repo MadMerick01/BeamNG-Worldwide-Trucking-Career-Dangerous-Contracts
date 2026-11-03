@@ -158,7 +158,7 @@ end
 
 -- Dollars a job pays at the base rate: this many units of the good, by their weight, over this many km.
 function M.basePay(good, units, km)
-  return M.weightPay(units * good.kg) * (good.rate or 1) * M.PAY_PERCENT / 100 * M.distanceFactor(km)
+  return M.weightPay(units * (good.payKg or good.kg)) * (good.rate or 1) * M.PAY_PERCENT / 100 * M.distanceFactor(km)
 end
 
 -- 'high', 'normal' or 'low': a job's pay compared with its base, for the board's colours.

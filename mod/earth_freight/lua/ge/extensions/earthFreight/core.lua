@@ -24,7 +24,7 @@ local aircraft = require('earthFreight/aircraft')
 local trailers = require('earthFreight/trailers')
 local M = {}
 -- Money a new game starts with.
-local STARTING_MONEY = 2500 -- enough for the radiator the starter car needs, and some fuel
+local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
 local MAX_BALANCE = 9007199254740991
 M.STARTING_MONEY = STARTING_MONEY
 -- What the game's traffic police take when they catch the player, for a ticket or an arrest.
@@ -790,7 +790,7 @@ function M.new(deps)
       problem = good.name .. ' needs a fluid tank. Press Buy parts on the Garage tab, fit a Cargo Load fluid tank and pay for it there.'
     elseif quote and quote.units == 0 then
       problem = 'Not enough cargo space or payload for ' .. good.name:lower() .. ': one unit takes ' .. good.slots
-        .. (good.slots == 1 and ' slot' or ' slots') .. ' and ' .. good.kg .. ' kg. Fit a cargo box in the parts menu.'
+        .. (good.slots == 1 and ' slot' or ' slots') .. ' and ' .. string.format('%g', good.kg) .. ' kg. Fit a cargo box in the parts menu.'
     end
     if not problem and job.contract and not self:canAfford(contracts.FEE) then
       problem = 'Not enough money. The relocation to the start of a dangerous contract costs ' .. dollars(contracts.FEE) .. '.'
