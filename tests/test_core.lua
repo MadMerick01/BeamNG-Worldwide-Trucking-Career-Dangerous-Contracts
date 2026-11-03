@@ -1475,4 +1475,29 @@ do
   T.check(c:view().car.repair > 0, 'damage shows as the repair it needs')
 end
 
+-- A photo of the player's car after parts are paid for, shown on the Your truck card.
+do
+  local c, _, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local photos, files, removed = 0, {}, {}
+  g.takePhoto = function() photos = photos + 1; files.pickup = '/vehicles/pickup/earth_freight_my_truck.jpg'; return true end
+  g.photo = function(_, model) return files[model] end
+  g.removePhoto = function(_, model) removed[#removed + 1] = model; files[model] = nil end
+  c:mount(true)
+  T.check(c:view().car.preview == nil, 'no photo before one is taken')
+  g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
+  c:tick(5); T.eq(photos, 0, 'no photo while a bill is open')
+  T.check(c:buyParts(), 'box bought')
+  c:tick(0.5); T.eq(photos, 0, 'not straight away: the menus close first')
+  c:mount(true); c:tick(3); c:mount(true); c:tick(0.1)
+  T.eq(photos, 1, 'taken once the car has stood a moment')
+  c:tick(5); T.eq(photos, 1, 'and only once')
+  local card = c:view().car
+  T.check(card.preview:find('^/vehicles/pickup/earth_freight_my_truck%.jpg%?v='), 'the card shows the photo, fetched afresh')
+  g.takePhoto = function() return false, 'photo_unavailable' end
+  c:photoSoon(); c:mount(true); c:tick(3.5); c:mount(true); c:tick(0.1)
+  T.check(c:view().car.preview:find('earth_freight_my_truck'), 'a failed photo keeps the last one')
+  T.check(c.photoAt == nil, 'and is not retried every frame')
+end
+
 T.done('Earth Freight controller')

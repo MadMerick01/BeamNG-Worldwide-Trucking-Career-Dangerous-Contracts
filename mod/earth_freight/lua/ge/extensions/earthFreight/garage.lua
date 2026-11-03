@@ -23,6 +23,10 @@ local function defaults()
     -- An upright rotation facing along a direction, for a car put down on its wheels.
     upright = function(dir) return quatFromDir(dir, vec3(0, 0, 1)) end,
     point = function(x, y, z) return vec3(x, y, z) end,
+    -- The parts menu's own Save, which writes a config and takes its photo.
+    partmgmt = function() return rawget(_G, 'core_vehicle_partmgmt') or (extensions and extensions.core_vehicle_partmgmt) end,
+    exists = function(path) return FS:fileExists(path) end,
+    remove = function(path) return FS:removeFile(path) end,
   }
 end
 
@@ -45,6 +49,10 @@ end
 
 -- Names that replace the game's for our own configs, by model/config key.
 M.NAMES = { ['burnside/earth_freight_starter'] = 'Burnside Rusty' }
+-- The photo of the player's own car: one config per model, saved with the parts menu's Save and
+-- written over each time, so a player never collects more than one per car model they have owned.
+M.PHOTO_KEY = 'earth_freight_my_truck'
+M.PHOTO_TYPES = { '.jpg', '.png' }
 -- Pictures for our own configs, for when the game's vehicle list can't name one.
 M.PREVIEWS = { ['burnside/earth_freight_starter'] = '/vehicles/burnside/earth_freight_starter.jpg' }
 
@@ -165,6 +173,43 @@ function M.new(environment)
     return found
   end
 
+  -- Takes a photo of the player's car as it is now, the way the parts menu's Save does: the parts
+  -- are saved as the config vehicles/<model>/PHOTO_KEY.pc, written over each time, and the game
+  -- takes its picture. The picture appears a moment later. True once the game took both requests.
+  function g:takePhoto()
+    local vehicle = current()
+    if not vehicle then return false, 'vehicle_required' end
+    local okManager, manager = pcall(env.partmgmt or function() end)
+    if not okManager or type(manager) ~= 'table' or type(manager.saveLocal) ~= 'function'
+      or type(manager.saveLocalScreenshot) ~= 'function' then return false, 'photo_unavailable' end
+    local file = M.PHOTO_KEY .. '.pc'
+    local okSave, why = pcall(manager.saveLocal, file)
+    if not okSave then return false, 'save_failed', tostring(why) end
+    local okShot, shotWhy = pcall(manager.saveLocalScreenshot, file)
+    if not okShot then return false, 'photo_failed', tostring(shotWhy) end
+    return true
+  end
+
+  -- The photo of the player's car of this model, as a path the HUD can show; nil when none.
+  function g:photo(model)
+    if type(model) ~= 'string' or not model:match('^[%w_%-]+$') or not env.exists then return nil end
+    for _, ext in ipairs(M.PHOTO_TYPES) do
+      local path = '/vehicles/' .. model .. '/' .. M.PHOTO_KEY .. ext
+      local ok, found = pcall(env.exists, path)
+      if ok and found then return path end
+    end
+  end
+
+  -- Removes the photo config of a model the player no longer drives, so only the car they own has one.
+  function g:removePhoto(model)
+    if type(model) ~= 'string' or not model:match('^[%w_%-]+$') or not env.remove then return end
+    for _, ext in ipairs({ '.pc', M.PHOTO_TYPES[1], M.PHOTO_TYPES[2] }) do
+      local path = '/vehicles/' .. model .. '/' .. M.PHOTO_KEY .. ext
+      local okExists, found = pcall(env.exists, path)
+      if okExists and found then pcall(env.remove, path) end
+    end
+  end
+
   -- Every car config the game has, read once: a list of { model, key, config (its .pc path), name,
   -- value, type, source, preview }. Empty when the game's list is unreadable.
   local configList
@@ -177,7 +222,8 @@ function M.new(environment)
     local out = {}
     for _, info in pairs(type(result.configs) == 'table' and result.configs or result) do
       local model, key = type(info) == 'table' and info.model_key, type(info) == 'table' and info.key
-      if type(model) == 'string' and model ~= '' and type(key) == 'string' and key ~= '' then
+      -- The player's own photo config is not a car for sale.
+      if type(model) == 'string' and model ~= '' and type(key) == 'string' and key ~= '' and key ~= M.PHOTO_KEY then
         out[#out + 1] = { model = model, key = key, config = 'vehicles/' .. model .. '/' .. key .. '.pc', name = carName(model, key, info),
           -- A config may not carry its model's Type (Car, Truck, Trailer, Prop...), so the model's is asked too.
           value = tonumber(info.Value), type = type(info.Type) == 'string' and info.Type
