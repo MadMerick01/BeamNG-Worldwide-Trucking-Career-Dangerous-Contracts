@@ -288,6 +288,14 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         fit()
         scope.cancelNewGame()
       }
+      // Choose my start on the map: the page closes and the BeamNG.Earth map opens. On Earth's level,
+      // Earth puts its own world map in place of the game's big map, so opening the big map (as M
+      // does) opens Earth's. Guarded, so a game without it only closes the page.
+      scope.openMap = function () {
+        scope.closeIntro()
+        call('if freeroam_bigMapMode then if freeroam_bigMapMode.enterBigMap then pcall(freeroam_bigMapMode.enterBigMap, {instant = true}) ' +
+          'elseif freeroam_bigMapMode.toggleBigMap then pcall(freeroam_bigMapMode.toggleBigMap) end end')
+      }
       // The Rust Bucket to Rig line: where the car's marker sits, and what it says under it.
       scope.climbAt = function (share) { return Math.round(Math.max(0, Math.min(1, Number(share) || 0)) * 100) + '%' }
       scope.climbLabel = function (share) {
