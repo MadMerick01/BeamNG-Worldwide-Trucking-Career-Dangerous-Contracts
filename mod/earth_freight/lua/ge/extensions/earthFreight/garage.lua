@@ -45,6 +45,8 @@ end
 
 -- Names that replace the game's for our own configs, by model/config key.
 M.NAMES = { ['burnside/earth_freight_starter'] = 'Burnside Rusty' }
+-- Pictures for our own configs, for when the game's vehicle list can't name one.
+M.PREVIEWS = { ['burnside/earth_freight_starter'] = '/vehicles/burnside/earth_freight_starter.jpg' }
 
 function M.new(environment)
   local env = environment or defaults()
@@ -137,6 +139,30 @@ function M.new(environment)
     local value = info and tonumber(info.Value)
     if value and (value ~= value or value < 0 or value == math.huge) then value = nil end
     return value, carName(model, key, info)
+  end
+
+  -- The picture of a car config, given its .pc path, for the start page's Your truck card: the
+  -- config's own, else the model's. Nil when the game has none; only a picture found is kept.
+  local previews = {}
+  local function picture(info) return type(info) == 'table' and type(info.preview) == 'string' and info.preview ~= '' and info.preview or nil end
+  function g:preview(model, configFile)
+    if type(model) ~= 'string' or model == '' then return nil end
+    local key = type(configFile) == 'string' and configFile:match('([^/\\]+)%.pc$') or nil
+    local id = model .. '/' .. tostring(key)
+    if previews[id] then return previews[id] end
+    local found
+    local okVehicles, vehicles = pcall(env.vehicles)
+    if key and okVehicles and type(vehicles) == 'table' and type(vehicles.getConfig) == 'function' then
+      local ok, info = pcall(vehicles.getConfig, model, key)
+      found = ok and picture(info) or nil
+    end
+    if not found and key then found = M.PREVIEWS[id] end
+    if not found then
+      local ok, info = pcall(modelInfo, model)
+      found = ok and picture(info) or nil
+    end
+    previews[id] = found
+    return found
   end
 
   -- Every car config the game has, read once: a list of { model, key, config (its .pc path), name,

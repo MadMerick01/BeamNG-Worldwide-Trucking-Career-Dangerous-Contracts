@@ -1512,6 +1512,12 @@ function M.new(deps)
       vehicle = current and self.lastSample.vehicle and {
         model = self.lastSample.vehicle.model, id = self.lastSample.vehicle.id,
       } or nil,
+      -- The start page's Your truck card and the career so far.
+      car = self:carCard(),
+      career = self.profile and {
+        jobsDone = self.profile.progression.jobsDone or 0,
+        contractsDone = #(self.profile.progression.contractsDone or {}), contractsTotal = #contracts.LIST,
+      } or nil,
       balance = self.profile and self.profile.progression.balance or STARTING_MONEY,
       totalDistanceKm = self.profile and self.profile.progression.totalDistanceKm or 0,
       unsavedDistanceKm = self.profile and math.max(0, self.profile.progression.totalDistanceKm - self.savedDistanceKm) or 0,

@@ -6,6 +6,12 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The start page now opens in a big window in the middle of the screen,** like a real game's title screen. The HUD hides while it's open and comes back when you press **Back to the road**, which replaces Continue. If you had the HUD minimised, it stays minimised.
+- **Your truck is on the start page,** like a character in a role-playing game: its picture, name, what it's worth, its condition with any repair it needs, the fuel in its tank, its cargo space and your trailer. A marker on the **Rust Bucket ▶ Rig** line shows how far your truck has come, from the starter Burnside to a rig worth $100,000 or more.
+- **Your career is on the start page too:** your money, the km you've driven, the jobs you've done and how many of the dangerous roads you've driven.
+- On a new game, **Choose my start on the map** closes the page so you can open the BeamNG.Earth map, teleport anywhere and press **Start here** on the HUD. **Teleport to last save** also closes the page, so you can watch the world load.
+- A parts bill, an insurance offer or being stranded closes the start page, so you can deal with it straight away. Parts bills and beacons still show on top of the page. Your saves still work.
+
 ## Build 116 · 1 Nov 2026
 
 - **Trailers are here.** On the Garage tab, open the new **Trailer** section and press **Buy new trailer** to see every trailer in the game at its full price. Pick one, press **Buy**, and it's paid for straight away and put down behind your car. Back up to it slowly and it hitches itself, or use the game's couple key. You can own one trailer at a time.

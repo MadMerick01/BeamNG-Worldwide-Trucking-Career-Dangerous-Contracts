@@ -230,4 +230,19 @@ do
   T.check(tg:exists(42) and not tg:exists(43), 'knows which vehicles exist')
   T.eq(select(2, G.new(env()):spawnTrailer('x', 'y')), 'spawn_unavailable', 'no spawn function, no trailer')
 end
+-- The Your truck card's picture: the config's, else the model's, else our own for the starter.
+do
+  local asked = 0
+  local list = { pickup = { d15 = { preview = '/vehicles/pickup/d15.jpg' }, bare = {} } }
+  local pg = G.new(env({ vehicles = function() return {
+    getConfig = function(model, key) asked = asked + 1; return list[model] and list[model][key] end,
+    getModel = function(model) return model == 'pickup' and { model = { preview = '/vehicles/pickup/default.jpg' } } or nil end } end }))
+  T.eq(pg:preview('pickup', 'vehicles/pickup/d15.pc'), '/vehicles/pickup/d15.jpg', 'the config picture')
+  pg:preview('pickup', 'vehicles/pickup/d15.pc'); T.eq(asked, 1, 'read once')
+  T.eq(pg:preview('pickup', 'vehicles/pickup/bare.pc'), '/vehicles/pickup/default.jpg', 'else the model picture')
+  T.eq(pg:preview('burnside', 'vehicles/burnside/earth_freight_starter.pc'), G.PREVIEWS['burnside/earth_freight_starter'], 'our starter picture')
+  T.eq(pg:preview(nil), nil, 'no model, no picture')
+  T.eq(G.new(env({ vehicles = function() error('changed') end })):preview('pickup', 'vehicles/pickup/d15.pc'), nil, 'a broken game list gives none')
+end
+
 T.done('garage')

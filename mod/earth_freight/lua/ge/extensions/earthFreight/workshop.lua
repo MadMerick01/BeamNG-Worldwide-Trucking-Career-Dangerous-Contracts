@@ -37,6 +37,17 @@ M.RESET_DAMAGE_DROP = 1
 M.BILL_FALLBACK_SECONDS = 1.5
 -- How long a second-hand car has to spawn before its sale is dropped.
 M.USED_SPAWN_SECONDS = 5
+-- The Rust Bucket to Rig line on the start page: a car worth RUST_VALUE (the starter Burnside)
+-- sits at the start, one worth RIG_VALUE or more at the end, and the rest in between by value,
+-- on a log scale so each upgrade moves the marker along. Tune after testing in game.
+M.RUST_VALUE, M.RIG_VALUE = 3500, 100000
+
+-- How far along the Rust Bucket to Rig line a car worth this much is, from 0 to 1; nil unknown.
+function M.climb(value)
+  if type(value) ~= 'number' or value ~= value or value <= 0 or value == math.huge then return nil end
+  local share = math.log(value / M.RUST_VALUE) / math.log(M.RIG_VALUE / M.RUST_VALUE)
+  return math.max(0, math.min(1, share))
+end
 
 local dollars = pricing.dollars
 
@@ -59,6 +70,23 @@ function M.attach(c)
   function c:carValueOf(vehicleId)
     local owned = self.ownedParts
     if owned and vehicleId ~= nil and owned.id == vehicleId then return owned.value end
+  end
+
+  -- The player's car for the start page's Your truck card, like a character sheet: its name,
+  -- picture, what it is worth, the repair it needs now and how far it is from a rig. Nil until
+  -- the player is in their own car at their start or last save.
+  function c:carCard()
+    local owned = self.ownedParts
+    if not owned or not self.arrived or self.error then return nil end
+    local preview
+    if self.garage and self.garage.preview then
+      local ok, found = pcall(self.garage.preview, self.garage, owned.model, owned.configFile)
+      preview = ok and type(found) == 'string' and found or nil
+    end
+    local d = self.lastDamage
+    return { name = owned.name or owned.model, value = owned.value, preview = preview,
+      repair = d and d.id == owned.id and pricing.repairCost(d.damage, owned.value) or 0,
+      climb = M.climb(owned.value) }
   end
 
   -- Reads the player vehicle's damage now and prices it. Returns the inspection and cost, or nil and a reason.
