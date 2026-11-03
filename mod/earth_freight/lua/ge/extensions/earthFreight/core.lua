@@ -524,6 +524,7 @@ function M.new(deps)
     if self.hire then return FLYING end
     if self.onFoot then return ON_FOOT end
     if self.load then return 'Deliver or abandon your job first: cargo cannot be relocated.' end
+    if self.trailerShop then return 'Finish with your trailer parts on the Garage tab first.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     if self.booking then return 'You already have a relocation booked to ' .. self.booking.name .. '.' end
     return nil
@@ -742,6 +743,7 @@ function M.new(deps)
     if not place then return 'Drive into a town to find a job.' end
     if not self.odometer:stopped() then return 'Stop the car to take or deliver a job.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if self.trailerShop then return 'Finish with your trailer parts on the Garage tab first.' end
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
     return nil
   end
@@ -1148,7 +1150,8 @@ function M.new(deps)
   -- through fuelReading. Refuel fills the tank as far as the money goes, inside a place's arrival
   -- circle, stopped, and is charged when the car reports how much went in.
   function c:watchFuel()
-    if not self.fuelTank or self.state ~= 'READY' or not self.arrived or self.partsCheckDue or self.hire or self.onFoot then return end
+    if not self.fuelTank or self.state ~= 'READY' or not self.arrived or self.partsCheckDue or self.hire or self.onFoot
+      or self.trailerShop then return end
     if self.fuelReadAt and self.clock - self.fuelReadAt < fuel.READ_EVERY_SECONDS then return end
     self.fuelReadAt = self.clock
     local ok, why = self.fuelTank:read()
@@ -1543,7 +1546,8 @@ function M.new(deps)
       tow = self:towView(),
       onFoot = self.onFoot == true,
       -- Why Buy parts, Buy new car and Buy second hand are off, or nil when they are on.
-      garageLocked = self.onFoot and 'Get back in your car to change parts or cars.' or self:towDebtProblem(),
+      garageLocked = self.onFoot and 'Get back in your car to change parts or cars.'
+        or (self.trailerShop and 'Finish with your trailer parts first.') or self:towDebtProblem(),
       partsChange = self.pendingParts and {
         added = self.pendingParts.added, removed = self.pendingParts.removed,
         partsCost = self.pendingParts.partsCost, repair = self.pendingParts.repair, cost = self.pendingParts.cost,
@@ -1844,6 +1848,9 @@ function M.storeTrailer() return safely(function() return ensure():storeTrailer(
 function M.cancelStoreTrailer() return safely(function() return ensure():cancelStoreTrailer() end) end
 function M.bringOutTrailer() return safely(function() return ensure():bringOutTrailer() end) end
 function M.sellTrailer() return safely(function() return ensure():sellTrailer() end) end
+function M.buyTrailerParts() return safely(function() return ensure():buyTrailerParts() end) end
+function M.payTrailerParts() return safely(function() return ensure():payTrailerParts() end) end
+function M.undoTrailerParts() return safely(function() return ensure():undoTrailerParts() end) end
 function M.repairTrailer() return safely(function() return ensure():repairTrailer() end) end
 -- The game calls these when two vehicles couple or uncouple, such as a car and its trailer.
 function M.onCouplerAttached(a, b) return safely(function() if active then active:couplerChanged(a, b, true) end end) end

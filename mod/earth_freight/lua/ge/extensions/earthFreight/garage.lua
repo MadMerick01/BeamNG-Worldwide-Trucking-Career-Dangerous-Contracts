@@ -251,8 +251,13 @@ function M.new(environment)
   -- Returns the player vehicle's fitted parts:
   -- { id, model, config, parts = { [slot] = part }, values = { [part] = price or nil }, names = { [part] = name },
   --   configFile, value, name } where value is the car's own price from carValue.
-  function g:parts()
+  -- With vehicleId, the parts of that vehicle instead, such as the player's trailer.
+  function g:parts(vehicleId)
     local vehicle, id = current()
+    if vehicleId ~= nil then
+      local found, other = pcall(env.objectById, vehicleId)
+      vehicle, id = found and other or nil, vehicleId
+    end
     if not vehicle then return nil, 'vehicle_required' end
     local data = vehicleData(id)
     if not data or type(data.config.partsTree) ~= 'table' then return nil, 'parts_unavailable' end
@@ -643,6 +648,13 @@ function M.new(environment)
       end
     end
     return out
+  end
+
+  -- Opens the game's own parts menu on the vehicle the player is in. Returns true once asked.
+  function g:openPartsMenu()
+    local vehicles = env.vehicles()
+    if type(vehicles) ~= 'table' or type(vehicles.openPartsSelectorUI) ~= 'function' then return false end
+    return (pcall(vehicles.openPartsSelectorUI))
   end
 
   -- Puts the player back in the vehicle with this id, if it still exists.

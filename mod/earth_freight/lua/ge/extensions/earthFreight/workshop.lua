@@ -440,7 +440,11 @@ function M.attach(c)
     -- Getting out spawns the walking mode's unicycle: the car is left as it was.
     if vehicleId ~= nil and self.garage and self.garage.isWalker and self.garage:isWalker(vehicleId) then return end
     -- The player's trailer coming out is not a change to their car.
-    if self.trailerSpawning or (vehicleId ~= nil and self.trailerOut and vehicleId == self.trailerOut.id) then return end
+    if self.trailerSpawning or (vehicleId ~= nil and self.trailerOut and vehicleId == self.trailerOut.id) then
+      -- A part change in the parts menu respawns the trailer: its bill is worked out next tick.
+      if self.trailerShop then self.trailerShop.due = true end
+      return
+    end
     self.partsCheckDue, self.respawned, self.wearDue = true, true, true
     if self.secondHand then self.secondHand.spawned = true end
   end
@@ -495,6 +499,8 @@ function M.attach(c)
   end
 
   function c:checkParts()
+    -- While the player is in their trailer for its parts, the vehicle they are in is not a car to buy.
+    if self.trailerShop then return false end
     local snapshot = self.garage:parts()
     if not snapshot then return false end
     -- A second-hand car is priced once it has spawned (watchParts drops one that never does).

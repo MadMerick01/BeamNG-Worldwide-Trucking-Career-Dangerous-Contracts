@@ -189,7 +189,14 @@ function M.validate(s)
   -- The trailer owned, out (hitched) or stored in the garage.
   local trailer = nil
   if s.trailer ~= nil then
-    trailer = trailers.clean(s.trailer)
+    local raw = s.trailer
+    -- A trailer with parts fitted keeps its whole config, checked like the car's.
+    if type(raw) == 'table' and type(raw.config) == 'table' then
+      local config = plainConfig(raw.config)
+      if not config then return nil, 'invalid_trailer' end
+      raw = { model = raw.model, config = config, name = raw.name, paid = raw.paid, damage = raw.damage, stored = raw.stored }
+    end
+    trailer = trailers.clean(raw)
     if not trailer then return nil, 'invalid_trailer' end
   end
   local recent = nil
