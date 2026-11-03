@@ -12,6 +12,10 @@ local M = {}
 -- fuel for about $1,540. Parcels are heavy for their slots (bricks 50 kg
 -- a slot), so a big box runs out of weight before space. Food is no longer posted; it stays known
 -- so a food job in an older save still delivers.
+-- WEIGHT_PERCENT scales what every good weighs (85: everything 15% lighter, Rowan, 3 Nov). Pay
+-- still goes by the full weight (payKg), so a unit pays what it did; the lighter load just fits
+-- more bricks in a box and sits easier on the car.
+M.WEIGHT_PERCENT = 85
 M.list = {
   { id = 'parts', name = 'Parts', kind = 'parcel', slots = 1, kg = 15, rate = 1 },
   { id = 'food', name = 'Food', kind = 'parcel', slots = 2, kg = 50, rate = 1, retired = true },
@@ -27,7 +31,11 @@ M.list = {
 M.CARRIED = { parcel = true, fluid = true }
 
 local byId = {}
-for _, good in ipairs(M.list) do byId[good.id] = good end
+for _, good in ipairs(M.list) do
+  good.payKg = good.kg
+  good.kg = good.kg * M.WEIGHT_PERCENT / 100
+  byId[good.id] = good
+end
 
 function M.get(id) return byId[id] end
 

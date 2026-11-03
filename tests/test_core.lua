@@ -157,7 +157,7 @@ do
   T.eq(#starter.boxes, 5, 'five M boxes, holder not counted')
   T.eq(starter.slots, 20, 'five M boxes of slots')
   local units, slots, kg = cargo.fits({ slots = 16, kg = 600 }, goods.get('bricks'))
-  T.eq(units, 4, 'bricks in a Cargo box L run out of weight first'); T.eq(slots, 12, 'in 12 slots'); T.eq(kg, 600, 'their weight')
+  T.eq(units, 4, 'bricks in a Cargo box L run out of weight first'); T.eq(slots, 12, 'in 12 slots'); T.eq(kg, 510, 'their weight')
   units = cargo.fits({ slots = 128, kg = 2500 }, goods.get('parts'))
   T.eq(units, 128, 'parts fill a Cargo box XL')
 end
@@ -180,8 +180,8 @@ do
   T.check(v.town.jobs[5].contract ~= nil, 'then the dangerous contract')
   T.check(v.town.jobs[3].fluid and v.town.jobs[3].units == 0 and not v.town.jobs[3].allowed, 'a fluid needs a tank')
   for _, j in ipairs(v.town.jobs) do
-    -- A brick (150 kg) is too heavy for one box M (130 kg).
-    if j.goodId == 'bricks' then T.check(j.units == 0 and not j.allowed, j.id .. ' does not fit one box M')
+    -- A brick (127.5 kg) just fits one box M (130 kg).
+    if j.goodId == 'bricks' then T.check(j.units == 1 and j.allowed, j.id .. ' fits one box M')
     elseif not j.fluid then T.check(j.pay > 0 and j.allowed, j.id .. ' pays and can be taken') end
     T.check(j.distanceMetres <= 20000 + 1e-6, j.id .. ' within 20 km')
   end
@@ -202,9 +202,9 @@ do
   local before = c:view().balance
   T.check(c:takeJob(id), 'job taken')
   T.eq(c:view().balance, before, 'nothing to pay')
-  T.eq(c.load.units, 2, 'filled the box'); T.eq(c.load.kg, 100, 'real weight'); T.eq(c.load.pay, pay, 'pay locked in')
+  T.eq(c.load.units, 2, 'filled the box'); T.eq(c.load.kg, 85, 'real weight'); T.eq(c.load.pay, pay, 'pay locked in')
   T.eq(a.gps[1].name, 'St Clair', 'GPS set to the drop-off'); T.near(a.gps[1].latitude, stClair.latitude, 1e-9, 'at its coordinates')
-  T.eq(w.weights[#w.weights].kg, 100, 'weight put on the car')
+  T.eq(w.weights[#w.weights].kg, 85, 'weight put on the car')
   T.eq(w.weights[#w.weights].parts[1], 'pickup_cargo_load_box_m', 'on the box')
   T.check(not c:takeJob(c:view().town.jobs[2].id), 'one job at a time')
   T.check(not c:view().town.jobs[2].allowed, 'the board says so')
@@ -665,7 +665,7 @@ do
   local full = c.load.pay
   c.load = nil; c.profile.load = nil
   T.check(c:takeJob(F.offer(c, stClair, 'food'), 50), 'half the food'); T.eq(c.load.units, 1, 'one food')
-  T.eq(c.load.kg, 50, 'half the weight'); T.eq(c.load.slots, 2, 'half the slots'); T.check(math.abs(c.load.pay - full / 2) <= 5, 'half the pay, to the nearest $10')
+  T.eq(c.load.kg, 42.5, 'half the weight'); T.eq(c.load.slots, 2, 'half the slots'); T.check(math.abs(c.load.pay - full / 2) <= 5, 'half the pay, to the nearest $10')
   c.load = nil; c.profile.load = nil
   T.check(c:takeJob(F.offer(c, stClair, 'food'), 10), 'a tenth of the food'); T.eq(c.load.units, 1, 'still at least one unit')
   c.load = nil; c.profile.load = nil
@@ -1395,7 +1395,7 @@ do
   T.eq(q.units, 102, 'trailer and car'); T.eq(q.trailerUnits, 100, 'the trailer first')
   -- A part load fills the trailer, not the car.
   T.check(c:takeJob(to, 50), 'half a load taken'); T.eq(c.load.units, 51, 'half'); T.eq(c.load.trailerUnits, 51, 'all in the trailer')
-  T.eq(w.trailerWeights[#w.trailerWeights].kg, 51 * 15, 'its weight on the trailer'); T.eq(w.trailerWeights[#w.trailerWeights].id, id, 'that trailer')
+  T.near(w.trailerWeights[#w.trailerWeights].kg, 51 * 12.75, 1e-9, 'its weight on the trailer'); T.eq(w.trailerWeights[#w.trailerWeights].id, id, 'that trailer')
   T.eq(w.weights[#w.weights].kg, 0, 'none in the car')
   -- Save keeps it hitched, but not unhitched.
   c:couplerChanged(id, 1, false)
