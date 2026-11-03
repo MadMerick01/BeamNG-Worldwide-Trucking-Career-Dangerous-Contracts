@@ -1,5 +1,5 @@
 -- Trailers: the player can own one trailer at a time, bought new with Buy new trailer on the Garage
--- tab from every vanilla trailer the game has. It is either out (spawned behind the car, hitched or
+-- tab from the trailers in FOR_SALE. It is either out (spawned behind the car, hitched or
 -- not) or stored in the garage, which goes everywhere with the player: Bring out puts it behind the
 -- car in any town, any time, for free. While it is hitched its cargo space adds to the car's, and a
 -- job loads the trailer first, then the car. Storing it with part of a job in it loses the whole job
@@ -25,11 +25,20 @@ M.SPAWN_SECONDS = 5
 
 local dollars = pricing.dollars
 
--- Whether a config from the game's list is a vanilla trailer with a price.
+-- The trailers for sale, as model/config key: our own configs, shipped in the mod's vehicles
+-- folder next to the starter car, picked to carry the goods jobs pay for. Add more here, with
+-- their .pc, info json (its Value is the price) and picture.
+M.FOR_SALE = {
+  'boxutility/earth_freight_trailer_boxes', -- two Cargo Load boxes XL
+  'boxutility/earth_freight_trailer_fluid', -- two Cargo Load fluid tanks XL
+}
+local forSale = {}
+for _, id in ipairs(M.FOR_SALE) do forSale[id] = true end
+
+-- Whether a config from the game's list is one of the trailers for sale, with a price.
 function M.sellable(info)
   if type(info) ~= 'table' or type(info.model) ~= 'string' or type(info.key) ~= 'string' then return false end
-  if type(info.type) ~= 'string' or not info.type:lower():find('trailer', 1, true) then return false end
-  if type(info.source) == 'string' and not info.source:find('BeamNG', 1, true) then return false end
+  if not forSale[info.model .. '/' .. info.key] then return false end
   local value = tonumber(info.value)
   return value ~= nil and value == value and value > 0 and value ~= math.huge
 end

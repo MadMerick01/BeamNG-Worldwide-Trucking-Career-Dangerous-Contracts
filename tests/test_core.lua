@@ -1376,11 +1376,11 @@ do
   T.eq(c:view().trailer.owned, nil, 'no trailer to start with'); T.eq(c:view().trailer.offers, nil, 'the list is closed')
   c:openTrailers(true)
   local offers = c:view().trailer.offers
-  T.eq(#offers, 2, 'every vanilla trailer with a price, no cars'); T.eq(offers[1].name, 'Flatbed', 'cheapest first')
+  T.eq(#offers, 2, 'only the trailers for sale, no cars or other trailers'); T.eq(offers[1].name, 'Cargo Boxes XL', 'cheapest first')
   T.eq(offers[2].price, 30000, 'at its game price'); T.check(offers[1].allowed, 'affordable')
   T.check(c:buyTrailer(1), 'bought'); T.eq(c:view().balance, 95000, 'paid')
   local id = c.trailerOut.id
-  T.eq(g.trailers[id].config, 'vehicles/flatbed/long.pc', 'spawned behind the car')
+  T.eq(g.trailers[id].config, 'vehicles/boxutility/earth_freight_trailer_boxes.pc', 'spawned behind the car')
   T.check(not c:buyTrailer(2), 'one trailer at a time'); T.check(c.trailerFeedback:find('already own'), 'told why')
   -- A spawn of the trailer is not a change to the car.
   c:vehicleSpawned(id); T.check(not c.partsCheckDue, 'no parts check for the trailer')
@@ -1405,12 +1405,12 @@ do
   c:couplerChanged(1, id, true)
   T.check(c:manualSave(), 'saved hitched')
   local saved = io.files[A].trailer or io.files[B].trailer
-  T.eq(saved.model, 'flatbed', 'trailer saved'); T.eq(saved.stored, false, 'out'); T.eq(saved.paid, 5000, 'with its price')
+  T.eq(saved.model, 'boxutility', 'trailer saved'); T.eq(saved.stored, false, 'out'); T.eq(saved.paid, 5000, 'with its price')
   T.eq((io.files[A].load or io.files[B].load).trailerUnits, 51, 'the load in it saved')
   -- A reload brings it back out once the car is back.
   local r, _, ra, rg = F.controller({ io = io })
   ra.pose = F.copy(a.pose); r:tick(0.1); r:vehicleSpawned(); r:tick(0.1); r:tick(0.1)
-  T.check(r.trailerOut ~= nil, 'trailer back out'); T.eq(rg.trailers[r.trailerOut.id].model, 'flatbed', 'the same trailer')
+  T.check(r.trailerOut ~= nil, 'trailer back out'); T.eq(rg.trailers[r.trailerOut.id].model, 'boxutility', 'the same trailer')
   T.eq(r.load.trailerUnits, 51, 'with its load')
   T.check(c:deliver(), 'delivered hitched')
   -- Storing it with a job in it: a warning first, then the load is lost and the fee charged.
@@ -1447,9 +1447,9 @@ do
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   c.profile.progression.balance = 100000
   g.storage = {}
-  T.check(c:buyTrailer(1), 'flatbed bought'); local id = c.trailerOut.id
+  T.check(c:buyTrailer(1), 'trailer bought'); local id = c.trailerOut.id
   c:couplerChanged(1, id, true)
-  T.eq(c:view().trailer.owned.space.slots, 0, 'a bare flatbed carries nothing')
+  T.eq(c:view().trailer.owned.space.slots, 0, 'a trailer with no storage carries nothing')
   c.load = { good = 'parts', units = 1, slots = 1, kg = 15 }
   T.check(not c:buyTrailerParts(), 'not with a job'); T.check(c.trailerFeedback:find('job'), 'told why')
   c.load = nil
@@ -1484,7 +1484,7 @@ end
 do
   local P2 = require('earthFreight/persistence')
   local s = F.save(1)
-  s.trailer = { model = 'flatbed', config = 'vehicles/flatbed/long.pc', name = 'Flatbed', paid = 5000, stored = true }
+  s.trailer = { model = 'boxutility', config = 'vehicles/boxutility/earth_freight_trailer_boxes.pc', name = 'Cargo Boxes XL', paid = 5000, stored = true }
   T.check(P2.validate(s) ~= nil, 'a stored trailer loads'); T.eq(P2.validate(s).trailer.paid, 5000, 'its price kept')
   s.trailer.paid = -1
   local ok, why = P2.validate(s); T.eq(ok, nil, 'a bad price is refused'); T.eq(why, 'invalid_trailer', 'and says why')
