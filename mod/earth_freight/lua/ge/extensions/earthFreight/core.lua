@@ -131,6 +131,8 @@ function M.new(deps)
     odometer = odometer.new(),
     -- Sends game UI events, such as the pop-ups that show over the game's own menus.
     trigger = deps.trigger,
+    -- Leaves the free camera for the car's own camera; without it the camera is left as it is.
+    camera = deps.camera,
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
@@ -1789,11 +1791,24 @@ local function gamePaused()
   end
   return false
 end
+-- The game's camera. The parts menu uses the free camera, and closing the menu ourselves leaves it
+-- on, so after paying the player is put back on the car's own camera (driver, chase, orbit...).
+local function gameCamera()
+  return {
+    backToCar = function()
+      local cmd = rawget(_G, 'commands')
+      if type(cmd) ~= 'table' or type(cmd.isFreeCamera) ~= 'function' or type(cmd.setGameCamera) ~= 'function' then return false end
+      if not cmd.isFreeCamera() then return false end
+      cmd.setGameCamera()
+      return true
+    end,
+  }
+end
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
       punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
-      log = rawget(_G, 'log'),
+      log = rawget(_G, 'log'), camera = gameCamera(),
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
   return active
