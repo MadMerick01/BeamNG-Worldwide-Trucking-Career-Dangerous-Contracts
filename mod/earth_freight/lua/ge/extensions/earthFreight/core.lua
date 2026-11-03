@@ -1734,6 +1734,9 @@ function M.new(deps)
       return false
     end
     self.diag:event('new_game', town)
+    -- The new game starts in a stock starter, so an old photo of an upgraded one would be wrong.
+    if self.garage and self.garage.removePhoto then self.garage:removePhoto(workshop.STARTER_MODEL) end
+    self.photoAt, self.photoStamp = nil, nil
     self:reload()
     self.feedback = string.format('New game started. Teleport to %s at %.8f, %.8f (Copy is just below) to get your starter car,'
       .. ' or teleport anywhere in the BeamNG.Earth map and press Start here.', town, start.latitude, start.longitude)

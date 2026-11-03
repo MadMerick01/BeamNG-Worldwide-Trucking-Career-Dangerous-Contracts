@@ -245,4 +245,27 @@ do
   T.eq(G.new(env({ vehicles = function() error('changed') end })):preview('pickup', 'vehicles/pickup/d15.pc'), nil, 'a broken game list gives none')
 end
 
+-- The photo of the player's car: the parts menu's Save, guarded, and one config per model.
+do
+  local saved, shots, files, gone = {}, {}, {}, {}
+  local pm = { saveLocal = function(f) saved[#saved + 1] = f end, saveLocalScreenshot = function(f) shots[#shots + 1] = f end }
+  local photo = G.new(env({ partmgmt = function() return pm end, exists = function(p) return files[p] == true end,
+    remove = function(p) gone[#gone + 1] = p; files[p] = nil end }))
+  T.check(photo:takePhoto(), 'photo asked for'); T.eq(saved[1], G.PHOTO_KEY .. '.pc', 'one config, always the same name')
+  T.eq(shots[1], G.PHOTO_KEY .. '.pc', 'with its picture')
+  T.eq(photo:photo('pickup'), nil, 'none until the picture is written')
+  files['/vehicles/pickup/' .. G.PHOTO_KEY .. '.png'] = true
+  T.eq(photo:photo('pickup'), '/vehicles/pickup/' .. G.PHOTO_KEY .. '.png', 'then found')
+  T.eq(photo:photo('../x'), nil, 'only plain model names')
+  files['/vehicles/pickup/' .. G.PHOTO_KEY .. '.pc'] = true
+  photo:removePhoto('pickup'); T.eq(#gone, 2, 'config and picture removed'); T.eq(photo:photo('pickup'), nil, 'gone')
+  local ok, why = G.new(env({ partmgmt = function() return {} end })):takePhoto(); T.check(not ok, 'no Save in this game'); T.eq(why, 'photo_unavailable', 'says why')
+  ok, why = G.new(env({ partmgmt = function() return { saveLocal = function() error('x') end, saveLocalScreenshot = pm.saveLocalScreenshot } end })):takePhoto()
+  T.eq(why, 'save_failed', 'a failed save is caught')
+  ok, why = G.new(env({ vehicle = function() return nil end, partmgmt = function() return pm end })):takePhoto(); T.eq(why, 'vehicle_required', 'needs a car')
+  local list = G.new(env({ vehicles = function() return { getConfigList = function() return { configs = {
+    a = { model_key = 'pickup', key = 'd15', Value = 1 }, b = { model_key = 'pickup', key = G.PHOTO_KEY, Value = 1 } } } end } end }))
+  local configs = list:configs(); T.eq(#configs, 1, 'the photo config is not for sale'); T.eq(configs[1].key, 'd15', 'the real one is')
+end
+
 T.done('garage')

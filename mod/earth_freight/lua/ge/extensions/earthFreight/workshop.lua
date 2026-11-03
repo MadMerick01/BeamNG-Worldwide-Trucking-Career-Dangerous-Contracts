@@ -41,6 +41,9 @@ M.USED_SPAWN_SECONDS = 5
 -- sits at the start, one worth RIG_VALUE or more at the end, and the rest in between by value,
 -- on a log scale so each upgrade moves the marker along. Tune after testing in game.
 M.RUST_VALUE, M.RIG_VALUE = 3500, 100000
+-- After parts or a car are paid for, a photo of the car is taken this many seconds later, once it
+-- is standing still, for the start page. The game's menus close and the car settles first.
+M.PHOTO_DELAY = 3
 
 -- How far along the Rust Bucket to Rig line a car worth this much is, from 0 to 1; nil unknown.
 function M.climb(value)
@@ -83,10 +86,44 @@ function M.attach(c)
       local ok, found = pcall(self.garage.preview, self.garage, owned.model, owned.configFile)
       preview = ok and type(found) == 'string' and found or nil
     end
+    -- A photo of the car with the parts paid for, once one has been taken, in place of the menu picture.
+    -- The stamp makes the HUD load a new photo afresh rather than show the last one again.
+    if self.garage and self.garage.photo then
+      local ok, photo = pcall(self.garage.photo, self.garage, owned.model)
+      if ok and type(photo) == 'string' then
+        self.photoStamp = self.photoStamp or self.now()
+        preview = photo .. '?v=' .. tostring(self.photoStamp)
+      end
+    end
     local d = self.lastDamage
     return { name = owned.name or owned.model, value = owned.value, preview = preview,
       repair = d and d.id == owned.id and pricing.repairCost(d.damage, owned.value) or 0,
       climb = M.climb(owned.value) }
+  end
+
+  -- The photo of the player's car: asked for after a purchase, taken once the car stands still.
+  function c:photoSoon()
+    if self.garage and self.garage.takePhoto then self.photoAt = self.clock + M.PHOTO_DELAY end
+  end
+
+  function c:watchPhoto()
+    local owned = self.ownedParts
+    if not self.photoAt or self.clock < self.photoAt or not owned then return end
+    local vehicleId = self.lastSample and self.lastSample.valid and self.lastSample.vehicle and self.lastSample.vehicle.id
+    if vehicleId ~= owned.id or self.pendingParts or self.pendingCar or self.insurancePending or self.ourRespawn then return end
+    if self.odometer and not self.odometer:stopped() then return end
+    -- The HUD is back, so the parts menu and car selector are closed.
+    if self.ui and type(self.ui.mountedUntil) == 'number' and self.clock > self.ui.mountedUntil then return end
+    self.photoAt = nil
+    local ok, why, detail = self.garage:takePhoto()
+    if not ok then
+      self.diag:event('photo_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
+      return
+    end
+    -- Only the car the player owns keeps a photo config.
+    if self.photoModel and self.photoModel ~= owned.model and self.garage.removePhoto then self.garage:removePhoto(self.photoModel) end
+    self.photoModel, self.photoStamp = owned.model, self.now()
+    self.diag:event('photo', tostring(owned.model))
   end
 
   -- Reads the player vehicle's damage now and prices it. Returns the inspection and cost, or nil and a reason.
@@ -681,6 +718,7 @@ function M.attach(c)
     self.owedDamage, self.punctureDamage, self.fuel = 0, 0, nil
     self.carFeedback = 'Bought ' .. tostring(pending.name) .. ' for ' .. dollars(pending.cost) .. '.'
     self:autoSaveSoon('buying your car')
+    self:photoSoon()
     return true
   end
 
@@ -860,6 +898,7 @@ function M.attach(c)
       return
     end
     self:watchResets()
+    self:watchPhoto()
     local inspected = self:inspectDamage()
     if inspected then self.lastDamage = inspected end
     local pending = self.pendingCar or self.pendingParts
@@ -938,6 +977,7 @@ function M.attach(c)
     self.owedDamage, self.punctureDamage = math.max(0, self.owedDamage - (pending.owedBefore or self.owedDamage)), 0
     self.partsFeedback = 'Bought for ' .. dollars(pending.cost) .. '.'
     self:autoSaveSoon('buying parts')
+    self:photoSoon()
     return true
   end
 

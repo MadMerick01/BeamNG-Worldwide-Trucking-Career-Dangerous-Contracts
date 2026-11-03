@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Your truck card on the start page now shows a photo of your own truck.** A few seconds after you pay for parts or buy a car, once you're standing still with the HUD showing, the game takes a photo of your truck as it is, the same way the parts menu's Save does. Until your first upgrade, the card shows the car's normal picture.
+- The photo is kept as one config called earth_freight_my_truck in your BeamNG vehicles folder, and each new photo writes over it. You'll see it in BeamNG's vehicle menu, but not in **Buy new car**. When you change to a different car model, the old photo is removed once the new one is taken, and a new game clears it too. Your saves still work.
+- **The starter Burnside Rusty has a new picture,** on the start page's **Your truck** card and in BeamNG's vehicle menu. Your saves still work.
+
 ## Build 117 · 3 Nov 2026
 
 - **The start page now opens in a big window in the middle of the screen,** like a real game's title screen. The HUD hides while it's open and comes back when you press **Back to the road**, which replaces Continue. If you had the HUD minimised, it stays minimised.
