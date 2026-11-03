@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 126 · 3 Nov 2026
+
 - **After you press Pay on the parts bill, you're back on your normal camera.** The parts menu closed itself but left you in the free camera, so you had to press Shift+C to get back. Now you return to the camera you were driving with. Your saves still work.
 
 ## Build 125 · 3 Nov 2026
