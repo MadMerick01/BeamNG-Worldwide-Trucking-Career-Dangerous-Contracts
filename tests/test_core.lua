@@ -1503,4 +1503,30 @@ do
   T.check(c.photoAt == nil, 'and is not retried every frame')
 end
 
+
+-- New game with a damaged car: the repair it needed belongs to the old game. Teleporting to the
+-- start resets the old car on the way, and the fresh starter car owes nothing.
+do
+  local c, io, a, g = F.controller()
+  a.pose = F.copy(F.PENRITH); c:tick(0.1); c:vehicleSpawned(); c:tick(0.6); c:tick(0.6)
+  g.damage = 5000; c:tick(0.1)
+  -- A reset in the old game leaves its repair owed, and Save keeps it.
+  c:vehicleReset(1); g.damage = 0; c:tick(0.1); c:tick(0.1)
+  T.eq(c.owedDamage, 5000, 'owed in the old game'); T.check(c:manualSave(), 'saved')
+  g.damage = 3000; c:tick(0.1)
+  c:newGame(); T.check(c:newGame(), 'new game')
+  T.eq(c.owedDamage, 0, 'nothing owed in the new game'); T.eq(c:view().repairOwed, nil, 'no repair owed on the Garage tab')
+  -- Off to the map and back to Penrith: Earth's teleport resets the old car on the way.
+  a.pose = F.position(-33.9, 151.2); c:tick(0.1)
+  c:vehicleReset(1); g.damage = 0; c:tick(0.1); c:tick(0.1)
+  T.eq(c.owedDamage, 0, 'resetting the old car on the way owes nothing')
+  a.pose = F.copy(F.PENRITH); c:tick(0.1)
+  T.eq(#g.spawns, 2, 'a fresh starter car'); c:vehicleSpawned(); c:tick(0.6); c:tick(0.6)
+  T.eq(c.owedDamage, 0, 'the starter car owes nothing'); T.eq(c:view().repairOwed, nil, 'no repair owed')
+  T.check(not (c:view().flash and c:view().flash.title == 'REPAIR STILL OWED'), 'no repair warning')
+  T.check(c:manualSave(), 'saved'); T.eq(F.controller({ io = io }).owedDamage, 0, 'the save owes no repair')
+  local card = c:view().car
+  if card then T.eq(card.repair, 0, 'the start page card shows no repair') end
+end
+
 T.done('Earth Freight controller')
