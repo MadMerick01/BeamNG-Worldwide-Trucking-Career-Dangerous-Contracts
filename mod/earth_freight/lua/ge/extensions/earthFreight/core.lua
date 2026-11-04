@@ -8,7 +8,6 @@ local hud = require('earthFreight/hud')
 local earthAdapter = require('earthFreight/earthAdapter')
 local garage = require('earthFreight/garage')
 local punctures = require('earthFreight/punctures')
-local locals = require('earthFreight/locals')
 local pricing = require('earthFreight/pricing')
 local odometer = require('earthFreight/odometer')
 local places = require('earthFreight/places')
@@ -125,8 +124,6 @@ function M.new(deps)
     now = deps.now or os.time,
     -- Bursts tyres and tells whether the car is off road; without it there are no punctures.
     punctures = deps.punctures,
-    -- Fires the locals' shots at the player car; without it nobody shoots.
-    locals = deps.locals,
     -- Adds the load's weight to the car, and reads and sets its fuel; without them the load has no
     -- weight and there is no Refuel.
     cargo = deps.cargo, fuelTank = deps.fuel,
@@ -187,8 +184,6 @@ function M.new(deps)
     self.shippingSearch = nil
     -- A puncture not yet repaired; a reload respawns the car, so its tyre repair is owed instead.
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
-    -- Locals shooting: an attack under way, the test button's countdown, and where the last began.
-    self.ambush, self.ambushAt, self.lastAmbushKm = nil, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
     self.ourRespawn, self.rawDamage = nil, nil
     self.autoSave, self.gpsTown, self.gpsContract, self.gpsFeedback = nil, nil, nil, nil
@@ -469,7 +464,6 @@ function M.new(deps)
     progression.totalDistanceKm = progression.totalDistanceKm + metres / 1000
     if self.load then self.load.drivenKm = self.load.drivenKm + metres / 1000 end
     self:roadPuncture(sample, metres, dt)
-    self:localsMayShoot(sample, metres)
   end
 
   local function coordinates(p) return string.format('%.5f, %.5f', p.latitude, p.longitude) end
@@ -671,81 +665,6 @@ function M.new(deps)
     self.quote = nil
     self:showFlash('puncture', 'PUNCTURE!', 'A tyre burst on the road. Repair it on the Garage tab.')
     self.diag:event('puncture', string.format('%.1f km%s', progression.totalDistanceKm, self.offRoad and ' off road' or ''))
-  end
-
-  -- Locals shooting (see locals.lua). Each stretch driven where the roads are rough enough has a
-  -- small chance of starting an attack, twice that with a "Don't ask questions" load on board, never
-  -- within GAP_KM of the last. The roll comes first, so the region is only looked up on a hit.
-  function c:localsMayShoot(sample, metres)
-    if not self.locals or self.ambush or self.ambushAt or self.paused() or self.pendingParts or self.pendingCar then return end
-    local driven = self.profile.progression.totalDistanceKm
-    if self.lastAmbushKm and driven - self.lastAmbushKm < locals.GAP_KM then return end
-    local dontAsk = self.load ~= nil and self.load.beacon ~= nil
-    if self.random() >= locals.chance(metres, math.huge, dontAsk) then return end
-    local nearest = places.nearest(sample, 1)[1]
-    local bonus = nearest and jobs.roadBonusFor(places.boost(nearest.place)) or 1
-    if locals.chance(metres, bonus, dontAsk) <= 0 then return end
-    self:startAmbush(false)
-  end
-
-  -- The test button: an attack starts TEST_DELAY seconds from now, wherever the car is.
-  function c:testLocals()
-    if not self.locals then return false end
-    if self.ambush then return false end
-    self.ambushAt = self.clock + locals.TEST_DELAY
-    self.diag:event('locals_test', 'armed')
-    return true
-  end
-
-  -- An attack: a spot off to one side, the warning, and the burst starting now.
-  function c:startAmbush(test)
-    local plan = locals.plan(self.random)
-    local ok, spot = pcall(self.locals.place, self.locals, plan)
-    if not ok or not spot then
-      self.diag:event('locals_failed', 'no car to shoot at', 'W')
-      return false
-    end
-    self.ambush = { spot = spot, left = plan.shots, gaps = plan.gaps, shot = 0, nextAt = self.clock }
-    self.lastAmbushKm = self.profile and self.profile.progression.totalDistanceKm or nil
-    self:showFlash('shots', 'HIT THE GAS, THE LOCALS ARE SHOOTING AT YOU',
-      'Shots from your ' .. plan.side .. '. Keep driving to get out of range. Repair any damage on the Garage tab.')
-    self.diag:event('locals', string.format('%s%s, %.0f m out, %d shots', test and 'test, ' or '', plan.side, plan.across, plan.shots))
-    return true
-  end
-
-  -- The burst: one shot at a time, until the shots are used up or the car is out of range. Flying
-  -- a hired helicopter ends it, as the player's vehicle is then the helicopter.
-  function c:watchLocals()
-    if self.ambushAt and self.clock >= self.ambushAt then
-      self.ambushAt = nil
-      if not self.hire then self:startAmbush(true) end
-    end
-    local a = self.ambush
-    if not a or self.paused() then return end
-    if self.hire then self.ambush = nil; return end
-    if self.clock < a.nextAt then return end
-    local okCar, car = pcall(self.locals.car, self.locals)
-    if not okCar or not car or locals.distance(a.spot, car.centre) > locals.RANGE then
-      self.ambush = nil
-      self.diag:event('locals_over', string.format('%d shots, out of range', a.shot))
-      return
-    end
-    local ok, why, detail = pcall(self.locals.fire, self.locals, a.spot, self.random)
-    if not ok or not why then self.diag:event('locals_shot_failed', tostring(ok and detail or why), 'W') end
-    a.shot, a.left = a.shot + 1, a.left - 1
-    if a.left <= 0 then
-      self.ambush = nil
-      self.diag:event('locals_over', a.shot .. ' shots')
-      return
-    end
-    a.nextAt = self.clock + (a.gaps[a.shot] or locals.SHOT_GAP_MAX)
-  end
-
-  -- A shot flattened a tyre: its repair is added, as for a puncture.
-  function c:localsTyre()
-    self.punctureDamage = self.punctureDamage + PUNCTURE_DAMAGE
-    self.quote = nil
-    self.diag:event('locals_tyre', 'flattened')
   end
 
   function c:observe(sample, dt)
@@ -1332,7 +1251,6 @@ function M.new(deps)
     self:watchInsurance()
     self:watchTow()
     self:watchAutoSave()
-    self:watchLocals()
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
       self.refuelPending, self.fuelFeedback = nil, 'Refuelling did not go through. You have not been charged.'
@@ -1680,11 +1598,6 @@ function M.new(deps)
         distanceMetres = location.distance(current, self.stranded),
       } or nil,
       saveFeedback = self.feedback,
-      -- The locals test button: seconds until the shots start, or shooting now.
-      locals = self.locals and {
-        testIn = self.ambushAt and math.max(0, math.ceil(self.ambushAt - self.clock)) or nil,
-        shooting = self.ambush ~= nil or nil,
-      } or nil,
       puncture = self.punctureDamage > 0 and {
         tyreCost = math.floor(self.punctureDamage / PUNCTURE_DAMAGE + 0.5)
           * math.floor(PUNCTURE_DAMAGE * pricing.repairRate(self:carValueOf(self.ownedParts and self.ownedParts.id)) + 0.5),
@@ -1925,7 +1838,7 @@ end
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
-      punctures = punctures.new(), locals = locals.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
+      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
@@ -2040,10 +1953,6 @@ end
 function M.tanksRead(vehicleId, litres)
   return safely(function() if active then active:tanksRead(vehicleId, litres) end end)
 end
--- The locals test button, and the player car's word that a shot landed or flattened a tyre.
-function M.testLocals() return safely(function() return ensure():testLocals() end) end
-function M.onLocalsHit() return safely(function() if active then active.diag:event('locals_hit', 'hit') end end) end
-function M.onLocalsTyre() return safely(function() if active then active:localsTyre() end end) end
 function M.onVehicleSpawned(vehicleId) return safely(function() if active then active:vehicleSpawned(vehicleId) end end) end
 function M.onVehicleResetted(vehicleId) return safely(function() if active then active:vehicleReset(vehicleId) end end) end
 function M.reload() return safely(function() ensure():reload() end) end

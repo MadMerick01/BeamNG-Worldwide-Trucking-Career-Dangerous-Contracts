@@ -242,7 +242,7 @@ function F.controller(options)
   local fuel = options.fuel or F.fuel()
   local events, logs = {}, {}
   local c = Core.new({ io = io, adapter = adapter, garage = garage, paused = options.paused, random = options.random,
-    punctures = options.punctures, locals = options.locals, cargo = cargo, fuel = fuel, aircraft = options.aircraft,
+    punctures = options.punctures, cargo = cargo, fuel = fuel, aircraft = options.aircraft,
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
   return c, io, adapter, garage, cargo, fuel, logs

@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The locals no longer shoot at your truck.** The hits could make your car unstable enough that the game put you back at your last save, so the shooting, its gunshot sound and the **Start shots in 5 s** test button on the Garage tab are gone. Your saves still work.
+
 ## Build 131 · 4 Nov 2026
 
 - **You can now hear the locals shooting.** A distant gunshot rings out with each shot.
