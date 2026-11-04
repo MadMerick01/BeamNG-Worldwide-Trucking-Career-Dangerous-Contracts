@@ -22,6 +22,7 @@ local beacons = require('earthFreight/beacons')
 local flights = require('earthFreight/flights')
 local aircraft = require('earthFreight/aircraft')
 local trailers = require('earthFreight/trailers')
+local home = require('earthFreight/home')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -138,6 +139,7 @@ function M.new(deps)
   workshop.attach(c)
   flights.attach(c)
   trailers.attach(c)
+  home.attach(c)
 
   function c:transition(nextState, reason)
     if self.state == nextState and self.reason == reason then return end
@@ -194,6 +196,10 @@ function M.new(deps)
     self.trailer = self.profile and trailers.clean(self.profile.trailer) or nil
     self.trailerOut, self.trailerRestored, self.foreignTrailer, self.trailersOpen = nil, nil, nil, false
     self.trailerFeedback, self.storeArmed, self.sellArmed = nil, false, false
+    -- The home owned and the car stored there; like money, a home bought since the last Save is not kept.
+    self.property = self.profile and copy(self.profile.property) or nil
+    self.storedCars = self.profile and copy(self.profile.storedCars) or nil
+    self.homeFeedback, self.homeCard = nil, nil
     -- A paid-shipping offer the player shipped in on, paid back by their first delivery near it.
     self.offer = self.profile and copy(self.profile.offer) or nil
     -- The saved load's places are near where the player left off.
@@ -541,6 +547,7 @@ function M.new(deps)
 
   -- Books shipping to one of the listed regions or any place by its id.
   function c:bookShipping(destinationId)
+    if destinationId == 'home' then return self:book(self:homeDestination()) end
     return self:book(shipping.get(destinationId) or placeDestination(places.get(destinationId)))
   end
 
@@ -1437,6 +1444,13 @@ function M.new(deps)
       list[#list + 1] = { id = d.id, name = d.name, region = d.region, fee = fee, here = here,
         allowed = problem == nil and not here and self:canAfford(fee) }
     end
+    -- Home, at the usual fee.
+    local homeSpot, homeView = self:homeDestination(), nil
+    if homeSpot then
+      local here, fee = shipping.arrived(current, homeSpot), shipping.fee(current, homeSpot)
+      homeView = { id = 'home', name = homeSpot.name, region = homeSpot.region, fee = fee, here = here,
+        allowed = problem == nil and not here and self:canAfford(fee) }
+    end
     local found = {}
     for _, d in ipairs(self.shippingSearch and self.shippingSearch.results or {}) do
       local here, fee = shipping.arrived(current, d), shipping.fee(current, d)
@@ -1454,7 +1468,7 @@ function M.new(deps)
     -- Teleport there rests while Earth carries out the last press.
     local teleporting = self.bookingTeleportAt ~= nil and self.clock - self.bookingTeleportAt < TELEPORT_WAIT_SECONDS
     return {
-      offer = offerView, destinations = list, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
+      offer = offerView, home = homeView, destinations = list, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
       problem = problem, feedback = self.shippingFeedback,
       pending = self.offer and { name = self.offer.name, fee = self.offer.fee, radiusKm = shipping.OFFER_RADIUS_METRES / 1000,
         distanceMetres = location.distance(current, self.offer) } or nil,
@@ -1563,17 +1577,23 @@ function M.new(deps)
       carChange = self.pendingCar and {
         name = self.pendingCar.name, price = self.pendingCar.price, extras = self.pendingCar.extras,
         tradeIn = self.pendingCar.tradeIn, repair = self.pendingCar.repair, cost = self.pendingCar.cost,
+        -- With a home: what keeping the old car costs, or that home is full.
+        keepCost = self:homeSpaceFree() and self.pendingCar.keepCost or nil,
+        homeFull = self.property ~= nil and not self:homeSpaceFree() or nil,
         oldName = self.ownedParts and self.ownedParts.name or nil,
         used = self.pendingCar.used and { km = self.pendingCar.used.km, newPrice = self.pendingCar.used.newPrice } or nil,
       } or nil,
       usedCars = self:usedCarsView(),
       trailer = self:trailerView(),
       buyCarAllowed = self:buyCarAllowed(),
+      keepCarAllowed = self:keepCarAllowed(),
       revertCarAllowed = self.pendingCar ~= nil,
       carFeedback = self.carFeedback,
       saveAllowed = self.state == 'READY' and self.arrived and not self.stranded and not self.booking and not self.hire and not self.onFoot,
       heli = self:heliView(current), beacon = self:beaconView(current),
       shipping = self:shippingView(current),
+      home = self:homeView(current),
+      repairAtHome = self.property ~= nil and self:atHome() or nil,
       stranded = self.stranded and current and {
         latitude = self.stranded.latitude, longitude = self.stranded.longitude,
         distanceMetres = location.distance(current, self.stranded),
@@ -1668,6 +1688,8 @@ function M.new(deps)
         value = self:savedVehicleUsed() and self.ownedParts.value or nil, km = self:savedVehicleUsed() and self.ownedParts.km or nil },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       trailer = self:savedTrailer(),
+      property = copy(self.property),
+      storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
       beacon = self.beacon and { pickup = location.copy(self.beacon.pickup), drop = location.copy(self.beacon.drop),
         line = self.beacon.line, left = math.ceil(self.beacon.left) } or nil,
     })
@@ -1855,7 +1877,7 @@ function M.requestRepairQuote() return safely(function() return ensure():request
 function M.repairVehicle() return safely(function() return ensure():repairVehicle() end) end
 function M.buyParts() return safely(function() return ensure():buyParts() end) end
 function M.revertParts() return safely(function() return ensure():revertParts(false) end) end
-function M.buyCar() return safely(function() return ensure():buyCar() end) end
+function M.buyCar(keep) return safely(function() return ensure():buyCar(keep == true) end) end
 function M.revertCar() return safely(function() return ensure():revertCar(false) end) end
 function M.openUsedCars(open) return safely(function() return ensure():openUsedCars(open == true) end) end
 -- slot is the car's place in the Buy second hand list, from 1.
@@ -1876,6 +1898,8 @@ function M.sellTrailer() return safely(function() return ensure():sellTrailer() 
 function M.buyTrailerParts() return safely(function() return ensure():buyTrailerParts() end) end
 function M.payTrailerParts() return safely(function() return ensure():payTrailerParts() end) end
 function M.undoTrailerParts() return safely(function() return ensure():undoTrailerParts() end) end
+function M.claimHome() return safely(function() return ensure():claimHome() end) end
+function M.swapCars() return safely(function() return ensure():swapCars() end) end
 function M.repairTrailer() return safely(function() return ensure():repairTrailer() end) end
 -- The game calls these when two vehicles couple or uncouple, such as a car and its trailer.
 function M.onCouplerAttached(a, b) return safely(function() if active then active:couplerChanged(a, b, true) end end) end

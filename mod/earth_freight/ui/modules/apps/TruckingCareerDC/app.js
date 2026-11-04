@@ -151,7 +151,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var mount = function (on) { core('uiMounted(' + (on ? 'true' : 'false') + ')') }
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
-        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }]
+        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Home' }]
       scope.tab = kept.tab
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
@@ -502,7 +502,12 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.cancelPay = function () { scope.confirming.kind = null; scope.confirming.cost = null }
       scope.buyParts = function () { if (scope.data.buyPartsAllowed) core('buyParts()') }
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
-      scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar()') }
+      scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar(false)') }
+      // Keep and store at home: the old car goes home instead of being traded in.
+      scope.keepCar = function () { if (scope.data.keepCarAllowed) core('buyCar(true)') }
+      // Home: Buy this spot asks to confirm on the HUD first; Swap cars needs no confirm.
+      scope.claimHome = function () { if (scope.data.home && scope.data.home.claimAllowed) core('claimHome()') }
+      scope.swapCars = function () { if (scope.data.home && scope.data.home.swapAllowed) core('swapCars()') }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
       // Buy second hand: opens or closes the town's list; a car is picked by its place in it.
       scope.openUsedCars = function (open) { core('openUsedCars(' + (open ? 'true' : 'false') + ')') }
