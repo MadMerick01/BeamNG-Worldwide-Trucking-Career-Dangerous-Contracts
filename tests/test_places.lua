@@ -214,7 +214,7 @@ do
       local count = 0
       for _, x in ipairs(list) do if x.km > band[1] and x.km <= band[2] then count = count + 1 end end
       for seed = 0, 4 do
-        local board = jobs.board(n.place, seed, {}, 5000, nil, name)
+        local board = jobs.board(n.place, seed, {}, 5000, name)
         T.eq(#board, 5, 'still three town jobs, the drop and the contract')
         local towns = {}
         for i = 1, 3 do
@@ -233,7 +233,7 @@ do
       end
     end
   end
-  local any, none = jobs.board(penrith, 3, {}, 5000), jobs.board(penrith, 3, {}, 5000, nil, 'any')
+  local any, none = jobs.board(penrith, 3, {}, 5000), jobs.board(penrith, 3, {}, 5000, 'any')
   for i = 1, 3 do T.eq(none[i].id, any[i].id, 'Any keeps the usual mix'); T.eq(any[i].outside, nil, 'never outside') end
   local far = jobs.board({ id = 'lonely', name = 'Lonely', latitude = penrith.latitude + 0.05, longitude = penrith.longitude, size = 'village' }, 0, {}, 5000)
   T.check(#far >= 3, 'a board away from the list still has jobs')

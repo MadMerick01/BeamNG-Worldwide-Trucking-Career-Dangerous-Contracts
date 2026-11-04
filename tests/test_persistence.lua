@@ -57,6 +57,15 @@ do
   s.progression.loanOwed=1350; T.check(P.validate(s)~=nil,'an old save with a loan still loads'); T.eq(P.validate(s).progression.loanOwed,nil,'and the loan is cleared')
   T.eq(v.needs[1].place,'gn2','recent delivery kept'); T.eq(v.needs[1].drop,0.15,'with how much it took')
 end
+-- Dangerous contract roads delivered: an old save's list loads as it was, and a long list is cut, not refused.
+do
+  local s=F.save(); s.progression.contractsDone={ 'death_road', 'sani_pass' }
+  local v=P.validate(s); T.eq(#v.progression.contractsDone,2,'roads delivered kept'); T.eq(v.progression.contractsDone[2],'sani_pass','in order')
+  s=F.save(); s.progression.contractsDone={}
+  for i=1,5000 do s.progression.contractsDone[i]='road_'..i end
+  v=P.validate(s); T.check(v~=nil,'a career with many roads driven still loads'); T.eq(#v.progression.contractsDone,4096,'its list is cut')
+  s=F.save(); s.progression.contractsDone={ 7 }; T.eq(P.validate(s),nil,'a road that is not a name is refused')
+end
 -- A saved car config is kept as plain data.
 do
   local s=F.save(); s.vehicle.config={ model='pickup', partsTree={ chosenPartName='pickup', children={ a={ chosenPartName='' } } },

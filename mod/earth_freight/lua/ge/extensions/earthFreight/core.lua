@@ -762,8 +762,7 @@ function M.new(deps)
   -- picked on the Distance filter.
   function c:board(place)
     local progression = self.profile and self.profile.progression
-    return jobs.board(place, progression and progression.jobsDone or 0, self.needs, self.now(),
-      progression and progression.contractsDone, self.jobDistance)
+    return jobs.board(place, progression and progression.jobsDone or 0, self.needs, self.now(), self.jobDistance)
   end
 
   -- The Distance filter: 'short', 'medium' or 'long' sends every town job that far; anything else
@@ -971,7 +970,7 @@ function M.new(deps)
     end
     local load, good = self.load, goods.get(self.load.good)
     self:addMoney(load.pay)
-    -- A delivered dangerous contract's road is not offered again in this game.
+    -- A delivered dangerous contract's road is counted for the career page (it stays on the boards).
     if load.contract then
       local progression = self.profile.progression
       progression.contractsDone = progression.contractsDone or {}

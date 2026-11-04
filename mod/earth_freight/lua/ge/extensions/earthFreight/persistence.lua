@@ -51,10 +51,14 @@ local function plainConfig(config)
 end
 M.plainConfig = plainConfig
 
+-- The most dangerous contract roads kept as delivered; a longer list is cut, not refused.
+local MAX_CONTRACTS_DONE = 4096
+
 -- The money and distance driven, where the last puncture was, how many jobs are done (the job
--- boards are seeded from it), the dangerous contract roads delivered, which are not offered
--- again (a list of section ids), and what is owed for tows. Returns a clean copy, or nil. A loan owed in
--- a save from before the short term loan was removed is dropped, so that debt is cleared.
+-- boards are seeded from it), the dangerous contract roads delivered (a list of section ids,
+-- counted on the career page; they stay in rotation on the boards), and what is owed for tows.
+-- Returns a clean copy, or nil. A loan owed in a save from before the short term loan was
+-- removed is dropped, so that debt is cleared.
 local function progression(p)
   if type(p) ~= 'table' or not integer(p.balance, 0) or not location.finite(p.totalDistanceKm)
       or p.totalDistanceKm < 0 or p.totalDistanceKm > MAX_INTEGER then return nil end
@@ -63,9 +67,10 @@ local function progression(p)
   if p.towOwed ~= nil and not integer(p.towOwed, 1) then return nil end
   local done
   if p.contractsDone ~= nil then
-    if type(p.contractsDone) ~= 'table' or #p.contractsDone > 64 then return nil end
+    if type(p.contractsDone) ~= 'table' then return nil end
+    -- A long list is cut, not refused, so a career with many roads driven still loads.
     done = {}
-    for i = 1, #p.contractsDone do
+    for i = 1, math.min(#p.contractsDone, MAX_CONTRACTS_DONE) do
       local id = p.contractsDone[i]
       if type(id) ~= 'string' or not optionalString(id) then return nil end
       done[i] = id
