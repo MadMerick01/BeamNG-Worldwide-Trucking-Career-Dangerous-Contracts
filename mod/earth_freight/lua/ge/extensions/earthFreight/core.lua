@@ -1367,6 +1367,7 @@ function M.new(deps)
     return {
       ok = true, latitude = sample.latitude, longitude = sample.longitude,
       heading = location.finite(sample.heading) and math.floor(sample.heading * 10 + 0.5) / 10 or nil,
+      cameraHeading = location.finite(sample.cameraHeading) and math.floor(sample.cameraHeading * 10 + 0.5) / 10 or nil,
       place = where.title, street = where.street, region = earth.region, country = earth.country,
     }
   end

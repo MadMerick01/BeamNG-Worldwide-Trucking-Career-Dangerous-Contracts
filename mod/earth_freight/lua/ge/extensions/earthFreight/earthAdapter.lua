@@ -24,6 +24,11 @@ local function defaults()
     -- Loads one of Earth's modules that is not loaded yet; only asked once Earth's core is found.
     load = function(name) return require('beamngEarth/' .. name) end,
     vehicle = function() return getPlayerVehicle(0) end,
+    -- Which way the game's camera looks, for the Street View page; nil if the game cannot say.
+    cameraForward = function()
+      local f = rawget(_G, 'getCameraForward')
+      if type(f) == 'function' then return f() end
+    end,
   }
 end
 
@@ -95,9 +100,16 @@ function M.new(environment)
     if dirOK and type(dir) ~= 'nil' and location.finite(dir.x) and location.finite(dir.y) and (dir.x ~= 0 or dir.y ~= 0) then
       heading = (math.deg(math.atan2(dir.x, dir.y)) + 360) % 360
     end
+    -- Which way the camera looks, the same way: the orbit camera can look anywhere around the car.
+    -- Nil when looking straight up or down, or when the game cannot say.
+    local cameraHeading
+    local camOK, cam = pcall(function() return env.cameraForward and env.cameraForward() end)
+    if camOK and type(cam) ~= 'nil' and location.finite(cam.x) and location.finite(cam.y) and math.abs(cam.x) + math.abs(cam.y) > 0.05 then
+      cameraHeading = (math.deg(math.atan2(cam.x, cam.y)) + 360) % 360
+    end
     return {
       valid = true, available = true, latitude = current.latitude, longitude = current.longitude,
-      source = source, vehicle = { id = idOK and id or nil, model = model }, heading = heading,
+      source = source, vehicle = { id = idOK and id or nil, model = model }, heading = heading, cameraHeading = cameraHeading,
     }
   end
 

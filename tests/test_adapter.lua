@@ -128,4 +128,20 @@ do
   T.eq(gone:placeNames(), nil, 'no Earth')
 end
 
+-- Which way the camera looks, for Street View: +y is north, +x east.
+do
+  local cam
+  local st2 = { anchor = { enuToGeodetic = function(_, x, y) return y / 111195, x / 111195 end } }
+  local v = { getID = function() return 1 end, getPosition = function() return { x = 0, y = 0, z = 0 } end }
+  local ca = Adapter.new({ core = function() return { _state = function() return st2 end } end, module = function() end,
+    vehicle = function() return v end, cameraForward = function() return cam end })
+  cam = { x = -1, y = 0, z = 0 }; T.near(ca:sample().cameraHeading, 270, 1e-9, 'camera looking west')
+  cam = { x = 0, y = 1, z = -0.2 }; T.near(ca:sample().cameraHeading, 0, 1e-9, 'camera looking north')
+  cam = { x = 0, y = 0, z = -1 }; T.eq(ca:sample().cameraHeading, nil, 'straight down has no direction')
+  cam = nil; T.eq(ca:sample().cameraHeading, nil, 'no camera, no direction')
+  local broken = Adapter.new({ core = function() return { _state = function() return st2 end } end, module = function() end,
+    vehicle = function() return v end, cameraForward = function() error('no camera') end })
+  T.check(broken:sample().valid, 'a failing camera does not break the position'); T.eq(broken:sample().cameraHeading, nil, 'and gives no direction')
+end
+
 T.done('Earth adapter (mocked engine)')

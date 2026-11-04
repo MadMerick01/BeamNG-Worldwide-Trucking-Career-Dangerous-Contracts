@@ -73,7 +73,7 @@ M.html = [==[<!doctype html>
   <div id="map" hidden></div>
   <div id="inset"></div>
   <div id="notice"></div>
-  <div class="zoom" title="Zoom the picture in or out to match your view in the game"><button type="button" id="zoomOut" aria-label="Zoom out">&minus;</button><span id="zoomLabel">Zoom 1</span><button type="button" id="zoomIn" aria-label="Zoom in">+</button></div>
+  <div class="zoom" title="Zoom the picture in or out to match your view in the game"><button type="button" id="zoomOut" aria-label="Zoom out">&minus;</button><span id="zoomLabel">Zoom 1</span><button type="button" id="zoomIn" aria-label="Zoom in">+</button><button type="button" id="face" title="Face where your game camera looks, or always the way the truck points">Camera</button></div>
   <div id="settings">
     <h2>Street View settings</h2>
     <p>This page asks the game where your truck is every 10 seconds and shows Google Street View of that spot. Keep BeamNG running with Worldwide Trucking and this tab open.</p>
@@ -94,6 +94,8 @@ M.html = [==[<!doctype html>
   'use strict'
   var EVERY = 10000          // ms between updates
   var MOVED = 20             // metres the truck must move before the picture changes
+  var TURNED = 15            // degrees the view must turn before the picture changes
+  var FACE_STORE = 'wwtStreetViewFace'
   var RADII = [50, 500, 5000] // metres searched for the nearest photo, with a key
   var KEY_STORE = 'wwtStreetViewKey'
   var ZOOM_STORE = 'wwtStreetViewZoom'
@@ -120,6 +122,17 @@ M.html = [==[<!doctype html>
     var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.latitude * rad) * Math.cos(b.latitude * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
     return 2 * r * Math.asin(Math.min(1, Math.sqrt(h)))
   }
+  // Which way the picture faces: where the game camera looks (the orbit camera can look anywhere
+  // around the truck), or the way the truck points.
+  function facing (p) {
+    if (state.face === 'camera' && p.cameraHeading != null) return p.cameraHeading
+    return p.heading
+  }
+  function turned (a, b) {
+    if (a == null || b == null) return a == null && b == null ? 0 : 180
+    var d = Math.abs(a - b) % 360
+    return d > 180 ? 360 - d : d
+  }
   function fixed (n) { return Number(n).toFixed(5) }
   function text (id, value) { $(id).textContent = value || '' }
   function status (kind, message) { $('dot').className = 'dot ' + kind; text('status', message) }
@@ -141,14 +154,14 @@ M.html = [==[<!doctype html>
     var coords = fixed(p.latitude) + ', ' + fixed(p.longitude)
     text('area', (p.street ? ' · ' : '') + (area ? area + ' · ' : '') + coords)
     $('google').href = 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + p.latitude + ',' + p.longitude +
-      (p.heading != null ? '&heading=' + Math.round(p.heading) : '')
+      (facing(p) != null ? '&heading=' + Math.round(facing(p)) : '')
   }
 
   // ---- Without a key: Google's plain embeds ----
   function frameUrl (p) {
     if (state.showMap) return 'https://maps.google.com/maps?q=' + p.latitude + ',' + p.longitude + '&t=k&z=17&output=embed'
     return 'https://maps.google.com/maps?layer=c&cbll=' + p.latitude + ',' + p.longitude +
-      '&cbp=12,' + Math.round(p.heading || 0) + ',,' + state.zoom + ',0&source=embed&output=svembed'
+      '&cbp=12,' + Math.round(facing(p) || 0) + ',,' + state.zoom + ',0&source=embed&output=svembed'
   }
   function showFrame (p) {
     $('view').hidden = true; $('map').hidden = true; $('inset').style.display = 'none'
@@ -206,7 +219,7 @@ M.html = [==[<!doctype html>
       }
       $('map').hidden = true; $('view').hidden = false; $('inset').style.display = 'block'
       state.pano.setPano(found.pano)
-      state.pano.setPov({ heading: p.heading != null ? p.heading : 0, pitch: 0 })
+      state.pano.setPov({ heading: facing(p) != null ? facing(p) : 0, pitch: 0 })
       state.pano.setZoom(state.zoom)
       state.pano.setVisible(true)
       var away = found.latLng ? metres(p, { latitude: found.latLng.lat(), longitude: found.latLng.lng() }) : 0
@@ -234,7 +247,7 @@ M.html = [==[<!doctype html>
       }
       status('live', 'Live, every 10 s')
       state.last = p
-      if (!state.shown || metres(state.shown, p) >= MOVED) show(p)
+      if (!state.shown || metres(state.shown, p) >= MOVED || turned(facing(state.shown), facing(p)) >= TURNED) show(p)
     }).catch(function () {
       status('down', 'Can’t reach the game. Is BeamNG running?')
       if (!state.shown) cover('Can’t reach the game. Start BeamNG with Worldwide Trucking, then press Street View on its HUD.')
@@ -252,6 +265,13 @@ M.html = [==[<!doctype html>
     showZoom()
     if (state.pano && !$('view').hidden) state.pano.setZoom(state.zoom)
     else refresh()
+  }
+  function showFace () { text('face', state.face === 'camera' ? 'Camera' : 'Truck') }
+  $('face').onclick = function () {
+    state.face = state.face === 'camera' ? 'truck' : 'camera'
+    store.set(FACE_STORE, state.face)
+    showFace()
+    refresh()
   }
   $('zoomIn').onclick = function () { setZoom(state.zoom + 1) }
   $('zoomOut').onclick = function () { setZoom(state.zoom - 1) }
@@ -322,6 +342,8 @@ M.html = [==[<!doctype html>
   var savedZoom = parseInt(store.get(ZOOM_STORE), 10)
   state.zoom = isFinite(savedZoom) ? Math.max(0, Math.min(MAX_ZOOM, savedZoom)) : 1
   showZoom()
+  state.face = store.get(FACE_STORE) === 'truck' ? 'truck' : 'camera'
+  showFace()
 
   var key = store.get(KEY_STORE)
   $('key').value = key || ''
