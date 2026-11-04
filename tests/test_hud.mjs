@@ -749,7 +749,7 @@ test('the minimised strip shows money, the job and where you are', () => {
   assert.equal(a.scope.distance(800), '800 m'); assert.equal(a.scope.distance(4900), '4.9 km'); assert.equal(a.scope.distance(null), '')
   assert.equal(a.scope.fuelStyle({ litres: 30, capacity: 60 }).width, '50%')
   assert.equal(a.scope.fuelStyle({ litres: 5, capacity: 60 }).background, '#eb5757', 'red when nearly empty')
-  assert.equal(a.scope.flashBad({ flash: { kind: 'puncture' } }), true); assert.equal(a.scope.flashBad({ flash: { kind: 'delivered' } }), false)
+  assert.equal(a.scope.flashBad({ flash: { kind: 'puncture' } }), true); assert.equal(a.scope.flashBad({ flash: { kind: 'delivered' } }), false); assert.equal(a.scope.flashBad({ flash: { kind: 'shots' } }), true)
   const strip = html.slice(html.indexOf('ng-if="hud.minimised && !intro.open"'), html.indexOf('class="ef-start"'))
   for (const part of ['data.balance', 'trip(data).to', 'data.where.title', 'data.where.area', 'data.where.street', 'DELIVER HERE']) assert.ok(strip.includes(part), part)
 })
