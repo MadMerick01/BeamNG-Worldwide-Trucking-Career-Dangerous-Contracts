@@ -142,7 +142,7 @@ function M.new(deps)
     camera = deps.camera,
     -- The Street View window's little web server, and how a web page is opened in the player's
     -- browser; without them there is no Street View button.
-    streetView = deps.streetView, openUrl = deps.openUrl,
+    streetView = deps.streetView, openUrl = deps.openUrl, copyText = deps.copyText,
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
@@ -1469,9 +1469,14 @@ function M.new(deps)
     end
     self:rememberStreetView(true)
     local url = self.streetView:url()
-    local opened = self.openUrl and pcall(self.openUrl, url)
-    self.streetViewFeedback = opened and 'Street View is open in your web browser. It follows your truck every 10 seconds.'
-      or 'Open ' .. url .. ' in your web browser.'
+    local okOpen, opened = false, false
+    if self.openUrl then okOpen, opened = pcall(self.openUrl, url) end
+    -- The address is copied too: if the browser does not come up, the player pastes it in.
+    local copied = self.copyText and pcall(self.copyText, url)
+    local paste = copied and 'paste ' .. url .. ' into your web browser (it is copied).' or 'type ' .. url .. ' into your web browser.'
+    self.streetViewFeedback = (okOpen and opened ~= false)
+      and 'Street View is opening in your web browser. If it does not, ' .. paste
+      or 'To see Street View, ' .. paste
     self.diag:event('street_view', 'started')
     return true
   end
@@ -1997,12 +2002,40 @@ local function gameCamera()
     end,
   }
 end
+-- Opens a page of this computer's own web server in the player's browser. The game's
+-- openWebBrowser does not open http://127.0.0.1 addresses, so a one-line page that forwards to
+-- the address is saved in the user folder and opened as a file, which Windows hands to the default
+-- browser. openWebBrowser is the fallback. False when neither way is there.
+local function gameOpenUrl(url)
+  local platform = rawget(_G, 'Engine') and Engine.Platform
+  local fs = rawget(_G, 'FS')
+  local write = rawget(_G, 'writeFile')
+  if type(platform) == 'table' or type(platform) == 'userdata' then
+    local ok, opened = pcall(function()
+      if type(write) ~= 'function' or not fs or type(platform.openFile) ~= 'function' then return false end
+      local path = '/settings/earthFreight/streetview.html'
+      if not fs:directoryExists('/settings/earthFreight') then fs:directoryCreate('/settings/earthFreight', true) end
+      local page = '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' .. url .. '">' ..
+        '<title>Street View</title><a href="' .. url .. '">Open Street View</a>'
+      if not write(path, page) then return false end
+      local real = fs:getFileRealPath(path)
+      if type(real) ~= 'string' or real == '' then return false end
+      platform.openFile(real)
+      return true
+    end)
+    if ok and opened then return true end
+  end
+  local browser = rawget(_G, 'openWebBrowser')
+  if type(browser) == 'function' then browser(url); return true end
+  return false
+end
+
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
       punctures = punctures.new(), locals = locals.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
-      streetView = streetView.new(), openUrl = rawget(_G, 'openWebBrowser'),
+      streetView = streetView.new(), openUrl = gameOpenUrl, copyText = rawget(_G, 'setClipboard'),
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
   return active

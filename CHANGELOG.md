@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Street View button now opens your web browser.** Before, pressing it started Street View but no browser window came up. Now the page opens in your normal browser, and the address is also copied so you can paste it in if your browser still doesn't appear. The HUD shows the address under the button too. Your saves still work.
+
 ## Build 132 · 4 Nov 2026
 
 - **Street View of where you are, in your web browser.** Press the new **Street View** button on the HUD, next to your distance driven, and a page opens in your normal web browser showing Google Street View of the spot your truck is on, facing the way you are driving. Every 10 seconds it catches up with the truck, so you can keep it on a second screen as you drive. It also shows the street, town and coordinates, and has **Map** (an overhead satellite view), **Pause** (stop following so you can look around) and **Google Maps** buttons. Press **×** next to the button to turn it off. Once used, it comes back by itself next time you play, so a tab you left open carries on.
