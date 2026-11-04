@@ -503,6 +503,9 @@ function M.attach(c)
       return
     end
     self.partsCheckDue, self.respawned, self.wearDue = true, true, true
+    -- Seen by a hire waiting for its vehicle, or for the car coming back: when the sightseeing car
+    -- and the player's own car are both Moonhawks, the model alone does not tell them apart.
+    if self.hire and (self.hire.stage == 'spawning' or self.hire.stage == 'swapping') then self.hire.respawned = true end
     if self.secondHand then self.secondHand.spawned = true end
   end
 
@@ -899,7 +902,7 @@ function M.attach(c)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not self.ownedParts then
       return 'Second-hand cars are unavailable right now.'
     end
-    if self.hire then return 'Press Back to my car on the Heli tab first.' end
+    if self.hire then return self:awayText() end
     if self.onFoot then return 'Get back in your car first.' end
     if self:towDebtProblem() then return self:towDebtProblem() end
     if self.load then return 'Deliver or abandon your job before changing cars.' end

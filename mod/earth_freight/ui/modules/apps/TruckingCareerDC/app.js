@@ -491,6 +491,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       // Opens Google Street View of where the truck is in the player's web browser.
       scope.openStreetView = function () { if (scope.data.streetView) core('openStreetView()') }
+      // Sightseeing: saves, swaps the truck for the free Moonhawk; Return to your job brings it back.
+      scope.goSightseeing = function () { if (scope.data.sightseeing && scope.data.sightseeing.allowed) core('goSightseeing()') }
+      scope.returnToJob = function () { if (scope.data.sightseeing && scope.data.sightseeing.returnAllowed) core('returnToJob()') }
       scope.stopStreetView = function () { if (scope.data.streetView && scope.data.streetView.on) core('stopStreetView()') }
       // For testing only: the locals start shooting 5 seconds after the press.
       scope.testLocals = function () { core('testLocals()') }

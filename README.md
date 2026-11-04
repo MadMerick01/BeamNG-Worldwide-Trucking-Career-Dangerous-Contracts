@@ -29,6 +29,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 - **Fuel, punctures and breakdowns.** Refuel in towns, repair burst tyres and use **Tow to road** when you're stuck.
 - **Insurance** after a big crash costs $1,000 (the load is lost), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
 - **Street View window.** Press **Street View** on the HUD to follow your truck in Google Street View in your web browser, updated every 10 seconds. Handy on a second screen.
+- **Go sightseeing.** Save, swap your truck for a free Moonhawk, teleport anywhere on Earth to look around, then press **Return to your job** to get your truck and job back.
 - **Heli flights.** Hire a Bell 407 for $1,000 and search for **'dont ask questions'** jobs. Needs the [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) mod by stefan750.
 
 ## Install

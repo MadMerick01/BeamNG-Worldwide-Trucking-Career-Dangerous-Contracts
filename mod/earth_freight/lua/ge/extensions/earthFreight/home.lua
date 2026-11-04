@@ -65,7 +65,7 @@ function M.attach(c)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not self.garage then
       return 'Home is unavailable right now.'
     end
-    if self.hire then return 'Press Back to my car on the Heli tab first.' end
+    if self.hire then return self:awayText() end
     if self.onFoot then return 'Get back in your car first.' end
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from first.' end
     if self.booking then return 'Teleport to your relocation booking, or cancel it, first.' end

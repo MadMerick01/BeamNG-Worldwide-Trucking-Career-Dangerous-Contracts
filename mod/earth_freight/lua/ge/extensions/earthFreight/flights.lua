@@ -14,6 +14,11 @@ local jobs = require('earthFreight/jobs')
 local M = {}
 
 local dollars = pricing.dollars
+-- Sightseeing: a free Moonhawk takes the car's place, the same way a hired helicopter does, and
+-- Return to your job brings the car back. It is a hire with sightseeing = true: no fee, no
+-- beacons and no crash bill. The game is saved first, so nothing can be lost while away.
+M.SIGHTSEEING = { model = 'moonhawk', key = 'earth_freight_sightseeing',
+  config = 'vehicles/moonhawk/earth_freight_sightseeing.pc', name = 'Moonhawk Sightseeing' }
 
 function M.attach(c)
   -- The Bell 407 config to hire, looked up once in the game's list; nil without the mod.
@@ -31,7 +36,18 @@ function M.attach(c)
       return 'Heli flights are unavailable right now.'
     end
     if not self:heliConfig() then return 'Install the ' .. heli.MOD_NAME .. ' mod to hire a helicopter.' end
-    if self.hire then return 'You already have a helicopter.' end
+    if self.hire then return self.hire.sightseeing and 'Return to your job first.' or 'You already have a helicopter.' end
+    local problem = self:leaveCarProblem('hire a helicopter')
+    if problem then return problem end
+    if not self:canAfford(heli.HIRE_FEE) then
+      return 'Not enough money. A hire costs ' .. dollars(heli.HIRE_FEE) .. ': you need '
+        .. dollars(heli.HIRE_FEE - self.profile.progression.balance) .. ' more.'
+    end
+    return nil
+  end
+
+  -- Why the player cannot leave their car for a helicopter or the sightseeing car, or nil.
+  function c:leaveCarProblem(doing)
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from first.' end
     if self.booking then return 'Teleport to your relocation booking, or cancel it, first.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
@@ -39,12 +55,57 @@ function M.attach(c)
     if self.trailerOut then return 'Store your trailer on the Garage tab first.' end
     local vehicle = self.lastSample and self.lastSample.valid and self.lastSample.vehicle
     if not self.ownedParts or not vehicle or vehicle.id ~= self.ownedParts.id then return 'Get in your own car first.' end
-    if not self.odometer:stopped() then return 'Stop the car to hire a helicopter.' end
-    if not self:canAfford(heli.HIRE_FEE) then
-      return 'Not enough money. A hire costs ' .. dollars(heli.HIRE_FEE) .. ': you need '
-        .. dollars(heli.HIRE_FEE - self.profile.progression.balance) .. ' more.'
-    end
+    if not self.odometer:stopped() then return 'Stop the car to ' .. doing .. '.' end
     return nil
+  end
+
+  -- Why Go sightseeing is off, or nil when it is on.
+  function c:sightseeingProblem()
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not self.garage then
+      return 'Sightseeing is unavailable right now.'
+    end
+    if self.hire then return self.hire.sightseeing and 'You are already sightseeing.' or 'Press Back to my car on the Heli tab first.' end
+    return self:leaveCarProblem('go sightseeing')
+  end
+
+  -- Go sightseeing: saves the game, then the Moonhawk takes the car's place where it stands. The car,
+  -- its job, fuel and damage wait for Return to your job.
+  function c:goSightseeing()
+    local problem = self:sightseeingProblem()
+    if problem then self.sightseeingFeedback = problem; return false end
+    if not self:manualSave() then
+      self.sightseeingFeedback = 'Could not save your game, so you have not left. ' .. tostring(self.feedback or '')
+      return false
+    end
+    local car, owned = M.SIGHTSEEING, self.ownedParts
+    self.hire = { sightseeing = true, stage = 'spawning', at = self.clock, model = car.model, name = car.name, carModel = owned.model,
+      spot = location.copy(self.lastSample), carDamage = self:carDamageNow(),
+      fuel = self.fuel and self.fuel.vehicleId == owned.id and self.fuel.litres or nil, airborne = 0, rolls = 0 }
+    self.appliedWeight, self.tankReading, self.ourRespawn = nil, nil, true
+    local ok, why, detail = self.garage:spawnConfig(car.model, car.config)
+    if not ok then
+      self.hire, self.ourRespawn = nil, nil
+      self:applyWeight(true)
+      self.sightseeingFeedback = 'Could not bring out the sightseeing car. Your game is saved; try again.'
+      self.diag:event('sightseeing_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
+      return false
+    end
+    self.quote, self.lastDamage, self.sightseeingFeedback = nil, nil, nil
+    self.diag:event('sightseeing_started', '')
+    return true
+  end
+
+  -- Return to your job: no confirming, as nothing is lost. Earth teleports the Moonhawk back to the
+  -- car first when it is far away.
+  function c:returnToJob()
+    if not self.hire or not self.hire.sightseeing then return false end
+    return self:backToCar(false)
+  end
+
+  -- What the player is told when a career button is pressed while away from their car.
+  function c:awayText()
+    if self.hire and self.hire.sightseeing then return 'You are sightseeing. Press Return to your job first.' end
+    return 'You are flying a hired helicopter. Press Back to my car on the Heli tab first.'
   end
 
   -- Hire helicopter: the first press asks to confirm. The helicopter takes the car's place where it
@@ -129,10 +190,10 @@ function M.attach(c)
     local h = self.hire
     if not h or h.stage == 'spawning' or h.stage == 'swapping' then return false end
     if h.stage == 'teleporting' and not forced then
-      self.heliFeedback = 'Teleporting back to your car. The terrain takes a few seconds to load.'
+      self:awayFeedback('Teleporting back to your car. The terrain takes a few seconds to load.')
       return false
     end
-    if not forced and not self.backArmed then
+    if not forced and not h.sightseeing and not self.backArmed then
       self.backArmed = true
       self.heliFeedback = 'Press Confirm: the helicopter goes back and your hire ends. Hiring again costs ' .. dollars(heli.HIRE_FEE) .. '.'
       return false
@@ -141,7 +202,7 @@ function M.attach(c)
     local sample = self.lastSample
     local away = sample and sample.valid and location.distance(sample, h.spot)
     if away and away <= heli.RETURN_METRES then
-      local height = self.aircraft:height()
+      local height = not h.sightseeing and self.aircraft and self.aircraft:height()
       if not forced and height and height > heli.LANDED_METRES then
         self.heliFeedback = 'Land first: your car comes back where the helicopter stands.'
         return false
@@ -153,15 +214,26 @@ function M.attach(c)
       self.diag:event('heli_teleport', ok and 'requested' or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
       if ok then
         h.stage, h.teleportAt, h.arrivedAt = 'teleporting', self.clock, nil
-        self.heliFeedback = 'Teleporting back to your car. The terrain takes a few seconds to load.'
+        self:awayFeedback('Teleporting back to your car. The terrain takes a few seconds to load.')
         return true
       end
     end
     if forced then return self:swapBack() end
+    if h.sightseeing then
+      self.sightseeingFeedback = 'BeamNG.Earth could not teleport you. Drive back to your car' .. (away and (', '
+        .. string.format('%.1f', away / 1000) .. ' km ' .. (location.compassPoint(location.bearing(sample, h.spot)) or '')) or '')
+        .. ', then press Return to your job again.'
+      return false
+    end
     self.heliFeedback = 'Fly back to your car' .. (away and (', ' .. string.format('%.1f', away / 1000) .. ' km '
       .. (location.compassPoint(location.bearing(sample, h.spot)) or '')) or '') .. ', and land within '
       .. heli.RETURN_METRES .. ' m of it. Then press Back to my car again.'
     return false
+  end
+
+  -- Feedback for the Heli tab, or for the sightseeing panel while sightseeing.
+  function c:awayFeedback(text)
+    if self.hire and self.hire.sightseeing then self.sightseeingFeedback = text else self.heliFeedback = text end
   end
 
   -- The car takes the helicopter's place, with the parts, fuel and damage it had; like a reverted
@@ -175,14 +247,15 @@ function M.attach(c)
     if not ok then
       self.arrivingModel, self.arrivingValue, self.arrivingUsed, self.ourRespawn = nil, nil, nil, nil
       h.stage = 'flying'
-      self.heliFeedback = 'Could not bring your car back. Press Back to my car again.'
+      self:awayFeedback(h.sightseeing and 'Could not bring your car back. Press Return to your job again.'
+        or 'Could not bring your car back. Press Back to my car again.')
       self.diag:event('heli_return_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
       return false
     end
     self.fuel = h.fuel and { vehicleId = owned.id, litres = h.fuel, restore = true } or nil
     self.owedDamage, self.punctureDamage, self.lastDamage, self.quote = h.carDamage or 0, 0, nil, nil
-    h.stage, h.swapAt = 'swapping', self.clock
-    self.heliFeedback = nil
+    h.stage, h.swapAt, h.respawned = 'swapping', self.clock, nil
+    self:awayFeedback(nil)
     return true
   end
 
@@ -198,10 +271,20 @@ function M.attach(c)
     local vehicle = sample and sample.valid and sample.vehicle or nil
     local model = vehicle and vehicle.model
     if h.stage == 'spawning' then
-      if model and model ~= h.carModel then
-        h.stage, h.heliId = 'flying', vehicle.id
+      if model and (model ~= h.carModel or (h.respawned and model == h.model)) then
+        h.stage, h.heliId, h.respawned = 'flying', vehicle.id, nil
+        if h.sightseeing then
+          self:showFlash('delivered', 'SIGHTSEEING', 'Your game is saved. Go anywhere you like: use the BeamNG.Earth map to'
+            .. ' teleport, and Street View to look around. Nothing here costs money. Press Return to your job when you are done.')
+          return
+        end
         self:showFlash('delivered', 'HELICOPTER HIRED', 'Fly anywhere you like and scout the towns, the terrain and their'
           .. ' jobs on the Heli tab. Keep your eyes open for signal beacons. Press Back to my car there when you are done.')
+      elseif self.clock - h.at >= heli.SPAWN_SECONDS and h.sightseeing then
+        self.hire, self.ourRespawn = nil, nil
+        self:applyWeight(true)
+        self.sightseeingFeedback = 'The sightseeing car did not turn up. Your game is saved; try again.'
+        self.diag:event('sightseeing_missing', '', 'W')
       elseif self.clock - h.at >= heli.SPAWN_SECONDS then
         self.hire, self.ourRespawn = nil, nil
         self:addMoney(heli.HIRE_FEE)
@@ -212,7 +295,12 @@ function M.attach(c)
       return
     end
     if h.stage == 'swapping' then
-      if model == h.carModel then
+      local back = model == h.carModel and (h.model ~= h.carModel or h.respawned)
+      if back and h.sightseeing then
+        self.hire = nil
+        self:showFlash('delivered', 'BACK TO WORK', 'Your car is just as you left it, with your job, money and fuel.')
+        self.diag:event('sightseeing_returned', '')
+      elseif back then
         self.hire = nil
         self:showFlash('delivered', 'BACK IN YOUR CAR', 'Your car is just as you left it.'
           .. (self.beacon and ' Your beacon is on the Route tab. Save to keep it.' or ''))
@@ -220,11 +308,12 @@ function M.attach(c)
       elseif self.clock - h.swapAt >= heli.SPAWN_SECONDS then
         self.arrivingModel, self.arrivingValue, self.arrivingUsed, self.ourRespawn = nil, nil, nil, nil
         h.stage = 'flying'
-        self.heliFeedback = 'Your car did not come back. Press Back to my car again.'
+        self:awayFeedback(h.sightseeing and 'Your car did not come back. Press Return to your job again.'
+          or 'Your car did not come back. Press Back to my car again.')
       end
       return
     end
-    if h.stage == 'flying' and vehicle and model == h.model then
+    if h.stage == 'flying' and not h.sightseeing and vehicle and model == h.model then
       local d = self.garage:inspect()
       if d and d.id == vehicle.id and d.damage >= heli.CRASH_DAMAGE then return self:heliCrashed() end
     end
@@ -235,12 +324,28 @@ function M.attach(c)
         if self.clock - h.arrivedAt >= heli.SETTLE_SECONDS then self:swapBack() end
       elseif self.clock - h.teleportAt >= heli.TELEPORT_SECONDS then
         h.stage = 'flying'
-        self.heliFeedback = 'Not back yet? Press Back to my car again, or fly back to your car and land by it.'
+        self:awayFeedback(h.sightseeing and 'Not back yet? Press Return to your job again.'
+          or 'Not back yet? Press Back to my car again, or fly back to your car and land by it.')
       end
       return
     end
     if self.backArmed and h.stage ~= 'flying' then self.backArmed = false end
-    if h.stage == 'flying' then self:watchBeacons() end
+    if h.stage == 'flying' and not h.sightseeing then self:watchBeacons() end
+  end
+
+  -- The sightseeing button and, while sightseeing, the HUD's sightseeing panel.
+  function c:sightseeingView(current)
+    if self.state ~= 'READY' or not self.arrived or not self.profile or not self.garage then return nil end
+    local h = self.hire
+    if not h or not h.sightseeing then
+      local problem = self:sightseeingProblem()
+      -- A helicopter has its own way back.
+      if self.hire then return nil end
+      return { allowed = problem == nil, problem = problem, feedback = self.sightseeingFeedback }
+    end
+    local away = current and location.distance(current, h.spot)
+    return { on = true, stage = h.stage, returnAllowed = h.stage == 'flying', feedback = self.sightseeingFeedback,
+      car = { distanceMetres = away, direction = away and away > 0 and location.compassPoint(location.bearing(current, h.spot)) or nil } }
   end
 
   -- The Heli tab.
@@ -254,7 +359,7 @@ function M.attach(c)
       beaconHeight = beacons.MIN_HEIGHT, beaconKm = beacons.CAR_METRES / 1000,
     }
     local h = self.hire
-    if not h then
+    if not h or h.sightseeing then
       out.problem = self:hireProblem()
       out.hireAllowed, out.armed = out.problem == nil, self.heliArmed
       return out
