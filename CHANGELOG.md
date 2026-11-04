@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **You can now hear the locals shooting.** A distant gunshot rings out with each shot.
+- The locals' shots hit half as hard again as before. They dent deeper and knock the truck harder. Your saves still work.
+
 ## Build 130 · 4 Nov 2026
 
 - **Locals may shoot at your truck in rough country.** Where the HUD shows rough roads ×1.4 or more, now and then someone opens fire from a spot off to your left or right. The HUD says **HIT THE GAS, THE LOCALS ARE SHOOTING AT YOU** and a short burst of shots follows. Not every shot hits, and the ones that do dent the body and can flatten a tyre. The shooter stays put, so the way out is to keep driving. With a "Don't ask questions" job on board it happens twice as often. Damage and flat tyres go on the normal repair on the Garage tab, with no other cost. There's no gunshot sound yet.

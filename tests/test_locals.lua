@@ -131,4 +131,15 @@ do
   T.eq(d:view().flash.kind, 'shots', 'an attack on rough roads')
   jobs.roadBonusFor = roadBonusFor
 end
+-- The gunshot ships with the mod: one of the sound files, a mono WAV the game can place in the world.
+do
+  local here = (arg[0]:match('^(.*)[/\\]') or '.') .. '/../mod/earth_freight/'
+  local found
+  for _, path in ipairs(locals.SOUNDS) do
+    local f = io.open(here .. path, 'rb')
+    if f then found = f:read(64); f:close(); break end
+  end
+  T.check(found ~= nil, 'a gunshot sound in the mod')
+  T.check(found and found:sub(1, 4) == 'RIFF' and found:byte(23) == 1, 'a mono WAV')
+end
 T.done('locals')
