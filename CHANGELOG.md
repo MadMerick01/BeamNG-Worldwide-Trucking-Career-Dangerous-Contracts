@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 130 · 4 Nov 2026
+
 - **Locals may shoot at your truck in rough country.** Where the HUD shows rough roads ×1.4 or more, now and then someone opens fire from a spot off to your left or right. The HUD says **HIT THE GAS, THE LOCALS ARE SHOOTING AT YOU** and a short burst of shots follows. Not every shot hits, and the ones that do dent the body and can flatten a tyre. The shooter stays put, so the way out is to keep driving. With a "Don't ask questions" job on board it happens twice as often. Damage and flat tyres go on the normal repair on the Garage tab, with no other cost. There's no gunshot sound yet.
 - For testing, the Garage tab has a **Start shots in 5 s** button that starts the shooting five seconds after you press it, wherever you are. It will be removed once the hits feel right. Your saves still work.
 - **Dangerous contracts stay in rotation after you deliver them.** Before, each road could only be driven once per game, and once you had done them all the town boards stopped offering any. Now every road keeps coming round on the boards, so there is always a dangerous contract to pick and you can drive your favourites again. The **Dangerous** count on the career page still shows how many different roads you have delivered. Your saves still work, and roads you had already finished come back onto the boards.
