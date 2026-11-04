@@ -155,7 +155,9 @@
       <span ng-if="data.fuel" title="Fuel in the tank"><span aria-hidden="true" style="display:inline-block;width:46px;height:7px;border-radius:4px;background:#33423f;vertical-align:middle;overflow:hidden;"><span ng-style="fuelStyle(data.fuel)" style="display:block;height:100%;"></span></span> {{data.fuel.litres | number:0}}/{{data.fuel.capacity | number:0}} L</span>
       <span ng-if="data.vehicle">{{data.vehicle.model || 'Your car'}}</span>
       <span title="Driven in this game">{{data.totalDistanceKm | number:1}} km</span>
+      <span ng-if="data.streetView" style="margin-left:auto;white-space:nowrap;"><button type="button" ng-click="openStreetView()" title="Show Google Street View of where you are in your web browser. It follows your truck every 10 seconds." style="padding:1px 8px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">Street View</button><button type="button" ng-if="data.streetView.on" ng-click="stopStreetView()" title="Turn Street View off" aria-label="Turn Street View off" style="margin-left:3px;padding:1px 6px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">&times;</button></span>
     </div>
+    <div ng-if="data.streetView.feedback" role="status" style="margin-top:2px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.streetView.feedback}}</div>
     <div ng-if="data.saveFeedback" style="margin-top:2px;color:#c9d6d2;font-size:12px;">{{data.saveFeedback}}</div>
     <div ng-if="data.mode === 'start' && data.startHereAllowed" style="margin:8px 0;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
       <div style="font-weight:bold;color:#a7e5c9;">Choose where you start</div>
