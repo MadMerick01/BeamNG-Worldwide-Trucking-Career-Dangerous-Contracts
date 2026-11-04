@@ -1093,14 +1093,15 @@ do
   local pay = c.load.pay
   T.check(c:deliver(), 'delivered'); T.eq(c:view().balance, 10000 - contracts.FEE + pay, 'paid in full')
   T.check(c:view().flash.text:find(section.name, 1, true), 'over the section')
-  -- A delivered road is not offered again in this game, even after a save and reload.
-  T.eq(c.profile.progression.contractsDone[1], section.id, 'the road is marked done')
+  -- A delivered road is counted for the career page, and stays in rotation on the boards.
+  T.eq(c.profile.progression.contractsDone[1], section.id, 'the road is counted')
   c.board = nil
+  local again = false
   for seed = 0, 20 do
-    local last = jobs.board(penrith, seed, {}, 0, c.profile.progression.contractsDone)
-    last = last[#last]
-    T.check(last.contract ~= section.id, 'not on the board again (seed ' .. seed .. ')')
+    local last = jobs.board(penrith, seed, {}, 0)
+    again = again or last[#last].contract == section.id
   end
+  T.check(again, 'the delivered road comes round on the board again')
   T.check(c:manualSave(), 'saved'); T.eq(io.files[B].progression.contractsDone[1], section.id, 'kept in the save')
   local r2 = F.controller({ io = io })
   T.eq(r2.profile.progression.contractsDone[1], section.id, 'and after a reload')
@@ -1144,24 +1145,27 @@ do
   T.check(not c:takeJob(job.id), 'refused'); T.check(c:view().tradeFeedback:find('relocation'), 'told why')
 end
 
--- With every road delivered, boards carry no dangerous contract; a new game offers them all again.
+-- With every road delivered, every board still carries a dangerous contract, and every road
+-- still comes round; an old save listing delivered roads loads and keeps them all in rotation.
 do
   local done = {}
   for _, sec in ipairs(contracts.LIST) do done[#done + 1] = sec.id end
-  local board = jobs.board(penrith, 0, {}, 0, done)
-  T.check(board[#board].contract == nil and board[#board].drop ~= nil, 'the board ends with the drop')
-  local keep = {}
-  for i = 1, #contracts.LIST - 1 do keep[i] = contracts.LIST[i].id end
-  for seed = 0, 10 do
-    local b = jobs.board(penrith, seed, {}, 0, keep)
-    T.eq(b[#b].contract, contracts.LIST[#contracts.LIST].id, 'only the road left is offered')
+  local seen = {}
+  for seed = 0, #contracts.LIST * 3 do
+    local b = jobs.board(penrith, seed, {}, 0)
+    T.check(b[#b].contract ~= nil, 'a contract on the board (seed ' .. seed .. ')')
+    seen[b[#b].contract] = true
   end
+  for _, sec in ipairs(contracts.LIST) do T.check(seen[sec.id], sec.id .. ' is in rotation') end
   local c, io = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   c.profile.progression.contractsDone = done; T.check(c:manualSave(), 'saved with every road done')
-  local n = F.controller({ io = io }); n:tick(0.1); n:tick(0.6); n:tick(0.6)
-  n:newGame(); T.check(n:newGame(), 'a new game')
-  T.eq(n.profile.progression.contractsDone, nil, 'starts with no roads done')
+  local r = F.controller({ io = io }); r:tick(0.1); r:tick(0.6); r:tick(0.6)
+  T.eq(#r.profile.progression.contractsDone, #contracts.LIST, 'the old save loads with every road done')
+  local b = r:board(penrith)
+  T.check(b[#b].contract ~= nil, 'and its boards still carry a dangerous contract')
+  r:newGame(); T.check(r:newGame(), 'a new game')
+  T.eq(r.profile.progression.contractsDone, nil, 'starts with no roads done')
 end
 
 -- Carhuaz runs between the points Rowan checked in game, about 1.7 km apart as the crow flies.

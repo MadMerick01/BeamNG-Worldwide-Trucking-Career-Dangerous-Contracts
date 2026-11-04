@@ -249,7 +249,7 @@ end
 -- least one job is decent: if none pays its base rate, the best one is raised to it. distance is
 -- the Distance filter (see DISTANCES): its band holds every town job, and a job that had to go
 -- outside it, for want of towns that far, is marked outside.
-function M.board(from, seed, needs, now, contractsDone, distance)
+function M.board(from, seed, needs, now, distance)
   local list = M.destinations(from)
   local wanted = M.boardGoods(from)
   if #list == 0 or #wanted == 0 then return {} end
@@ -300,16 +300,16 @@ function M.board(from, seed, needs, now, contractsDone, distance)
   end
   if bestFactor < 1 then best.decent = true end
   out[#out + 1] = M.dropJob(from, seed)
-  out[#out + 1] = M.contractJob(from, seed, contractsDone)
+  out[#out + 1] = M.contractJob(from, seed)
   return out
 end
 
 -- A board's dangerous contract: parts or bricks over a treacherous section far from town. It is
 -- taken here, then the player is relocated to its start and delivers at its finish, like a drop.
--- None once every section is in contractsDone.
-function M.contractJob(from, seed, contractsDone)
+-- Roads already delivered stay in rotation and come round again.
+function M.contractJob(from, seed)
   seed = tostring(seed or 0)
-  local section = contracts.pick(hash01(from.id .. ':contract'), seed, contractsDone)
+  local section = contracts.pick(hash01(from.id .. ':contract'), seed)
   if not section then return nil end
   local carried = goods.ofKind('parcel')
   local good = carried[math.floor(hash01(from.id .. ':' .. seed .. ':contract:good') * #carried) + 1]

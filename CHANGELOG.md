@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Dangerous contracts stay in rotation after you deliver them.** Before, each road could only be driven once per game, and once you had done them all the town boards stopped offering any. Now every road keeps coming round on the boards, so there is always a dangerous contract to pick and you can drive your favourites again. The **Dangerous** count on the career page still shows how many different roads you have delivered. Your saves still work, and roads you had already finished come back onto the boards.
+
 ## Build 128 · 4 Nov 2026
 
 - **You can buy a home, and own two cars.** The new **Home** tab lets you buy the spot where you're parked for $250,000. Your home keeps a second car for you. You only get one home, and it can't be moved or sold.
