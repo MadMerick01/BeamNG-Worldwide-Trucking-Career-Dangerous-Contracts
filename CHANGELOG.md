@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 128 · 4 Nov 2026
+
 - **You can buy a home, and own two cars.** The new **Home** tab lets you buy the spot where you're parked for $250,000. Your home keeps a second car for you. You only get one home, and it can't be moved or sold.
 - When you buy a new or second-hand car and your home has room, the bill now has two buttons. **Trade in** works as before. **Keep and store at home** charges the full price with no trade-in and sends your old car home with its parts, fuel and damage. The second-hand list also shows both prices.
 - Within 200 m of your home, **Swap cars** on the Home tab swaps the car you're driving with the one at home. Each car keeps its own parts, fuel, wear and the repairs it still needs. You can't swap with a job on board or a bill open.
