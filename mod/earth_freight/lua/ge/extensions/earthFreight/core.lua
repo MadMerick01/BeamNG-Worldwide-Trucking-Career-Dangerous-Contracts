@@ -139,7 +139,7 @@ function M.new(deps)
     camera = deps.camera,
     -- The Street View window's little web server, and how a web page is opened in the player's
     -- browser; without them there is no Street View button.
-    streetView = deps.streetView, openUrl = deps.openUrl, copyText = deps.copyText,
+    streetView = deps.streetView, openUrl = deps.openUrl,
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
@@ -1354,7 +1354,7 @@ function M.new(deps)
   end
 
   -- Where the car is, for the Street View page: the live position, which way it points, and its
-  -- street and town as the HUD shows them. Built only when the page asks, every 10 seconds.
+  -- street and town as the HUD shows them. Built only when the page asks, every 6, 10 or 20 seconds.
   function c:streetViewPosition()
     local sample = self.lastSample
     if not sample or not sample.valid or not location.valid(sample) then
@@ -1388,12 +1388,10 @@ function M.new(deps)
     local url = self.streetView:url()
     local okOpen, opened = false, false
     if self.openUrl then okOpen, opened = pcall(self.openUrl, url) end
-    -- The address is copied too: if the browser does not come up, the player pastes it in.
-    local copied = self.copyText and pcall(self.copyText, url)
-    local paste = copied and 'paste ' .. url .. ' into your web browser (it is copied).' or 'type ' .. url .. ' into your web browser.'
+    -- The HUD shows the address with a Copy button, in case the browser does not come up.
     self.streetViewFeedback = (okOpen and opened ~= false)
-      and 'Street View is opening in your web browser. If it does not, ' .. paste
-      or 'To see Street View, ' .. paste
+      and 'Street View is opening in your web browser. If it does not, copy the address below into your browser.'
+      or 'To see Street View, copy the address below into your web browser.'
     self.diag:event('street_view', 'started')
     return true
   end
@@ -1949,7 +1947,7 @@ local function ensure()
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
       punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
-      streetView = streetView.new(), openUrl = gameOpenUrl, copyText = rawget(_G, 'setClipboard'),
+      streetView = streetView.new(), openUrl = gameOpenUrl,
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
   return active

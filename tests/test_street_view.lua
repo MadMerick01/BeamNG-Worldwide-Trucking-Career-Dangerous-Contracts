@@ -132,16 +132,15 @@ T.eq(SV.encode(-33.12345678), '-33.1234568', 'seven decimals')
 do
   local lib = fakeSocket()
   local opened = {}
-  local c, io, a = F.controller({ streetView = SV.new({ socket = lib }), openUrl = function(url) opened[#opened + 1] = url; return true end,
-    copyText = function(text) opened.copied = text end })
+  local c, io, a = F.controller({ streetView = SV.new({ socket = lib }), openUrl = function(url) opened[#opened + 1] = url; return true end })
   a.pose = F.position(-33.75, 150.7)
   a.names = { street = 'High Street', place = 'Penrith', region = 'New South Wales', country = 'Australia' }
   c:tick(0.1)
   T.check(c:view().streetView ~= nil, 'HUD offers Street View'); T.check(not c:view().streetView.on, 'off at first')
   T.check(c:openStreetView(), 'Street View opens')
   T.eq(opened[1], 'http://127.0.0.1:47170/', 'page opened in the browser')
-  T.eq(opened.copied, 'http://127.0.0.1:47170/', 'address copied in case the browser does not open')
-  T.check(c:view().streetView.feedback:find('paste http://127.0.0.1:47170/', 1, true) ~= nil, 'HUD says where to paste it')
+  T.eq(c:view().streetView.url, 'http://127.0.0.1:47170/', 'HUD has the address for its Copy button')
+  T.check(c:view().streetView.feedback:find('copy the address below', 1, true) ~= nil, 'HUD points to the Copy button')
   T.check(c:view().streetView.on, 'shown as on')
   T.eq(io.files['/settings/earthFreight/streetview.json'].on, true, 'remembered for next time')
   local p = c:streetViewPosition()
@@ -167,13 +166,13 @@ do
   -- No browser opener: the address is given instead.
   local c3 = F.controller({ streetView = SV.new({ socket = fakeSocket() }) })
   c3:openStreetView()
-  T.check(c3:view().streetView.feedback:find('http://127.0.0.1:47170/', 1, true) ~= nil, 'address shown when no browser opens')
-  local c5 = F.controller({ streetView = SV.new({ socket = fakeSocket() }), openUrl = function() return false end, copyText = function() end })
+  T.check(c3:view().streetView.feedback:find('copy the address below', 1, true) ~= nil, 'address offered when no browser opens')
+  local c5 = F.controller({ streetView = SV.new({ socket = fakeSocket() }), openUrl = function() return false end })
   c5:openStreetView()
-  T.eq(c5:view().streetView.feedback, 'To see Street View, paste http://127.0.0.1:47170/ into your web browser (it is copied).', 'no browser: asked to paste')
+  T.eq(c5:view().streetView.feedback, 'To see Street View, copy the address below into your web browser.', 'no browser: asked to paste')
   local c6 = F.controller({ streetView = SV.new({ socket = fakeSocket() }), openUrl = function() error('blocked') end })
   T.check(c6:openStreetView(), 'a failing opener does not break the button')
-  T.check(c6:view().streetView.feedback:find('type http://127.0.0.1:47170/', 1, true) ~= nil, 'and the address is given')
+  T.check(c6:view().streetView.feedback:find('copy the address below', 1, true) ~= nil, 'and the address is offered')
   local busy = fakeSocket(); busy.busy = true
   local c4 = F.controller({ streetView = SV.new({ socket = busy }) })
   T.check(not c4:openStreetView(), 'busy port fails')

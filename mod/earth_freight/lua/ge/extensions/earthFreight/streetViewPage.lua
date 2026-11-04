@@ -1,5 +1,5 @@
 -- The Street View window's web page, served by streetView.lua at http://127.0.0.1:47170/.
--- It asks the game where the car is every 10 seconds and points Google Street View there.
+-- It asks the game where the car is every 6, 10 or 20 seconds (10 unless the player picks) and points Google Street View there.
 -- With no Google key it uses Google's plain embed, which needs no key. With a free Maps JavaScript
 -- API key (kept in this browser only) it finds the nearest photo when the car is off the road.
 local M = {}
@@ -76,7 +76,14 @@ M.html = [==[<!doctype html>
   <div class="zoom" title="Zoom the picture in or out to match your view in the game"><button type="button" id="zoomOut" aria-label="Zoom out">&minus;</button><span id="zoomLabel">Zoom 1</span><button type="button" id="zoomIn" aria-label="Zoom in">+</button><button type="button" id="face" title="Face where your game camera looks, or always the way the truck points">Camera</button></div>
   <div id="settings">
     <h2>Street View settings</h2>
-    <p>This page asks the game where your truck is every 10 seconds and shows Google Street View of that spot. Keep BeamNG running with Worldwide Trucking and this tab open.</p>
+    <p>This page asks the game where your truck is every few seconds and shows Google Street View of that spot. Keep BeamNG running with Worldwide Trucking and this tab open.</p>
+    <div id="rateLabel">Update every</div>
+    <div class="buttons" role="radiogroup" aria-labelledby="rateLabel" style="margin:4px 0 8px;">
+      <button type="button" class="rate" data-seconds="6" role="radio">6 s</button>
+      <button type="button" class="rate" data-seconds="10" role="radio">10 s</button>
+      <button type="button" class="rate" data-seconds="20" role="radio">20 s</button>
+    </div>
+    <p>A new picture is fetched only once the truck has moved or the view has turned, so a faster rate costs nothing while you are parked. On the highway, 6 s uses about 600 MB an hour; 20 s about a third of that.</p>
     <p><b>Optional Google key.</b> Without one the page uses Google's free embed, which shows nothing where there are no photos right on the spot. With a free Google Maps JavaScript API key the page finds the nearest photo within 5 km, faces it the way you are driving and adds a small map. Your key stays in this browser only.</p>
     <p>Get one at <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" rel="noopener">Google Cloud: Maps credentials</a> and turn on the Maps JavaScript API.</p>
     <label for="key">Google Maps JavaScript API key</label>
@@ -92,7 +99,9 @@ M.html = [==[<!doctype html>
 <script>
 (function () {
   'use strict'
-  var EVERY = 10000          // ms between updates
+  var RATES = [6, 10, 20]   // seconds between updates the player can pick, in Settings
+  var RATE_STORE = 'wwtStreetViewRate'
+  var EVERY = 10000          // ms between updates: the player's pick, 10 s until they choose
   var MOVED = 20             // metres the truck must move before the picture changes
   var TURNED = 15            // degrees the view must turn before the picture changes
   var FACE_STORE = 'wwtStreetViewFace'
@@ -245,7 +254,7 @@ M.html = [==[<!doctype html>
         if (!state.shown) cover((reasons[p && p.reason] || 'Waiting for the game') + '…')
         return
       }
-      status('live', 'Live, every 10 s')
+      status('live', 'Live, every ' + EVERY / 1000 + ' s')
       state.last = p
       if (!state.shown || metres(state.shown, p) >= MOVED || turned(facing(state.shown), facing(p)) >= TURNED) show(p)
     }).catch(function () {
@@ -363,8 +372,35 @@ M.html = [==[<!doctype html>
     text('keyStatus', 'No key saved: using the plain Street View embed.')
   }
 
+  // The update rate: one timer, started again when the player picks another rate.
+  var timer = null
+  function showRate () {
+    var buttons = $('settings').querySelectorAll('.rate')
+    for (var i = 0; i < buttons.length; i++) {
+      var on = Number(buttons[i].getAttribute('data-seconds')) * 1000 === EVERY
+      buttons[i].className = 'rate' + (on ? ' on' : '')
+      buttons[i].setAttribute('aria-checked', on ? 'true' : 'false')
+    }
+  }
+  function setRate (seconds) {
+    if (RATES.indexOf(seconds) < 0) seconds = 10
+    EVERY = seconds * 1000
+    showRate()
+    if (timer) clearInterval(timer)
+    timer = setInterval(update, EVERY)
+  }
+  var rateButtons = $('settings').querySelectorAll('.rate')
+  for (var r = 0; r < rateButtons.length; r++) {
+    rateButtons[r].onclick = function () {
+      var seconds = Number(this.getAttribute('data-seconds'))
+      store.set(RATE_STORE, String(seconds))
+      setRate(seconds)
+      if (state.lastOk && !state.paused) status('live', 'Live, every ' + seconds + ' s')
+    }
+  }
+  setRate(Number(store.get(RATE_STORE)) || 10)
+
   update()
-  setInterval(update, EVERY)
   // A fresh header line while waiting.
   setInterval(function () {
     if (!state.paused && state.lastOk && Date.now() - state.lastOk > EVERY * 3) status('down', 'Can’t reach the game. Is BeamNG running?')
