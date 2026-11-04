@@ -8,6 +8,24 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **The locals no longer shoot at your truck.** The hits could make your car unstable enough that the game put you back at your last save, so the shooting, its gunshot sound and the **Start shots in 5 s** test button on the Garage tab are gone. Your saves still work.
 
+## Build 135 · 4 Nov 2026
+
+- **Go sightseeing.** A new **Go sightseeing** button sits under the **Street View** button. Press it while stopped in your own car and the game saves first, then swaps your truck for a free black Moonhawk right where you are. Use the BeamNG.Earth map to teleport anywhere you like and look around, with Street View following you. While you are sightseeing the HUD shows a sightseeing panel instead of the tabs: there are no jobs, fuel bills, punctures, locals or crash bills, and nothing costs money. Press **Return to your job** and you are teleported back to your truck, with your job, money, fuel and damage just as you left them. Your saves still work.
+
+## Build 134 · 4 Nov 2026
+
+- **Street View can now float on top of the game.** On the Street View page, press **Pop out** and Street View moves into a small window that stays above the game, so it no longer disappears when you click back into BeamNG. Drag it wherever you like and resize it; it still follows your truck every 10 seconds. Close it, or press **Bring it back here**, to put it back in the browser tab. This needs Chrome or Edge, and BeamNG set to **Borderless** or **Windowed** in its display options, because nothing can sit on top of true fullscreen. Your saves still work.
+
+## Build 133 · 4 Nov 2026
+
+- **The Street View button now opens your web browser.** Before, pressing it started Street View but no browser window came up. Now the page opens in your normal browser, and the address is also copied so you can paste it in if your browser still doesn't appear. The HUD shows the address under the button too. Your saves still work.
+
+## Build 132 · 4 Nov 2026
+
+- **Street View of where you are, in your web browser.** Press the new **Street View** button on the HUD, next to your distance driven, and a page opens in your normal web browser showing Google Street View of the spot your truck is on, facing the way you are driving. Every 10 seconds it catches up with the truck, so you can keep it on a second screen as you drive. It also shows the street, town and coordinates, and has **Map** (an overhead satellite view), **Pause** (stop following so you can look around) and **Google Maps** buttons. Press **×** next to the button to turn it off. Once used, it comes back by itself next time you play, so a tab you left open carries on.
+- Street View only exists where Google has photographed the road, so off the road or somewhere remote the picture may be blank. For a better result there, open **Settings** on the page and paste in a free Google Maps key: the page then shows the nearest photo within 5 km, tells you how far away it is, and switches to the map when there is none. The key is kept in your browser only.
+- The page lives on your own computer at http://127.0.0.1:47170 and nothing outside your computer can reach it. Your saves still work.
+
 ## Build 131 · 4 Nov 2026
 
 - **You can now hear the locals shooting.** A distant gunshot rings out with each shot.

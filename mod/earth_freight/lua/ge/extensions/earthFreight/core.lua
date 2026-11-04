@@ -23,6 +23,7 @@ local flights = require('earthFreight/flights')
 local aircraft = require('earthFreight/aircraft')
 local trailers = require('earthFreight/trailers')
 local home = require('earthFreight/home')
+local streetView = require('earthFreight/streetView')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -41,6 +42,8 @@ local TELEPORT_WAIT_SECONDS = 30
 -- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
 -- been stopped this long and nothing else is going on.
 local AUTOSAVE_SECONDS = 3
+-- Whether the Street View window was on, so it starts again with the game.
+local STREET_VIEW_FILE = '/settings/earthFreight/streetview.json'
 M.AUTOSAVE_SECONDS = AUTOSAVE_SECONDS
 -- A puncture's tyre repair, as damage points, so every repair quote and bill includes it. Like
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
@@ -134,6 +137,9 @@ function M.new(deps)
     trigger = deps.trigger,
     -- Leaves the free camera for the car's own camera; without it the camera is left as it is.
     camera = deps.camera,
+    -- The Street View window's little web server, and how a web page is opened in the player's
+    -- browser; without them there is no Street View button.
+    streetView = deps.streetView, openUrl = deps.openUrl, copyText = deps.copyText,
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
@@ -522,15 +528,13 @@ function M.new(deps)
     end
   end
 
-  -- What the player is told while a hired helicopter stands in for their car.
-  local FLYING = 'You are flying a hired helicopter. Press Back to my car on the Heli tab first.'
-  -- And while they are on foot.
+  -- What the player is told while on foot. (Away in a helicopter or the sightseeing car: c:awayText.)
   local ON_FOOT = 'You are on foot. Get back in your car first.'
 
   -- Why booking shipping is not possible now, or nil when it is.
   function c:shippingProblem()
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Relocation is unavailable right now.' end
-    if self.hire then return FLYING end
+    if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
     if self.load then return 'Deliver or abandon your job first: cargo cannot be relocated.' end
     if self.trailerShop then return 'Finish with your trailer parts on the Garage tab first.' end
@@ -748,7 +752,7 @@ function M.new(deps)
   -- Why taking or delivering a job at this place is not possible now, or nil when it is.
   function c:tradeProblem(place)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Jobs are unavailable right now.' end
-    if self.hire then return FLYING end
+    if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
     if not place then return 'Drive into a town to find a job.' end
     if not self.odometer:stopped() then return 'Stop the car to take or deliver a job.' end
@@ -903,7 +907,7 @@ function M.new(deps)
     local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
     if not section or self.error or self.state ~= 'READY' or not self.adapter.teleport then return false end
     if self.hire or self.onFoot then
-      self.tradeFeedback = self.hire and FLYING or ON_FOOT
+      self.tradeFeedback = self.hire and self:awayText() or ON_FOOT
       return false
     end
     local ok, why, detail = self.adapter:teleport(section.start, 'Worldwide Trucking: ' .. section.name)
@@ -935,7 +939,7 @@ function M.new(deps)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then
       return 'Deliveries are unavailable right now.'
     end
-    if self.hire then return FLYING end
+    if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
     local section = load.contract and contracts.get(load.contract)
     if section and not load.started then return 'Teleport to the start of ' .. section.name .. ' first.' end
@@ -1077,7 +1081,7 @@ function M.new(deps)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then
       return 'Pickups are unavailable right now.'
     end
-    if self.hire then return FLYING end
+    if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
     if self.load then return 'Deliver or abandon your job first. The package will wait until the beacon goes quiet.' end
     local away = location.distance(sample, b.pickup)
@@ -1251,6 +1255,9 @@ function M.new(deps)
     self:watchInsurance()
     self:watchTow()
     self:watchAutoSave()
+    if self.streetView then
+      self.streetView:poll(self.clock, function() return self:streetViewPosition() end)
+    end
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
       self.refuelPending, self.fuelFeedback = nil, 'Refuelling did not go through. You have not been charged.'
@@ -1344,6 +1351,71 @@ function M.new(deps)
     end
     if #area == 0 and anchor and anchor.region then area[1] = anchor.region end
     return { title = title, area = table.concat(area, ', '), street = earth and earth.street or nil, fromEarth = earth ~= nil }
+  end
+
+  -- Where the car is, for the Street View page: the live position, which way it points, and its
+  -- street and town as the HUD shows them. Built only when the page asks, every 10 seconds.
+  function c:streetViewPosition()
+    local sample = self.lastSample
+    if not sample or not sample.valid or not location.valid(sample) then
+      return { ok = false, reason = sample and sample.reason or 'earth_starting' }
+    end
+    local place = self:here()
+    local anchor = place or (places.nearest(sample, 1)[1] or {}).place
+    local where = self:whereView(sample, place, anchor) or {}
+    local earth = self.adapter.placeNames and self.adapter:placeNames() or {}
+    return {
+      ok = true, latitude = sample.latitude, longitude = sample.longitude,
+      heading = location.finite(sample.heading) and math.floor(sample.heading * 10 + 0.5) / 10 or nil,
+      place = where.title, street = where.street, region = earth.region, country = earth.country,
+    }
+  end
+
+  -- Street View: starts the web server if it is not running yet and opens its page in the
+  -- player's browser. Once used, it starts by itself next time, so an open tab carries on.
+  function c:openStreetView()
+    if not self.streetView then return false end
+    local ok, why = self.streetView:start()
+    if not ok then
+      self.streetViewFeedback = why == 'port_busy'
+        and 'Street View could not start: something else on your computer is using port ' .. self.streetView.port .. '.'
+        or 'Street View could not start in this version of BeamNG.'
+      self.diag:event('street_view', tostring(why), 'W')
+      return false
+    end
+    self:rememberStreetView(true)
+    local url = self.streetView:url()
+    local okOpen, opened = false, false
+    if self.openUrl then okOpen, opened = pcall(self.openUrl, url) end
+    -- The address is copied too: if the browser does not come up, the player pastes it in.
+    local copied = self.copyText and pcall(self.copyText, url)
+    local paste = copied and 'paste ' .. url .. ' into your web browser (it is copied).' or 'type ' .. url .. ' into your web browser.'
+    self.streetViewFeedback = (okOpen and opened ~= false)
+      and 'Street View is opening in your web browser. If it does not, ' .. paste
+      or 'To see Street View, ' .. paste
+    self.diag:event('street_view', 'started')
+    return true
+  end
+
+  function c:stopStreetView()
+    if not self.streetView then return false end
+    self.streetView:stop()
+    self:rememberStreetView(false)
+    self.streetViewFeedback = 'Street View is off.'
+    return true
+  end
+
+  function c:rememberStreetView(on)
+    if not deps.io then return end
+    pcall(function()
+      deps.io.mkdir('/settings/earthFreight')
+      deps.io.write(STREET_VIEW_FILE, { on = on == true })
+    end)
+  end
+
+  function c:streetViewView()
+    if not self.streetView then return nil end
+    return { on = self.streetView.on, url = self.streetView:url(), feedback = self.streetViewFeedback }
   end
 
   function c:tradeView(current)
@@ -1549,6 +1621,8 @@ function M.new(deps)
       fuel = self.fuel and { litres = self.fuel.litres, capacity = self.fuel.capacity, pricePerLitre = fuel.PRICE_PER_LITRE } or nil,
       here = trade.here, region = trade.region, where = trade.where, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
       shortages = trade.shortages,
+      streetView = self:streetViewView(),
+      sightseeing = self:sightseeingView(current),
       gpsAllowed = self.adapter.setDestination ~= nil and self.state == 'READY' and self.arrived and not self.hire,
       gpsFeedback = self.gpsFeedback,
       abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee,
@@ -1644,7 +1718,8 @@ function M.new(deps)
       return false
     end
     if self.hire then
-      self.feedback = 'Press Back to my car on the Heli tab before saving: Save keeps your car, not the helicopter.'
+      self.feedback = self.hire.sightseeing and 'Press Return to your job before saving: Save keeps your car, not the sightseeing car.'
+        or 'Press Back to my car on the Heli tab before saving: Save keeps your car, not the helicopter.'
       self.diag:event('manual_save_rejected', 'heli', 'W')
       return false
     end
@@ -1798,6 +1873,11 @@ function M.new(deps)
   end
 
   c:reload()
+  -- Street View carries on from last time, so a tab left open picks the truck up again.
+  if c.streetView and deps.io then
+    local ok, saved = pcall(function() return deps.io.exists(STREET_VIEW_FILE) and deps.io.read(STREET_VIEW_FILE) end)
+    if ok and type(saved) == 'table' and saved.on == true then c.streetView:start() end
+  end
   return c
 end
 
@@ -1835,11 +1915,40 @@ local function gameCamera()
     end,
   }
 end
+-- Opens a page of this computer's own web server in the player's browser. The game's
+-- openWebBrowser does not open http://127.0.0.1 addresses, so a one-line page that forwards to
+-- the address is saved in the user folder and opened as a file, which Windows hands to the default
+-- browser. openWebBrowser is the fallback. False when neither way is there.
+local function gameOpenUrl(url)
+  local platform = rawget(_G, 'Engine') and Engine.Platform
+  local fs = rawget(_G, 'FS')
+  local write = rawget(_G, 'writeFile')
+  if type(platform) == 'table' or type(platform) == 'userdata' then
+    local ok, opened = pcall(function()
+      if type(write) ~= 'function' or not fs or type(platform.openFile) ~= 'function' then return false end
+      local path = '/settings/earthFreight/streetview.html'
+      if not fs:directoryExists('/settings/earthFreight') then fs:directoryCreate('/settings/earthFreight', true) end
+      local page = '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' .. url .. '">' ..
+        '<title>Street View</title><a href="' .. url .. '">Open Street View</a>'
+      if not write(path, page) then return false end
+      local real = fs:getFileRealPath(path)
+      if type(real) ~= 'string' or real == '' then return false end
+      platform.openFile(real)
+      return true
+    end)
+    if ok and opened then return true end
+  end
+  local browser = rawget(_G, 'openWebBrowser')
+  if type(browser) == 'function' then browser(url); return true end
+  return false
+end
+
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
       punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
+      streetView = streetView.new(), openUrl = gameOpenUrl, copyText = rawget(_G, 'setClipboard'),
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
   return active
@@ -1925,6 +2034,8 @@ function M.getOut() return safely(function() return ensure():getOut() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end
 function M.hireHeli() return safely(function() return ensure():hireHeli() end) end
 function M.backToCar() return safely(function() return ensure():backToCar(false) end) end
+function M.goSightseeing() return safely(function() return ensure():goSightseeing() end) end
+function M.returnToJob() return safely(function() return ensure():returnToJob() end) end
 -- A heli load's answer: what it weighs once its mass is set.
 function M.pickUpBeacon() return safely(function() return ensure():pickUpBeacon() end) end
 function M.ignoreBeacon() return safely(function() return ensure():ignoreBeacon() end) end
@@ -1983,6 +2094,12 @@ function M.onFilesChanged(files)
     end
   end)
 end
-function M.onExtensionUnloaded() active = nil end -- no implicit save on shutdown
+function M.openStreetView() return safely(function() return ensure():openStreetView() end) end
+function M.stopStreetView() return safely(function() return ensure():stopStreetView() end) end
+function M.onExtensionUnloaded()
+  -- The web server lets go of its port, so the next load can open it again.
+  if active and active.streetView then pcall(function() active.streetView:stop() end) end
+  active = nil
+end -- no implicit save on shutdown
 
 return M

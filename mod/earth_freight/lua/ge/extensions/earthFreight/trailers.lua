@@ -138,7 +138,7 @@ function M.attach(c)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not self.garage then
       return 'Trailers are unavailable right now.'
     end
-    if self.hire then return 'Press Back to my car on the Heli tab first.' end
+    if self.hire then return self:awayText() end
     if self.onFoot then return 'Get back in your car first.' end
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from first.' end
     if self.booking then return 'Teleport to your relocation booking, or cancel it, first.' end
@@ -346,7 +346,7 @@ function M.attach(c)
   -- then the whole job is lost and the abandon fee charged.
   function c:storeTrailer()
     if not self.trailer or not self.trailerOut or not self.profile or self.error then return false end
-    if self.hire then self.trailerFeedback = 'Press Back to my car on the Heli tab first.'; return false end
+    if self.hire then self.trailerFeedback = self:awayText(); return false end
     if self.trailerShop then self.trailerFeedback = 'Pay for or undo your trailer parts first.'; return false end
     if inTrailer(self) > 0 and not self.storeArmed then
       self.storeArmed = true

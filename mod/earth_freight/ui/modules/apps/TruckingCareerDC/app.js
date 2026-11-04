@@ -489,6 +489,12 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       scope.cancelShipping = function () { if (scope.data.shipping && scope.data.shipping.booking) core('cancelShipping()') }
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
+      // Opens Google Street View of where the truck is in the player's web browser.
+      scope.openStreetView = function () { if (scope.data.streetView) core('openStreetView()') }
+      // Sightseeing: saves, swaps the truck for the free Moonhawk; Return to your job brings it back.
+      scope.goSightseeing = function () { if (scope.data.sightseeing && scope.data.sightseeing.allowed) core('goSightseeing()') }
+      scope.returnToJob = function () { if (scope.data.sightseeing && scope.data.sightseeing.returnAllowed) core('returnToJob()') }
+      scope.stopStreetView = function () { if (scope.data.streetView && scope.data.streetView.on) core('stopStreetView()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
       scope.towHere = function () { if (scope.data.tow && scope.data.tow.allowed) core('towHere()') }

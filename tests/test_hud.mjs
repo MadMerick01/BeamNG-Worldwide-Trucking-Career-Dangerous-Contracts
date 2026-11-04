@@ -756,7 +756,7 @@ test('the minimised strip shows money, the job and where you are', () => {
 
 test('while on a job, the distance left shows big in the job card, almost as large as the money', () => {
   const panels = html.indexOf('role="tabpanel"')
-  const card = html.slice(html.indexOf('<div ng-if="data.load" style="margin:8px 0 0'), panels)
+  const card = html.slice(html.indexOf('<div ng-if="data.load && !data.sightseeing.on" style="margin:8px 0 0'), panels)
   const big = card.indexOf('distance(trip(data).metres)')
   assert.ok(big > 0, 'in the job card, above the tabs')
   assert.ok(card.lastIndexOf('font-size:28px', big) > card.lastIndexOf('<div', big), 'in 28 px type, next to the 32 px money')
@@ -819,4 +819,15 @@ test('the Rust Bucket to Rig marker sits by the car value', () => {
   const a = app()
   assert.equal(a.scope.climbAt(0), '0%'); assert.equal(a.scope.climbAt(0.5), '50%'); assert.equal(a.scope.climbAt(3), '100%'); assert.equal(a.scope.climbAt('x'), '0%')
   assert.equal(a.scope.climbLabel(0), 'Still a rust bucket.'); assert.equal(a.scope.climbLabel(0.42), '42% of the way to a rig'); assert.equal(a.scope.climbLabel(1), 'You drive a rig.')
+})
+
+test('sightseeing: Go sightseeing sits under Street View, and sightseeing swaps the job card and tabs for Return to your job', () => {
+  const street = html.indexOf('ng-click="openStreetView()"')
+  const go = html.indexOf('ng-click="goSightseeing()"')
+  assert.ok(street > 0 && go > street, 'Go sightseeing comes after the Street View button')
+  const panel = html.slice(html.indexOf('<div ng-if="data.sightseeing.on"'), html.indexOf('role="tablist"'))
+  assert.ok(panel.includes('ng-click="returnToJob()"'), 'Return to your job in the sightseeing panel')
+  assert.ok(html.includes('role="tablist" ng-if="!data.sightseeing.on"'), 'tabs hidden while sightseeing')
+  assert.ok(html.includes('role="tabpanel" ng-if="!data.sightseeing.on"'), 'tab panels hidden while sightseeing')
+  assert.ok(source.includes("core('goSightseeing()')") && source.includes("core('returnToJob()')"), 'both buttons call the game')
 })
