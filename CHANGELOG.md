@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 131 · 4 Nov 2026
+
 - **You can now hear the locals shooting.** A distant gunshot rings out with each shot.
 - The locals' shots hit half as hard again as before. They dent deeper and knock the truck harder. Your saves still work.
 
