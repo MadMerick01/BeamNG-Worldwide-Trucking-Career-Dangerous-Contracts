@@ -6,6 +6,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Street View now starts one step zoomed in**, so a small window over the game looks more like your view from the cab. Use the new **−** and **+** zoom buttons at the top of the Street View page to change it; your choice is kept for every picture after, and next time you open the page.
 - **Go sightseeing.** A new **Go sightseeing** button sits under the **Street View** button. Press it while stopped in your own car and the game saves first, then swaps your truck for a free black Moonhawk right where you are. Use the BeamNG.Earth map to teleport anywhere you like and look around, with Street View following you. While you are sightseeing the HUD shows a sightseeing panel instead of the tabs: there are no jobs, fuel bills, punctures, locals or crash bills, and nothing costs money. Press **Return to your job** and you are teleported back to your truck, with your job, money, fuel and damage just as you left them. Your saves still work.
 
 ## Build 134 · 4 Nov 2026

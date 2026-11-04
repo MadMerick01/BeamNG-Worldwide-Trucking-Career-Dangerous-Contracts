@@ -40,6 +40,8 @@ M.html = [==[<!doctype html>
   #caption { display: none; padding: 3px 8px; font-size: 12px; color: var(--dim); background: var(--panel); border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #caption b { color: var(--text); }
   #away { flex: 1; display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--dim); font-size: 16px; }
+  .zoom { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--dim); white-space: nowrap; }
+  .zoom button { padding: 4px 9px; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -51,6 +53,7 @@ M.html = [==[<!doctype html>
   </div>
   <div class="status"><span class="dot wait" id="dot"></span><span id="status">Connecting to the game&hellip;</span></div>
   <div class="buttons">
+    <span class="zoom" title="Zoom the picture in or out to match your view in the game"><button type="button" id="zoomOut" aria-label="Zoom out">&minus;</button><span id="zoomLabel">Zoom 1</span><button type="button" id="zoomIn" aria-label="Zoom in">+</button></span>
     <button type="button" id="mode" title="Switch between Street View and an overhead map">Map</button>
     <button type="button" id="popout" hidden title="Open Street View in a small window that stays on top of the game">Pop out</button>
     <button type="button" id="pause" title="Stop following the car, so you can look around">Pause</button>
@@ -89,6 +92,8 @@ M.html = [==[<!doctype html>
   var MOVED = 20             // metres the truck must move before the picture changes
   var RADII = [50, 500, 5000] // metres searched for the nearest photo, with a key
   var KEY_STORE = 'wwtStreetViewKey'
+  var ZOOM_STORE = 'wwtStreetViewZoom'
+  var MAX_ZOOM = 3          // Street View zoom steps: 0 is the widest, each step about twice as close
   // Elements are looked up in the pop-out window too, once Street View has moved there.
   var pip = null
   var $ = function (id) { return document.getElementById(id) || (pip && pip.document.getElementById(id)) }
@@ -139,7 +144,7 @@ M.html = [==[<!doctype html>
   function frameUrl (p) {
     if (state.showMap) return 'https://maps.google.com/maps?q=' + p.latitude + ',' + p.longitude + '&t=k&z=17&output=embed'
     return 'https://maps.google.com/maps?layer=c&cbll=' + p.latitude + ',' + p.longitude +
-      '&cbp=12,' + Math.round(p.heading || 0) + ',0,0,0&source=embed&output=svembed'
+      '&cbp=12,' + Math.round(p.heading || 0) + ',,' + state.zoom + ',0&source=embed&output=svembed'
   }
   function showFrame (p) {
     $('view').hidden = true; $('map').hidden = true; $('inset').style.display = 'none'
@@ -198,6 +203,7 @@ M.html = [==[<!doctype html>
       $('map').hidden = true; $('view').hidden = false; $('inset').style.display = 'block'
       state.pano.setPano(found.pano)
       state.pano.setPov({ heading: p.heading != null ? p.heading : 0, pitch: 0 })
+      state.pano.setZoom(state.zoom)
       state.pano.setVisible(true)
       var away = found.latLng ? metres(p, { latitude: found.latLng.lat(), longitude: found.latLng.lng() }) : 0
       notice(away > 60 ? 'Nearest Street View is ' + (away >= 1000 ? (away / 1000).toFixed(1) + ' km' : Math.round(away) + ' m') + ' from your truck.' : '')
@@ -232,6 +238,19 @@ M.html = [==[<!doctype html>
   }
 
   function refresh () { if (state.last) show(state.last) }
+
+  // Zoom: one step in by default, which matches the game's view better in a small window. Kept
+  // in this browser, and used for every picture after.
+  function showZoom () { text('zoomLabel', 'Zoom ' + state.zoom) }
+  function setZoom (z) {
+    state.zoom = Math.max(0, Math.min(MAX_ZOOM, z))
+    store.set(ZOOM_STORE, String(state.zoom))
+    showZoom()
+    if (state.pano && !$('view').hidden) state.pano.setZoom(state.zoom)
+    else refresh()
+  }
+  $('zoomIn').onclick = function () { setZoom(state.zoom + 1) }
+  $('zoomOut').onclick = function () { setZoom(state.zoom - 1) }
 
   $('pause').onclick = function () {
     state.paused = !state.paused
@@ -293,6 +312,10 @@ M.html = [==[<!doctype html>
     location.reload()
   }
   $('clearKey').onclick = function () { store.set(KEY_STORE, ''); location.reload() }
+
+  var savedZoom = parseInt(store.get(ZOOM_STORE), 10)
+  state.zoom = isFinite(savedZoom) ? Math.max(0, Math.min(MAX_ZOOM, savedZoom)) : 1
+  showZoom()
 
   var key = store.get(KEY_STORE)
   $('key').value = key || ''
