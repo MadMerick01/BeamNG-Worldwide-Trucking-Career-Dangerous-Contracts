@@ -28,11 +28,13 @@ M.RANGE = 150
 -- down), so some go wide.
 M.SPREAD = 1.2
 -- The hit, milder than Tanker's revolver (6000, 1.3, 70, 0.3): a softer push, a smaller and
--- shallower dent. A hit near a wheel hub flattens that tyre.
+-- shallower dent. A hit near a wheel hub flattens that tyre. Raised by half after the first test
+-- in game (was 2500 and 30).
 M.HIT_RADIUS = 0.3
-M.IMPACT_FORCE, M.BLAST_RADIUS, M.BLAST_FORCE, M.BLAST_INVERSION = 2500, 0.8, 30, 0.3
+M.IMPACT_FORCE, M.BLAST_RADIUS, M.BLAST_FORCE, M.BLAST_INVERSION = 3750, 0.8, 45, 0.3
 M.DEFLATE_TYRES = true
--- The gunshot, played at the shooter's spot: the first of these files that exists.
+-- The gunshot, played at the shooter's spot: the first of these files that exists. The mod ships
+-- Rowan's distant gunshot as a mono WAV, so the game can place it in the world.
 M.SOUNDS = { 'art/sound/earthFreight/locals_shot.ogg', 'art/sound/earthFreight/locals_shot.wav' }
 
 -- The chance of an attack starting over this many metres, for the road bonus where the car is and
