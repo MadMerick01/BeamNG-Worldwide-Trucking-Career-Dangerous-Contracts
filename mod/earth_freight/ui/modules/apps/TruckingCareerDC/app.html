@@ -362,13 +362,21 @@
           <div ng-if="data.balance >= data.carChange.cost" style="font-size:13px;color:#c9d6d2;">You have ${{data.balance | number:0}}, leaving ${{data.balance - data.carChange.cost | number:0}}.</div>
           <div ng-if="data.balance < data.carChange.cost" style="font-size:13px;color:#eb5757;">You have ${{data.balance | number:0}}: ${{data.carChange.cost - data.balance | number:0}} short.</div>
           <div ng-if="data.load" style="font-size:13px;color:#eb5757;">Deliver or abandon your job before you change cars.</div>
-          <div ng-if="!isConfirming('car', data.carChange.cost)" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
-            <button type="button" ng-click="askToPay('car', data.carChange.cost)" ng-disabled="!data.buyCarAllowed" ng-style="data.buyCarAllowed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Buy for ${{data.carChange.cost | number:0}}</button>
+          <div ng-if="data.carChange.keepCost != null" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Or keep your {{data.carChange.oldName || 'old car'}} and store it at home: no trade-in, ${{data.carChange.keepCost | number:0}}.</div>
+          <div ng-if="data.carChange.homeFull" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Your home is full, so your old car can only be traded in.</div>
+          <div ng-if="!isConfirming('car', data.carChange.cost) && !isConfirming('keep', data.carChange.keepCost)" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+            <button type="button" ng-click="askToPay('car', data.carChange.cost)" ng-disabled="!data.buyCarAllowed" ng-style="data.buyCarAllowed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">{{data.carChange.keepCost != null ? 'Trade in' : 'Buy'}} for ${{data.carChange.cost | number:0}}</button>
+            <button type="button" ng-if="data.carChange.keepCost != null" ng-click="askToPay('keep', data.carChange.keepCost)" ng-disabled="!data.keepCarAllowed" ng-style="data.keepCarAllowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Keep and store at home for ${{data.carChange.keepCost | number:0}}</button>
             <button type="button" ng-click="revertCar()" ng-disabled="!data.revertCarAllowed" style="padding:7px 12px;">Get my car back</button>
           </div>
           <div ng-if="isConfirming('car', data.carChange.cost)" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;">
-            <span style="font-weight:bold;">Pay ${{data.carChange.cost | number:0}}?</span>
+            <span style="font-weight:bold;">Pay ${{data.carChange.cost | number:0}}<span ng-if="data.carChange.keepCost != null"> and trade in your {{data.carChange.oldName || 'old car'}}</span>?</span>
             <button type="button" ng-click="cancelPay(); buyCar()" ng-disabled="!data.buyCarAllowed" style="padding:7px 12px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">Yes, buy it</button>
+            <button type="button" ng-click="cancelPay()" style="padding:7px 12px;">Cancel</button>
+          </div>
+          <div ng-if="isConfirming('keep', data.carChange.keepCost)" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;">
+            <span style="font-weight:bold;">Pay ${{data.carChange.keepCost | number:0}} and send your {{data.carChange.oldName || 'old car'}} home?</span>
+            <button type="button" ng-click="cancelPay(); keepCar()" ng-disabled="!data.keepCarAllowed" style="padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Yes, keep both</button>
             <button type="button" ng-click="cancelPay()" style="padding:7px 12px;">Cancel</button>
           </div>
           <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Drive off without paying and your own car comes back.</div>
@@ -403,7 +411,7 @@
             <div style="flex:1;min-width:0;">
               <div style="font-weight:bold;overflow-wrap:anywhere;">{{offer.name}}</div>
               <div style="font-size:13px;color:#c9d6d2;">{{offer.km | number:0}} km &middot; ${{offer.price | number:0}} <span>({{offer.share}}% of new)</span> <span ng-if="offer.share < 80" style="padding:0 5px;border-radius:3px;background:#6fcf97;color:#0c1318;font-weight:bold;font-size:12px;">Good deal</span></div>
-              <div style="font-size:13px;">You pay ${{offer.cost | number:0}} after your trade-in.</div>
+              <div style="font-size:13px;">You pay ${{offer.cost | number:0}} after your trade-in<span ng-if="offer.keepCost != null">, or ${{offer.keepCost | number:0}} to keep your car at home</span>.</div>
               <div ng-if="offer.short && !offer.sold" style="font-size:13px;color:#eb5757;">${{offer.short | number:0}} short.</div>
               <button type="button" ng-click="buyUsedCar(offer)" ng-disabled="!offer.allowed" ng-style="offer.allowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="margin-top:4px;padding:5px 12px;border:1px solid #568d7a;border-radius:4px;">{{offer.sold ? 'Bought' : 'Buy this one'}}</button>
             </div>
@@ -499,6 +507,7 @@
             <div ng-if="data.repairOwed > 0">Repair still owed: ${{data.repairOwed | number:0}}</div>
             <div ng-if="data.puncture" style="color:#eb5757;">Puncture: the tyre repair adds ${{data.puncture.tyreCost | number:0}} to the repair.</div>
             <div ng-if="data.repairQuote != null">Repair quote: ${{data.repairQuote | number:0}}</div>
+            <div ng-if="data.repairAtHome" style="font-size:13px;color:#6fcf97;">You are at home: repairs are half price.</div>
             <div ng-if="!(data.repairOwed > 0) && !data.puncture && data.repairQuote == null" style="font-size:13px;color:#c9d6d2;">Get a quote to price the damage to the car you are in.</div>
             <div style="display:flex;gap:8px;margin-top:4px;">
               <button type="button" ng-click="requestRepairQuote()" ng-disabled="!data.repairQuoteAllowed" style="padding:5px 12px;">Get repair quote</button>
@@ -565,6 +574,12 @@
             <div style="font-size:13px;color:#c9d6d2;">Move your empty car anywhere in the world. <button type="button" class="ef-link" ng-click="toggle('howreloc')" aria-expanded="{{isOpen('howreloc')}}">{{isOpen('howreloc') ? 'Hide' : 'How it works'}}</button></div>
             <div ng-if="isOpen('howreloc')" style="font-size:13px;color:#c9d6d2;">Pick a region, find a town, or paste coordinates. Book with an empty car, pay, then press Teleport or use the coordinates. Teleporting without a booking cancels your job (for the ${{data.abandonFee | number:0}} abandon fee) and stops pay until you go back.</div>
             <div ng-if="data.shipping.problem" style="color:#f2c94c;">{{data.shipping.problem}}</div>
+            <div ng-if="data.shipping.home" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+              <div style="flex:1;min-width:0;"><b>Home</b> <span style="color:#7d8b88;font-size:12px;">{{data.shipping.home.region}}</span></div>
+              <div ng-if="data.shipping.home.here" style="color:#7d8b88;font-size:12px;">You are here</div>
+              <div ng-if="!data.shipping.home.here">${{data.shipping.home.fee | number:0}}</div>
+              <button type="button" ng-click="bookShipping('home')" ng-disabled="!data.shipping.home.allowed" style="padding:4px 8px;">Book</button>
+            </div>
             <div ng-repeat="d in data.shipping.destinations" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
               <div style="flex:1;min-width:0;">{{d.name}} <span style="color:#7d8b88;font-size:12px;">{{d.region}}</span></div>
               <div ng-if="d.here" style="color:#7d8b88;font-size:12px;">You are here</div>
@@ -590,6 +605,49 @@
           </div>
           <div ng-if="data.shipping.feedback" style="margin-top:4px;color:#c9d6d2;">{{data.shipping.feedback}}</div>
         </div>
+      </div>
+      <div ng-if="tab === 'home'">
+        <div ng-if="!data.home" style="color:#c9d6d2;">Home opens once you are in your car at your start or last save.</div>
+        <div ng-if="data.home && !data.home.owned" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Buy a home</div>
+          <div style="font-size:13px;">Make the spot where you are parked your own, for ${{data.home.price | number:0}}. Home keeps a second car for you, and repairs there are {{data.home.repairShare}}% off.</div>
+          <div ng-if="data.home.short" style="font-size:13px;color:#eb5757;">You are ${{data.home.short | number:0}} short.</div>
+          <div ng-if="!isConfirming('home', data.home.price)" style="margin-top:6px;">
+            <button type="button" ng-click="askToPay('home', data.home.price)" ng-disabled="!data.home.claimAllowed" ng-style="data.home.claimAllowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Buy this spot for ${{data.home.price | number:0}}</button>
+          </div>
+          <div ng-if="isConfirming('home', data.home.price)" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;">
+            <span style="font-weight:bold;">Pay ${{data.home.price | number:0}} and make this spot your home? It can't be moved later.</span>
+            <button type="button" ng-click="cancelPay(); claimHome()" ng-disabled="!data.home.claimAllowed" style="padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Yes, buy it</button>
+            <button type="button" ng-click="cancelPay()" style="padding:7px 12px;">Cancel</button>
+          </div>
+          <div ng-if="data.home.claimProblem && !data.home.short" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.home.claimProblem}}</div>
+        </div>
+        <div ng-if="data.home && data.home.owned" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Your home<span ng-if="data.home.owned.name"> near {{data.home.owned.name}}</span></div>
+          <div ng-if="data.home.owned.here" style="font-size:13px;color:#6fcf97;">You are at home. Repairs here are {{data.home.repairShare}}% off.</div>
+          <div ng-if="!data.home.owned.here && data.home.owned.distanceMetres != null" style="font-size:13px;color:#c9d6d2;">{{km(data.home.owned.distanceMetres)}} km away. Within {{data.home.radiusMetres}} m you can swap cars, and repairs are {{data.home.repairShare}}% off. Relocate lists Home at the usual fee.</div>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <input aria-label="Home coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.home.owned)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+            <button type="button" aria-label="Copy home coordinates" ng-click="copyCoordinates(data.home.owned)">Copy</button>
+          </div>
+          <div style="margin-top:8px;font-weight:bold;color:#a7e5c9;font-size:13px;">Your cars</div>
+          <div ng-if="data.home.active" style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+            <span style="flex:none;width:64px;color:#6fcf97;font-size:12px;">Driving</span>
+            <span style="flex:1;min-width:0;overflow-wrap:anywhere;">{{data.home.active.name}}</span>
+            <span ng-if="data.home.active.value" style="color:#c9d6d2;font-size:12px;">${{data.home.active.value | number:0}}</span>
+          </div>
+          <div ng-if="data.home.stored" style="display:flex;gap:8px;padding:4px 0;align-items:center;">
+            <span style="flex:none;width:64px;color:#c9d6d2;font-size:12px;">At home</span>
+            <img ng-if="data.home.stored.preview" ng-src="{{data.home.stored.preview}}" alt="" style="width:64px;height:36px;object-fit:cover;border-radius:4px;flex:none;">
+            <span style="flex:1;min-width:0;overflow-wrap:anywhere;">{{data.home.stored.name}}<span ng-if="data.home.stored.repair > 0" style="display:block;font-size:12px;color:#f2c94c;">Needs ${{data.home.stored.repair | number:0}} of repair</span></span>
+            <span ng-if="data.home.stored.value" style="color:#c9d6d2;font-size:12px;">${{data.home.stored.value | number:0}}</span>
+          </div>
+          <div ng-if="!data.home.stored" style="padding:4px 0;font-size:13px;color:#c9d6d2;">Room for {{data.home.spaces}} more car. When you buy a car on the Garage tab, choose <b>Keep and store at home</b> on its bill and your old car comes here.</div>
+          <button type="button" ng-if="data.home.stored" ng-click="swapCars()" ng-disabled="!data.home.swapAllowed" ng-style="data.home.swapAllowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="margin-top:6px;padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Swap cars</button>
+          <div ng-if="data.home.stored && data.home.swapProblem" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.home.swapProblem}}</div>
+          <div ng-if="data.home.stored" style="margin-top:4px;font-size:12px;color:#7d8b88;">Each car keeps its own parts, fuel and damage.</div>
+        </div>
+        <div ng-if="data.home.feedback" role="status" style="margin-top:4px;">{{data.home.feedback}}</div>
       </div>
       <div ng-if="tab === 'heli'">
         <div ng-if="!data.heli" style="color:#c9d6d2;">Heli flights open once you are in your car at your start or last save.</div>

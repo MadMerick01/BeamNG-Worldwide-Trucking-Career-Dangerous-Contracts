@@ -6,6 +6,13 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **You can buy a home, and own two cars.** The new **Home** tab lets you buy the spot where you're parked for $250,000. Your home keeps a second car for you. You only get one home, and it can't be moved or sold.
+- When you buy a new or second-hand car and your home has room, the bill now has two buttons. **Trade in** works as before. **Keep and store at home** charges the full price with no trade-in and sends your old car home with its parts, fuel and damage. The second-hand list also shows both prices.
+- Within 200 m of your home, **Swap cars** on the Home tab swaps the car you're driving with the one at home. Each car keeps its own parts, fuel, wear and the repairs it still needs. You can't swap with a job on board or a bill open.
+- **Repairs are half price within 200 m of your home.** That covers the Repair button and the repair part of a parts bill.
+- Relocate lists **Home** at the top, at the usual relocation fee.
+- Your saves still work. A home is kept by Save like your money, and the game saves itself after you buy one or swap cars.
+
 ## Build 127 · 4 Nov 2026
 
 - **Your truck is on the start page as soon as you load your game.** The Your truck card now shows the car from your last save straight away, with its name, picture, what it's worth, any repair it needs and its cargo space, before you've even driven back to it. It used to stay empty until you got there.

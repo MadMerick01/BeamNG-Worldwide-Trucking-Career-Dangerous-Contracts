@@ -58,7 +58,7 @@ test('buttons only send fixed commands when Lua enabled them', () => {
     save: ['saveAllowed', 'save()'],
     requestRepairQuote: ['repairQuoteAllowed', 'requestRepairQuote()'], repairVehicle: ['repairAllowed', 'repairVehicle()'],
     buyParts: ['buyPartsAllowed', 'buyParts()'], revertParts: ['revertPartsAllowed', 'revertParts()'],
-    buyCar: ['buyCarAllowed', 'buyCar()'], revertCar: ['revertCarAllowed', 'revertCar()'],
+    buyCar: ['buyCarAllowed', 'buyCar(false)'], keepCar: ['keepCarAllowed', 'buyCar(true)'], revertCar: ['revertCarAllowed', 'revertCar()'],
     newGame: ['newGameAllowed', 'newGame()'], abandonJob: ['abandonAllowed', 'abandonJob()'],
     teleportToResume: ['teleportAllowed', 'teleportToResume()'], startHere: ['startHereAllowed', 'startHere()']
   }
@@ -125,6 +125,21 @@ test('paying a bill asks to confirm that total, and a new total asks again', () 
   assert.equal(a.scope.isConfirming('car', 500), false)
   a.scope.cancelPay(); assert.equal(a.scope.isConfirming('parts', 500), false, 'cancelled')
   assert.ok(html.includes('ng-click="cancelPay(); buyParts()"') && html.includes('ng-click="cancelPay(); buyCar()"'), 'only the confirm pays')
+  assert.ok(html.includes('ng-click="cancelPay(); keepCar()"') && html.includes('ng-click="cancelPay(); claimHome()"'), 'keeping a car and buying a home confirm too')
+})
+test('Home: Buy this spot and Swap cars only call Lua when it allows them, and Home is a tab', () => {
+  const a = app()
+  assert.ok(a.scope.tabs.some(t => t.id === 'home' && t.label === 'Home'))
+  let count = a.commands.length
+  a.state({ state: 'READY' }); a.scope.claimHome(); a.scope.swapCars()
+  a.state({ state: 'READY', home: { claimAllowed: false, swapAllowed: false } }); a.scope.claimHome(); a.scope.swapCars()
+  assert.equal(a.commands.length, count, 'refused unless allowed')
+  a.state({ state: 'READY', home: { claimAllowed: true } }); a.scope.claimHome()
+  assert.equal(a.commands.at(-1), fixed('claimHome()'))
+  a.state({ state: 'READY', home: { swapAllowed: true } }); a.scope.swapCars()
+  assert.equal(a.commands.at(-1), fixed('swapCars()'))
+  assert.ok(html.includes("ng-if=\"tab === 'home'\""), 'the Home tab has a panel')
+  assert.ok(html.includes("bookShipping('home')"), 'Relocate lists home')
 })
 test('town buttons only send fixed commands, with plain ids, when Lua enabled them', () => {
   const a = app()
@@ -302,7 +317,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
 })
 test('the Tips tab is gone and shipping has its own Relocate tab', () => {
   const a = app()
-  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli'])
+  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli', 'home'])
   assert.ok(!html.includes(`tab === 'tips'`), 'no Tips tab')
   const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'relocate'"`))
   const shipping = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`))

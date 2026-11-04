@@ -145,6 +145,34 @@ local function needs(list)
   return out
 end
 
+-- The home the player bought: { latitude, longitude, paid, name }. Returns a clean copy, or nil.
+local function property(p)
+  if type(p) ~= 'table' or not location.valid(p) or not integer(p.paid, 0) or not optionalString(p.name) then return nil end
+  return { latitude = p.latitude, longitude = p.longitude, paid = p.paid, name = p.name }
+end
+
+-- A car stored at home, kept as the active car is: its config, name, the damage it owes, its fuel,
+-- and for a second-hand car what was paid for it and its kilometres. Returns a clean copy, or nil.
+function M.storedCar(car)
+  if type(car) ~= 'table' then return nil end
+  local config = plainConfig(car.config)
+  if not config or not optionalString(car.name) or not amount(car.damage) or not amount(car.fuelLitres)
+      or not amount(car.value) or not amount(car.km) then return nil end
+  return { config = config, name = car.name, damage = car.damage, fuelLitres = car.fuelLitres, value = car.value, km = car.km }
+end
+
+-- How many cars home keeps besides the one the player drives.
+M.HOME_SPACES = 1
+local function storedCars(list)
+  if type(list) ~= 'table' or #list > M.HOME_SPACES then return nil end
+  local out = {}
+  for i = 1, #list do
+    out[i] = M.storedCar(list[i])
+    if not out[i] then return nil end
+  end
+  return out
+end
+
 function M.validate(s)
   if type(s) ~= 'table' then return nil, 'invalid_document' end
   if s.schemaVersion ~= M.SCHEMA then return nil, 'unsupported_schema' end
@@ -204,13 +232,23 @@ function M.validate(s)
     recent = needs(s.needs)
     if not recent then return nil, 'invalid_needs' end
   end
+  -- A home, and the cars stored there, which only a home can have.
+  local home, stored = nil, nil
+  if s.property ~= nil then
+    home = property(s.property)
+    if not home then return nil, 'invalid_home' end
+  end
+  if s.storedCars ~= nil then
+    stored = storedCars(s.storedCars)
+    if not stored or (#stored > 0 and not home) then return nil, 'invalid_home' end
+  end
   return {
     schemaVersion = M.SCHEMA, profileId = 'default', generation = s.generation,
     base = location.copy(s.base), resume = resume, progression = p,
     vehicle = { model = s.vehicle.model, configuration = s.vehicle.configuration, config = vehicleConfig, name = s.vehicle.name,
       damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres, value = s.vehicle.value, km = s.vehicle.km },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
-    trailer = trailer,
+    trailer = trailer, property = home, storedCars = stored,
   }
 end
 
@@ -276,7 +314,7 @@ function M.new(io)
       progression = candidate.progression, vehicle = candidate.vehicle,
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
-      trailer = candidate.trailer,
+      trailer = candidate.trailer, property = candidate.property, storedCars = candidate.storedCars,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end
