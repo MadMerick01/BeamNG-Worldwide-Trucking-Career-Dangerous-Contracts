@@ -1,6 +1,6 @@
 -- The Street View window: a tiny web server on this computer only (127.0.0.1), so any browser can
 -- show Google Street View of where the car is. It serves the page itself and the car's latest
--- position as JSON; the page asks for the position every 10 seconds. Nothing is sent anywhere by
+-- position as JSON; the page asks for the position every 6, 10 or 20 seconds. Nothing is sent anywhere by
 -- the game: the browser fetches the pictures from Google.
 -- Driven from the game's frame: every call is non-blocking (timeouts of 0), so a slow or stuck
 -- browser never holds the game up. The socket library is injected so tests can fake it.

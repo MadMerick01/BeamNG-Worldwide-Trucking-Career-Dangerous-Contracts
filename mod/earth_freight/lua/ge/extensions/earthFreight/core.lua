@@ -1354,7 +1354,7 @@ function M.new(deps)
   end
 
   -- Where the car is, for the Street View page: the live position, which way it points, and its
-  -- street and town as the HUD shows them. Built only when the page asks, every 10 seconds.
+  -- street and town as the HUD shows them. Built only when the page asks, every 6, 10 or 20 seconds.
   function c:streetViewPosition()
     local sample = self.lastSample
     if not sample or not sample.valid or not location.valid(sample) then
