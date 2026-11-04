@@ -37,6 +37,9 @@ M.html = [==[<!doctype html>
   #settings p { margin: 6px 0; color: var(--dim); font-size: 13px; }
   #settings input { width: 100%; padding: 6px 8px; margin: 4px 0 8px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
   #settings a { color: var(--mint); }
+  #caption { display: none; padding: 3px 8px; font-size: 12px; color: var(--dim); background: var(--panel); border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #caption b { color: var(--text); }
+  #away { flex: 1; display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--dim); font-size: 16px; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -49,12 +52,15 @@ M.html = [==[<!doctype html>
   <div class="status"><span class="dot wait" id="dot"></span><span id="status">Connecting to the game&hellip;</span></div>
   <div class="buttons">
     <button type="button" id="mode" title="Switch between Street View and an overhead map">Map</button>
+    <button type="button" id="popout" hidden title="Open Street View in a small window that stays on top of the game">Pop out</button>
     <button type="button" id="pause" title="Stop following the car, so you can look around">Pause</button>
     <a class="button" id="google" href="https://www.google.com/maps" target="_blank" rel="noopener" title="Open this spot in Google Maps in a new tab">Google Maps</a>
     <button type="button" id="gear" title="Google key and how this works">Settings</button>
   </div>
 </header>
+<div id="away" hidden>Street View is in its own window on top of the game.<button type="button" id="bringBack">Bring it back here</button></div>
 <main>
+  <div id="caption"></div>
   <div id="cover">Waiting for the game&hellip;</div>
   <iframe id="frame" title="Street View" hidden referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
   <div id="view" hidden></div>
@@ -83,7 +89,9 @@ M.html = [==[<!doctype html>
   var MOVED = 20             // metres the truck must move before the picture changes
   var RADII = [50, 500, 5000] // metres searched for the nearest photo, with a key
   var KEY_STORE = 'wwtStreetViewKey'
-  var $ = function (id) { return document.getElementById(id) }
+  // Elements are looked up in the pop-out window too, once Street View has moved there.
+  var pip = null
+  var $ = function (id) { return document.getElementById(id) || (pip && pip.document.getElementById(id)) }
   var store = {
     get: function (k) { try { return window.localStorage.getItem(k) } catch (e) { return null } },
     set: function (k, v) { try { if (v) window.localStorage.setItem(k, v); else window.localStorage.removeItem(k) } catch (e) {} }
@@ -109,7 +117,15 @@ M.html = [==[<!doctype html>
   function notice (message) { var n = $('notice'); n.textContent = message || ''; n.style.display = message ? 'block' : 'none' }
   function cover (message) { var c = $('cover'); c.textContent = message || ''; c.hidden = !message }
 
+  function caption (p) {
+    var c = $('caption')
+    c.textContent = ''
+    var b = document.createElement('b'); b.textContent = p.place || (fixed(p.latitude) + ', ' + fixed(p.longitude))
+    c.appendChild(b)
+    if (p.street) c.appendChild(document.createTextNode(' \u00b7 ' + p.street))
+  }
   function showHeader (p) {
+    caption(p)
     text('title', p.place || (fixed(p.latitude) + ', ' + fixed(p.longitude)))
     text('street', p.street ? p.street : '')
     var area = [p.region, p.country].filter(Boolean).join(', ')
@@ -229,6 +245,46 @@ M.html = [==[<!doctype html>
     $('mode').textContent = state.showMap ? 'Street View' : 'Map'
     refresh()
   }
+  // Pop out: Chrome and Edge can open a small window that stays on top of other windows (the
+  // Document Picture-in-Picture API). Street View moves into it and comes back when it closes.
+  var main = document.querySelector('main')
+  // Street View back in this tab: moved first, so it is found here again.
+  function dock () {
+    document.body.appendChild(main)
+    pip = null
+    $('caption').style.display = ''
+    $('away').hidden = true
+    $('popout').className = ''
+    refresh()
+  }
+  function bringBack () {
+    if (!pip) return
+    var w = pip
+    dock()
+    try { w.close() } catch (e) {}
+  }
+  if ('documentPictureInPicture' in window) {
+    $('popout').hidden = false
+    $('popout').onclick = function () {
+      if (pip) { bringBack(); return }
+      window.documentPictureInPicture.requestWindow({ width: 520, height: 340 }).then(function (w) {
+        pip = w
+        document.querySelectorAll('style').forEach(function (st) { w.document.head.appendChild(st.cloneNode(true)) })
+        w.document.title = 'Street View'
+        w.document.body.appendChild(main)
+        $('caption').style.display = 'block'
+        $('away').hidden = false
+        $('popout').className = 'on'
+        w.addEventListener('pagehide', function () {
+          if (pip === w) dock()
+        })
+        refresh()
+      }).catch(function () {
+        notice('Your browser would not open a pop-out window. Try Chrome or Edge.')
+      })
+    }
+  }
+  $('bringBack').onclick = bringBack
   $('gear').onclick = function () { var s = $('settings'); s.style.display = s.style.display === 'block' ? 'none' : 'block' }
   $('closeSettings').onclick = function () { $('settings').style.display = 'none' }
   $('saveKey').onclick = function () {
