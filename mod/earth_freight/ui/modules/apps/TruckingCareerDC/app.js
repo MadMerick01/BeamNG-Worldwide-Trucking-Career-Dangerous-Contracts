@@ -197,7 +197,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.setMinimised = function (on) { scope.hud.minimised = !!on; store(!!on); fit() }
       scope.hudAlert = function (d) {
         d = d || scope.data || {}
-        if (d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) return 'bad'
+        if (d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture' || d.flash.kind === 'shots')) return 'bad'
         for (var id in alerts) if (alerts[id](d)) return 'waiting'
         return ''
       }
@@ -365,7 +365,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         trip.danger = !!(l.contract || l.beacon)
         return trip
       }
-      scope.flashBad = function (d) { return !!(d && d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) }
+      scope.flashBad = function (d) { return !!(d && d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture' || d.flash.kind === 'shots')) }
       scope.km = function (metres) { return typeof metres === 'number' && isFinite(metres) ? (metres / 1000).toFixed(1) : '' }
       // The one message under the header: what just happened, then what to do. One object is
       // reused, as Angular watches it by reference.
@@ -373,7 +373,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.notice = function (d) {
         if (!d) return null
         if (d.flash) {
-          var bad = d.flash.kind === 'cancelled' || d.flash.kind === 'puncture'
+          var bad = d.flash.kind === 'cancelled' || d.flash.kind === 'puncture' || d.flash.kind === 'shots'
           notice.title = d.flash.title; notice.text = d.flash.text
           notice.color = bad ? '#eb5757' : '#6fcf97'; notice.alert = bad
           return notice
@@ -489,6 +489,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       scope.cancelShipping = function () { if (scope.data.shipping && scope.data.shipping.booking) core('cancelShipping()') }
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
+      // For testing only: the locals start shooting 5 seconds after the press.
+      scope.testLocals = function () { core('testLocals()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
       scope.towHere = function () { if (scope.data.tow && scope.data.tow.allowed) core('towHere()') }
