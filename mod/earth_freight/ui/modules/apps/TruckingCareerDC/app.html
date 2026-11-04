@@ -158,6 +158,10 @@
       <span ng-if="data.streetView" style="margin-left:auto;white-space:nowrap;"><button type="button" ng-click="openStreetView()" title="Show Google Street View of where you are in your web browser. It follows your truck every few seconds." style="padding:1px 8px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">Street View</button><button type="button" ng-if="data.streetView.on" ng-click="stopStreetView()" title="Turn Street View off" aria-label="Turn Street View off" style="margin-left:3px;padding:1px 6px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">&times;</button></span>
     </div>
     <div ng-if="data.streetView.feedback" role="status" style="margin-top:2px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.streetView.feedback}}</div>
+    <div ng-if="data.streetView.on &amp;&amp; data.streetView.url" style="display:flex;gap:6px;margin-top:2px;font-size:12px;">
+      <input aria-label="Street View address" type="text" readonly ng-value="data.streetView.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
+      <button type="button" aria-label="Copy the Street View address" ng-click="copyStreetView()" style="padding:1px 8px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">Copy</button>
+    </div>
     <div ng-if="data.sightseeing && !data.sightseeing.on" style="margin-top:3px;text-align:right;">
       <button type="button" ng-click="goSightseeing()" ng-disabled="!data.sightseeing.allowed" ng-style="{opacity: data.sightseeing.allowed ? 1 : 0.5}" title="{{data.sightseeing.problem || 'Saves your game, then swaps your truck for a free Moonhawk so you can go anywhere and look around. Return to your job brings everything back.'}}" style="padding:1px 8px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">Go sightseeing</button>
       <div ng-if="data.sightseeing.feedback" role="status" style="margin-top:2px;color:#c9d6d2;font-size:12px;text-align:left;overflow-wrap:anywhere;">{{data.sightseeing.feedback}}</div>

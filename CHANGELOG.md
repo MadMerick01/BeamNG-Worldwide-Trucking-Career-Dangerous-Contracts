@@ -7,6 +7,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **Street View's update rate is now your choice.** Open **Settings** on the Street View page and pick **6 s**, **10 s** or **20 s** under **Update every**. 10 seconds is still the default, and your pick is remembered next time you open the page. A new picture is only fetched once the truck has moved or the view has turned, so a faster rate uses no extra data while you are parked; on the highway, 6 seconds uses roughly 600 MB an hour and 20 seconds about a third of that. Your saves still work.
+- **The Street View address now has a Copy button.** When Street View is on, the HUD shows its address in a box with a **Copy** button, the same way the coordinates of your last save work, so you can paste it into any browser. The game no longer copies the address on its own when you press **Street View**.
 
 ## Build 137 · 4 Nov 2026
 

@@ -580,6 +580,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var text = scope.coordinates(position)
         if (text) call('setClipboard("' + text + '")')
       }
+      // The Street View address, for when the browser did not open by itself.
+      scope.copyStreetView = function () {
+        var url = scope.data && scope.data.streetView && scope.data.streetView.url
+        if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/$/.test(url)) call('setClipboard("' + url + '")')
+      }
       // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
       scope.openKofi = function () {
         call('if openWebBrowser then openWebBrowser("' + KOFI + '") end setClipboard("' + KOFI + '")')

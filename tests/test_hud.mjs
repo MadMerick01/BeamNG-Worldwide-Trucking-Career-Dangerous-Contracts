@@ -831,3 +831,14 @@ test('sightseeing: Go sightseeing sits under Street View, and sightseeing swaps 
   assert.ok(html.includes('role="tabpanel" ng-if="!data.sightseeing.on"'), 'tab panels hidden while sightseeing')
   assert.ok(source.includes("core('goSightseeing()')") && source.includes("core('returnToJob()')"), 'both buttons call the game')
 })
+
+test('Street View: the address sits in a box with a Copy button, which only copies the local address', () => {
+  assert.ok(html.includes('ng-click="copyStreetView()"'), 'Copy button for the address')
+  const a = app()
+  const before = a.commands.length
+  a.scope.copyStreetView(); assert.equal(a.commands.length, before, 'nothing to copy before a state arrives')
+  a.state({ state: 'READY', streetView: { on: true, url: 'http://evil.example/");os.exit()--' } }); a.scope.copyStreetView()
+  assert.equal(a.commands.length, before, 'only a local address is ever copied')
+  a.state({ state: 'READY', streetView: { on: true, url: 'http://127.0.0.1:47170/' } }); a.scope.copyStreetView()
+  assert.equal(a.commands.at(-1), 'setClipboard("http://127.0.0.1:47170/")')
+})
