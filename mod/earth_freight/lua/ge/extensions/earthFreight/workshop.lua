@@ -54,6 +54,25 @@ function M.climb(value)
   return math.max(0, math.min(1, share))
 end
 
+-- The parts fitted in a saved car config, by slot: its parts list, else read from its parts tree.
+function M.configParts(config)
+  local out = {}
+  if type(config) ~= 'table' then return out end
+  if type(config.parts) == 'table' then
+    for slot, part in pairs(config.parts) do if type(part) == 'string' and part ~= '' then out[tostring(slot)] = part end end
+    if next(out) then return out end
+  end
+  local function walk(node, depth)
+    if type(node) ~= 'table' or depth > 64 then return end
+    if type(node.chosenPartName) == 'string' and node.chosenPartName ~= '' then
+      out[tostring(node.path or node.id or (#out + 1))] = node.chosenPartName
+    end
+    if type(node.children) == 'table' then for _, child in pairs(node.children) do walk(child, depth + 1) end end
+  end
+  walk(config.partsTree, 1)
+  return out
+end
+
 local dollars = pricing.dollars
 
 -- What a parts bill charges for, so the same bill priced again does not pop up twice.
@@ -80,27 +99,62 @@ function M.attach(c)
   -- The player's car for the start page's Your truck card, like a character sheet: its name,
   -- picture, what it is worth, the repair it needs now and how far it is from a rig. Nil until
   -- the player is in their own car at their start or last save.
+  -- Before the player is back at their last save, it is the saved car's card instead, so they see
+  -- the car they have been building the moment the game loads. Returns the card and, for the saved
+  -- car, its cargo space as well.
   function c:carCard()
     local owned = self.ownedParts
-    if not owned or not self.arrived or self.error then return nil end
-    local preview
-    if self.garage and self.garage.preview then
-      local ok, found = pcall(self.garage.preview, self.garage, owned.model, owned.configFile)
-      preview = ok and type(found) == 'string' and found or nil
-    end
-    -- A photo of the car with the parts paid for, once one has been taken, in place of the menu picture.
-    -- The stamp makes the HUD load a new photo afresh rather than show the last one again.
-    if self.garage and self.garage.photo then
-      local ok, photo = pcall(self.garage.photo, self.garage, owned.model)
-      if ok and type(photo) == 'string' then
-        self.photoStamp = self.photoStamp or self.now()
-        preview = photo .. '?v=' .. tostring(self.photoStamp)
-      end
-    end
+    if self.error then return nil end
+    if not owned or not self.arrived then return self:savedCarCard() end
     local d = self.lastDamage
-    return { name = owned.name or owned.model, value = owned.value, preview = preview,
+    return { name = owned.name or owned.model, value = owned.value,
+      preview = self:carPicture(owned.model, owned.configFile),
       repair = d and d.id == owned.id and pricing.repairCost(d.damage, owned.value) or 0,
       climb = M.climb(owned.value) }
+  end
+
+  -- The picture of the player's car: our photo of it with the parts paid for, once one has been
+  -- taken, else the game's picture of its config. The stamp makes the HUD load a new photo afresh
+  -- rather than show the last one again.
+  function c:carPicture(model, configFile)
+    if self.garage and self.garage.photo then
+      local ok, photo = pcall(self.garage.photo, self.garage, model)
+      if ok and type(photo) == 'string' then
+        self.photoStamp = self.photoStamp or self.now()
+        return photo .. '?v=' .. tostring(self.photoStamp)
+      end
+    end
+    if self.garage and self.garage.preview then
+      local ok, found = pcall(self.garage.preview, self.garage, model, configFile)
+      return ok and type(found) == 'string' and found or nil
+    end
+  end
+
+  -- The car of the last save, for the card while the player is on their way back to it: its name,
+  -- worth, picture, the repair it was saved with and its cargo space. Nil on a new game, or when
+  -- the save has no car. The name, worth and space are worked out once per save.
+  function c:savedCarCard()
+    if self.mode ~= 'resume' or not self.profile then return nil end
+    local saved = self.profile.vehicle
+    local config = type(saved) == 'table' and saved.config or nil
+    if type(config) ~= 'table' or type(config.model) ~= 'string' or config.model == '' then return nil end
+    local known = self.savedCar
+    if not known or known.from ~= saved then
+      local model, configFile = config.model, config.partConfigFilename
+      local value, name
+      if self.garage and self.garage.carValue then
+        local ok, v, n = pcall(self.garage.carValue, self.garage, model, configFile)
+        if ok then value, name = v, n end
+      end
+      -- A second-hand car is worth what was paid for it.
+      value = saved.value or value
+      known = { from = saved, model = model, configFile = configFile, name = saved.name or name or model, value = value,
+        repair = saved.damage and pricing.repairCost(saved.damage, value) or 0,
+        space = cargo.capacity({ parts = M.configParts(config) }) }
+      self.savedCar = known
+    end
+    return { name = known.name, value = known.value, preview = self:carPicture(known.model, known.configFile),
+      repair = known.repair, climb = M.climb(known.value) }, known.space
   end
 
   -- The photo of the player's car: asked for after a purchase, taken once the car stands still.
@@ -517,11 +571,16 @@ function M.attach(c)
     self:applyWear(snapshot)
     -- The starter or saved car comes as paid for, even when it replaced a car of the same model.
     if self.arrivingModel and snapshot.model == self.arrivingModel then
+      -- A respawned car may not know its .pc file, or say our photo config: it keeps the name and
+      -- config it was saved with.
+      if not snapshot.configFile or snapshot.photo then snapshot.configFile, snapshot.photo = self.arrivingConfigFile, nil end
+      snapshot.name = self.arrivingName or snapshot.name
       snapshot.value = snapshot.value or self.arrivingValue
       -- A second-hand car is worth what was paid for it, not the price of a new one.
       local arriving = self.arrivingUsed
       if arriving then snapshot.value, snapshot.used, snapshot.km = arriving.value, true, arriving.km end
       self.arrivingModel, self.arrivingValue, self.arrivingUsed = nil, nil, nil
+      self.arrivingName, self.arrivingConfigFile = nil, nil
       self:adoptParts(snapshot)
       return true
     end
@@ -531,6 +590,11 @@ function M.attach(c)
     end
     -- A different vehicle, or a different model in place of this one, is a car the player is buying.
     if used or owned.id ~= snapshot.id or owned.model ~= snapshot.model then return self:quoteCar(snapshot) end
+    -- The same car, saying our photo config since its photo was taken, is still the car it was.
+    if snapshot.photo then
+      snapshot.configFile, snapshot.name, snapshot.photo = owned.configFile, owned.name, nil
+      snapshot.value = snapshot.value or owned.value
+    end
     -- Part changes keep a second-hand car's value and kilometres.
     if owned.used then snapshot.value, snapshot.used, snapshot.km = owned.value, true, owned.km end
     if self.pendingCar then
@@ -745,7 +809,15 @@ function M.attach(c)
       self.soldUsed[pending.used.id] = true
       self.secondHand = nil
     end
+    local previous = self.ownedParts and self.ownedParts.model
     self:adoptParts(snapshot)
+    -- The last car's photo is not this one's, even of the same model: the card shows the new car's
+    -- own picture until its photo is taken.
+    if self.garage and self.garage.removePhoto then
+      if previous then self.garage:removePhoto(previous) end
+      if snapshot.model ~= previous then self.garage:removePhoto(snapshot.model) end
+    end
+    self.photoModel, self.photoStamp = nil, nil
     self.owedDamage, self.punctureDamage, self.fuel = 0, 0, nil
     self.carFeedback = 'Bought ' .. tostring(pending.name) .. ' for ' .. dollars(pending.cost) .. '.'
     self:autoSaveSoon('buying your car')
@@ -1056,12 +1128,16 @@ function M.attach(c)
       if saved.value then self.arrivingUsed = { value = saved.value, km = saved.km } end
     end
     self.arrivingModel = model
-    -- A car respawned from a saved config may not know its .pc file, so its price is looked up here.
-    self.arrivingValue = self.garage.carValue and (self.garage:carValue(model, configFile)) or nil
+    -- A car respawned from a saved config may not know its .pc file, so its price and name are looked up here.
+    local value, name
+    if self.garage.carValue then value, name = self.garage:carValue(model, configFile) end
+    self.arrivingValue, self.arrivingConfigFile = value, configFile
+    self.arrivingName = self.mode ~= 'start' and saved and saved.name or name
     self.ourRespawn = true
     local ok, why, detail = self.garage:spawnConfig(model, config)
     if not ok then
       self.arrivingModel, self.arrivingUsed, self.ourRespawn = nil, nil, nil
+      self.arrivingName, self.arrivingConfigFile = nil, nil
       self.diag:event(label .. '_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
       return
     end
@@ -1081,9 +1157,17 @@ function M.attach(c)
     local fitted = self.fittedParts
     if fitted and fitted.id == owned.id and type(fitted.config) == 'table' then look = fitted.config end
     local config = persistence.plainConfig({ model = source.model or owned.model, parts = source.parts,
-      partsTree = source.partsTree, partConfigFilename = source.partConfigFilename or owned.configFile, vars = look.vars, paints = look.paints, licenseName = look.licenseName })
+      partsTree = source.partsTree, partConfigFilename = owned.configFile or source.partConfigFilename, vars = look.vars, paints = look.paints, licenseName = look.licenseName })
     if not config then self.diag:event('vehicle_config_unsaved', tostring(owned.model), 'W') end
     return config
+  end
+
+  -- The name Save keeps with the car, so the start page and the car after a reload say it again.
+  function c:savedVehicleName()
+    local owned = self.ownedParts
+    local name = owned and owned.name
+    if type(name) ~= 'string' or name == '' or #name > 512 or name:find('%c') then return nil end
+    return name
   end
 
   -- The damage Save keeps with the car: what it has now plus what is still owed, or, with a parts
