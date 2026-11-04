@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 127 · 4 Nov 2026
+
 - **Your truck is on the start page as soon as you load your game.** The Your truck card now shows the car from your last save straight away, with its name, picture, what it's worth, any repair it needs and its cargo space, before you've even driven back to it. It used to stay empty until you got there.
 - Buying another car of the same model no longer shows the old car's photo on the start page. You see the new car's picture until its own photo is taken. A new game also clears the photo of the car you had before.
 - Your car keeps its full name after you load a save. Saves from earlier builds still work. Their name comes back the next time you press Save.
