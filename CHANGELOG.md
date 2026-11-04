@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Street View now starts one step zoomed in, with zoom buttons on the picture.** A small window over the game looks more like your view from the cab. The **−** and **+** buttons sit in the top-left corner of the picture, so they come with it into the **Pop out** window too. Your zoom is kept for every picture after, and next time you open the page. This was meant to arrive with sightseeing but missed that build. In the Pop out window, the town and street line no longer covers the top of the picture. Your saves still work.
+
 ## Build 136 · 4 Nov 2026
 
 - **The locals no longer shoot at your truck.** The hits could make your car unstable enough that the game put you back at your last save, so the shooting, its gunshot sound and the **Start shots in 5 s** test button on the Garage tab are gone. Your saves still work.
