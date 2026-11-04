@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Street View can now float on top of the game.** On the Street View page, press **Pop out** and Street View moves into a small window that stays above the game, so it no longer disappears when you click back into BeamNG. Drag it wherever you like and resize it; it still follows your truck every 10 seconds. Close it, or press **Bring it back here**, to put it back in the browser tab. This needs Chrome or Edge, and BeamNG set to **Borderless** or **Windowed** in its display options, because nothing can sit on top of true fullscreen. Your saves still work.
+
 ## Build 133 · 4 Nov 2026
 
 - **The Street View button now opens your web browser.** Before, pressing it started Street View but no browser window came up. Now the page opens in your normal browser, and the address is also copied so you can paste it in if your browser still doesn't appear. The HUD shows the address under the button too. Your saves still work.
