@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 133 · 4 Nov 2026
+
 - **The Street View button now opens your web browser.** Before, pressing it started Street View but no browser window came up. Now the page opens in your normal browser, and the address is also copied so you can paste it in if your browser still doesn't appear. The HUD shows the address under the button too. Your saves still work.
 
 ## Build 132 · 4 Nov 2026
