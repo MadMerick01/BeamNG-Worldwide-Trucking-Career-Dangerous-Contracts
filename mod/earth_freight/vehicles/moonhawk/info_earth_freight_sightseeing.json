@@ -1,0 +1,16 @@
+{
+  "Config Type": "Factory",
+  "Configuration": "Sightseeing",
+  "Population": 1000,
+  "Value": 56000,
+  "Years": {
+    "max": 1975,
+    "min": 1973
+  },
+  "defaultMultiPaintSetup": {
+    "name": "earth_freight_sightseeing Multi Paint Setup",
+    "paint1": "Black",
+    "paint2": "Silver",
+    "paint3": "Chrome"
+  }
+}

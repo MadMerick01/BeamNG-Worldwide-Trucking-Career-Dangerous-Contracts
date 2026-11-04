@@ -158,6 +158,10 @@
       <span ng-if="data.streetView" style="margin-left:auto;white-space:nowrap;"><button type="button" ng-click="openStreetView()" title="Show Google Street View of where you are in your web browser. It follows your truck every 10 seconds." style="padding:1px 8px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">Street View</button><button type="button" ng-if="data.streetView.on" ng-click="stopStreetView()" title="Turn Street View off" aria-label="Turn Street View off" style="margin-left:3px;padding:1px 6px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">&times;</button></span>
     </div>
     <div ng-if="data.streetView.feedback" role="status" style="margin-top:2px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.streetView.feedback}}</div>
+    <div ng-if="data.sightseeing && !data.sightseeing.on" style="margin-top:3px;text-align:right;">
+      <button type="button" ng-click="goSightseeing()" ng-disabled="!data.sightseeing.allowed" ng-style="{opacity: data.sightseeing.allowed ? 1 : 0.5}" title="{{data.sightseeing.problem || 'Saves your game, then swaps your truck for a free Moonhawk so you can go anywhere and look around. Return to your job brings everything back.'}}" style="padding:1px 8px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">Go sightseeing</button>
+      <div ng-if="data.sightseeing.feedback" role="status" style="margin-top:2px;color:#c9d6d2;font-size:12px;text-align:left;overflow-wrap:anywhere;">{{data.sightseeing.feedback}}</div>
+    </div>
     <div ng-if="data.saveFeedback" style="margin-top:2px;color:#c9d6d2;font-size:12px;">{{data.saveFeedback}}</div>
     <div ng-if="data.mode === 'start' && data.startHereAllowed" style="margin:8px 0;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
       <div style="font-weight:bold;color:#a7e5c9;">Choose where you start</div>
@@ -176,7 +180,14 @@
       </label>
       <div ng-if="data.resumeDistanceMetres != null" style="margin-top:4px;">You are {{km(data.resumeDistanceMetres)}} km away.<span ng-if="data.resumeDistanceMetres < 5000"> Close by? You can drive there instead: the spot counts once you are within {{data.resumeRadiusMetres}} m of it.</span></div>
     </div>
-    <div ng-if="data.load" style="margin:8px 0 0;padding:7px 10px;border:2px solid #f2c94c;border-radius:6px;">
+    <div ng-if="data.sightseeing.on" style="margin:8px 0 0;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
+      <div style="font-weight:bold;letter-spacing:1px;font-size:15px;color:#a7e5c9;">SIGHTSEEING</div>
+      <div style="margin-top:2px;font-size:13px;">Your game is saved. Teleport anywhere with the BeamNG.Earth map and look around with Street View. Nothing costs money while you are sightseeing.</div>
+      <div ng-if="data.sightseeing.car.distanceMetres > 50" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Your truck is {{km(data.sightseeing.car.distanceMetres)}} km {{data.sightseeing.car.direction}}, waiting with your job.</div>
+      <button type="button" ng-click="returnToJob()" ng-disabled="!data.sightseeing.returnAllowed" ng-style="{opacity: data.sightseeing.returnAllowed ? 1 : 0.6}" style="margin-top:8px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{data.sightseeing.returnAllowed ? 'Return to your job' : 'Returning to your job...'}}</button>
+      <div ng-if="data.sightseeing.feedback" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.sightseeing.feedback}}</div>
+    </div>
+    <div ng-if="data.load && !data.sightseeing.on" style="margin:8px 0 0;padding:7px 10px;border:2px solid #f2c94c;border-radius:6px;">
       <div style="display:flex;align-items:baseline;gap:8px;">
         <div style="flex:1;min-width:0;font-size:16px;font-weight:bold;overflow-wrap:anywhere;" ng-style="{color: trip(data).danger ? '#eb5757' : '#f2f6f5'}">&rarr; {{trip(data).to}}</div>
         <div title="Paid on delivery" style="flex:none;font-size:18px;font-weight:900;color:#6fcf97;">${{data.load.pay | number:0}}</div>
@@ -184,10 +195,10 @@
       <div ng-if="trip(data).metres != null" title="{{data.load.drop ? 'Distance left to the spot, in a straight line' : 'Distance left by road, roughly: straight line × 1.3'}}" style="margin:2px 0 1px;line-height:1;"><span ng-if="!data.load.drop" style="font-size:18px;font-weight:bold;color:#c9d6d2;">&asymp;</span> <span style="font-size:28px;font-weight:900;">{{distance(trip(data).metres)}}</span><span ng-if="data.load.direction" style="font-size:15px;color:#c9d6d2;"> {{data.load.direction}}</span></div>
       <div style="font-size:12px;color:#c9d6d2;"><span ng-if="data.load.beacon" style="color:#eb5757;">A package, no questions</span><span ng-if="!data.load.beacon && !data.load.litres">{{data.load.units}} {{data.load.good | lowercase}}</span><span ng-if="!data.load.beacon && data.load.litres">{{data.load.litres | number:0}} L of {{data.load.good | lowercase}}</span> &middot; {{data.load.kg | number:0}} kg &middot; from {{data.load.from}} &middot; driven {{data.load.drivenKm | number:1}} km</div>
     </div>
-    <div role="tablist" style="display:flex;gap:3px;margin-top:10px;border-bottom:1px solid #568d7a;">
+    <div role="tablist" ng-if="!data.sightseeing.on" style="display:flex;gap:3px;margin-top:10px;border-bottom:1px solid #568d7a;">
       <button type="button" role="tab" ng-repeat="t in tabs" ng-click="setTab(t.id)" aria-selected="{{tab === t.id}}" ng-style="tab === t.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="flex:1;min-width:0;padding:4px 2px;font-size:13px;border:1px solid #568d7a;border-bottom:none;border-radius:6px 6px 0 0;">{{t.label}}<span ng-if="tabAlert(t.id)" style="color:#f2c94c;" aria-label="needs attention"> &#9679;</span></button>
     </div>
-    <div role="tabpanel" style="padding-top:8px;">
+    <div role="tabpanel" ng-if="!data.sightseeing.on" style="padding-top:8px;">
       <div ng-if="tab === 'route'">
         <div ng-if="data.heli.hired" style="margin:0 0 8px;padding:6px 10px;border:1px solid #f2c94c;border-radius:6px;color:#f2c94c;"><b>Heli hired.</b> Your car waits<span ng-if="data.heli.hired.car.distanceMetres != null && !data.heli.hired.car.near"> {{km(data.heli.hired.car.distanceMetres)}} km {{data.heli.hired.car.direction}}</span>. Back to my car is on the Heli tab.</div>
         <div ng-if="data.stranded" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">

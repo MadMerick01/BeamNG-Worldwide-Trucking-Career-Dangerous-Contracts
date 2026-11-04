@@ -534,15 +534,13 @@ function M.new(deps)
     end
   end
 
-  -- What the player is told while a hired helicopter stands in for their car.
-  local FLYING = 'You are flying a hired helicopter. Press Back to my car on the Heli tab first.'
-  -- And while they are on foot.
+  -- What the player is told while on foot. (Away in a helicopter or the sightseeing car: c:awayText.)
   local ON_FOOT = 'You are on foot. Get back in your car first.'
 
   -- Why booking shipping is not possible now, or nil when it is.
   function c:shippingProblem()
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Relocation is unavailable right now.' end
-    if self.hire then return FLYING end
+    if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
     if self.load then return 'Deliver or abandon your job first: cargo cannot be relocated.' end
     if self.trailerShop then return 'Finish with your trailer parts on the Garage tab first.' end
@@ -835,7 +833,7 @@ function M.new(deps)
   -- Why taking or delivering a job at this place is not possible now, or nil when it is.
   function c:tradeProblem(place)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Jobs are unavailable right now.' end
-    if self.hire then return FLYING end
+    if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
     if not place then return 'Drive into a town to find a job.' end
     if not self.odometer:stopped() then return 'Stop the car to take or deliver a job.' end
@@ -990,7 +988,7 @@ function M.new(deps)
     local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
     if not section or self.error or self.state ~= 'READY' or not self.adapter.teleport then return false end
     if self.hire or self.onFoot then
-      self.tradeFeedback = self.hire and FLYING or ON_FOOT
+      self.tradeFeedback = self.hire and self:awayText() or ON_FOOT
       return false
     end
     local ok, why, detail = self.adapter:teleport(section.start, 'Worldwide Trucking: ' .. section.name)
@@ -1022,7 +1020,7 @@ function M.new(deps)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then
       return 'Deliveries are unavailable right now.'
     end
-    if self.hire then return FLYING end
+    if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
     local section = load.contract and contracts.get(load.contract)
     if section and not load.started then return 'Teleport to the start of ' .. section.name .. ' first.' end
@@ -1164,7 +1162,7 @@ function M.new(deps)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then
       return 'Pickups are unavailable right now.'
     end
-    if self.hire then return FLYING end
+    if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
     if self.load then return 'Deliver or abandon your job first. The package will wait until the beacon goes quiet.' end
     local away = location.distance(sample, b.pickup)
@@ -1706,6 +1704,7 @@ function M.new(deps)
       here = trade.here, region = trade.region, where = trade.where, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
       shortages = trade.shortages,
       streetView = self:streetViewView(),
+      sightseeing = self:sightseeingView(current),
       gpsAllowed = self.adapter.setDestination ~= nil and self.state == 'READY' and self.arrived and not self.hire,
       gpsFeedback = self.gpsFeedback,
       abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee,
@@ -1806,7 +1805,8 @@ function M.new(deps)
       return false
     end
     if self.hire then
-      self.feedback = 'Press Back to my car on the Heli tab before saving: Save keeps your car, not the helicopter.'
+      self.feedback = self.hire.sightseeing and 'Press Return to your job before saving: Save keeps your car, not the sightseeing car.'
+        or 'Press Back to my car on the Heli tab before saving: Save keeps your car, not the helicopter.'
       self.diag:event('manual_save_rejected', 'heli', 'W')
       return false
     end
@@ -2121,6 +2121,8 @@ function M.getOut() return safely(function() return ensure():getOut() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end
 function M.hireHeli() return safely(function() return ensure():hireHeli() end) end
 function M.backToCar() return safely(function() return ensure():backToCar(false) end) end
+function M.goSightseeing() return safely(function() return ensure():goSightseeing() end) end
+function M.returnToJob() return safely(function() return ensure():returnToJob() end) end
 -- A heli load's answer: what it weighs once its mass is set.
 function M.pickUpBeacon() return safely(function() return ensure():pickUpBeacon() end) end
 function M.ignoreBeacon() return safely(function() return ensure():ignoreBeacon() end) end
