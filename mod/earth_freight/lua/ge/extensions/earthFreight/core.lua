@@ -173,6 +173,7 @@ function M.new(deps)
     self.quote, self.repairFeedback = nil, nil
     self.partsFeedback, self.carFeedback, self.tradeFeedback, self.fuelFeedback = nil, nil, nil, nil
     self.vehicleProvided, self.arrivingModel, self.arrivingValue, self.arrived = false, nil, nil, false
+    self.arrivingName, self.arrivingConfigFile = nil, nil
     self.newGameArmed, self.flash, self.refunded = false, nil, nil
     self.teleportAskedAt, self.teleportFeedback, self.contractTeleportAt, self.bookingTeleportAt = nil, nil, nil, nil
     -- Shipping booked and not yet used, and where an unbooked teleport left from. Neither is saved:
@@ -1492,7 +1493,9 @@ function M.new(deps)
     end
     local active = self.profile ~= nil and not self.error
     local flashShown = self.flash ~= nil and self.clock - self.flash.at < FLASH_SECONDS
-    local space = self:space()
+    -- Before the player is back at their save, the card and the cargo space are the saved car's.
+    local car, savedSpace = self:carCard()
+    local space = savedSpace or self:space()
     local trade = (self.state == 'READY' and self.arrived) and self:tradeView(current) or {}
     return {
       state = self.state, stateLabel = label, mode = self.mode,
@@ -1518,7 +1521,7 @@ function M.new(deps)
         model = self.lastSample.vehicle.model, id = self.lastSample.vehicle.id,
       } or nil,
       -- The start page's Your truck card and the career so far.
-      car = self:carCard(),
+      car = car,
       career = self.profile and {
         jobsDone = self.profile.progression.jobsDone or 0,
         contractsDone = #(self.profile.progression.contractsDone or {}), contractsTotal = #contracts.LIST,
@@ -1659,6 +1662,8 @@ function M.new(deps)
         jobsDone = progression.jobsDone, contractsDone = copy(progression.contractsDone),
         towOwed = progression.towOwed },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
+        -- The car's name, for the start page before the car is back and for the car once it is.
+        name = self:savedVehicleName(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres,
         value = self:savedVehicleUsed() and self.ownedParts.value or nil, km = self:savedVehicleUsed() and self.ownedParts.km or nil },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
@@ -1741,8 +1746,13 @@ function M.new(deps)
     end
     self.diag:event('new_game', town)
     -- The new game starts in a stock starter, so an old photo of an upgraded one would be wrong.
-    if self.garage and self.garage.removePhoto then self.garage:removePhoto(workshop.STARTER_MODEL) end
-    self.photoAt, self.photoStamp = nil, nil
+    if self.garage and self.garage.removePhoto then
+      self.garage:removePhoto(workshop.STARTER_MODEL)
+      -- And the old game's car, so its photo can't turn up on a car of that model bought later.
+      local old = self.ownedParts and self.ownedParts.model
+      if old and old ~= workshop.STARTER_MODEL then self.garage:removePhoto(old) end
+    end
+    self.photoAt, self.photoStamp, self.photoModel = nil, nil, nil
     -- The old game's bills and damage readings go with it: nothing it owed carries over.
     self.pendingParts, self.pendingCar, self.secondHand, self.lastDamage = nil, nil, nil, nil
     if self.partsBill and self.trigger then pcall(self.trigger, 'EarthFreightPartsBill', { open = false }) end

@@ -276,8 +276,10 @@ function M.new(environment)
     end
     local configFile = type(data.config.partConfigFilename) == 'string' and data.config.partConfigFilename or nil
     local value, name = g:carValue(model, configFile)
+    -- After a photo the game may say the car came from our photo config, which has no name or price.
+    local photo = type(configFile) == 'string' and configFile:match('([^/\\]+)%.pc$') == M.PHOTO_KEY or nil
     return { id = id, model = model, config = copy(data.config), parts = parts, values = values, names = names,
-      configFile = configFile, value = value, name = name or model }
+      configFile = configFile, value = value, name = name or model, photo = photo }
   end
 
   -- Respawns the vehicle where it stands, which leaves every part new. With no config it keeps the

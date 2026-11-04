@@ -1549,6 +1549,73 @@ do
   T.check(c.photoAt == nil, 'and is not retried every frame')
 end
 
+-- Another car of the same model: the last car's photo goes, so the card never shows the wrong car.
+do
+  local c, _, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local files, removed = { pickup = '/vehicles/pickup/earth_freight_my_truck.jpg' }, {}
+  g.photo = function(_, model) return files[model] end
+  g.removePhoto = function(_, model) removed[#removed + 1] = model; files[model] = nil end
+  g.takePhoto = function() return true end
+  T.check(c:view().car.preview:find('earth_freight_my_truck'), 'the photo of the pickup')
+  c:addMoney(50000)
+  g.vehicleId, a.vehicle = 2, { id = 2, model = 'pickup' }; c:tick(0.1)
+  T.check(c:view().carChange ~= nil, 'another pickup billed')
+  T.check(c:buyCar(), 'bought'); T.eq(removed[1], 'pickup', 'the old pickup photo removed')
+  T.eq(c:view().car.preview, nil, 'no photo of the old car on the new one')
+  -- A different model takes the old one's photo with it too.
+  files.pickup = '/vehicles/pickup/earth_freight_my_truck.jpg'; removed = {}
+  g.vehicleId, g.model, a.vehicle = 3, 'sport', { id = 3, model = 'sport' }; c:tick(0.1)
+  T.check(c:buyCar(), 'sport bought'); T.eq(removed[1], 'pickup', 'the pickup photo removed')
+  T.eq(removed[2], 'sport', 'and any old sport photo')
+end
+
+-- The car of the last save is on the start page the moment the game loads, before the player is
+-- back at it: its name, worth, picture, the repair it was saved with and its cargo space. Once the
+-- player is back, the car itself takes over with the same name.
+do
+  local c, io, a, g = F.controller()
+  local parts = g.parts
+  g.parts = function(self, id)
+    local snapshot, why = parts(self, id)
+    if snapshot and snapshot.model == 'pickup' then snapshot.name = 'Pickup D15' end
+    return snapshot, why
+  end
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  g:fit('box', 'pickup_cargo_load_box_m'); c:vehicleSpawned(); c:tick(0.1)
+  T.check(c:buyParts(), 'box bought'); c:tick(0.6); c:tick(0.6)
+  g.damage = 4000; c:tick(0.1)
+  T.check(c:manualSave(), 'saved'); T.eq(io.files[A].vehicle.name, 'Pickup D15', 'the name saved with the car')
+  local fresh = F.garage()
+  local r = F.controller({ io = io, garage = fresh, adapter = F.adapter(F.position(-33.9, 151.2)) })
+  fresh.preview = function(_, model) return '/vehicles/' .. model .. '/d15.jpg' end
+  r:tick(0.1)
+  T.check(not r:view().arrived, 'not back at the save yet')
+  local card = r:view().car
+  T.check(card ~= nil, 'the saved car shown straight away'); T.eq(card.name, 'Pickup D15', 'by its name')
+  T.eq(card.value, 20000, 'its worth'); T.eq(card.preview, '/vehicles/pickup/d15.jpg', 'its picture')
+  T.check(card.repair > 0, 'the repair it was saved with'); T.eq(card.climb, require('earthFreight/workshop').climb(20000), 'on the line')
+  T.eq(r:view().space.slots, 4, 'its cargo box'); T.check(not r:view().space.boot, 'not just the boot')
+  fresh.photo = function(_, model) return '/vehicles/' .. model .. '/earth_freight_my_truck.jpg' end
+  T.check(r:view().car.preview:find('^/vehicles/pickup/earth_freight_my_truck%.jpg%?v='), 'our photo of it, once there is one')
+  r.adapter.pose = F.copy(F.PENRITH); r:tick(0.1); r:vehicleSpawned(); r:tick(0.1)
+  T.check(r:view().arrived, 'back at the save'); T.eq(r.ownedParts.name, 'Pickup D15', 'the car keeps its name')
+  T.eq(r:view().car.name, 'Pickup D15', 'and the card still says it')
+  -- A new game shows no saved car: the starter is waiting.
+  local n = F.controller({ adapter = F.adapter(F.position(-33.9, 151.2)) })
+  n:tick(0.1); T.eq(n:view().car, nil, 'nothing saved, nothing shown')
+end
+
+-- Saved car configs list their parts, or only a parts tree; either gives the parts for the card.
+do
+  local W = require('earthFreight/workshop')
+  T.eq(W.configParts({ parts = { box = 'pickup_cargo_load_box_m' } }).box, 'pickup_cargo_load_box_m', 'the parts list')
+  local tree = W.configParts({ partsTree = { chosenPartName = 'pickup', path = '/', children = {
+    box = { chosenPartName = 'pickup_cargo_load_box_m', path = '/box/' } } } })
+  T.eq(tree['/box/'], 'pickup_cargo_load_box_m', 'read from the tree'); T.eq(tree['/'], 'pickup', 'with the body')
+  T.check(next(W.configParts(nil)) == nil, 'no config, no parts')
+end
+
 
 -- New game with a damaged car: the repair it needed belongs to the old game. Teleporting to the
 -- start resets the old car on the way, and the fresh starter car owes nothing.

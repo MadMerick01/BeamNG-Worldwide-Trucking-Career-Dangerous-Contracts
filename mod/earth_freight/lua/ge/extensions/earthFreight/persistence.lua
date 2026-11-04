@@ -153,7 +153,7 @@ function M.validate(s)
   local p = progression(s.progression)
   if not p then return nil, 'invalid_progression' end
   if type(s.vehicle) ~= 'table' or not optionalString(s.vehicle.model)
-      or not optionalString(s.vehicle.configuration) then return nil, 'invalid_vehicle' end
+      or not optionalString(s.vehicle.configuration) or not optionalString(s.vehicle.name) then return nil, 'invalid_vehicle' end
   local vehicleConfig = nil
   if s.vehicle.config ~= nil then
     vehicleConfig = plainConfig(s.vehicle.config)
@@ -207,7 +207,7 @@ function M.validate(s)
   return {
     schemaVersion = M.SCHEMA, profileId = 'default', generation = s.generation,
     base = location.copy(s.base), resume = resume, progression = p,
-    vehicle = { model = s.vehicle.model, configuration = s.vehicle.configuration, config = vehicleConfig,
+    vehicle = { model = s.vehicle.model, configuration = s.vehicle.configuration, config = vehicleConfig, name = s.vehicle.name,
       damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres, value = s.vehicle.value, km = s.vehicle.km },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
     trailer = trailer,
