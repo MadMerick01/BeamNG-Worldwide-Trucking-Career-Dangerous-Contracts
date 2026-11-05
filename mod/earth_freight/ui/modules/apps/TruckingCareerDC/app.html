@@ -332,7 +332,7 @@
           <div style="margin:8px 0;">
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:12px;color:#c9d6d2;" role="group" aria-label="Distance">
               <span style="flex:1;min-width:0;font-size:14px;font-weight:bold;color:#f2f6f5;">Jobs</span>
-              <button type="button" ng-repeat="o in distances" ng-click="setJobDistance(o.id)" aria-pressed="{{jobDistance() === o.id}}" title="{{o.id === 'short' ? 'Up to 8 km' : (o.id === 'medium' ? '8 to 13 km' : (o.id === 'long' ? '13 to 20 km' : 'Any distance'))}}" ng-style="jobDistance() === o.id ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:1px 7px;border:1px solid #568d7a;border-radius:4px;">{{o.label}}</button>
+              <button type="button" ng-repeat="o in distances" ng-click="setJobDistance(o.id)" aria-pressed="{{jobDistance() === o.id}}" title="{{o.id === 'short' ? 'Up to 8 km' : (o.id === 'medium' ? '8 to 13 km' : (o.id === 'long' ? '13 to 300 km' : 'Any distance'))}}" ng-style="jobDistance() === o.id ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:1px 7px;border:1px solid #568d7a;border-radius:4px;">{{o.label}}</button>
             </div>
             <div ng-if="data.load" style="font-size:12px;color:#c9d6d2;">Deliver or abandon your job to take another.</div>
             <div ng-if="hasOutside(data.town.jobs)" style="font-size:12px;color:#f2c94c;">No towns that far from {{data.town.name}}, so the jobs marked "nearest" go to the closest towns instead.</div>

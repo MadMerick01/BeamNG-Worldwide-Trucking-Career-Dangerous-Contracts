@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Long jobs now go up to 300 km.** Pick **Long** on the Town tab's **Distance** filter and the three town jobs go to towns anywhere from 13 km to about 300 km away by road, instead of stopping at 20 km. The distances are spread out, so you will see a mix of 50 km, 150 km and 250 km runs rather than only the farthest ones. This helps most in places where towns are far apart, such as mountain regions, where you used to be stuck between the same two towns until you relocated. **Any**, **Short** and **Medium** work as before, and your saves still work.
+
 ## Build 140 · 5 Nov 2026
 
 - **Street View has its own tab.** The new **Street View** tab on the HUD holds everything for it: **Turn on** and **Turn off**, **Open again** if you closed the browser page, and the address with its **Copy** button. **Go sightseeing** has moved there too, with a short note on how it works. The space above the tabs is clearer: while Street View is on it just shows a small green **Street View on** button that takes you to the tab. While you are sightseeing, the tabs are hidden as before, so the sightseeing panel has its own **Turn on Street View** button. The tabs now sit in two rows, with Route, Town, Garage and Relocate on top and Heli, Home and Street View below, so every name fits at full size. Your saves still work.

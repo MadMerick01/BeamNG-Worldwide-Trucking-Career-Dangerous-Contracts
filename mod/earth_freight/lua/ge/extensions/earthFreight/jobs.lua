@@ -29,7 +29,11 @@ M.MAX_KM = 20
 -- three town jobs take these road-distance bands in turn, from a seeded start, where the towns allow.
 M.BANDS = { { 0, 8 }, { 8, 13 }, { 13, 20 } }
 -- The Distance filter on the Town tab: picking one sends all three town jobs to towns in that band,
--- each to a different town where there are enough. 'any' (or nil) keeps the mix above.
+-- each to a different town where there are enough. 'any' (or nil) keeps the mix above. Long reaches
+-- out to LONG_KM, so a player in a sparse region (a mountain state, the outback) has towns to go to
+-- without relocating.
+M.LONG_KM = 300
+M.FILTERS = { short = M.BANDS[1], medium = M.BANDS[2], long = { M.BANDS[3][1], M.LONG_KM } }
 M.DISTANCES = { short = 1, medium = 2, long = 3 }
 -- Town need: a seeded start between NEED_LOW and NEED_HIGH, plus CHARACTER_BONUS for the good the
 -- town is known for, less what deliveries took. Always between MIN_NEED and MAX_NEED. The start
@@ -204,18 +208,29 @@ function M.quote(job, units, needs, now)
     level = (short or job.jackpot) and 'sweet' or M.level(factor) }
 end
 
--- The towns a board can send jobs to: every loaded place within MAX_KM by road, as { place, km };
--- with none that close, the three nearest.
-function M.destinations(from)
+-- The towns a board can send jobs to: every loaded place within maxKm by road (MAX_KM when not
+-- given), as { place, km }, nearest first; with none that close, the three nearest. Kept until more
+-- places load, since the HUD asks for the same board many times a second.
+local destinationCache, destinationCount = {}, -1
+
+function M.destinations(from, maxKm)
+  maxKm = maxKm or M.MAX_KM
+  if destinationCount ~= #places.list then destinationCache, destinationCount = {}, #places.list end
+  local key = table.concat({ tostring(from.id), from.latitude, from.longitude, maxKm }, ':')
+  if destinationCache[key] then return destinationCache[key] end
   local out = {}
-  for _, place in ipairs(places.within(from, M.MAX_KM * 1000 / places.ROAD_FACTOR)) do
+  for _, place in ipairs(places.within(from, maxKm * 1000 / places.ROAD_FACTOR)) do
     local km = M.roadKm(from, place)
-    if place.id ~= from.id and km <= M.MAX_KM then out[#out + 1] = { place = place, km = km } end
+    if place.id ~= from.id and km <= maxKm then out[#out + 1] = { place = place, km = km } end
   end
   if #out == 0 then
     for _, n in ipairs(places.nearest(from, 3, from.id)) do out[#out + 1] = { place = n.place, km = n.metres * places.ROAD_FACTOR / 1000 } end
   end
   table.sort(out, function(a, b) if a.km ~= b.km then return a.km < b.km end return a.place.id < b.place.id end)
+  local n = 0
+  for _ in pairs(destinationCache) do n = n + 1 end
+  if n >= 16 then destinationCache = {} end
+  destinationCache[key] = out
   return out
 end
 
@@ -245,23 +260,23 @@ end
 
 -- The board of a town: one job each for its goods, then the off-road drop and the dangerous contract, fixed for a seed (the
 -- controller's count of jobs done), so it changes after every delivery or abandoned job. A good
--- short in a town close by goes there; otherwise each job goes to a town in its distance band. At
+-- short in a town within MAX_KM goes there; otherwise each job goes to a town in its distance band. At
 -- least one job is decent: if none pays its base rate, the best one is raised to it. distance is
 -- the Distance filter (see DISTANCES): its band holds every town job, and a job that had to go
 -- outside it, for want of towns that far, is marked outside.
 function M.board(from, seed, needs, now, distance)
-  local list = M.destinations(from)
+  local only = M.FILTERS[distance]
+  local list = M.destinations(from, only and math.max(M.MAX_KM, only[2]))
   local wanted = M.boardGoods(from)
   if #list == 0 or #wanted == 0 then return {} end
   seed = tostring(seed or 0)
   local start = math.floor(hash01(from.id .. ':' .. seed .. ':band') * #M.BANDS)
-  local only = M.BANDS[M.DISTANCES[distance] or 0]
   local function inBand(x, band) return x.km > band[1] and x.km <= band[2] end
   local out, used = {}, {}
   for i, good in ipairs(wanted) do
     local d, outside
     for _, x in ipairs(list) do
-      if not d and (not only or inBand(x, only) and not used[x.place.id]) and M.shortage(x.place, good, now) then d = x end
+      if not d and x.km <= M.MAX_KM and (not only or inBand(x, only) and not used[x.place.id]) and M.shortage(x.place, good, now) then d = x end
     end
     if not d then
       local band = only or M.BANDS[(start + i - 1) % #M.BANDS + 1]
@@ -278,14 +293,19 @@ function M.board(from, seed, needs, now, distance)
         end
       else
         if #pool == 0 then pool = list end
-        local at = math.floor(hash01(from.id .. ':' .. seed .. ':' .. good.id .. ':to') * #pool) + 1
+        local h = hash01(from.id .. ':' .. seed .. ':' .. good.id .. ':to')
         if only then
-          for _ = 1, #pool do
-            if not used[pool[at].place.id] then break end
-            at = at % #pool + 1
+          -- A seeded distance across the band, and the unused town nearest it, so a long run is as
+          -- likely to be 50 km as 250 km, however many more towns there are farther out.
+          local target = band[1] + (band[2] - band[1]) * h
+          for _, x in ipairs(pool) do
+            local better = not d or (used[d.place.id] and not used[x.place.id])
+              or (not used[x.place.id] == not used[d.place.id] and math.abs(x.km - target) < math.abs(d.km - target))
+            if better then d = x end
           end
+        else
+          d = pool[math.floor(h * #pool) + 1]
         end
-        d = pool[at]
       end
     end
     used[d.place.id] = true
