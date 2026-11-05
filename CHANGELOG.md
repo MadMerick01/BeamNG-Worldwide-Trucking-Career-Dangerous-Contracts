@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Pressing Pay on the parts bill no longer closes the parts menu.** Closing it for you left you stuck in the free camera, so it's back to how it was: Pay just pays, and you leave the parts menu yourself to get back to your car on your usual camera. Your saves still work.
+
 ## Build 141 · 5 Nov 2026
 
 - **Long jobs now go up to 300 km.** Pick **Long** on the Town tab's **Distance** filter and the three town jobs go to towns anywhere from 13 km to about 300 km away by road, instead of stopping at 20 km. The distances are spread out, so you will see a mix of 50 km, 150 km and 250 km runs rather than only the farthest ones. This helps most in places where towns are far apart, such as mountain regions, where you used to be stuck between the same two towns until you relocated. **Any**, **Short** and **Medium** work as before, and your saves still work.

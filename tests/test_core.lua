@@ -688,8 +688,6 @@ do
   local Workshop = require('earthFreight/workshop')
   local c, _, _, g = F.controller()
   local bills, toasts, states = {}, {}, {}
-  local freeCamera, cameraCalls = true, 0
-  c.camera = { backToCar = function() cameraCalls = cameraCalls + 1; local was = freeCamera; freeCamera = false; return was end }
   c.trigger = function(name, data)
     if name == 'EarthFreightPartsBill' then bills[#bills + 1] = data end
     if name == 'toastrMsg' then toasts[#toasts + 1] = data end
@@ -724,17 +722,11 @@ do
   local shown = bills[#bills]
   T.check(shown.open and shown.payAllowed, 'a bill the player can pay')
   T.check(not c:payPartsBill(shown.serial - 1), 'an older bill is not paid'); T.eq(c.profile.progression.balance, 5000, 'nothing charged')
-  T.eq(#states, 0, 'an unpaid bill leaves the parts menu open')
-  T.eq(cameraCalls, 0, 'and the camera alone')
   local count = #bills
   T.check(c:payPartsBill(shown.serial), 'paid from the box'); T.eq(c.profile.progression.balance, 4400, 'charged the bill')
-  T.check(toasts[#toasts].msg:find('Bought for $600'), 'says it was paid')
-  T.eq(cameraCalls, 1, 'leaves the free camera'); T.check(not freeCamera, 'for the car\'s own camera')
-  freeCamera = true; F.advance(c, 1)
-  T.eq(cameraCalls, 2, 'checked once more a moment later'); T.check(not freeCamera, 'in case closing the menu turned it back on')
+  T.check(toasts[#toasts].msg:find('Bought for $600'), 'says it was paid'); F.advance(c, 1)
   T.eq(#bills, count + 1, 'paying closes the box'); T.eq(bills[#bills].open, false, 'closed')
-  T.eq(states[#states] and states[#states].state, 'play', 'and closes the parts menu, back to the car')
-  F.advance(c, 2); T.eq(cameraCalls, 2, 'and only once')
+  T.eq(#states, 0, 'but leaves the parts menu open for the player to close')
 end
 
 -- Repairs are priced by the car's Value, as in Enduro.
