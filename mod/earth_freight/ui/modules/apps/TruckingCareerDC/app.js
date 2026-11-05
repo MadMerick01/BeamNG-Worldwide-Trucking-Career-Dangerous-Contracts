@@ -153,7 +153,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var mount = function (on) { core('uiMounted(' + (on ? 'true' : 'false') + ')') }
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
-        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Home' }]
+        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Home' },
+        { id: 'streetview', label: 'Street View' }]
       scope.tab = kept.tab
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.

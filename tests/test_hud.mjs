@@ -317,7 +317,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
 })
 test('the Tips tab is gone and shipping has its own Relocate tab', () => {
   const a = app()
-  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli', 'home'])
+  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli', 'home', 'streetview'])
   assert.ok(!html.includes(`tab === 'tips'`), 'no Tips tab')
   const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'relocate'"`))
   const shipping = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`))
@@ -901,4 +901,19 @@ test('real businesses: the job card names the business, counts down the last met
   a.scope.deliverJob(); assert.equal(a.commands.length, before, 'not delivered outside the circle')
   a.state({ state: 'READY', load: { to: 'St Clair', pay: 900, business: { name: 'Bunnings', near: true, distanceMetres: 12, inZone: true, delivery: { allowed: true } } } })
   a.scope.deliverJob(); assert.equal(a.commands.at(-1), fixed('deliverJob()'))
+})
+
+test('Street View has its own tab with sightseeing, and the header only shows a marker while it is on', () => {
+  const a = app()
+  assert.equal(a.scope.tabs.at(-1).label, 'Street View')
+  const panel = html.slice(html.indexOf(`ng-if="tab === 'streetview'"`), html.indexOf(`ng-if="tab === 'heli'"`))
+  for (const part of ['openStreetView()', 'stopStreetView()', 'copyStreetView()', 'goSightseeing()', 'Turn on', 'Turn off', 'Open again'])
+    assert.ok(panel.includes(part), part + ' on the Street View tab')
+  const header = html.slice(0, html.indexOf('<div ng-if="data.sightseeing.on"'))
+  for (const part of ['openStreetView()', 'copyStreetView()', 'goSightseeing()']) assert.ok(!header.includes(part), part + ' not in the header')
+  assert.ok(header.includes(`ng-if="data.streetView.on && !data.sightseeing.on"`) && header.includes(`setTab('streetview')`), 'marker opens the tab')
+  // The tabs are hidden while sightseeing, so its panel keeps Street View to hand.
+  const seeing = html.slice(html.indexOf('<div ng-if="data.sightseeing.on"'), html.indexOf('role="tablist"'))
+  assert.ok(seeing.includes('openStreetView()') && seeing.includes('copyStreetView()'), 'Street View while sightseeing')
+  a.scope.setTab('streetview'); assert.equal(a.scope.tab, 'streetview')
 })
