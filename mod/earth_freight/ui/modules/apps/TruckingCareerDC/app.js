@@ -4,7 +4,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   // closes, so this is kept out here and the new app carries on where the old one was.
   var kept = {
     tab: 'route', introShown: false, intro: { open: false, name: '', steps: false }, shares: {},
-    ship: { query: '', coords: '', error: null }, last: null, hud: null
+    ship: { query: '', coords: '', error: null }, last: null, hud: null,
+    // Towns already looked up for a real business this game, so each is only asked once.
+    businessAsked: {}
   }
   // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
   var STORE = 'earthFreight.hudMinimised'
@@ -353,13 +355,16 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // The job for the minimised strip: where it goes, how far and what it pays. One object is reused,
       // as Angular watches it by reference.
       var trip = {}
+      // Close to a business the distance is exact, straight to the spot outside it.
+      scope.atShop = function (d) { return !!(d && d.load && d.load.business && d.load.business.near) }
       scope.trip = function (d) {
         var l = d && d.load
         if (!l) return null
         var started = !l.contract || l.contract.started
         var drop = l.drop && started ? l.drop : null
-        trip.to = l.contract ? l.contract.name + (started ? '' : ' start') : (l.drop || l.beacon ? 'off-road drop' : l.to)
-        trip.metres = drop ? drop.distanceMetres : (started ? l.distanceMetres : null)
+        var shop = l.business
+        trip.to = l.contract ? l.contract.name + (started ? '' : ' start') : (l.drop || l.beacon ? 'off-road drop' : shop ? shop.name + ', ' + l.to : l.to)
+        trip.metres = drop ? drop.distanceMetres : scope.atShop(d) ? shop.distanceMetres : (started ? l.distanceMetres : null)
         trip.letters = LETTERS[l.direction] || ''
         trip.pay = l.pay
         trip.danger = !!(l.contract || l.beacon)
@@ -429,7 +434,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var d = scope.data
         var town = d.town && d.town.delivery && d.town.delivery.allowed
         var drop = d.load && d.load.drop && d.load.drop.delivery && d.load.drop.delivery.allowed
-        if (town || drop) core('deliverJob()')
+        var shop = d.load && d.load.business && d.load.business.delivery && d.load.business.delivery.allowed
+        if (town || drop || shop) core('deliverJob()')
       }
       // The off-road drop's arrow, turned by how far the spot is off the way the car points.
       var arrow = {}
@@ -590,6 +596,123 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         call('if openWebBrowser then openWebBrowser("' + KOFI + '") end setClipboard("' + KOFI + '")')
         scope.intro.kofiOpened = true
       }
+      // Real businesses as drop-offs: when a town job's town has none yet, the game asks (load.lookup)
+      // and the HUD, which can reach the web, asks OpenStreetMap's free Overpass server for one named
+      // business there that suits the load. Picked by a fixed rule, so every player gets the same one,
+      // then moved to the nearest road, where the truck stops. At most two small questions per town;
+      // the game remembers the answer. When the web cannot be reached the town's usual drop-off stays.
+      var OVERPASS = 'https://overpass-api.de/api/interpreter'
+      var businessKind = function (t) {
+        if (!t) return null
+        if (t.amenity === 'fuel') return 'fuel'
+        if (/^(supermarket|wholesale)$/.test(t.shop)) return 'supermarket'
+        if (/^(hardware|doityourself)$/.test(t.shop)) return 'hardware'
+        if (t.shop === 'trade' || t.craft === 'builder') return 'builders'
+        if (/^(car_parts|tyres)$/.test(t.shop)) return 'car_parts'
+        if (t.shop === 'car_repair') return 'garage'
+        if (/^(garden_centre|agrarian)$/.test(t.shop)) return 'garden'
+        if (t.place === 'farm' || t.landuse === 'farmyard') return 'farm'
+        if (t.industrial === 'depot') return 'depot'
+        if (t.building === 'warehouse' || /^(warehouse|logistics)$/.test(t.industrial)) return 'warehouse'
+        if (t.man_made === 'works' || /^(factory|manufacturing)$/.test(t.industrial)) return 'factory'
+        return null
+      }
+      // The kinds that suit each good, best first.
+      var BUSINESS_FOR = {
+        parts: ['car_parts', 'garage', 'warehouse', 'factory', 'hardware', 'depot'],
+        bricks: ['builders', 'hardware', 'warehouse', 'factory', 'depot'],
+        water: ['farm', 'garden', 'supermarket', 'warehouse'],
+        fuel: ['fuel', 'depot', 'farm'],
+        other: ['warehouse', 'factory', 'depot', 'supermarket']
+      }
+      var businessQuery = function (lat, lon, metres) {
+        var at = '(around:' + Math.round(metres) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')[name]'
+        return '[out:json][timeout:15];(' +
+          'nwr' + at + '[shop~"^(supermarket|wholesale|hardware|doityourself|trade|car_parts|tyres|car_repair|garden_centre|agrarian)$"];' +
+          'nwr' + at + '[amenity=fuel];nwr' + at + '[craft=builder];nwr' + at + '[industrial];' +
+          'nwr' + at + '[building=warehouse];nwr' + at + '[man_made=works];nwr' + at + '[landuse=farmyard];nwr' + at + '[place=farm];' +
+          ');out center tags 300;'
+      }
+      var roadQuery = function (lat, lon) {
+        return '[out:json][timeout:15];way(around:80,' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')' +
+          '[highway~"^(trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|road)$"];out geom 40;'
+      }
+      var hashOf = function (text) {
+        var h = 7
+        for (var i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 2147483647
+        for (var j = 0; j < 4; j++) h = (h * 48271) % 2147483647
+        return h
+      }
+      // The businesses that suit the good, in the order to try them: the best kind found first, and
+      // within each kind a fixed rotation from the town and good, so the pick is the same for everyone.
+      scope.businessCandidates = function (elements, key, good) {
+        var wanted = BUSINESS_FOR[good] || BUSINESS_FOR.other
+        var byKind = {}
+        ;(elements || []).forEach(function (e) {
+          var t = e && e.tags, at = e && (e.center || e)
+          var kind = businessKind(t)
+          if (!kind || wanted.indexOf(kind) < 0 || !t.name || typeof at.lat !== 'number' || typeof at.lon !== 'number') return
+          ;(byKind[kind] = byKind[kind] || []).push({ id: e.type + '/' + e.id, name: String(t.name), kind: kind, lat: at.lat, lon: at.lon })
+        })
+        var out = []
+        wanted.forEach(function (kind) {
+          var list = (byKind[kind] || []).sort(function (a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0 })
+          var start = list.length ? hashOf(key + ':' + kind) % list.length : 0
+          for (var i = 0; i < list.length; i++) out.push(list[(start + i) % list.length])
+        })
+        return out
+      }
+      // The point on the nearest road to a business, within 80 m, or null.
+      scope.nearestRoad = function (ways, lat, lon) {
+        var kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540
+        var best = null
+        ;(ways || []).forEach(function (w) {
+          var g = (w && w.geometry) || []
+          for (var i = 1; i < g.length; i++) {
+            var ax = (g[i - 1].lon - lon) * kx, ay = (g[i - 1].lat - lat) * ky
+            var bx = (g[i].lon - lon) * kx, by = (g[i].lat - lat) * ky
+            var dx = bx - ax, dy = by - ay, len = dx * dx + dy * dy
+            var t = len > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len)) : 0
+            var px = ax + t * dx, py = ay + t * dy, d = Math.sqrt(px * px + py * py)
+            if (d <= 80 && (!best || d < best.d)) best = { d: d, lat: lat + py / ky, lon: lon + px / kx }
+          }
+        })
+        return best
+      }
+      var overpass = function (query) {
+        if (typeof fetch !== 'function') return Promise.reject(new Error('no fetch'))
+        return fetch(OVERPASS, { method: 'POST', body: 'data=' + encodeURIComponent(query),
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
+          .then(function (r) { if (!r.ok) throw new Error('overpass ' + r.status); return r.json() })
+          .then(function (j) { return (j && j.elements) || [] })
+      }
+      scope.lookUpBusiness = function (want) {
+        if (!want || !/^[a-z0-9_]+:[a-z0-9_]+$/.test(String(want.key)) || kept.businessAsked[want.key]) return null
+        if (typeof want.latitude !== 'number' || typeof want.longitude !== 'number') return null
+        kept.businessAsked[want.key] = true
+        var tryRoads = function (list, i) {
+          if (i >= Math.min(list.length, 3)) return Promise.resolve(null)
+          var b = list[i]
+          return overpass(roadQuery(b.lat, b.lon)).then(function (ways) {
+            var road = scope.nearestRoad(ways, b.lat, b.lon)
+            return road ? { name: b.name, kind: b.kind, lat: road.lat, lon: road.lon } : tryRoads(list, i + 1)
+          })
+        }
+        var search = function (metres, wider) {
+          return overpass(businessQuery(want.latitude, want.longitude, metres)).then(function (elements) {
+            return tryRoads(scope.businessCandidates(elements, want.key, want.good), 0)
+          }).then(function (found) {
+            if (found || !wider) return found
+            return search(wider, null)
+          })
+        }
+        return search(want.metres || 1500, want.widerMetres || 3000).then(function (found) {
+          if (found) {
+            core('setBusiness("' + want.key + '","' + encodeURIComponent(found.name.slice(0, 120)) + '","' + found.kind + '",' +
+              found.lat.toFixed(7) + ',' + found.lon.toFixed(7) + ')')
+          } else core('noBusiness("' + want.key + '")')
+        }, function () { /* No answer from the web: the town's usual drop-off stays for this game. */ })
+      }
       scope.$on('EarthFreightState', function (event, data) {
         if (disposed || !data || typeof data.state !== 'string') return
         lastMessage = Date.now()
@@ -600,6 +723,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           syncDistance(data)
           kept.last = data
           scope.data = data
+          if (data.load && data.load.lookup) scope.lookUpBusiness(data.load.lookup)
         })
       })
       mount(true)
