@@ -917,3 +917,9 @@ test('Street View has its own tab with sightseeing, and the header only shows a 
   assert.ok(seeing.includes('openStreetView()') && seeing.includes('copyStreetView()'), 'Street View while sightseeing')
   a.scope.setTab('streetview'); assert.equal(a.scope.tab, 'streetview')
 })
+
+test('tabs sit in two rows: the job on top, the extras below', () => {
+  const a = app()
+  assert.deepEqual(JSON.parse(JSON.stringify(a.scope.tabRows.map(r => r.map(t => t.id)))), [['route', 'town', 'garage', 'relocate'], ['heli', 'home', 'streetview']])
+  assert.ok(html.includes('ng-repeat="row in tabRows"') && html.includes('ng-repeat="t in row"'))
+})

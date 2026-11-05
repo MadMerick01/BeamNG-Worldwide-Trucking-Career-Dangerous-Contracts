@@ -203,8 +203,10 @@
       <div ng-if="data.load.business.inZone && data.load.business.delivery.problem" style="margin-top:2px;font-size:12px;color:#c9d6d2;">{{data.load.business.delivery.problem}}</div>
       <button ng-if="data.load.business.inZone" type="button" ng-click="deliverJob()" ng-disabled="!data.load.business.delivery.allowed" style="margin-top:6px;padding:7px 12px;background:#6fcf97;color:#0c1318;font-weight:bold;border:1px solid #6fcf97;border-radius:4px;">Deliver ${{data.load.pay | number:0}}</button>
     </div>
-    <div role="tablist" ng-if="!data.sightseeing.on" style="display:flex;gap:3px;margin-top:10px;border-bottom:1px solid #568d7a;">
-      <button type="button" role="tab" ng-repeat="t in tabs" ng-click="setTab(t.id)" aria-selected="{{tab === t.id}}" ng-style="tab === t.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="flex:1 1 auto;min-width:0;padding:4px 3px;font-size:12px;white-space:nowrap;border:1px solid #568d7a;border-bottom:none;border-radius:6px 6px 0 0;">{{t.label}}<span ng-if="tabAlert(t.id)" style="color:#f2c94c;" aria-label="needs attention"> &#9679;</span></button>
+    <div role="tablist" ng-if="!data.sightseeing.on" style="margin-top:10px;padding-bottom:6px;border-bottom:1px solid #568d7a;">
+      <div ng-repeat="row in tabRows" style="display:flex;gap:4px;" ng-style="$first ? {} : {marginTop:'4px'}">
+        <button type="button" role="tab" ng-repeat="t in row" ng-click="setTab(t.id)" aria-selected="{{tab === t.id}}" ng-style="tab === t.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="flex:1;min-width:0;padding:4px 2px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid #568d7a;border-radius:6px;">{{t.label}}<span ng-if="tabAlert(t.id)" style="color:#f2c94c;" aria-label="needs attention"> &#9679;</span></button>
+      </div>
     </div>
     <div role="tabpanel" ng-if="!data.sightseeing.on" style="padding-top:8px;">
       <div ng-if="tab === 'route'">

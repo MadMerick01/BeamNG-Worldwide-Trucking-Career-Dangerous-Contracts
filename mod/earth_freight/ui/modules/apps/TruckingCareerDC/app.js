@@ -155,6 +155,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
         { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Home' },
         { id: 'streetview', label: 'Street View' }]
+      // Two rows of tabs: the job on top, the extras below, each sharing its row's width.
+      scope.tabRows = [scope.tabs.slice(0, 4), scope.tabs.slice(4)]
       scope.tab = kept.tab
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
