@@ -208,9 +208,10 @@ T.near(jobs.drivenNeeded(penrith, near[1].place), near[1].metres * 0.7, 1e-6, '7
 -- The Distance filter: every town job in the band picked, each to a different town where it can,
 -- and the town closest to the band, marked outside, when no town is that far.
 do
-  for name, band in pairs({ short = jobs.BANDS[1], medium = jobs.BANDS[2], long = jobs.BANDS[3] }) do
+  local farthest = 0
+  for name, band in pairs(jobs.FILTERS) do
     for _, n in ipairs(places.nearest(penrith, 10)) do
-      local list = jobs.destinations(n.place)
+      local list = jobs.destinations(n.place, math.max(jobs.MAX_KM, band[2]))
       local count = 0
       for _, x in ipairs(list) do if x.km > band[1] and x.km <= band[2] then count = count + 1 end end
       for seed = 0, 4 do
@@ -222,6 +223,7 @@ do
           if count > 0 then
             T.check(j.km > band[1] and j.km <= band[2], n.place.name .. ' ' .. name .. ' job in its band: ' .. j.km)
             T.check(not j.outside, 'not marked outside')
+            if name == 'long' then farthest = math.max(farthest, j.km) end
           else
             T.eq(j.outside, true, n.place.name .. ' ' .. name .. ' job outside its band is marked')
           end
@@ -233,6 +235,8 @@ do
       end
     end
   end
+  T.eq(jobs.FILTERS.long[2], 300, 'Long reaches 300 km')
+  T.check(farthest > 150, 'long runs go well past 20 km: ' .. farthest)
   local any, none = jobs.board(penrith, 3, {}, 5000), jobs.board(penrith, 3, {}, 5000, 'any')
   for i = 1, 3 do T.eq(none[i].id, any[i].id, 'Any keeps the usual mix'); T.eq(any[i].outside, nil, 'never outside') end
   local far = jobs.board({ id = 'lonely', name = 'Lonely', latitude = penrith.latitude + 0.05, longitude = penrith.longitude, size = 'village' }, 0, {}, 5000)
