@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Street View has its own tab.** The new **Street View** tab on the HUD holds everything for it: **Turn on** and **Turn off**, **Open again** if you closed the browser page, and the address with its **Copy** button. **Go sightseeing** has moved there too, with a short note on how it works. The space above the tabs is clearer: while Street View is on it just shows a small green **Street View on** button that takes you to the tab. While you are sightseeing, the tabs are hidden as before, so the sightseeing panel has its own **Turn on Street View** button. The tabs now sit in two rows, with Route, Town, Garage and Relocate on top and Heli, Home and Street View below, so every name fits at full size. Your saves still work.
+
 ## Build 139 · 5 Nov 2026
 
 - **Town jobs now end at a real business.** When you take a job to a town, the HUD looks up one real business there that suits your load on OpenStreetMap: a builders' merchant or hardware store for bricks, a car parts shop or garage for parts, a farm or garden centre for water, a fuel station for fuel. The job card shows its name, such as "Bunnings Warehouse, St Clair", and the GPS takes you to the road right outside it. In the last 500 m the card counts down the metres, and you deliver by stopping within **25 m** of the spot. Each town keeps the same business for that load, for every player, so you can get to know your regular stops. Pay is the same as before.

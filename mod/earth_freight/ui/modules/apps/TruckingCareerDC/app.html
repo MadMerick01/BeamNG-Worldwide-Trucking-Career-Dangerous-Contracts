@@ -155,16 +155,7 @@
       <span ng-if="data.fuel" title="Fuel in the tank"><span aria-hidden="true" style="display:inline-block;width:46px;height:7px;border-radius:4px;background:#33423f;vertical-align:middle;overflow:hidden;"><span ng-style="fuelStyle(data.fuel)" style="display:block;height:100%;"></span></span> {{data.fuel.litres | number:0}}/{{data.fuel.capacity | number:0}} L</span>
       <span ng-if="data.vehicle">{{data.vehicle.model || 'Your car'}}</span>
       <span title="Driven in this game">{{data.totalDistanceKm | number:1}} km</span>
-      <span ng-if="data.streetView" style="margin-left:auto;white-space:nowrap;"><button type="button" ng-click="openStreetView()" title="Show Google Street View of where you are in your web browser. It follows your truck every few seconds." style="padding:1px 8px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">Street View</button><button type="button" ng-if="data.streetView.on" ng-click="stopStreetView()" title="Turn Street View off" aria-label="Turn Street View off" style="margin-left:3px;padding:1px 6px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">&times;</button></span>
-    </div>
-    <div ng-if="data.streetView.feedback" role="status" style="margin-top:2px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.streetView.feedback}}</div>
-    <div ng-if="data.streetView.on && data.streetView.url" style="display:flex;gap:6px;margin-top:2px;font-size:12px;">
-      <input aria-label="Street View address" type="text" readonly ng-value="data.streetView.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
-      <button type="button" aria-label="Copy the Street View address" ng-click="copyStreetView()" style="padding:1px 8px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">Copy</button>
-    </div>
-    <div ng-if="data.sightseeing && !data.sightseeing.on" style="margin-top:3px;text-align:right;">
-      <button type="button" ng-click="goSightseeing()" ng-disabled="!data.sightseeing.allowed" ng-style="{opacity: data.sightseeing.allowed ? 1 : 0.5}" title="{{data.sightseeing.problem || 'Saves your game, then swaps your truck for a free Moonhawk so you can go anywhere and look around. Return to your job brings everything back.'}}" style="padding:1px 8px;font-size:12px;border:1px solid #568d7a;border-radius:4px;">Go sightseeing</button>
-      <div ng-if="data.sightseeing.feedback" role="status" style="margin-top:2px;color:#c9d6d2;font-size:12px;text-align:left;overflow-wrap:anywhere;">{{data.sightseeing.feedback}}</div>
+      <span ng-if="data.streetView.on && !data.sightseeing.on" style="margin-left:auto;white-space:nowrap;"><button type="button" ng-click="setTab('streetview')" title="Street View is following your truck in your web browser. Open the Street View tab." style="padding:1px 8px;font-size:12px;color:#6fcf97;border:1px solid #6fcf97;border-radius:4px;"><span aria-hidden="true">&#9679;</span> Street View on</button></span>
     </div>
     <div ng-if="data.saveFeedback" style="margin-top:2px;color:#c9d6d2;font-size:12px;">{{data.saveFeedback}}</div>
     <div ng-if="data.mode === 'start' && data.startHereAllowed" style="margin:8px 0;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
@@ -190,6 +181,14 @@
       <div ng-if="data.sightseeing.car.distanceMetres > 50" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Your truck is {{km(data.sightseeing.car.distanceMetres)}} km {{data.sightseeing.car.direction}}, waiting with your job.</div>
       <button type="button" ng-click="returnToJob()" ng-disabled="!data.sightseeing.returnAllowed" ng-style="{opacity: data.sightseeing.returnAllowed ? 1 : 0.6}" style="margin-top:8px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{data.sightseeing.returnAllowed ? 'Return to your job' : 'Returning to your job...'}}</button>
       <div ng-if="data.sightseeing.feedback" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.sightseeing.feedback}}</div>
+      <div ng-if="data.streetView" style="margin-top:8px;">
+        <button type="button" ng-click="openStreetView()" style="padding:5px 10px;border:1px solid #568d7a;border-radius:4px;">{{data.streetView.on ? 'Open Street View again' : 'Turn on Street View'}}</button>
+        <div ng-if="data.streetView.feedback" role="status" style="margin-top:4px;font-size:12px;color:#c9d6d2;overflow-wrap:anywhere;">{{data.streetView.feedback}}</div>
+        <div ng-if="data.streetView.on && data.streetView.url" style="display:flex;gap:6px;margin-top:4px;font-size:12px;">
+          <input aria-label="Street View address" type="text" readonly ng-value="data.streetView.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
+          <button type="button" aria-label="Copy the Street View address" ng-click="copyStreetView()">Copy</button>
+        </div>
+      </div>
     </div>
     <div ng-if="data.load && !data.sightseeing.on" style="margin:8px 0 0;padding:7px 10px;border:2px solid #f2c94c;border-radius:6px;">
       <div style="display:flex;align-items:baseline;gap:8px;">
@@ -204,8 +203,10 @@
       <div ng-if="data.load.business.inZone && data.load.business.delivery.problem" style="margin-top:2px;font-size:12px;color:#c9d6d2;">{{data.load.business.delivery.problem}}</div>
       <button ng-if="data.load.business.inZone" type="button" ng-click="deliverJob()" ng-disabled="!data.load.business.delivery.allowed" style="margin-top:6px;padding:7px 12px;background:#6fcf97;color:#0c1318;font-weight:bold;border:1px solid #6fcf97;border-radius:4px;">Deliver ${{data.load.pay | number:0}}</button>
     </div>
-    <div role="tablist" ng-if="!data.sightseeing.on" style="display:flex;gap:3px;margin-top:10px;border-bottom:1px solid #568d7a;">
-      <button type="button" role="tab" ng-repeat="t in tabs" ng-click="setTab(t.id)" aria-selected="{{tab === t.id}}" ng-style="tab === t.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="flex:1;min-width:0;padding:4px 2px;font-size:13px;border:1px solid #568d7a;border-bottom:none;border-radius:6px 6px 0 0;">{{t.label}}<span ng-if="tabAlert(t.id)" style="color:#f2c94c;" aria-label="needs attention"> &#9679;</span></button>
+    <div role="tablist" ng-if="!data.sightseeing.on" style="margin-top:10px;padding-bottom:6px;border-bottom:1px solid #568d7a;">
+      <div ng-repeat="row in tabRows" style="display:flex;gap:4px;" ng-style="$first ? {} : {marginTop:'4px'}">
+        <button type="button" role="tab" ng-repeat="t in row" ng-click="setTab(t.id)" aria-selected="{{tab === t.id}}" ng-style="tab === t.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="flex:1;min-width:0;padding:4px 2px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid #568d7a;border-radius:6px;">{{t.label}}<span ng-if="tabAlert(t.id)" style="color:#f2c94c;" aria-label="needs attention"> &#9679;</span></button>
+      </div>
     </div>
     <div role="tabpanel" ng-if="!data.sightseeing.on" style="padding-top:8px;">
       <div ng-if="tab === 'route'">
@@ -670,6 +671,34 @@
           <div ng-if="data.home.stored" style="margin-top:4px;font-size:12px;color:#7d8b88;">Each car keeps its own parts, fuel and damage.</div>
         </div>
         <div ng-if="data.home.feedback" role="status" style="margin-top:4px;">{{data.home.feedback}}</div>
+      </div>
+      <div ng-if="tab === 'streetview'">
+        <div ng-if="!data.streetView" style="color:#c9d6d2;">Street View is not available in this version of BeamNG.</div>
+        <div ng-if="data.streetView" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <div style="flex:1;font-weight:bold;color:#a7e5c9;">Street View</div>
+            <div ng-style="{color: data.streetView.on ? '#6fcf97' : '#7d8b88'}" style="font-size:13px;font-weight:bold;">{{data.streetView.on ? 'On' : 'Off'}}</div>
+          </div>
+          <div style="margin-top:2px;font-size:13px;">Google Street View of where you are, in your web browser. It follows your truck every few seconds. Handy on a second screen.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+            <button type="button" ng-if="!data.streetView.on" ng-click="openStreetView()" style="padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Turn on</button>
+            <button type="button" ng-if="data.streetView.on" ng-click="openStreetView()" title="Opens the Street View page in your web browser again, if you closed it" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Open again</button>
+            <button type="button" ng-if="data.streetView.on" ng-click="stopStreetView()" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Turn off</button>
+          </div>
+          <div ng-if="data.streetView.feedback" role="status" style="margin-top:6px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.streetView.feedback}}</div>
+          <div ng-if="data.streetView.on && data.streetView.url" style="display:flex;gap:6px;margin-top:4px;font-size:12px;">
+            <input aria-label="Street View address" type="text" readonly ng-value="data.streetView.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
+            <button type="button" aria-label="Copy the Street View address" ng-click="copyStreetView()">Copy</button>
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Pop out, zoom, Camera or Truck facing and the update rate (6, 10 or 20 s) are on the Street View page itself, under Settings.</div>
+        </div>
+        <div ng-if="data.sightseeing" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Go sightseeing</div>
+          <div style="margin-top:2px;font-size:13px;">Saves your game, then swaps your truck for a free Moonhawk so you can teleport anywhere and look around with Street View. Return to your job brings back your truck, your job and your money.</div>
+          <button type="button" ng-click="goSightseeing()" ng-disabled="!data.sightseeing.allowed" ng-style="{opacity: data.sightseeing.allowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Go sightseeing</button>
+          <div ng-if="data.sightseeing.problem" style="margin-top:4px;font-size:12px;color:#c9d6d2;">{{data.sightseeing.problem}}</div>
+          <div ng-if="data.sightseeing.feedback" role="status" style="margin-top:4px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.sightseeing.feedback}}</div>
+        </div>
       </div>
       <div ng-if="tab === 'heli'">
         <div ng-if="!data.heli" style="color:#c9d6d2;">Heli flights open once you are in your car at your start or last save.</div>
