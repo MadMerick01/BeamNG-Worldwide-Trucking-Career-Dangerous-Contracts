@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 139 · 5 Nov 2026
+
 - **Town jobs now end at a real business.** When you take a job to a town, the HUD looks up one real business there that suits your load on OpenStreetMap: a builders' merchant or hardware store for bricks, a car parts shop or garage for parts, a farm or garden centre for water, a fuel station for fuel. The job card shows its name, such as "Bunnings Warehouse, St Clair", and the GPS takes you to the road right outside it. In the last 500 m the card counts down the metres, and you deliver by stopping within **25 m** of the spot. Each town keeps the same business for that load, for every player, so you can get to know your regular stops. Pay is the same as before.
 - If no suitable business is found, or the game can't reach the internet, the job ends in the middle of town as it always has. Off-road drops and dangerous contracts are unchanged. Your saves still work, and a town job you are already carrying gets its business the same way.
 
