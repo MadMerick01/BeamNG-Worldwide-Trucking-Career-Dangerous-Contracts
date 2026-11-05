@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 140 · 5 Nov 2026
+
 - **Street View has its own tab.** The new **Street View** tab on the HUD holds everything for it: **Turn on** and **Turn off**, **Open again** if you closed the browser page, and the address with its **Copy** button. **Go sightseeing** has moved there too, with a short note on how it works. The space above the tabs is clearer: while Street View is on it just shows a small green **Street View on** button that takes you to the tab. While you are sightseeing, the tabs are hidden as before, so the sightseeing panel has its own **Turn on Street View** button. The tabs now sit in two rows, with Route, Town, Garage and Relocate on top and Heli, Home and Street View below, so every name fits at full size. Your saves still work.
 
 ## Build 139 · 5 Nov 2026
