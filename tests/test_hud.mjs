@@ -17,7 +17,7 @@ function page() {
   })
   return { body: make('body'), createElement: make }
 }
-function app(storage, element) {
+function app(storage, element, extra) {
   const commands = [], handlers = {}, root = {}, timers = new Map(), timeouts = [], document = page()
   let definition, clock = 0
   const scope = { $on: (name, fn) => { handlers[name] = fn }, $evalAsync: fn => fn() }
@@ -30,7 +30,7 @@ function app(storage, element) {
     setInterval: fn => { timers.set(1, fn); return 1 },
     clearInterval: id => timers.delete(id), Date: { now: () => clock },
     setTimeout: (fn, ms) => { timeouts.push({ fn, ms }); return timeouts.length },
-    window: storage ? { localStorage: storage } : {}, document
+    window: storage ? { localStorage: storage } : {}, document, ...(extra || {})
   })
   definition.link(scope, element)
   const state = data => handlers.EarthFreightState({}, data)
@@ -841,4 +841,64 @@ test('Street View: the address sits in a box with a Copy button, which only copi
   assert.equal(a.commands.length, before, 'only a local address is ever copied')
   a.state({ state: 'READY', streetView: { on: true, url: 'http://127.0.0.1:47170/' } }); a.scope.copyStreetView()
   assert.equal(a.commands.at(-1), 'setClipboard("http://127.0.0.1:47170/")')
+})
+
+test('real businesses: the HUD picks one that suits the load, moves it to the road and tells the game', async () => {
+  const asked = []
+  const shops = [
+    { type: 'node', id: 5, lat: -33.80, lon: 150.80, tags: { name: 'Corner Cafe', amenity: 'cafe' } },
+    { type: 'node', id: 9, lat: -33.80, lon: 150.80, tags: { name: "O'Brien \"Tools\"", shop: 'hardware' } },
+    { type: 'way', id: 3, center: { lat: -33.801, lon: 150.801 }, tags: { name: 'Brick & Co', shop: 'trade' } }
+  ]
+  const road = [{ geometry: [{ lat: -33.8003, lon: 150.800 }, { lat: -33.8003, lon: 150.802 }] }]
+  const fetch = (url, opts) => {
+    asked.push(decodeURIComponent(opts.body.slice(5)))
+    const roads = asked.at(-1).includes('highway')
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ elements: roads ? road : shops }) })
+  }
+  const a = app(null, null, { fetch, Promise })
+  const lookup = { key: 'gn42:bricks', town: 'St Clair', latitude: -33.8, longitude: 150.8, good: 'bricks', metres: 1500, widerMetres: 3000 }
+  // Bricks go to a builders' merchant before a hardware store; a cafe never.
+  const list = a.scope.businessCandidates(shops, lookup.key, 'bricks')
+  assert.deepEqual([...list.map(b => b.kind)], ['builders', 'hardware'])
+  assert.equal(a.scope.businessCandidates(shops, 'gn42:fuel', 'fuel').length, 0, 'nothing for fuel here')
+  a.state({ state: 'READY', load: { to: 'St Clair', lookup } })
+  a.state({ state: 'READY', load: { to: 'St Clair', lookup } })
+  await new Promise(r => setImmediate(r)); await new Promise(r => setImmediate(r))
+  await new Promise(r => setTimeout(r, 10))
+  assert.equal(asked.length, 2, 'one search and one road lookup, asked once even with two updates')
+  assert.ok(asked[0].includes('around:1500,-33.800000,150.800000'), 'around the town')
+  const sent = a.commands.at(-1)
+  assert.match(sent, /^if earthFreight_core then earthFreight_core\.setBusiness\("gn42:bricks","Brick%20%26%20Co","builders",-33\.8003\d*,150\.801\d*\) end$/)
+  // A name with quotes cannot break out of the command.
+  const b = app(null, null, { fetch: (u, o) => Promise.resolve({ ok: true, json: () => Promise.resolve({ elements: o.body.includes('highway') ? road : [shops[1]] }) }), Promise })
+  b.scope.lookUpBusiness({ ...lookup, key: 'gn43:bricks' })
+  await new Promise(r => setTimeout(r, 10))
+  assert.ok(b.commands.at(-1).includes('"O\'Brien%20%22Tools%22"'), 'quotes encoded')
+  // Nothing anywhere: the game is told, after one wider search.
+  const none = []
+  const c = app(null, null, { fetch: (u, o) => { none.push(o.body); return Promise.resolve({ ok: true, json: () => Promise.resolve({ elements: [] }) }) }, Promise })
+  c.scope.lookUpBusiness({ ...lookup, key: 'gn44:water' })
+  await new Promise(r => setTimeout(r, 10))
+  assert.equal(none.length, 2, 'searched wider once'); assert.ok(decodeURIComponent(none[1]).includes('around:3000'))
+  assert.equal(c.commands.at(-1), fixed('noBusiness("gn44:water")'))
+  // No web: nothing is sent, and the usual drop-off stays.
+  const d = app(null, null, { fetch: () => Promise.reject(new Error('offline')), Promise })
+  const before = d.commands.length
+  d.scope.lookUpBusiness({ ...lookup, key: 'gn45:parts' })
+  await new Promise(r => setTimeout(r, 10))
+  assert.equal(d.commands.length, before, 'nothing sent when offline')
+  assert.equal(d.scope.lookUpBusiness({ ...lookup, key: 'bad key"' }), null, 'odd keys ignored')
+})
+
+test('real businesses: the job card names the business, counts down the last metres and delivers there', () => {
+  assert.ok(html.includes('{{data.load.business.distanceMetres | number:0}} m to {{data.load.business.name}}'), 'countdown')
+  const a = app()
+  a.state({ state: 'READY', load: { to: 'St Clair', pay: 900, distanceMetres: 5000, business: { name: 'Bunnings', near: true, distanceMetres: 120, inZone: false, delivery: { allowed: false } } } })
+  assert.equal(a.scope.trip(a.scope.data).to, 'Bunnings, St Clair')
+  assert.equal(a.scope.trip(a.scope.data).metres, 120, 'exact metres when close'); assert.equal(a.scope.atShop(a.scope.data), true)
+  const before = a.commands.length
+  a.scope.deliverJob(); assert.equal(a.commands.length, before, 'not delivered outside the circle')
+  a.state({ state: 'READY', load: { to: 'St Clair', pay: 900, business: { name: 'Bunnings', near: true, distanceMetres: 12, inZone: true, delivery: { allowed: true } } } })
+  a.scope.deliverJob(); assert.equal(a.commands.at(-1), fixed('deliverJob()'))
 })

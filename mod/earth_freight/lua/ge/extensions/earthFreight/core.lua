@@ -24,6 +24,7 @@ local aircraft = require('earthFreight/aircraft')
 local trailers = require('earthFreight/trailers')
 local home = require('earthFreight/home')
 local streetView = require('earthFreight/streetView')
+local business = require('earthFreight/business')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -44,6 +45,8 @@ local TELEPORT_WAIT_SECONDS = 30
 local AUTOSAVE_SECONDS = 3
 -- Whether the Street View window was on, so it starts again with the game.
 local STREET_VIEW_FILE = '/settings/earthFreight/streetview.json'
+-- The real businesses found for towns, so each town is only looked up once (see business.lua).
+local BUSINESS_FILE = '/settings/earthFreight/businesses.json'
 M.AUTOSAVE_SECONDS = AUTOSAVE_SECONDS
 -- A puncture's tyre repair, as damage points, so every repair quote and bill includes it. Like
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
@@ -164,6 +167,8 @@ function M.new(deps)
     local out = copy(l)
     out.paid = nil
     if l.contract ~= nil then out.drop = location.copy(contracts.get(l.contract).finish) end
+    -- A business that no longer checks out leaves the town's usual drop-off.
+    if l.business ~= nil then out.business = not l.drop and business.clean(l.business, places.get(l.to)) or nil end
     return out
   end
 
@@ -651,7 +656,7 @@ function M.new(deps)
     if not self.punctures or self.paused() or self.pendingParts or self.pendingCar then return end
     local progression = self.profile.progression
     if progression.lastPunctureKm and progression.totalDistanceKm - progression.lastPunctureKm < punctures.GAP_KM then return end
-    local goal = self.load and self.load.to and places.get(self.load.to)
+    local goal = self.load and (self.load.business or self.load.to and places.get(self.load.to))
     local left = goal and location.distance(sample, goal)
     if left and left <= punctures.SAFE_FINISH_METRES then return end
     if not self.offRoadCheckedAt or self.clock - self.offRoadCheckedAt >= punctures.OFF_ROAD_CHECK_SECONDS then
@@ -835,14 +840,112 @@ function M.new(deps)
     end
     -- The job card shows the load and the pay; a message is only needed when the GPS could not be set.
     self.tradeFeedback = nil
-    if self.configuration.autoGps and self.adapter.setDestination then
-      local ok, why = self.adapter:setDestination(destination, destination.name)
-      self.gpsTown, self.gpsContract, self.gpsFeedback = ok and destination.id or nil, nil, nil
-      if not ok then self.tradeFeedback = 'Set the GPS yourself: copy the drop-off coordinates on the Route tab.' end
-      self.diag:event('gps', ok and destination.id or tostring(why), ok and 'I' or 'W')
-    end
+    -- A real business in that town, when one was found before; otherwise the HUD looks for one.
+    local known = self:businesses()[business.key(destination.id, good.id)]
+    if known and not known.none then self.load.business = business.clean(known, destination) end
+    self:gpsToJob()
     self.diag:event('job_taken', string.format('%s x%d %s -> %s for %d', good.id, quote.units, place.id, destination.id, quote.pay))
     return true
+  end
+
+  -- Sets the GPS to the job's drop-off: its business when it has one, else the middle of its town.
+  function c:gpsToJob()
+    local load = self.load
+    if not load or load.drop or not self.configuration.autoGps or not self.adapter.setDestination then return false end
+    local town = places.get(load.to)
+    local spot = load.business or town
+    local name = load.business and (load.business.name .. ', ' .. town.name) or town.name
+    local ok, why = self.adapter:setDestination(spot, name)
+    self.gpsTown, self.gpsContract, self.gpsFeedback = ok and not load.business and town.id or nil, nil, nil
+    if not ok then self.tradeFeedback = 'Set the GPS yourself: copy the drop-off coordinates on the Route tab.' end
+    self.diag:event('gps', ok and (load.business and ('business:' .. town.id) or town.id) or tostring(why), ok and 'I' or 'W')
+    return ok == true
+  end
+
+  -- The businesses found so far, read from their file the first time.
+  function c:businesses()
+    if not self.businessList then
+      local saved
+      if deps.io then
+        local ok, value = pcall(function() return deps.io.exists(BUSINESS_FILE) and deps.io.read(BUSINESS_FILE) end)
+        saved = ok and value or nil
+      end
+      self.businessList = business.remembered(saved)
+    end
+    return self.businessList
+  end
+
+  function c:rememberBusiness(key, entry)
+    business.remember(self:businesses(), key, entry, self.now())
+    if not deps.io then return end
+    pcall(function()
+      deps.io.mkdir('/settings/earthFreight')
+      deps.io.write(BUSINESS_FILE, { towns = self.businessList })
+    end)
+  end
+
+  -- What the HUD should look up: the town job's town and good, while no business is known for it.
+  function c:businessWanted()
+    local load = self.load
+    if not load or load.drop or load.business then return nil end
+    local town, good = places.get(load.to), goods.get(load.good)
+    local key = business.key(town.id, good.id)
+    if self:businesses()[key] then return nil end
+    return { key = key, town = town.name, latitude = town.latitude, longitude = town.longitude, good = good.id,
+      metres = business.SEARCH_METRES, widerMetres = business.WIDER_METRES }
+  end
+
+  -- The HUD found a business for the job's town: it becomes the drop-off. name and kind come
+  -- percent-encoded. Only taken for the town job on board, and only while it has none.
+  function c:setBusiness(key, name, kind, latitude, longitude)
+    local wanted = self:businessWanted()
+    if not wanted or key ~= wanted.key then return false end
+    local town = places.get(self.load.to)
+    local found = business.clean({ name = business.decode(name), kind = kind, latitude = latitude, longitude = longitude }, town)
+    if not found then
+      self.diag:event('business', 'refused:' .. wanted.key, 'W')
+      return false
+    end
+    self:rememberBusiness(wanted.key, business.clean(found))
+    self.load.business = found
+    self:gpsToJob()
+    self.diag:event('business', wanted.key .. ':' .. found.kind)
+    return true
+  end
+
+  -- The HUD looked and found nothing that fits: the town's usual drop-off stays, and is remembered.
+  function c:noBusiness(key)
+    local wanted = self:businessWanted()
+    if not wanted or key ~= wanted.key then return false end
+    self:rememberBusiness(wanted.key, { none = true })
+    self.diag:event('business', 'none:' .. wanted.key)
+    return true
+  end
+
+  -- Why the job cannot be delivered at its business now (nil when it can).
+  function c:businessProblem()
+    local sample, load = self.lastSample, self.load
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not sample or not sample.valid then
+      return 'Deliveries are unavailable right now.'
+    end
+    if self.hire then return self:awayText() end
+    if self.onFoot then return ON_FOOT end
+    local away = location.distance(sample, load.business)
+    if not away or away > business.RADIUS then
+      return 'Drive to ' .. load.business.name .. ' and stop within ' .. business.RADIUS .. ' m of it.'
+    end
+    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+    if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if self.trailerShop then return 'Finish with your trailer parts on the Garage tab first.' end
+    local trailerProblem = self:trailerDeliveryProblem()
+    if trailerProblem then return trailerProblem end
+    local needed = jobs.drivenNeeded(places.get(load.from), places.get(load.to))
+    if load.drivenKm * 1000 < needed then
+      return 'Drive it here: you have driven ' .. string.format('%.1f', load.drivenKm) .. ' km of the '
+        .. string.format('%.1f', needed / 1000) .. ' km this job needs.'
+    end
+    if not self.odometer:stopped() then return 'Stop the truck to deliver.' end
+    return nil
   end
 
   -- Takes a dangerous contract: pays the relocation and asks Earth to teleport the car to the start.
@@ -923,6 +1026,7 @@ function M.new(deps)
   function c:deliveryProblem(place)
     if not self.load or not place then return 'You have no job to deliver.' end
     if place.id ~= self.load.to then return nil end
+    if self.load.business then return self:businessProblem() end
     local trailerProblem = self:trailerDeliveryProblem()
     if trailerProblem then return trailerProblem end
     local needed = jobs.drivenNeeded(places.get(self.load.from), place)
@@ -1011,11 +1115,18 @@ function M.new(deps)
   -- Delivers the job at its drop-off: paid in full, and the town needs that good a little less.
   function c:deliver()
     if self.load and self.load.drop then return self:deliverDrop() end
-    local place = self:here()
-    local problem = self:tradeProblem(place)
-    if not problem and not self.load then problem = 'You have no job to deliver.' end
-    if not problem and place.id ~= self.load.to then problem = 'This job goes to ' .. places.get(self.load.to).name .. '.' end
-    if not problem then problem = self:deliveryProblem(place) end
+    local place, problem
+    if self.load and self.load.business then
+      -- At a business the truck may be past the edge of town: the spot is what counts.
+      place = places.get(self.load.to)
+      problem = self:businessProblem()
+    else
+      place = self:here()
+      problem = self:tradeProblem(place)
+      if not problem and not self.load then problem = 'You have no job to deliver.' end
+      if not problem and place.id ~= self.load.to then problem = 'This job goes to ' .. places.get(self.load.to).name .. '.' end
+      if not problem then problem = self:deliveryProblem(place) end
+    end
     if problem then
       self.tradeFeedback = problem
       return false
@@ -1031,7 +1142,8 @@ function M.new(deps)
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
-    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' to ' .. place.name
+    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' to '
+      .. (load.business and (load.business.name .. ', ') or '') .. place.name
       .. '. ' .. self:named('Nice driving') .. '.' .. refund)
     self.tradeFeedback = nil
     self:autoSaveSoon('your delivery')
@@ -1488,10 +1600,19 @@ function M.new(deps)
         kg = self.load.kg, pay = self.load.pay, drivenKm = self.load.drivenKm,
         -- A fluid load's slots are its litres.
         litres = good.kind == 'fluid' and self.load.slots or nil,
-        from = from.name, to = to.name, destination = location.copy(to),
-        distanceMetres = current and places.roadEstimate(current, to) or nil,
-        direction = current and location.compassPoint(location.bearing(current, to)) or nil,
+        from = from.name, to = to.name, destination = location.copy(self.load.business or to),
+        distanceMetres = current and places.roadEstimate(current, self.load.business or to) or nil,
+        direction = current and location.compassPoint(location.bearing(current, self.load.business or to)) or nil,
+        lookup = self:businessWanted(),
       }
+      local b = self.load.business
+      if b then
+        local away = current and location.distance(current, b)
+        local problem = self:businessProblem()
+        loadView.business = { name = b.name, kind = business.label(b), distanceMetres = away,
+          near = away ~= nil and away <= business.COUNTDOWN_METRES, inZone = away ~= nil and away <= business.RADIUS,
+          radiusMetres = business.RADIUS, delivery = { allowed = problem == nil, problem = problem } }
+      end
     end
     return {
       here = place and { id = place.id, name = place.name, size = place.size } or nil,
@@ -2025,6 +2146,18 @@ function M.takeJob(job, share)
 end
 function M.setJobDistance(distance) return safely(function() return ensure():setJobDistance(distance) end) end
 function M.deliverJob() return safely(function() return ensure():deliver() end) end
+-- The HUD's answer about a real business for the job's town (see business.lua). The key, kind and
+-- coordinates are checked here; the name comes percent-encoded and is decoded and checked by the controller.
+local function businessKey(key) return type(key) == 'string' and #key <= 200 and not key:find('[^%w_:%-]') end
+function M.setBusiness(key, name, kind, latitude, longitude)
+  if not businessKey(key) or type(name) ~= 'string' or type(kind) ~= 'string' or not business.KINDS[kind]
+      or not location.finite(latitude) or not location.finite(longitude) then return false end
+  return safely(function() return ensure():setBusiness(key, name, kind, latitude, longitude) end)
+end
+function M.noBusiness(key)
+  if not businessKey(key) then return false end
+  return safely(function() return ensure():noBusiness(key) end)
+end
 function M.abandonJob() return safely(function() return ensure():abandonJob() end) end
 function M.claimInsurance() return safely(function() return ensure():claimInsurance() end) end
 function M.towHere() return safely(function() return ensure():towHere() end) end

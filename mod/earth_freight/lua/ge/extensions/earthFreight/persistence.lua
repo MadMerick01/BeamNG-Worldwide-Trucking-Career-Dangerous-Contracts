@@ -120,10 +120,18 @@ local function load(l)
   if l.trailerUnits ~= nil and (not integer(l.trailerUnits, 1) or not integer(l.units, 1) or l.trailerUnits > l.units) then return nil end
   if l.contract ~= nil and (type(l.contract) ~= 'string' or not optionalString(l.contract) or l.drop == nil
       or (l.started ~= nil and type(l.started) ~= 'boolean') or (l.fee ~= nil and not integer(l.fee, 0))) then return nil end
+  -- A town job's real business: its name, kind and the spot outside it.
+  local shop
+  if l.business ~= nil then
+    local b = l.business
+    if l.drop ~= nil or type(b) ~= 'table' or not location.valid(b) or not optionalString(b.name) or type(b.name) ~= 'string'
+        or type(b.kind) ~= 'string' or not optionalString(b.kind) then return nil end
+    shop = { name = b.name, kind = b.kind, latitude = b.latitude, longitude = b.longitude }
+  end
   return { good = l.good, units = l.units, slots = l.slots, kg = l.kg or 0, pay = l.pay, paid = l.paid,
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
-    pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits }
+    pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop }
 end
 
 -- A "don't ask questions" job found and not yet picked up: its pickup and drop spots, which line
