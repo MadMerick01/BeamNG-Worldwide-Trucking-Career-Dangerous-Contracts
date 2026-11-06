@@ -1756,3 +1756,28 @@ do
 end
 
 T.done('Earth Freight controller')
+
+-- While testing, the parts menu and vehicle selector change the car for free: no bill, nothing
+-- paid, and the change is the player's car. A second-hand car and a job on board still bill.
+do
+  local Workshop = require('earthFreight/workshop')
+  Workshop.FREE_CHANGES = true
+  local c, _, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local balance = c.profile.progression.balance
+  T.check(c:view().freeChanges, 'the Garage tab says changes are free')
+  g.damage = 1000; c:tick(0.1)
+  g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
+  T.eq(c.pendingParts, nil, 'no parts bill'); T.eq(c.ownedParts.parts.turbo, 'pickup_turbo', 'the turbo is the player\'s')
+  T.eq(c.profile.progression.balance, balance, 'nothing paid'); T.eq(c.owedDamage, 1000, 'the damage before the change is still owed')
+  T.check(c.autoSave ~= nil, 'saved soon')
+  g.vehicleId, g.model, a.vehicle = 2, 'sport', { id = 2, model = 'sport' }; c:tick(0.1)
+  T.eq(c.pendingCar, nil, 'no car bill'); T.eq(c.ownedParts.model, 'sport', 'the sport car is the player\'s')
+  T.eq(c.ownedParts.id, 2, 'by its vehicle'); T.eq(c.profile.progression.balance, balance, 'still nothing paid')
+  T.eq(c.owedDamage, 0, 'the old car\'s repair went with it')
+  -- With a job on board, a car from the selector is billed as before, and refused.
+  T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a job')
+  g.vehicleId, g.model, a.vehicle = 3, 'pickup', { id = 3, model = 'pickup' }; c:tick(0.1)
+  T.check(c.pendingCar ~= nil, 'billed with a job on board'); T.check(not c:buyCar(), 'and refused')
+  Workshop.FREE_CHANGES = false
+end
