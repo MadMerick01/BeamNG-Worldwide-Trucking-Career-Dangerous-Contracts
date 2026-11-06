@@ -1763,6 +1763,8 @@ function M.new(deps)
         partsCost = self.pendingParts.partsCost, repair = self.pendingParts.repair, cost = self.pendingParts.cost,
       } or nil,
       buyPartsAllowed = self:buyPartsAllowed(),
+      -- While testing, the parts menu and vehicle selector change the car for free.
+      freeChanges = workshop.FREE_CHANGES or nil,
       revertPartsAllowed = self.pendingParts ~= nil,
       partsFeedback = self.partsFeedback,
       carChange = self.pendingCar and {

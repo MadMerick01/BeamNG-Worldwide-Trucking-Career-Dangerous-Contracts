@@ -1,4 +1,6 @@
 local F = {}
+-- The tests check real bills; free part and car changes while testing get their own test.
+require('earthFreight/workshop').FREE_CHANGES = false
 function F.copy(value)
   if type(value) ~= 'table' then return value end
   local out = {}
