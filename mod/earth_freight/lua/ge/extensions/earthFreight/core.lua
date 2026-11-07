@@ -370,12 +370,15 @@ function M.new(deps)
   end
 
   -- The cargo space of the car the player owns, from its paid-for parts. Once the car has said how
-  -- many litres its fluid tanks really hold, that replaces the size guessed from the part names.
+  -- many litres its fluid containers really hold, that replaces the size guessed from the part names.
+  -- A vanilla tanker's tank is part of its body, with no Cargo Load tank part to match on, so its
+  -- space comes only from the car's answer.
   function c:space()
     local space = cargo.capacity(self.ownedParts)
     local reading = self.tankReading
-    if reading and reading.litres and #space.tanks > 0 and self.ownedParts and reading.vehicleId == self.ownedParts.id then
+    if reading and reading.litres and self.ownedParts and reading.vehicleId == self.ownedParts.id then
       space.litres, space.tankKg = reading.litres, reading.litres
+      if #space.tanks == 0 then space.tanks = { cargo.BUILT_IN_TANK } end
     end
     return space
   end
@@ -805,7 +808,7 @@ function M.new(deps)
     local quote = job and not problem and self:jobQuote(job) or nil
     local good = job and goods.get(job.good)
     if quote and quote.units == 0 and good.kind == 'fluid' then
-      problem = good.name .. ' needs a fluid tank. Press Buy parts on the Garage tab, fit a Cargo Load fluid tank and pay for it there.'
+      problem = good.name .. ' needs a fluid tank. Drive a tanker, or press Buy parts on the Garage tab, fit a Cargo Load fluid tank and pay for it there.'
     elseif quote and quote.units == 0 then
       problem = 'Not enough cargo space or payload for ' .. good.name:lower() .. ': one unit takes ' .. good.slots
         .. (good.slots == 1 and ' slot' or ' slots') .. ' and ' .. string.format('%g', good.kg) .. ' kg. Fit a cargo box in the parts menu.'
@@ -1279,9 +1282,9 @@ function M.new(deps)
     self.fuelReadAt = self.clock
     local ok, why = self.fuelTank:read()
     if not ok then self.diag:event('fuel_read_failed', tostring(why), 'W') end
-    -- The fluid tanks' real size, once per car.
+    -- The fluid containers' real size, once per car: a fitted tank's, or a tanker's own.
     local space = cargo.capacity(self.ownedParts)
-    if self.cargo and self.cargo.readTanks and #space.tanks > 0 and not self.tankReading then self.cargo:readTanks(space.tankParts) end
+    if self.cargo and self.cargo.readTanks and not self.tankReading then self.cargo:readTanks(space.tankParts) end
   end
 
   function c:fuelReading(vehicleId, litres, capacity)
