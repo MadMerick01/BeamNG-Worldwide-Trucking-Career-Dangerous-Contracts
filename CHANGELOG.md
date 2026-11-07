@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **BeamNG's own tanker trucks now count as fluid space.** Before, only a Cargo Load fluid tank fitted in the parts menu counted, so a tanker you bought showed no tank and couldn't take water or fuel jobs. Now the game asks your truck how much its tank holds a moment after you get in, and the Garage tab shows it as "Built-in tank" with its size in litres. Water and fuel are poured into the tanker's own tank, so they slosh. Your saves still work.
+
 ## Build 142 · 5 Nov 2026
 
 - **Pressing Pay on the parts bill no longer closes the parts menu.** Closing it for you left you stuck in the free camera, so it's back to how it was: Pay just pays, and you leave the parts menu yourself to get back to your car on your usual camera. Your saves still work.

@@ -1,6 +1,7 @@
 -- Cargo space and weight. Space comes from the cargo boxes and fluid tanks fitted to the vehicle
 -- (BeamNG's own "Cargo Load" parts, fitted in the parts menu and paid for in the garage); a car
--- with no box still takes a couple of parcels in the boot, but fluids need a tank. The load itself is a number in the save, never
+-- with no box still takes a couple of parcels in the boot, but fluids need a tank (a fitted one, or a
+-- tanker's own, which only the car can report). The load itself is a number in the save, never
 -- objects in the tray, but its weight is added to the vehicle's nodes so a heavy load really is
 -- slower, brakes later and burns more fuel. A fluid is poured into the tank's own container, so it
 -- sloshes. Every game call is guarded: a missing or changed one
@@ -29,6 +30,10 @@ M.TANKS = {
   { size = 'm', label = 'Fluid tank M', litres = 200 },
   { size = 's', label = 'Fluid tank S', litres = 100 },
 }
+
+-- What the HUD calls a tank that is part of the vehicle itself, as on BeamNG's own tankers: the
+-- car reports its fluid containers but no Cargo Load tank part is fitted.
+M.BUILT_IN_TANK = 'Built-in tank'
 
 -- The tank a fitted part is, or nil.
 function M.tank(partName, displayName)

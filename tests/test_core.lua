@@ -985,6 +985,27 @@ do
   T.check(c:revertParts(false), 'put back')
 end
 
+-- A vanilla tanker: its tank is part of the body, with no Cargo Load tank part, so its space is
+-- whatever the car says its fluid containers hold.
+do
+  local c, io, a, g, w = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(w.tankReads > 0, 'a car with no tank part is still asked about its fluid containers')
+  T.eq(c:space().litres, 0, 'no space until it answers')
+  local car = c.ownedParts.id
+  c:tanksRead(car, 0); T.eq(c:space().litres, 0, 'a car with no fluid container has no tank')
+  T.eq(#c:space().tanks, 0, 'and lists none')
+  c:beforeRespawn()
+  c:tanksRead(car, 11999.7)
+  T.eq(c:space().litres, 12000, 'the tanker\'s own tank'); T.eq(c:space().tankKg, 12000, 'and its weight limit')
+  T.eq(c:space().tanks[1], 'Built-in tank', 'named on the Garage tab'); T.eq(c:view().space.litres, 12000, 'the HUD shows it')
+  local fluid = jobs.fluid(penrith)
+  local id = F.offer(c, stClair, fluid.id)
+  T.check(c:takeJob(id, 10), 'a fluid job goes in the tanker'); T.eq(c.load.slots, 1200, 'a tenth of the tank')
+  T.eq(w.weights[#w.weights].fluid.litres, 1200, 'poured into its containers')
+  T.eq(#w.weights[#w.weights].parts, 0, 'with no tank part to put the weight on')
+end
+
 -- The off-road drop: no GPS, an arrow to a spot about 2 km out, delivered stopped within 100 m.
 do
   local c, io, a = F.controller()
