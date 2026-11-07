@@ -16,6 +16,9 @@ local M = {}
 
 -- Driving this far from where the parts were changed, without paying, puts the paid parts back.
 M.UNPAID_PARTS_DRIVE_LIMIT = 25
+-- While testing (Rowan, 6 Nov): the parts menu and vehicle selector change the car for free, with
+-- no bill. Damage from before a part change is still owed. Set to false for real bills again.
+M.FREE_CHANGES = true
 -- A fresh start puts the player in this car; they upgrade it from there.
 M.STARTER_MODEL = 'burnside'
 M.STARTER_CONFIG = 'vehicles/burnside/earth_freight_starter.pc'
@@ -591,7 +594,11 @@ function M.attach(c)
       return true
     end
     -- A different vehicle, or a different model in place of this one, is a car the player is buying.
-    if used or owned.id ~= snapshot.id or owned.model ~= snapshot.model then return self:quoteCar(snapshot) end
+    local newCar = used or owned.id ~= snapshot.id or owned.model ~= snapshot.model
+    -- While changes are free, a car from the selector is the player's at once, unless a job on board
+    -- would not fit; a second-hand car bought on the Garage tab is still paid for.
+    if newCar and M.FREE_CHANGES and not used and not self.load then return self:takeCarFree(snapshot) end
+    if newCar then return self:quoteCar(snapshot) end
     -- The same car, saying our photo config since its photo was taken, is still the car it was.
     if snapshot.photo then
       snapshot.configFile, snapshot.name, snapshot.photo = owned.configFile, owned.name, nil
@@ -604,6 +611,7 @@ function M.attach(c)
       self.carFeedback = 'Back in your own car. Nothing to pay.'
     end
     local diff = pricing.partsDiff(owned, snapshot)
+    if diff and M.FREE_CHANGES and self:loadFits(snapshot) then return self:takePartsFree(snapshot) end
     if not diff then
       if self.pendingParts then
         self.partsFeedback = 'Part changes undone. Nothing to pay.'
@@ -640,6 +648,40 @@ function M.attach(c)
     self.partsFeedback = nil
     self.diag:event('parts_quote', string.format('%d parts, %d repair', diff.cost, repair))
     if not previous or billKey(previous) ~= billKey(self.pendingParts) then self:showPartsBill() end
+    return true
+  end
+
+  -- While changes are free: the parts fitted now are the player's, with nothing to pay. The change
+  -- respawned the car, which mends it, so the damage it had is still owed, as after Undo.
+  function c:takePartsFree(snapshot)
+    local pending = self.pendingParts
+    local damage = pending and pending.damage
+      or (self.lastDamage and self.lastDamage.id == snapshot.id and self.lastDamage.damage) or (self.owedDamage + self.punctureDamage)
+    if pending then damage = damage + math.max(0, self.owedDamage - (pending.owedBefore or self.owedDamage)) end
+    self:adoptParts(snapshot)
+    self.owedDamage, self.punctureDamage, self.quote = damage, 0, nil
+    self.partsFeedback = 'Parts changed for free while testing.'
+    self.diag:event('parts_free', tostring(snapshot.model))
+    self:autoSaveSoon('your part changes')
+    self:photoSoon()
+    return true
+  end
+
+  -- While changes are free: a car picked in the vehicle selector is the player's, at its game
+  -- Value, with nothing to pay. The old car is gone, and the repair it needed with it.
+  function c:takeCarFree(snapshot)
+    local previous = self.ownedParts and self.ownedParts.model
+    self:adoptParts(snapshot)
+    if self.garage and self.garage.removePhoto then
+      if previous then self.garage:removePhoto(previous) end
+      if snapshot.model ~= previous then self.garage:removePhoto(snapshot.model) end
+    end
+    self.photoModel, self.photoStamp = nil, nil
+    self.owedDamage, self.punctureDamage, self.fuel, self.quote = 0, 0, nil, nil
+    self.carFeedback = 'Changed to ' .. tostring(snapshot.name or snapshot.model) .. ' for free while testing.'
+    self.diag:event('car_free', tostring(snapshot.model))
+    self:autoSaveSoon('your new car')
+    self:photoSoon()
     return true
   end
 

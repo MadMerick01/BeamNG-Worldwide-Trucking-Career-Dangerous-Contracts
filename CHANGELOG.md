@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Free part and car changes for now, while we test.** Changing parts with **Buy parts**, or picking any car with **Buy new car**, no longer opens a bill: the change is simply yours, nothing is paid, and the game saves it soon after. The Garage tab says so. Damage your car had before a part change is still owed as a repair. Cars from **Second hand** are still paid for, and with a job on board you still can't swap cars. Bills will come back after testing. Your saves still work.
+
 ## Build 142 · 5 Nov 2026
 
 - **Pressing Pay on the parts bill no longer closes the parts menu.** Closing it for you left you stuck in the free camera, so it's back to how it was: Pay just pays, and you leave the parts menu yourself to get back to your car on your usual camera. Your saves still work.
