@@ -6,7 +6,7 @@
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
-M.AVERAGE_KM = 40 -- about one puncture per this many km, at REFERENCE_KMH on the road
+M.AVERAGE_KM = 160 -- about one puncture per this many km, at REFERENCE_KMH on the road
 M.REFERENCE_KMH = 70
 -- The speed factor is the speed over REFERENCE_KMH, kept within these, so crawling still has a
 -- small chance and flat out is at most this much riskier.
