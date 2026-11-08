@@ -1776,4 +1776,41 @@ do
   if card then T.eq(card.repair, 0, 'the start page card shows no repair') end
 end
 
+-- A player who has never put the HUD on screen is told how, a few times; once it shows, never again that level.
+do
+  local function hints(c)
+    local n = 0
+    for _, e in ipairs(c.toasts) do if e.title == Core.HUD_HINT_TITLE then n = n + 1 end end
+    return n
+  end
+  local function watched(options)
+    local c = F.controller(options)
+    c.toasts = {}
+    c.trigger = function(name, data) if name == 'toastrMsg' then c.toasts[#c.toasts + 1] = data end end
+    return c
+  end
+  local c = watched()
+  F.advance(c, Core.HUD_HINT_SECONDS - 1)
+  T.eq(hints(c), 0, 'not straight away')
+  F.advance(c, 2)
+  T.eq(hints(c), 1, 'no HUD for a while: a pop-up says how to add it')
+  T.check(c.toasts[1].msg:find('+ Add app', 1, true) ~= nil, 'with the steps')
+  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * (Core.HUD_HINT_TIMES + 2))
+  T.eq(hints(c), Core.HUD_HINT_TIMES, 'repeated a few times, then left alone')
+  c:endMission(); c:reload()
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(hints(c), Core.HUD_HINT_TIMES + 1, 'a new level starts the count again')
+
+  c = watched()
+  F.advance(c, 5)
+  c:mount(true)
+  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
+  T.eq(hints(c), 0, 'a player with the HUD on screen is never told')
+
+  local adapter = F.adapter(); adapter.valid, adapter.reason = false, 'earth_missing'
+  c = watched({ adapter = adapter })
+  F.advance(c, Core.HUD_HINT_SECONDS * 3)
+  T.eq(hints(c), 0, 'nor on a level without BeamNG.Earth')
+end
+
 T.done('Earth Freight controller')

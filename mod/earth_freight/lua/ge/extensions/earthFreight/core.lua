@@ -341,7 +341,29 @@ function M.new(deps)
     self.diag:event('first_car', ok and 'spawned' or tostring(why), ok and 'I' or 'W')
   end
 
+  -- The HUD is a UI app the player adds to their screen layout once. A player who has never added it (often someone
+  -- joining a server, who got the mod from it) sees nothing at all, so a pop-up says how, while BeamNG.Earth is
+  -- loaded and the HUD hasn't been on screen this level: after HUD_HINT_SECONDS, then every HUD_HINT_REPEAT_SECONDS,
+  -- at most HUD_HINT_TIMES. Once the HUD has shown, never again that level (it also closes while the game's menus are
+  -- open, which is no reason to nag).
+  M.HUD_HINT_SECONDS, M.HUD_HINT_REPEAT_SECONDS, M.HUD_HINT_TIMES = 20, 180, 3
+  M.HUD_HINT_TITLE = 'Turn on the trucking HUD'
+  M.HUD_HINT_TEXT = 'Worldwide Trucking needs its HUD on screen. Press Esc, go to System > HUD Apps > .Earth (edit layout), '
+    .. 'press + Add app, pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom of the list, press '
+    .. '+ Add to layout, move it where you like and press Save.'
+  function c:hintHud(sample, dt)
+    local earth = type(sample) == 'table' and (sample.valid or sample.reason == 'vehicle_required')
+    if self.hudSeen or not earth or (self.hudHints or 0) >= M.HUD_HINT_TIMES then return end
+    self.hudMissingFor = (self.hudMissingFor or 0) + dt
+    local due = M.HUD_HINT_SECONDS + (self.hudHints or 0) * M.HUD_HINT_REPEAT_SECONDS
+    if self.hudMissingFor < due then return end
+    self.hudHints = (self.hudHints or 0) + 1
+    self:toast('info', M.HUD_HINT_TITLE, M.HUD_HINT_TEXT, 30)
+    self.diag:event('hud_hint', tostring(self.hudHints))
+  end
+
   function c:endMission()
+    self.hudSeen, self.hudHints, self.hudMissingFor = nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
     self:interrupt('earth_level_required')
@@ -397,9 +419,9 @@ function M.new(deps)
   end
 
   -- A pop-up in the corner of the screen. Unlike the HUD it shows over the game's own menus.
-  function c:toast(kind, title, text)
+  function c:toast(kind, title, text, seconds)
     if self.trigger then
-      pcall(self.trigger, 'toastrMsg', { type = kind, title = title, msg = text, config = { timeOut = 12000 } })
+      pcall(self.trigger, 'toastrMsg', { type = kind, title = title, msg = text, config = { timeOut = (seconds or 12) * 1000 } })
     end
   end
 
@@ -1417,6 +1439,7 @@ function M.new(deps)
     local sample = self.adapter:sample()
     self:observe(sample, dt)
     self:spawnFirstCar(sample, dt)
+    self:hintHud(sample, dt)
     self:provideVehicle()
     self:watchHire()
     self:watchBeacon(dt)
@@ -2048,6 +2071,7 @@ function M.new(deps)
   end
 
   function c:mount(on)
+    if on then self.hudSeen = true end
     if self.ui:mount(on, self.clock) then
       self.diag:clear('ui_initialised'); self.diag:event('ui_initialised', 'Earth Freight HUD')
     end
