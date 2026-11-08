@@ -57,6 +57,10 @@ Startup folder (press Win+R and type `shell:startup`).
   address (search "what is my IP" on the host PC) and port 30814 from anywhere else.
 - On joining, the HUD says **Getting your trucking career from the server** for a few seconds, then loads your career
   on this server, or starts a new one.
+- **First time only: turn on the trucking HUD.** The mod comes from the server, but its HUD is a UI app each player
+  adds to their screen once: press Esc, go to System > HUD Apps > .Earth (edit layout), press + Add app, pick
+  **BeamNG Worldwide Trucking Career: Dangerous Contracts** near the bottom of the list, press + Add to layout and
+  Save. A player without it gets a pop-up with these steps after about 20 seconds.
 
 ## Careers, guests and seasons
 
