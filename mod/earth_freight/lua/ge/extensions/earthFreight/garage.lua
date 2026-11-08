@@ -429,6 +429,19 @@ function M.new(environment)
     return true
   end
 
+  -- Spawns a car for a player who has none, the way the game's vehicle menu does: where the camera is, and the player
+  -- put in it. BeamMP drops a joining player into the world with no car, as a free camera. Returns true once the game
+  -- spawned it; false with 'has_vehicle' when there already is one.
+  function g:spawnFirst(model, config)
+    if current() then return false, 'has_vehicle' end
+    local vehicles = env.vehicles()
+    if type(vehicles) ~= 'table' or type(vehicles.spawnNewVehicle) ~= 'function' then return false, 'spawn_unavailable' end
+    local ok, car = pcall(vehicles.spawnNewVehicle, model, { config = config, autoEnterVehicle = true })
+    if not ok then return false, 'spawn_failed', tostring(car) end
+    if not car then return false, 'spawn_failed' end
+    return true
+  end
+
   -- A part's slot types: a 0.39 part's slotType is a string, or a list of them.
   local function slotTypes(part)
     local t = type(part) == 'table' and part.slotType or nil

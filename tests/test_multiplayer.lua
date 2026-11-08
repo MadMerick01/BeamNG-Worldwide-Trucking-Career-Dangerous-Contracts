@@ -213,4 +213,32 @@ do
   T.eq(c.mp, nil, 'and talks to no server')
 end
 
+-- BeamMP drops a joining player in with no car: after a few seconds the starter car is put down for them, once.
+do
+  local W, env = server()
+  local io = F.io({ [F.CONFIG] = F.config() })
+  local handler
+  local send, pump = link(W, env, 1, function(event, data) handler(event, data) end)
+  local mp = { inSession = function() return true end, send = send, encode = J.encode, decode = J.decode,
+    listen = function(h) handler = h; return true end }
+  local adapter = F.adapter(); adapter.valid, adapter.reason = false, 'vehicle_required'
+  local garage = F.garage()
+  local spawned = {}
+  function garage:spawnFirst(model, config) spawned[#spawned + 1] = { model = model, config = config }; return true end
+  local c = F.controller({ io = io, multiplayer = mp, adapter = adapter, garage = garage })
+  F.advance(c, 5)
+  T.eq(#spawned, 0, 'no car while the career is still coming from the server')
+  pump()
+  F.advance(c, 1)
+  T.eq(#spawned, 0, 'not straight away')
+  F.advance(c, Core.FIRST_CAR_SECONDS + 1)
+  T.eq(#spawned, 1, 'a player with no car gets one')
+  T.eq(spawned[1].config, Core.STARTER_CONFIG, 'the starter car')
+  F.advance(c, 30)
+  T.eq(#spawned, 1, 'only once a level')
+  c:endMission(); mp.inSession = function() return false end; c:reload()
+  F.advance(c, 10)
+  T.eq(#spawned, 1, 'never in single player')
+end
+
 T.done('multiplayer careers')
