@@ -34,12 +34,19 @@ W.SHIP_EVERY_HOURS = 72
 W.SHIP_CONTAINERS = 20
 W.PORTS = {
   { id = 'valparaiso', name = 'Valparaíso', region = 'Chile', latitude = -33.0458, longitude = -71.6197 },
-  { id = 'reykjavik', name = 'Reykjavík', region = 'Iceland', latitude = 64.1466, longitude = -21.9426 },
+  { id = 'kotor', name = 'Kotor', region = 'Montenegro', latitude = 42.4247, longitude = 18.7712 },
   { id = 'hobart', name = 'Hobart', region = 'Tasmania, Australia', latitude = -42.8821, longitude = 147.3272 },
+  { id = 'reykjavik', name = 'Reykjavík', region = 'Iceland', latitude = 64.1466, longitude = -21.9426 },
+  { id = 'rio', name = 'Rio de Janeiro', region = 'Brazil', latitude = -22.8960, longitude = -43.1810 },
+  { id = 'hongkong', name = 'Hong Kong', region = 'China', latitude = 22.3570, longitude = 114.1270 },
   { id = 'capetown', name = 'Cape Town', region = 'South Africa', latitude = -33.9249, longitude = 18.4241 },
-  { id = 'anchorage', name = 'Anchorage', region = 'Alaska, USA', latitude = 61.2181, longitude = -149.9003 },
-  { id = 'tromso', name = 'Tromsø', region = 'Arctic Norway', latitude = 69.6492, longitude = 18.9553 },
+  { id = 'vancouver', name = 'Vancouver', region = 'British Columbia, Canada', latitude = 49.2870, longitude = -123.1110 },
+  { id = 'naples', name = 'Naples', region = 'Italy', latitude = 40.8400, longitude = 14.2520 },
   { id = 'wellington', name = 'Wellington', region = 'New Zealand', latitude = -41.2865, longitude = 174.7762 },
+  { id = 'cabo', name = 'Cabo San Lucas', region = 'Baja California Sur, Mexico', latitude = 22.8905, longitude = -109.9167 },
+  { id = 'tromso', name = 'Tromsø', region = 'Arctic Norway', latitude = 69.6492, longitude = 18.9553 },
+  { id = 'stgeorges', name = "St George's", region = 'Grenada', latitude = 12.0561, longitude = -61.7486 },
+  { id = 'anchorage', name = 'Anchorage', region = 'Alaska, USA', latitude = 61.2181, longitude = -149.9003 },
   { id = 'botany', name = 'Port Botany', region = 'Sydney, Australia', latitude = -33.9711, longitude = 151.2131 },
 }
 W.SHIP_NAMES = { 'MV Pacific Star', 'MV Southern Cross', 'MV Northern Light', 'MV Cape Runner', 'MV Ocean Pride',
