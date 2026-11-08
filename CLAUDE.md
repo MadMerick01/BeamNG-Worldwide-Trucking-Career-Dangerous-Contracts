@@ -11,3 +11,7 @@
 - Mention anything the player must do, such as deleting an old ZIP, and say whether their saves still work.
 - Never edit the numbered build sections by hand, except to fix a mistake.
 - If two PRs both add to `## Coming next`, a merge conflict there is expected. Keep both sets of entries.
+
+## The author's name
+
+The author is **MadMerick** everywhere in this repo and anything posted online: docs, changelog, code comments, commit messages and pull requests. Never use any other name for them.

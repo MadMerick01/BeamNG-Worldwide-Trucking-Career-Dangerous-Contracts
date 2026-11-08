@@ -1181,7 +1181,7 @@ do
   T.eq(r.profile.progression.contractsDone, nil, 'starts with no roads done')
 end
 
--- Carhuaz runs between the points Rowan checked in game, about 1.7 km apart as the crow flies.
+-- Carhuaz runs between the points MadMerick checked in game, about 1.7 km apart as the crow flies.
 -- A section's driveKm (no road sets it now) holds the load back until that much is driven.
 do
   local section = contracts.get('carhuaz')

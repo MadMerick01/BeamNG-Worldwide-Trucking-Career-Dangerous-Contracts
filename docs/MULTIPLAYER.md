@@ -1,6 +1,6 @@
 # Multiplayer career — design
 
-Status: **design only, nothing built.** Written 8 Nov 2026 from a design discussion with Rowan. Decisions are marked
+Status: **design only, nothing built.** Written 8 Nov 2026 from a design discussion with MadMerick. Decisions are marked
 **Decided**; open questions are tagged **❓ OPEN**.
 
 ## The pitch
@@ -32,10 +32,10 @@ Earth's (`Resources/Server/WorldwideTrucking/main.lua`) and never change Earth's
 
 ## Decided
 
-- **Hosting starts on Rowan's own PC, free.** The PC must not sleep, port 30814 TCP+UDP forwarded. Move to a
+- **Hosting starts on MadMerick's own PC, free.** The PC must not sleep, port 30814 TCP+UDP forwarded. Move to a
   $5–10/month VPS if it gets popular (home upload limits it to roughly 5–10 players; past 20–30, run servers by region).
   Charging, if ever, only once popular, and as supporter perks rather than an entry fee.
-- **Multiplayer careers are kept on the server** (Rowan, 8 Nov). The server is the only thing that changes a player's
+- **Multiplayer careers are kept on the server** (MadMerick, 8 Nov). The server is the only thing that changes a player's
   money. This gives seasons (resets), a fair leaderboard and no editing money in a save file.
 - **Multiplayer careers are separate from single-player careers.** Playing on a server never reads or writes the
   player's own `/settings/earthFreight/` saves.
@@ -64,7 +64,7 @@ The career already has the seams this needs:
 plus a running ledger of money events. The player id is the BeamMP account id from `MP.GetPlayerIdentifiers`, not the
 display name, so a renamed player keeps their career.
 
-**Decided (Rowan, 8 Nov): guest accounts are allowed, and keep money and trucks too.** A BeamMP guest has no account id
+**Decided (MadMerick, 8 Nov): guest accounts are allowed, and keep money and trucks too.** A BeamMP guest has no account id
 and a new random name each time, so the server gives every career a secret **career key** on first join. The game
 keeps it in a small file on the player's PC (one per server) and sends it on every join; the server finds the career by
 it. A guest's career therefore stays on the PC it was started on: a reinstall that deletes the file, or another PC,
@@ -100,13 +100,13 @@ the mod ship together and carry the same save schema.
 - **Shared job boards and town need.** Boards are now seeded by the player's own delivery count (`jobsDone`), so two
   players in one town see different jobs. Seed them from a per-town counter on the server instead, and keep town need on
   the server, so a delivery lowers the pay for everyone. Shortages already match for everyone (they come from the clock
-  hour and the town). **Decided (Rowan, 8 Nov): not yet.** A job one player takes stays on everyone's board for now.
+  hour and the town). **Decided (MadMerick, 8 Nov): not yet.** A job one player takes stays on everyone's board for now.
 - **Multiplayer HUD section.** "Go to a player" (teleport next to someone, free when not on a job, counted as a shipping
   booking when on one; shown by name and town only), and "Sync my truck" only if testing shows BeamMP desyncs after our
   respawns.
 - **Webpage and Discord.** The server writes a stats file; a Discord webhook posts the live delivery feed and a daily
   leaderboard first, then a page on a free static host (online now by town, leaderboards, server totals, Dangerous
-  Contract best times). Nothing is served from Rowan's PC.
+  Contract best times). Nothing is served from MadMerick's PC.
 - **Admin commands** in the server window (`players`, money fixes, kick).
 - **Co-op play:** player tows and roadside fuel first, then leaderboards, convoys, relay runs, player-to-player trading,
   companies.

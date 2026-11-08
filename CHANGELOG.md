@@ -9,6 +9,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 ## Build 146 · 8 Nov 2026
 
 - No changes in the game. A new design document plans a multiplayer version of the career on BeamMP servers.
+- No changes in the game. The notes now name the author as MadMerick.
 
 ## Build 145 · 7 Nov 2026
 
