@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Trucking servers now greet each player in chat** with how to turn on the trucking HUD. Anyone can type **!hud** in chat to see the steps again; only they see the answer. Server hosts can change the welcome lines at the top of the server plugin. To get this, unzip the new server download over your server folder and restart it. Careers are unaffected.
+
 ## Build 152 · 8 Nov 2026
 
 - **If the trucking HUD isn't on your screen, a pop-up now tells you how to add it.** This mostly helps players joining a server, who get the mod automatically but have never added its HUD. About 20 seconds into BeamNG.Earth without the HUD, a pop-up gives the steps: Esc, System, HUD Apps, .Earth (edit layout), + Add app, then pick BeamNG Worldwide Trucking Career: Dangerous Contracts and Save. It shows up to three times, a few minutes apart, and never once the HUD has been on screen. Saves are unaffected.

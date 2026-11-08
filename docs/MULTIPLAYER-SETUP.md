@@ -60,7 +60,9 @@ Startup folder (press Win+R and type `shell:startup`).
 - **First time only: turn on the trucking HUD.** The mod comes from the server, but its HUD is a UI app each player
   adds to their screen once: press Esc, go to System > HUD Apps > .Earth (edit layout), press + Add app, pick
   **BeamNG Worldwide Trucking Career: Dangerous Contracts** near the bottom of the list, press + Add to layout and
-  Save. A player without it gets a pop-up with these steps after about 20 seconds.
+  Save. The server also posts these steps in chat to each player as they join (anyone can type `!hud` to see
+  them again), and a player without the HUD gets a pop-up with them after about 20 seconds. To change the chat
+  message, edit the `W.WELCOME` lines near the top of `Resources\Server\WorldwideTrucking\main.lua` and restart.
 
 ## Careers, guests and seasons
 
