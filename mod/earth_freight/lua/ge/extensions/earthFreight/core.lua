@@ -368,7 +368,47 @@ function M.new(deps)
     self.diag:event('hud_hint', tostring(self.hudHints))
   end
 
+  -- For the server page: the town the player is in or nearest (its centre, never the player's own position), and what
+  -- they're doing, told to the server every WHERE_SECONDS and whenever either changes.
+  M.WHERE_SECONDS = 60
+  function c:doingText()
+    local load = self.load
+    if not load then
+      if self.ship and self:atPort(shipday.portTown(self.ship)) then return 'At the docks for Ship Day' end
+      return 'Looking for work'
+    end
+    local good = goods.get(load.good)
+    local to = load.to and places.get(load.to)
+    if load.ship then return 'Carrying container ' .. load.ship.n .. (to and (' to ' .. to.name) or '') end
+    if load.contract then
+      local section = contracts.get(load.contract)
+      return 'Dangerous contract' .. (section and (': ' .. section.name) or '')
+    end
+    if load.beacon then return 'Asking no questions' end
+    if load.drop then return 'Off-road drop: ' .. amount(good, load.units) end
+    return 'Carrying ' .. amount(good, load.units) .. (to and (' to ' .. to.name) or '')
+  end
+
+  function c:reportWhere(sample)
+    if not self.mp or self.mp.state ~= 'server' or not self.arrived or type(sample) ~= 'table' or not sample.valid then return end
+    local near = places.nearest(sample, 1)[1]
+    if not near then return end
+    local place, doing = near.place, self:doingText()
+    local key = place.id .. '|' .. doing
+    if key == self.whereSent and self.clock - (self.whereAt or -math.huge) < M.WHERE_SECONDS then return end
+    self.whereSent, self.whereAt = key, self.clock
+    self.mp:where({ town = place.name, region = place.region, latitude = place.latitude, longitude = place.longitude,
+      doing = doing })
+  end
+
+  -- Tells the server a delivery happened, for its live feed and today's totals.
+  function c:reportDelivery(kind, good, units, from, to, pay)
+    if not self.mp or self.mp.state ~= 'server' then return end
+    self.mp:delivered({ kind = kind, what = good and amount(good, units) or nil, from = from, to = to, pay = pay })
+  end
+
   function c:endMission()
+    self.whereSent, self.whereAt = nil, nil
     self.hudSeen, self.hudHints, self.hudMissingFor = nil, nil, nil
     self.ship, self.shipAt, self.shipClaim, self.shipFeedback = nil, nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
@@ -1335,6 +1375,8 @@ function M.new(deps)
       self.offer = nil
     end
     local section = load.contract and contracts.get(load.contract)
+    self:reportDelivery(load.beacon and 'beacon' or (section and 'contract' or 'drop'), not load.beacon and good or nil,
+      load.units, nil, section and section.name or nil, load.pay)
     if load.beacon then
       self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), 'Dropped off. Nobody saw a thing, and nobody asked.'
         .. refund)
@@ -1375,7 +1417,11 @@ function M.new(deps)
     self:addMoney(load.pay)
     jobs.delivered(self.needs, place, good, self.now())
     self:finishJob()
-    if load.ship and self.mp then self.mp:shipDelivered(load.ship.ship, load.ship.n, place.name, load.pay) end
+    if load.ship and self.mp then self.mp:shipDelivered(load.ship.ship, load.ship.n, place.name, load.pay)
+    else
+      local from = places.get(load.from)
+      self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay)
+    end
     local refund = ''
     if self.offer and shipping.offerPays(place, self.offer) then
       self:addMoney(self.offer.fee)
@@ -1607,6 +1653,7 @@ function M.new(deps)
     self:spawnFirstCar(sample, dt)
     self:hintHud(sample, dt)
     self:watchClaim()
+    self:reportWhere(sample)
     self:provideVehicle()
     self:watchHire()
     self:watchBeacon(dt)

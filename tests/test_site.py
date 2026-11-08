@@ -27,7 +27,7 @@ class SiteTest(unittest.TestCase):
     def test_page_reads_every_field_it_needs(self):
         for field in ('players', 'feed', 'leaderboard', 'sailsAt', 'containers', 'deliveries', 'earned', 'truckers'):
             self.assertIn(field, self.html)
-        self.assertIn('server-stats/status.json', self.html, 'live stats come from the server-stats branch')
+        self.assertIn('trucking-server-stats/main/status.json', self.html, 'live stats come from the stats repo')
         self.assertIn("'status.json'", self.html, 'with the sample as the fallback')
 
     def test_player_text_is_never_put_in_as_html(self):

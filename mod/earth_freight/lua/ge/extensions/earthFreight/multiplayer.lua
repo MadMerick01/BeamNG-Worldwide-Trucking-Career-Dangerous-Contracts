@@ -150,6 +150,9 @@ function M.new(deps)
   end
   function s:claim(ship, n) return shipEvent('wwtcClaim', { ship = ship, n = n }) end
   function s:release(ship, n) return shipEvent('wwtcRelease', { ship = ship, n = n }) end
+  -- The server page: where the player is (a town, never exact coordinates) and what they're doing, and each delivery.
+  function s:where(t) return shipEvent('wwtcWhere', t) end
+  function s:delivered(t) return shipEvent('wwtcDelivered', t) end
   function s:shipDelivered(ship, n, town, pay) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay }) end
   return s
 end

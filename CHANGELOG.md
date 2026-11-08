@@ -6,7 +6,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
-- No changes in the game. **The trucking server now has a public web page** showing who's driving and in which town, the current Ship Day with a countdown and containers left, a live feed, the season leaderboard and how to join. It shows sample data, clearly marked, until the server starts sending its live stats.
+- **The trucking server now has a public web page** showing who's driving and in which town, the current Ship Day with a countdown and containers left, a live feed of deliveries and joins, today's totals, the season leaderboard and how to join. On a server, your game now tells the server which town you're in (never your exact spot), what you're doing and each delivery, for that page. Server hosts turn on the live stats once with a GitHub token, as the hosting guide explains; until then the page shows sample data, clearly marked. Saves are unaffected.
 
 ## Build 154 · 8 Nov 2026
 

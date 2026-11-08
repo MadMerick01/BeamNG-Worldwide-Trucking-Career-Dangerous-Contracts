@@ -126,10 +126,10 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 'use strict'
-// Where the live stats come from: the server pushes status.json to the repo's server-stats branch. Until it does, the
-// sample next to this page is shown, marked as sample data.
+// Where the live stats come from: the server sends status.json to the trucking-server-stats repo (its own repo, so the
+// server's GitHub token can't touch this one). Until it does, the sample next to this page is shown, marked as such.
 var STATS_URLS = [
-  'https://raw.githubusercontent.com/MadMerick01/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/server-stats/status.json',
+  'https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json',
   'status.json'
 ]
 var REFRESH_MS = 60000
