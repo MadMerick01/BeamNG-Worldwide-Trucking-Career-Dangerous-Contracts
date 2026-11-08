@@ -25,6 +25,7 @@ local trailers = require('earthFreight/trailers')
 local home = require('earthFreight/home')
 local streetView = require('earthFreight/streetView')
 local business = require('earthFreight/business')
+local multiplayer = require('earthFreight/multiplayer')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -78,6 +79,7 @@ local messages = {
 local errorMessages = {
   newer_version = 'Your save was made by a newer version of Worldwide Trucking Career. Update the mod to keep playing.',
   storage_unavailable = 'Worldwide Trucking Career could not open its save folder. Load the level again to try again.',
+  mp_waiting = 'Getting your trucking career from the server. This takes a few seconds.',
   internal_error = 'Worldwide Trucking Career hit a problem and paused. Load the level again to carry on from your last save.'
     .. ' What went wrong is in beamng.log: search it for internal_error.',
 }
@@ -200,6 +202,18 @@ function M.new(deps)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
     -- A trailer still in the world from before is taken away: the save says where it is.
     if self.trailerOut and self.garage and self.garage.removeVehicle then self.garage:removeVehicle(self.trailerOut.id) end
+    -- On a BeamMP server the career is the server's, kept apart from the single-player one (multiplayer.lua).
+    -- The session lasts until the level ends, so a reload in it (such as New game) keeps talking to the same server.
+    local mp = deps.multiplayer
+    if not (mp and mp.inSession()) then
+      self.mp = nil
+    elseif not self.mp then
+      mp.listen(function(event, data) self:multiplayerEvent(event, data) end)
+      self.mp = multiplayer.new({ send = mp.send, encode = mp.encode, decode = mp.decode, io = deps.io })
+      self.mp:start(self.clock)
+      self.diag:event('multiplayer', 'asking the server for the career')
+    end
+    self.store = self.mp and multiplayer.store(self.mp, deps.io) or persistence.new(deps.io)
     self.profile, self.loadStatus = self.store:load()
     -- The trailer owned: one saved out comes back behind the car once it is back (watchTrailer).
     self.trailer = self.profile and trailers.clean(self.profile.trailer) or nil
@@ -215,6 +229,13 @@ function M.new(deps)
     if self.profile then places.ensure(self.profile.resume) end
     self.diag:event('save_loaded_or_rejected', self.loadStatus, self.profile and 'I' or 'W')
     self.feedback = loadMessages[self.loadStatus] or ''
+    if self.mp and self.mp.state == 'server' then
+      self.feedback = self.loadStatus == 'loaded' and 'Loaded your career from this server.'
+        or self.loadStatus == 'missing' and 'A new career on this server. Every Save is kept on the server.' or self.feedback
+    elseif self.mp and self.mp.state == 'local' then
+      self.feedback = 'This server does not keep trucking careers, so your career here is saved on your PC,'
+        .. ' apart from your single-player one. ' .. self.feedback
+    end
     if not self.profile and not loadMessages[self.loadStatus] then self.error = self.loadStatus end
     self.load = self.profile and knownLoad(self.profile.load) or nil
     self.needs = needsFrom(self.profile and self.profile.needs)
@@ -289,7 +310,20 @@ function M.new(deps)
     if self.configuration and not self.error then self:transition('EARTH_UNAVAILABLE', reason) end
   end
 
+  -- The server's answers (multiplayer.lua). Its career arriving loads it.
+  function c:multiplayerEvent(event, data)
+    if not self.mp then return end
+    local waiting = not self.mp:ready()
+    self.mp:receive(event, data)
+    if waiting and self.mp:ready() and self.loadStatus == 'mp_waiting' then self:reload() end
+    if event == 'wwtcSaved' and self.mp.saveError then
+      self.feedback = 'The server did not keep your last save (' .. self.mp.saveError .. '). Press Save to try again.'
+      self.diag:event('multiplayer_save_refused', self.mp.saveError, 'W')
+    end
+  end
+
   function c:endMission()
+    self.mp = nil
     self.sessionVerified, self.lastSample = false, nil
     self:interrupt('earth_level_required')
     self.adapter:invalidate()
@@ -1356,6 +1390,11 @@ function M.new(deps)
       if not self.onFoot then self.garage:releaseParked()
       elseif self.ownedParts then self.garage:keepParked(self.ownedParts.id) end
     end
+    -- A server that never answers keeps the multiplayer career on this PC instead.
+    if self.mp and not self.mp:ready() then
+      self.mp:tick(self.clock)
+      if self.mp:ready() and self.loadStatus == 'mp_waiting' then self:reload() end
+    end
     self:observe(self.adapter:sample(), dt)
     self:provideVehicle()
     self:watchHire()
@@ -2013,8 +2052,11 @@ local function gameIO()
     end,
     -- Compact JSON: the pretty writer may round coordinates.
     write = function(path, data) return jsonWriteFile(path, data, false) end,
+    remove = function(path) if FS:fileExists(path) then FS:removeFile(path) end end,
   }
 end
+-- BeamMP's sending and events, set up below once safely is (multiplayer.lua).
+local gameMultiplayer
 -- Whether the game is paused; punctures wait while it is.
 local function gamePaused()
   for _, name in ipairs({ 'bullettime', 'simTimeAuthority' }) do
@@ -2056,7 +2098,7 @@ local function ensure()
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
       punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
       log = rawget(_G, 'log'),
-      streetView = streetView.new(), openUrl = gameOpenUrl,
+      streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(),
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
   return active
@@ -2076,6 +2118,14 @@ local function safely(f)
     return false
   end
   return result
+end
+gameMultiplayer = function()
+  local g = multiplayer.game()
+  return {
+    inSession = g.inSession, send = g.send,
+    listen = function(handler) return g.listen(function(event, data) safely(function() handler(event, data) end) end) end,
+    encode = function(t) return jsonEncode(t) end, decode = function(text) return jsonDecode(text) end,
+  }
 end
 -- Ids the HUD may send: place and good ids are short lowercase words and digits.
 local function id(value)
