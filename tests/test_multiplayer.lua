@@ -21,6 +21,9 @@ local function server(files, accounts)
   env.now = function() return '2026-11-08T01:00:00Z' end
   env.account = function(pid) return accounts and accounts[pid] end
   env.name = function(pid) return 'player' .. pid end
+  env.time = 1000000
+  env.clock = function() return env.time end
+  env.epoch = function() return 1000000 end
   env.chats = {}
   env.chat = function(pid, text) env.chats[#env.chats + 1] = { pid = pid, text = text } end
   env.print = function(text) env.printed[#env.printed + 1] = text end
@@ -38,7 +41,10 @@ local function link(W, env, pid, deliver)
         local m = table.remove(queue, 1)
         if m.event == 'wwtcHello' then W.onHello(pid)
         elseif m.event == 'wwtcJoin' then W.onJoin(pid, m.data)
-        elseif m.event == 'wwtcSave' then W.onSave(pid, m.data) end
+        elseif m.event == 'wwtcSave' then W.onSave(pid, m.data)
+        elseif m.event == 'wwtcClaim' then W.onClaim(pid, m.data)
+        elseif m.event == 'wwtcRelease' then W.onRelease(pid, m.data)
+        elseif m.event == 'wwtcShipDone' then W.onShipDone(pid, m.data) end
       else
         local found
         for i, m in ipairs(env.sent) do if m.pid == pid then found = i; break end end
@@ -259,6 +265,150 @@ do
   W.WELCOME = {}
   W.welcome(6)
   T.eq(#env.chats, 8, 'an empty welcome sends nothing')
+end
+
+-- Ship Day on the server: a ship every few days at the next port, containers first come first served.
+do
+  local W, env = server(nil, { [1] = 'a1', [2] = 'a2' })
+  local first = W.shipAt(env.clock())
+  T.eq(first.number, 1, 'the first ship is in port from the start')
+  T.eq(first.port.id, W.PORTS[1].id, 'at the first port')
+  local later = W.shipAt(env.clock() + W.SHIP_EVERY_HOURS * 3600 + 5)
+  T.eq(later.number, 2, 'a new ship every few days')
+  T.eq(later.port.id, W.PORTS[2].id, 'at the next port')
+  T.near(first.left, W.SHIP_EVERY_HOURS * 3600, 1, 'the first stays the whole time')
+  -- Two players on the server.
+  for pid = 1, 2 do
+    W.onHello(pid); W.onJoin(pid, J.encode({ v = 1 }))
+  end
+  local function last(pid, event)
+    for i = #env.sent, 1, -1 do
+      local m = env.sent[i]
+      if m.pid == pid and m.event == event then return J.decode(m.data) end
+    end
+  end
+  local ship = last(1, 'wwtcShip')
+  T.eq(ship.ship, 1, 'a joining player is told the ship')
+  T.eq(ship.containers, W.SHIP_CONTAINERS, 'and how many containers')
+  T.eq(ship.port.name, W.PORTS[1].name, 'and the port')
+  W.onClaim(1, J.encode({ v = 1, ship = 1, n = 3 }))
+  T.check(last(1, 'wwtcClaimed').ok, 'a free container is the first player\'s')
+  W.onClaim(2, J.encode({ v = 1, ship = 1, n = 3 }))
+  T.eq(last(2, 'wwtcClaimed').why, 'taken', 'and not the second\'s')
+  local seen = last(2, 'wwtcShip').taken[1]
+  T.check(seen.n == 3 and seen.state == 'taken' and not seen.mine, 'everyone sees it is taken')
+  T.check(last(1, 'wwtcShip').taken[1].mine, 'and whose it is')
+  W.onClaim(2, J.encode({ v = 1, ship = 9, n = 4 }))
+  T.eq(last(2, 'wwtcClaimed').why, 'sailed', 'a container from another ship is refused')
+  W.onClaim(1, J.encode({ v = 1, ship = 1, n = 5 }))
+  T.eq(#last(2, 'wwtcShip').taken, 1, 'one container at a time: the first goes back')
+  W.onRelease(1, J.encode({ v = 1, ship = 1, n = 5 }))
+  T.eq(#last(2, 'wwtcShip').taken, 0, 'an abandoned container is free again')
+  W.onClaim(1, J.encode({ v = 1, ship = 1, n = 5 }))
+  W.onShipDone(1, J.encode({ v = 1, ship = 1, n = 5, town = 'Katoomba', pay = 12340 }))
+  T.eq(last(2, 'wwtcShip').taken[1].state, 'delivered', 'a delivered container')
+  T.check(env.chats[#env.chats].pid == -1 and env.chats[#env.chats].text:find('Katoomba for $12340', 1, true),
+    'is announced to everyone')
+  W.onRelease(1, J.encode({ v = 1, ship = 1, n = 5 }))
+  T.eq(last(2, 'wwtcShip').taken[1].state, 'delivered', 'and stays delivered')
+  -- A restart keeps the ship's containers.
+  local W2, env2 = server(env.files)
+  env2.time = env.time
+  W2.onHello(1); W2.onJoin(1, J.encode({ v = 1 }))
+  local after = J.decode(env2.sent[#env2.sent].data)
+  T.check(#after.taken == 1 and after.taken[1].state == 'delivered', 'a restart keeps the ship\'s containers')
+  local kept = J.decode(env.files[W.seasonDir() .. '/ships.json'])
+  T.eq(kept.ship, 1, 'the ship is kept on disk'); T.eq(#kept.boxes, 1, 'with its containers')
+  -- The next ship.
+  local chats = #env.chats
+  env.time = env.time + W.SHIP_EVERY_HOURS * 3600 + 1
+  W.shipTick()
+  T.check(env.chats[chats + 1] and env.chats[chats + 1].text:find('Ship Day!', 1, true), 'a new ship is announced')
+  T.eq(last(2, 'wwtcShip').ship, 2, 'everyone is told')
+  T.eq(#last(2, 'wwtcShip').taken, 0, 'with every container free')
+  W.SHIP_CONTAINERS = 0
+  local before = #env.sent
+  W.sendShipToAll()
+  T.eq(#env.sent, before, 'no containers: Ship Day is off')
+end
+
+-- Ship Day in the game: go to the port, take a container, drive it inland, get paid, and the server hears of it.
+do
+  local SD = require('earthFreight/shipday')
+  local places = require('earthFreight/places')
+  local W, env = server()
+  W.PORTS = { { id = 'sydney', name = 'Port Jackson', region = 'Sydney', latitude = -33.86, longitude = 151.21 } }
+  local io = F.io({ [F.CONFIG] = F.config() })
+  local handler
+  local send, pump = link(W, env, 1, function(event, data) handler(event, data) end)
+  local mp = { inSession = function() return true end, send = send, encode = J.encode, decode = J.decode,
+    listen = function(h) handler = h; return true end }
+  local c, _, a, g = F.controller({ io = io, multiplayer = mp })
+  g.fitted.box = 'pickup_cargo_load_box_m'
+  pump()
+  F.advance(c, 2)
+  if not c.arrived then c:startHere(); F.advance(c, 2) end
+  local v = c:view().shipDay
+  T.check(v ~= nil, 'the Town tab shows Ship Day')
+  T.eq(v.port, 'Port Jackson', 'with the port'); T.eq(v.total, W.SHIP_CONTAINERS, 'and its containers')
+  T.eq(v.free, W.SHIP_CONTAINERS, 'all free')
+  T.check(not v.atPort and v.goAllowed, 'Go to port, from Penrith')
+  T.check(not c:takeContainer(1), 'no container away from the port')
+  local town = SD.portTown(c.ship)
+  T.check(town ~= nil and places.get(town.id) ~= nil, 'the ship docks at a town')
+  -- Every game works out the same containers.
+  local boxes = SD.containers(c.ship)
+  T.eq(#boxes, W.SHIP_CONTAINERS, 'a destination for every container')
+  for _, box in ipairs(boxes) do
+    T.check(box.km >= SD.MIN_KM and box.km <= SD.MAX_KM, 'container ' .. box.n .. ' goes inland, ' .. math.floor(box.km) .. ' km')
+  end
+  local balance = c.profile.progression.balance
+  T.check(c:goToPort(), 'Go to port')
+  T.eq(a.teleports[#a.teleports].latitude, town.latitude, 'teleports to the port town centre, on land')
+  T.eq(c.profile.progression.balance, balance, 'for free')
+  a.pose = F.copy(town); F.advance(c, 3)
+  v = c:view().shipDay
+  T.check(v.atPort, 'at the port')
+  T.check(v.containers[1].allowed, 'a container can be taken')
+  T.check(v.containers[1].pay > 0, 'and pays')
+  T.check(c:takeContainer(1), 'asks for container 1')
+  T.eq(c.load, nil, 'loaded only once the server says so')
+  pump()
+  T.check(c.load ~= nil and c.load.ship and c.load.ship.n == 1, 'container 1 is loaded')
+  T.eq(c.load.to, boxes[1].to, 'bound for its town')
+  T.eq(c:view().shipDay.containers[1].state, 'mine', 'and shows as mine')
+  T.eq(c:view().shipDay.carrying, 1, 'the card says which one is on board')
+  -- A save keeps the container on board.
+  T.check(c:manualSave(), 'saved with a container on board'); pump()
+  local kept = J.decode(env.files[W.careerPath(c.mp.key)])
+  T.eq(kept.load.ship.n, 1, 'the server keeps the container on board')
+  T.eq(P.validate(kept).load.ship.n, 1, 'and a save with one loads again')
+  local pay = c.load.pay
+  F.drive(c, a, places.get(boxes[1].to))
+  balance = c.profile.progression.balance
+  T.check(c:deliver(), 'delivered inland')
+  T.eq(c.profile.progression.balance, balance + pay, 'paid')
+  pump()
+  T.check(env.chats[#env.chats].text:find(places.get(boxes[1].to).name, 1, true) ~= nil, 'the server tells everyone')
+  T.eq(c:view().shipDay.containers[1].state, 'delivered', 'and it shows delivered')
+  -- Another claim the server refuses.
+  F.drive(c, a, town)
+  W.claims.boxes[2] = { key = 'f' .. ('0'):rep(31), name = 'Sam', delivered = false }
+  T.check(c:takeContainer(2), 'asks for container 2 (taken by now)')
+  pump()
+  T.eq(c.load, nil, 'not loaded')
+  T.check(c:view().shipDay.feedback:find('first', 1, true) ~= nil, 'someone else got it first')
+  -- An abandoned container goes back to the dock.
+  T.check(c:takeContainer(3)); pump()
+  c:abandonJob(); c:abandonJob(); pump()
+  T.eq(W.claims.boxes[3], nil, 'an abandoned container is free again')
+  -- A dock that never answers.
+  local quiet = c.mp.claim
+  c.mp.claim = function() return true end
+  T.check(c:takeContainer(4))
+  F.advance(c, SD.CLAIM_WAIT_SECONDS + 1)
+  T.eq(c.shipClaim, nil, 'a claim the server never answers is dropped')
+  c.mp.claim = quiet
 end
 
 T.done('multiplayer careers')

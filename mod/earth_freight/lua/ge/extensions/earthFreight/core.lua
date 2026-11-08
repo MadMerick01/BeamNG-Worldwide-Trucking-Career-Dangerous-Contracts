@@ -26,6 +26,7 @@ local home = require('earthFreight/home')
 local streetView = require('earthFreight/streetView')
 local business = require('earthFreight/business')
 local multiplayer = require('earthFreight/multiplayer')
+local shipday = require('earthFreight/shipday')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -316,6 +317,11 @@ function M.new(deps)
     local waiting = not self.mp:ready()
     self.mp:receive(event, data)
     if waiting and self.mp:ready() and self.loadStatus == 'mp_waiting' then self:reload() end
+    if event == 'wwtcShip' then
+      self.ship, self.shipAt = shipday.clean(self.mp.ship), self.clock
+    elseif event == 'wwtcClaimed' then
+      self:claimAnswered(self.mp.claimed)
+    end
     if event == 'wwtcSaved' and self.mp.saveError then
       self.feedback = 'The server did not keep your last save (' .. self.mp.saveError .. '). Press Save to try again.'
       self.diag:event('multiplayer_save_refused', self.mp.saveError, 'W')
@@ -364,6 +370,7 @@ function M.new(deps)
 
   function c:endMission()
     self.hudSeen, self.hudHints, self.hudMissingFor = nil, nil, nil
+    self.ship, self.shipAt, self.shipClaim, self.shipFeedback = nil, nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
     self:interrupt('earth_level_required')
@@ -679,12 +686,12 @@ function M.new(deps)
   end
 
   -- Books shipping to a destination: pay the fee, then teleport there with the coordinates.
-  function c:book(destination)
+  function c:book(destination, free)
     local here = self.lastSample
     local problem = self:shippingProblem()
     if not problem and not destination then problem = 'Pick a destination.' end
     if not problem and shipping.arrived(here, destination) then problem = 'You are already in ' .. destination.name .. '.' end
-    local fee = not problem and shipping.fee(here, destination) or nil
+    local fee = not problem and (free and 0 or shipping.fee(here, destination)) or nil
     if not problem and not self:spend(fee, 'shipping') then problem = 'Not enough money. Relocating to ' .. destination.name .. ' costs ' .. dollars(fee) .. '.' end
     if problem then
       self.shippingFeedback = problem
@@ -696,6 +703,163 @@ function M.new(deps)
     self.shippingFeedback = 'Booked to ' .. destination.name .. ' for ' .. dollars(fee) .. '. Press Teleport there, or copy the coordinates into the BeamNG.Earth map.'
     self.diag:event('shipping_booked', destination.id .. ':' .. fee)
     return true
+  end
+
+
+  -- ===== Ship Day (multiplayer): see shipday.lua ==================================================================
+  -- The ship in port, while this game's career is the server's.
+  function c:shipDay()
+    return self.mp and self.mp.state == 'server' and self.ship or nil
+  end
+
+  function c:atPort(town)
+    local sample = self.lastSample
+    if not town or not sample or not sample.valid then return false end
+    local d = location.distance(sample, town)
+    return d ~= nil and d <= shipday.AT_PORT_METRES
+  end
+
+  -- Why Go to port can't be pressed now, or nil when it can.
+  function c:portTripProblem(ship, town)
+    if not ship or not town then return 'No ship is in port right now.' end
+    if self:atPort(town) then return 'You are at the port.' end
+    if self.booking and self.booking.id == 'port' then return nil end
+    return self:shippingProblem()
+  end
+
+  -- Go to port: a free relocation to the port's town (its centre, on land), and the teleport there, in one press.
+  function c:goToPort()
+    local ship = self:shipDay()
+    local town = shipday.portTown(ship)
+    local problem = self:portTripProblem(ship, town)
+    if not problem and not self.booking then
+      if not self:book({ id = 'port', name = town.name, region = town.region,
+        latitude = town.latitude, longitude = town.longitude }, true) then problem = self.shippingFeedback end
+    end
+    if problem then
+      self.shipFeedback = problem
+      return false
+    end
+    local ok = self:teleportToBooking()
+    self.shipFeedback = ok and ('Off to ' .. ship.port.name .. '. The terrain takes a few seconds to load.')
+      or (self.shippingFeedback or 'BeamNG.Earth did not take the teleport.')
+    return ok
+  end
+
+  -- How many units of container cargo the car (and a hitched trailer) takes, and what one container pays.
+  function c:containerQuote(box)
+    local good = goods.get(shipday.GOOD)
+    local units, slots, kg, inTrailer = trailers.fits(self:space(), self:trailerSpace(), good)
+    return { units = units, slots = slots, kg = kg, trailerUnits = inTrailer, pay = shipday.pay(box, units) }
+  end
+
+  -- Why a container can't be taken now, or nil when it can.
+  function c:containerProblem(ship, town)
+    if not ship or not town then return 'No ship is in port right now.' end
+    if not self:atPort(town) then return 'Go to the port at ' .. town.name .. ' to load a container.' end
+    local problem = self:tradeProblem(town)
+    if problem then return problem end
+    if self.load then return 'Deliver or abandon your job first.' end
+    if self.shipClaim then return 'Waiting for the dock to answer.' end
+    return nil
+  end
+
+  -- Asks the server for a container. It's loaded when the server says it's this player's (claimAnswered).
+  function c:takeContainer(n)
+    local ship = self:shipDay()
+    local town = shipday.portTown(ship)
+    local problem = self:containerProblem(ship, town)
+    local box = not problem and shipday.container(ship, n) or nil
+    if not problem and not box then problem = 'There is no container ' .. tostring(n) .. ' on this ship.' end
+    if not problem and ship.states[n] then problem = 'Container ' .. n .. ' is already taken.' end
+    if not problem and self:containerQuote(box).units == 0 then
+      local good = goods.get(shipday.GOOD)
+      problem = 'Not enough cargo space: container cargo takes ' .. good.slots .. ' slots and '
+        .. string.format('%g', good.kg) .. ' kg a unit. Fit a cargo box in the parts menu.'
+    end
+    if problem then
+      self.shipFeedback = problem
+      return false
+    end
+    self.shipClaim = { ship = ship.ship, n = n, at = self.clock }
+    self.mp:claim(ship.ship, n)
+    self.shipFeedback = 'Asking the dock for container ' .. n .. '...'
+    return true
+  end
+
+  -- The server's answer to a claim: the container is loaded, or someone else got it first.
+  function c:claimAnswered(d)
+    local claim = self.shipClaim
+    if type(d) ~= 'table' or not claim or d.ship ~= claim.ship or d.n ~= claim.n then return end
+    self.shipClaim = nil
+    local ship = self:shipDay()
+    if d.ok ~= true then
+      self.shipFeedback = 'Someone else got container ' .. claim.n .. ' first. Pick another.'
+      return
+    end
+    local town = ship and ship.ship == claim.ship and shipday.portTown(ship) or nil
+    local box = town and shipday.container(ship, claim.n)
+    local problem = not box and 'That ship has sailed.' or self:containerProblem(ship, town)
+    local quote = not problem and self:containerQuote(box) or nil
+    if not problem and quote.units == 0 then problem = 'Not enough cargo space.' end
+    if problem then
+      -- Given back, so someone else can take it.
+      self.mp:release(claim.ship, claim.n)
+      self.shipFeedback = problem
+      return
+    end
+    local good = goods.get(shipday.GOOD)
+    self.load = { good = good.id, units = quote.units, slots = quote.units * good.slots, kg = quote.units * good.kg,
+      pay = quote.pay, from = box.from, to = box.to, drivenKm = 0, ship = { ship = claim.ship, n = claim.n } }
+    if (quote.trailerUnits or 0) > 0 then self.load.trailerUnits = math.min(quote.trailerUnits, quote.units) end
+    self.abandonArmed = false
+    self:applyWeight()
+    self:gpsToJob()
+    local to = places.get(box.to)
+    self.shipFeedback = 'Container ' .. claim.n .. ' is yours: take it to ' .. to.name .. ' for ' .. dollars(quote.pay) .. '.'
+    self.diag:event('container_taken', string.format('ship %d #%d -> %s for %d', claim.ship, claim.n, box.to, quote.pay))
+    self:autoSaveSoon('your container')
+  end
+
+  -- The server never answered: the claim is dropped, and the player can try again.
+  function c:watchClaim()
+    if self.shipClaim and self.clock - self.shipClaim.at > shipday.CLAIM_WAIT_SECONDS then
+      self.shipClaim = nil
+      self.shipFeedback = 'The dock did not answer. Try again.'
+    end
+  end
+
+  -- Ship Day on the Town tab: the ship, its port, the time left and every container.
+  function c:shipView(current)
+    local ship = self:shipDay()
+    if not ship then return nil end
+    local town = shipday.portTown(ship)
+    if not town then return nil end
+    local atPort = self:atPort(town)
+    local takeProblem = self:containerProblem(ship, town)
+    local tripProblem = self:portTripProblem(ship, town)
+    local units
+    local list, free = {}, 0
+    for _, box in ipairs(shipday.containers(ship)) do
+      local st = ship.states[box.n]
+      units = units or self:containerQuote(box).units
+      local state = st and (st.mine and st.state ~= 'delivered' and 'mine' or st.state) or 'free'
+      if state == 'free' then free = free + 1 end
+      local to = places.get(box.to)
+      list[#list + 1] = { n = box.n, to = to and to.name or box.to, region = to and to.region or nil,
+        distanceMetres = box.km * 1000, pay = shipday.pay(box, units), state = state, by = st and st.by or nil,
+        allowed = state == 'free' and takeProblem == nil and units > 0 }
+    end
+    local held = self.load and self.load.ship
+    return {
+      name = ship.name, port = ship.port.name, region = ship.port.region, town = town.name,
+      secondsLeft = math.max(0, ship.left - (self.clock - (self.shipAt or self.clock))),
+      total = ship.containers, free = free, atPort = atPort, containers = list,
+      goAllowed = tripProblem == nil, goProblem = not atPort and tripProblem or nil,
+      problem = atPort and takeProblem or nil, units = units or 0,
+      carrying = held and held.ship == ship.ship and held.n or nil,
+      feedback = self.shipFeedback,
+    }
   end
 
   -- Asks Earth to take the car to the booked destination, as pasting its coordinates into Earth's
@@ -1211,6 +1375,7 @@ function M.new(deps)
     self:addMoney(load.pay)
     jobs.delivered(self.needs, place, good, self.now())
     self:finishJob()
+    if load.ship and self.mp then self.mp:shipDelivered(load.ship.ship, load.ship.n, place.name, load.pay) end
     local refund = ''
     if self.offer and shipping.offerPays(place, self.offer) then
       self:addMoney(self.offer.fee)
@@ -1243,6 +1408,7 @@ function M.new(deps)
     local fee = math.min(jobs.ABANDON_FEE, self.profile.progression.balance)
     if fee > 0 then self:spend(fee, 'abandon') end
     self.diag:event('job_abandoned', tostring(why) .. ':' .. self.load.good .. ':' .. fee)
+    if load.ship and self.mp then self.mp:release(load.ship.ship, load.ship.n) end
     self:finishJob()
     return fee
   end
@@ -1440,6 +1606,7 @@ function M.new(deps)
     self:observe(sample, dt)
     self:spawnFirstCar(sample, dt)
     self:hintHud(sample, dt)
+    self:watchClaim()
     self:provideVehicle()
     self:watchHire()
     self:watchBeacon(dt)
@@ -1869,6 +2036,7 @@ function M.new(deps)
       saveAllowed = self.state == 'READY' and self.arrived and not self.stranded and not self.booking and not self.hire and not self.onFoot,
       heli = self:heliView(current), beacon = self:beaconView(current),
       shipping = self:shippingView(current),
+      shipDay = self:shipView(current),
       home = self:homeView(current),
       repairAtHome = self.property ~= nil and self:atHome() or nil,
       stranded = self.stranded and current and {
@@ -2267,6 +2435,8 @@ function M.searchShipping(query)
   return safely(function() return ensure():searchShipping(query) end)
 end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
+function M.goToPort() return safely(function() return ensure():goToPort() end) end
+function M.takeContainer(n) return safely(function() return ensure():takeContainer(tonumber(n)) end) end
 function M.cancelShipping() return safely(function() return ensure():cancelShipping() end) end
 function M.setPlayerName(name) return safely(function() return ensure():setPlayerName(name) end) end
 -- The player car's answers to fuel.lua's commands.

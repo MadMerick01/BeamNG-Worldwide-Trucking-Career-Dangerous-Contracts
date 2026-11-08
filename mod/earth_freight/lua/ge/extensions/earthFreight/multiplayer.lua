@@ -107,6 +107,18 @@ function M.new(deps)
       if type(d.save) == 'table' then pcall(io.write, dir .. 'save-a.json', d.save) end
       self.key, self.dir, self.state = d.key, dir, 'server'
       return true
+    elseif event == 'wwtcShip' then
+      -- Ship Day: the ship in port and its containers' states (checked by shipday.clean in the game).
+      local d = decode(data)
+      if not d then return false end
+      self.ship = d
+      return true
+    elseif event == 'wwtcClaimed' then
+      -- The server's answer to a claim: { ship, n, ok, why }.
+      local d = decode(data)
+      if not d then return false end
+      self.claimed = d
+      return true
     elseif event == 'wwtcSaved' then
       local d = decode(data)
       if not d then return false end
@@ -126,6 +138,19 @@ function M.new(deps)
     for _, frame in ipairs(M.frames(self.sent, text)) do deps.send('wwtcSave', frame) end
     return true
   end
+
+  -- Ship Day: asks for a container, gives one back (an abandoned job), and says one was delivered.
+  local function shipEvent(event, body)
+    if s.state ~= 'server' then return false end
+    body.v = M.PROTO
+    local ok, text = pcall(deps.encode, body)
+    if not ok or type(text) ~= 'string' then return false end
+    deps.send(event, text)
+    return true
+  end
+  function s:claim(ship, n) return shipEvent('wwtcClaim', { ship = ship, n = n }) end
+  function s:release(ship, n) return shipEvent('wwtcRelease', { ship = ship, n = n }) end
+  function s:shipDelivered(ship, n, town, pay) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay }) end
   return s
 end
 
@@ -167,7 +192,7 @@ function M.game()
   local listening = false
   function g.listen(handler)
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
-    for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved' }) do
+    for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true

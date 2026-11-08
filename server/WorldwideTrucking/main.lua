@@ -13,6 +13,11 @@
 --   server -> game  wwtcCareer frames of '{"v","key","season","save"}'  the player's key and career (save null: none)
 --   game -> server  wwtcSave   frames of the save document (JSON), sent after every save in game
 --   server -> game  wwtcSaved  '{"v","ok","generation","why"}'
+--   server -> game  wwtcShip   '{"v","ship","name","port","containers","left","taken"}'  Ship Day: the ship in port
+--   game -> server  wwtcClaim  '{"v","ship","n"}'  asks for container n; answered by
+--   server -> game  wwtcClaimed '{"v","ship","n","ok","why"}'
+--   game -> server  wwtcRelease '{"v","ship","n"}'  gives it back (job abandoned)
+--   game -> server  wwtcShipDone '{"v","ship","n","town","pay"}'  delivered; announced in chat
 -- A frame is 'v|id|i|n|piece': piece i of n of message id. The server keeps the save's own JSON text as it came, so
 -- nothing about it is rounded or reordered on the way through.
 --
@@ -20,6 +25,32 @@
 -- order) and writes every change of money to a ledger. It does not yet work out what a delivery should pay.
 local W = {}
 
+-- Ship Day: every SHIP_EVERY_HOURS a ship docks at the next port on this list, carrying SHIP_CONTAINERS containers.
+-- The first docks at SHIP_START (this PC's local time). Players are sent to the town nearest the coordinates, so a
+-- point just off the coast is still safe, but keep each one on the port's land side. Add, remove or reorder ports
+-- freely; set SHIP_CONTAINERS to 0 to turn Ship Day off.
+W.SHIP_START = { year = 2026, month = 11, day = 8, hour = 20 }
+W.SHIP_EVERY_HOURS = 72
+W.SHIP_CONTAINERS = 20
+W.PORTS = {
+  { id = 'valparaiso', name = 'Valparaíso', region = 'Chile', latitude = -33.0458, longitude = -71.6197 },
+  { id = 'kotor', name = 'Kotor', region = 'Montenegro', latitude = 42.4247, longitude = 18.7712 },
+  { id = 'hobart', name = 'Hobart', region = 'Tasmania, Australia', latitude = -42.8821, longitude = 147.3272 },
+  { id = 'reykjavik', name = 'Reykjavík', region = 'Iceland', latitude = 64.1466, longitude = -21.9426 },
+  { id = 'rio', name = 'Rio de Janeiro', region = 'Brazil', latitude = -22.8960, longitude = -43.1810 },
+  { id = 'hongkong', name = 'Hong Kong', region = 'China', latitude = 22.3570, longitude = 114.1270 },
+  { id = 'capetown', name = 'Cape Town', region = 'South Africa', latitude = -33.9249, longitude = 18.4241 },
+  { id = 'vancouver', name = 'Vancouver', region = 'British Columbia, Canada', latitude = 49.2870, longitude = -123.1110 },
+  { id = 'naples', name = 'Naples', region = 'Italy', latitude = 40.8400, longitude = 14.2520 },
+  { id = 'wellington', name = 'Wellington', region = 'New Zealand', latitude = -41.2865, longitude = 174.7762 },
+  { id = 'cabo', name = 'Cabo San Lucas', region = 'Baja California Sur, Mexico', latitude = 22.8905, longitude = -109.9167 },
+  { id = 'tromso', name = 'Tromsø', region = 'Arctic Norway', latitude = 69.6492, longitude = 18.9553 },
+  { id = 'stgeorges', name = "St George's", region = 'Grenada', latitude = 12.0561, longitude = -61.7486 },
+  { id = 'anchorage', name = 'Anchorage', region = 'Alaska, USA', latitude = 61.2181, longitude = -149.9003 },
+  { id = 'botany', name = 'Port Botany', region = 'Sydney, Australia', latitude = -33.9711, longitude = 151.2131 },
+}
+W.SHIP_NAMES = { 'MV Pacific Star', 'MV Southern Cross', 'MV Northern Light', 'MV Cape Runner', 'MV Ocean Pride',
+  'MV Trade Wind', 'MV Iron Gull', 'MV Long Haul' }
 -- ===== Settings: edit here, then restart the BeamMP server ========================================================
 -- The season. Raise it by one to start everyone over on their next join: rusty starter car and the starting money.
 -- The old season's careers stay in their folder (careers/season-N), untouched.
@@ -115,7 +146,8 @@ end
 -- ----- The server's state, with storage and sending given to it (env), so tests can run it -----------------------
 -- env: read(path) -> text|nil, write(path, text) -> bool, append(path, text), mkdir(path), send(pid, event, text),
 --      encode(table) -> text, decode(text) -> table, bytes(i) -> number, now() -> 'YYYY-MM-DDTHH:MM:SSZ',
---      account(pid) -> BeamMP account id or nil (a guest), name(pid) -> text, print(text)
+--      account(pid) -> BeamMP account id or nil (a guest), name(pid) -> text, print(text),
+--      clock() -> seconds (os.time), epoch(date table) -> seconds, chat(pid or -1 for everyone, text)
 
 function W.start(env)
   W.env = env
@@ -132,6 +164,8 @@ function W.start(env)
     W.serverId = W.newKey(env.bytes)
     env.write(W.DIR .. '/server.json', env.encode({ id = W.serverId }))
   end
+  W.shipStart = env.epoch and env.epoch(W.SHIP_START) or nil
+  W.loadClaims()
   local accountsText = env.read(W.DIR .. '/accounts.json')
   local okA, accounts = false, nil
   if accountsText and accountsText ~= '' then okA, accounts = pcall(env.decode, accountsText) end
@@ -177,6 +211,8 @@ function W.onJoin(pid, data)
   W.nextId = W.nextId + 1
   local message = '{"v":' .. W.PROTO .. ',"key":"' .. key .. '","season":' .. W.SEASON .. ',"save":' .. (text or 'null') .. '}'
   for _, frame in ipairs(W.frames(W.nextId, message)) do W.env.send(pid, 'wwtcCareer', frame) end
+  W.shipTick()
+  W.sendShip(pid)
   W.env.print(string.format('[Trucking] %s joined: %s, %s', tostring(p.name), account and 'signed in' or 'guest',
     save and ('balance $' .. tostring(save.progression.balance)) or 'new career'))
 end
@@ -224,6 +260,158 @@ function W.onChat(pid, message)
     return true
   end
   return false
+end
+
+
+-- ----- Ship Day ---------------------------------------------------------------------------------------------------
+-- The ship in port at a time (seconds, as os.time): its number (1, 2, ...), port, name and the seconds until the next.
+function W.shipAt(now)
+  local period = W.SHIP_EVERY_HOURS * 3600
+  local first = W.shipStart or now
+  local number = math.max(1, math.floor((now - first) / period) + 1)
+  local port = W.PORTS[(number - 1) % #W.PORTS + 1]
+  local name = W.SHIP_NAMES[(number - 1) % #W.SHIP_NAMES + 1]
+  local left = math.max(1, first + number * period - now)
+  return { number = number, port = port, name = name, left = left }
+end
+
+local function shipsPath() return W.seasonDir() .. '/ships.json' end
+
+-- The containers of the ship in port: n -> { key, name, delivered }. A new ship starts with none taken.
+local function claimsFor(number)
+  if W.claims and W.claims.ship == number then return W.claims end
+  W.claims = { ship = number, boxes = {} }
+  return W.claims
+end
+
+local function saveClaims()
+  local list = {}
+  for n, c in pairs(W.claims.boxes) do list[#list + 1] = { n = n, key = c.key, name = c.name, delivered = c.delivered } end
+  W.env.write(shipsPath(), W.env.encode({ ship = W.claims.ship, boxes = list }))
+end
+
+function W.loadClaims()
+  local text = W.env.read(shipsPath())
+  local ok, d = false, nil
+  if text and text ~= '' then ok, d = pcall(W.env.decode, text) end
+  W.claims = { ship = 0, boxes = {} }
+  if ok and type(d) == 'table' and type(d.ship) == 'number' and type(d.boxes) == 'table' then
+    W.claims.ship = d.ship
+    for _, c in ipairs(d.boxes) do
+      if type(c) == 'table' and type(c.n) == 'number' and W.validKey(c.key) then
+        W.claims.boxes[c.n] = { key = c.key, name = tostring(c.name or ''), delivered = c.delivered == true }
+      end
+    end
+  end
+end
+
+function W.shipOn() return W.SHIP_CONTAINERS > 0 and #W.PORTS > 0 end
+
+-- The ship message for one player: which containers are taken, and which are theirs.
+function W.shipMessage(pid)
+  local ship = W.shipAt(W.env.clock())
+  local claims = claimsFor(ship.number)
+  local p = W.players[pid]
+  local taken = {}
+  for n, c in pairs(claims.boxes) do
+    taken[#taken + 1] = { n = n, state = c.delivered and 'delivered' or 'taken', mine = p ~= nil and c.key == p.key, by = c.name }
+  end
+  table.sort(taken, function(a, b) return a.n < b.n end)
+  local port = ship.port
+  return W.env.encode({ v = W.PROTO, ship = ship.number, name = ship.name, containers = W.SHIP_CONTAINERS,
+    left = ship.left, taken = taken,
+    port = { id = port.id, name = port.name, region = port.region, latitude = port.latitude, longitude = port.longitude } })
+end
+
+function W.sendShip(pid)
+  if not W.shipOn() then return end
+  local p = W.players[pid]
+  if p and p.key then W.env.send(pid, 'wwtcShip', W.shipMessage(pid)) end
+end
+
+function W.sendShipToAll()
+  for pid, p in pairs(W.players) do if p.key then W.sendShip(pid) end end
+end
+
+local function say(text) if W.env.chat then W.env.chat(-1, text) end end
+
+-- Every few seconds: a new ship docks when it's time, and everyone hears about it.
+function W.shipTick()
+  if not W.shipOn() then return end
+  local ship = W.shipAt(W.env.clock())
+  if W.claims and W.claims.ship == ship.number then return end
+  local first = W.claims == nil or W.claims.ship == 0
+  claimsFor(ship.number)
+  saveClaims()
+  W.env.print(string.format('[Trucking] ship %d, %s, docked at %s', ship.number, ship.name, ship.port.name))
+  if not first then
+    say(string.format('Ship Day! The %s has docked at %s, %s with %d containers. Press Go to port on the Town tab.',
+      ship.name, ship.port.name, ship.port.region, W.SHIP_CONTAINERS))
+  end
+  W.sendShipToAll()
+end
+
+local function shipRequest(pid, data)
+  local p = W.players[pid]
+  if not p or not p.key or not W.shipOn() then return nil end
+  local ok, d = pcall(W.env.decode, data or '')
+  if not ok or type(d) ~= 'table' or type(d.n) ~= 'number' or type(d.ship) ~= 'number' then return nil end
+  return p, d
+end
+
+-- A player asks for a container: theirs if it's free (or already theirs), on the ship in port now.
+function W.onClaim(pid, data)
+  local p, d = shipRequest(pid, data)
+  if not p then return end
+  local ship = W.shipAt(W.env.clock())
+  local claims = claimsFor(ship.number)
+  local n = d.n
+  local why
+  if d.ship ~= ship.number then why = 'sailed'
+  elseif n < 1 or n > W.SHIP_CONTAINERS or n ~= math.floor(n) then why = 'no_such_container'
+  elseif claims.boxes[n] and claims.boxes[n].key ~= p.key then why = 'taken' end
+  -- One container at a time: a player's own earlier claim that isn't delivered is given back.
+  if not why then
+    for other, c in pairs(claims.boxes) do
+      if other ~= n and c.key == p.key and not c.delivered then claims.boxes[other] = nil end
+    end
+    claims.boxes[n] = { key = p.key, name = tostring(p.name or ''), delivered = false }
+    saveClaims()
+  end
+  W.env.send(pid, 'wwtcClaimed', W.env.encode({ v = W.PROTO, ship = d.ship, n = n, ok = why == nil, why = why }))
+  if not why then W.sendShipToAll() end
+end
+
+-- A player gives a container back (an abandoned job): it's free for someone else.
+function W.onRelease(pid, data)
+  local p, d = shipRequest(pid, data)
+  if not p then return end
+  local claims = claimsFor(W.shipAt(W.env.clock()).number)
+  local c = d.ship == claims.ship and claims.boxes[d.n]
+  if c and c.key == p.key and not c.delivered then
+    claims.boxes[d.n] = nil
+    saveClaims()
+    W.sendShipToAll()
+  end
+end
+
+-- A container delivered: everyone hears about it.
+function W.onShipDone(pid, data)
+  local p, d = shipRequest(pid, data)
+  if not p then return end
+  local ship = W.shipAt(W.env.clock())
+  local claims = claimsFor(ship.number)
+  local c = d.ship == claims.ship and claims.boxes[d.n]
+  if c and c.key == p.key and not c.delivered then
+    c.delivered = true
+    saveClaims()
+    W.sendShipToAll()
+  end
+  local town = type(d.town) == 'string' and d.town:gsub('%c', ' '):sub(1, 40) or 'inland'
+  local pay = type(d.pay) == 'number' and d.pay >= 0 and math.floor(d.pay) or nil
+  local from = d.ship == ship.number and ship.port.name or 'the docks'
+  say(string.format('%s delivered container %d from %s to %s%s.', tostring(p.name), math.floor(d.n), from, town,
+    pay and (' for $' .. tostring(pay)) or ''))
 end
 
 -- The 'trucking' command in the server window: who is on and their money at their last save.
@@ -282,6 +470,7 @@ if MP and MP.RegisterEvent then
       return (math.random(0, 255) + extra) % 256
     end,
     now = function() return os.date('!%Y-%m-%dT%H:%M:%SZ') end,
+    clock = os.time, epoch = function(t) return os.time(t) end,
     account = function(pid)
       local ok, ids = pcall(MP.GetPlayerIdentifiers, pid)
       local id = ok and type(ids) == 'table' and ids.beammp or nil
@@ -303,6 +492,10 @@ if MP and MP.RegisterEvent then
   WWTC_onSave = guarded('save', W.onSave)
   WWTC_onLeave = guarded('leave', W.onLeave)
   WWTC_onPlayerJoin = guarded('welcome', W.welcome)
+  WWTC_onClaim = guarded('claim', W.onClaim)
+  WWTC_onRelease = guarded('release', W.onRelease)
+  WWTC_onShipDone = guarded('ship delivered', W.onShipDone)
+  WWTC_onShipTimer = guarded('ship', W.shipTick)
   WWTC_onChat = function(pid, name, message)
     local ok, hide = pcall(W.onChat, pid, message)
     if ok and hide then return 1 end
@@ -315,6 +508,12 @@ if MP and MP.RegisterEvent then
   MP.RegisterEvent('wwtcSave', 'WWTC_onSave')
   MP.RegisterEvent('onPlayerDisconnect', 'WWTC_onLeave')
   MP.RegisterEvent('onPlayerJoin', 'WWTC_onPlayerJoin')
+  MP.RegisterEvent('wwtcClaim', 'WWTC_onClaim')
+  MP.RegisterEvent('wwtcRelease', 'WWTC_onRelease')
+  MP.RegisterEvent('wwtcShipDone', 'WWTC_onShipDone')
+  MP.RegisterEvent('WWTC_shipTimer', 'WWTC_onShipTimer')
+  if MP.CreateEventTimer then MP.CreateEventTimer('WWTC_shipTimer', 15000) end
+  WWTC_onShipTimer()
   MP.RegisterEvent('onChatMessage', 'WWTC_onChat')
   MP.RegisterEvent('onConsoleInput', 'WWTC_onConsole')
   print(string.format('[Trucking] plugin loaded: season %d, careers in %s (type "trucking" to list players)',

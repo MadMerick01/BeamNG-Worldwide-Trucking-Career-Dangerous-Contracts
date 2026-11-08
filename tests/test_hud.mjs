@@ -923,3 +923,25 @@ test('tabs sit in two rows: the job on top, the extras below', () => {
   assert.deepEqual(JSON.parse(JSON.stringify(a.scope.tabRows.map(r => r.map(t => t.id)))), [['route', 'town', 'garage', 'relocate'], ['heli', 'home', 'streetview']])
   assert.ok(html.includes('ng-repeat="row in tabRows"') && html.includes('ng-repeat="t in row"'))
 })
+test('Ship Day: the Town tab shows the ship, Go to port and the containers to take', () => {
+  const a = app()
+  const town = html.slice(html.indexOf(`ng-if="tab === 'town'"`), html.indexOf(`ng-if="tab === 'garage'"`))
+  for (const part of ['Ship Day:', 'goToPort()', 'takeContainer(b)', 'Go to port (free)']) assert.ok(town.includes(part), part)
+  const relocate = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`), html.indexOf(`ng-if="tab === 'home'"`))
+  for (const part of ['Ship Day:', 'goToPort()', 'Go to port (free)']) assert.ok(relocate.includes(part), part + ' on the Relocate tab too')
+  const box = { n: 3, allowed: true }
+  a.state({ state: 'READY', arrived: true, shipDay: { goAllowed: true, containers: [box] } })
+  a.commands.length = 0
+  a.scope.goToPort()
+  a.scope.takeContainer(box)
+  a.scope.takeContainer({ n: 4, allowed: false })
+  a.scope.takeContainer({ n: 'x); evil(', allowed: true })
+  assert.deepEqual(a.commands.map(c => c.replace(/^if earthFreight_core then earthFreight_core\.| end$/g, '')),
+    ['goToPort()', 'takeContainer(3)'])
+  a.state({ state: 'READY', arrived: true, shipDay: { goAllowed: false, containers: [] } })
+  a.commands.length = 0
+  a.scope.goToPort()
+  assert.equal(a.commands.length, 0, 'Go to port only when allowed')
+  assert.equal(a.scope.until(2 * 86400 + 14 * 3600 + 59), '2d 14h')
+  assert.equal(a.scope.until(5 * 3600 + 12 * 60), '5h 12m')
+})

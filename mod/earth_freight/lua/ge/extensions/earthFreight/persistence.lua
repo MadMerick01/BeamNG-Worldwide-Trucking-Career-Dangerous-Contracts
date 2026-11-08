@@ -120,6 +120,13 @@ local function load(l)
   if l.trailerUnits ~= nil and (not integer(l.trailerUnits, 1) or not integer(l.units, 1) or l.trailerUnits > l.units) then return nil end
   if l.contract ~= nil and (type(l.contract) ~= 'string' or not optionalString(l.contract) or l.drop == nil
       or (l.started ~= nil and type(l.started) ~= 'boolean') or (l.fee ~= nil and not integer(l.fee, 0))) then return nil end
+  -- A Ship Day container: which ship and which container on it.
+  local container
+  if l.ship ~= nil then
+    if type(l.ship) ~= 'table' or type(l.ship.ship) ~= 'number' or l.ship.ship ~= math.floor(l.ship.ship)
+        or not integer(l.ship.n, 1) then return nil end
+    container = { ship = l.ship.ship, n = l.ship.n }
+  end
   -- A town job's real business: its name, kind and the spot outside it.
   local shop
   if l.business ~= nil then
@@ -131,7 +138,7 @@ local function load(l)
   return { good = l.good, units = l.units, slots = l.slots, kg = l.kg or 0, pay = l.pay, paid = l.paid,
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
-    pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop }
+    pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop, ship = container }
 end
 
 -- A "don't ask questions" job found and not yet picked up: its pickup and drop spots, which line

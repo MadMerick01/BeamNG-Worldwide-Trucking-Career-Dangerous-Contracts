@@ -26,6 +26,8 @@ M.list = {
   { id = 'fuel', name = 'Fuel', kind = 'fluid', litres = 10, slots = 10, kg = 7.5, rate = 1 },
   -- What a "don't ask questions" job carries (beacons.lua): never posted on a board, and no weight.
   { id = 'package', name = 'Package', kind = 'package', slots = 1, kg = 0 },
+  -- Ship Day's high-value container cargo (shipday.lua): parcels, never posted on a board, paying twice the usual rate.
+  { id = 'container', name = 'Container cargo', kind = 'parcel', slots = 2, kg = 30, rate = 2, shipOnly = true },
 }
 -- The cargo kinds the mod can carry yet.
 M.CARRIED = { parcel = true, fluid = true }
@@ -42,7 +44,7 @@ function M.get(id) return byId[id] end
 -- The goods jobs are posted for, in list order.
 function M.carried()
   local out = {}
-  for _, good in ipairs(M.list) do if M.CARRIED[good.kind] and not good.retired then out[#out + 1] = good end end
+  for _, good in ipairs(M.list) do if M.CARRIED[good.kind] and not good.retired and not good.shipOnly then out[#out + 1] = good end end
   return out
 end
 
