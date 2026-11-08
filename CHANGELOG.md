@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 148 · 8 Nov 2026
+
 - **Multiplayer careers on BeamMP servers.** On a BeamNG.Earth server running the new Worldwide Trucking server plugin, your career is kept on the server: when you join, the HUD says "Getting your trucking career from the server" for a few seconds, then loads your truck and money there, or starts you a new career. Every Save goes to the server. Your single-player career is never touched, and you get it back as it was when you play alone again. Signed-in BeamMP players get their career on any PC; guests get theirs back on the same PC. On a server without the plugin, your multiplayer career is saved on your PC, still apart from your single-player one.
 - Hosting a server? Each build now also comes with `worldwide-trucking-server.zip`: unzip it into your BeamMP server folder, next to BeamNG.Earth's host files. `MULTIPLAYER-SETUP.md` inside it explains the setup, starting a new season (everyone back to the rusty starter car) and the `trucking` command that lists who's on.
 
