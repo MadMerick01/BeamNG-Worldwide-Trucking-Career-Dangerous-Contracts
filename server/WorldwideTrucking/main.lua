@@ -114,15 +114,19 @@ function W.start(env)
   env.mkdir(W.DIR)
   env.mkdir(W.DIR .. '/careers')
   env.mkdir(W.seasonDir())
+  -- (Nothing is decoded that isn't there: BeamMP's JsonDecode logs an error for empty text, as on a first start.)
   local server = env.read(W.DIR .. '/server.json')
-  local ok, info = pcall(env.decode, server or '')
+  local ok, info = false, nil
+  if server and server ~= '' then ok, info = pcall(env.decode, server) end
   if ok and type(info) == 'table' and W.validKey(info.id) then
     W.serverId = info.id
   else
     W.serverId = W.newKey(env.bytes)
     env.write(W.DIR .. '/server.json', env.encode({ id = W.serverId }))
   end
-  local okA, accounts = pcall(env.decode, env.read(W.DIR .. '/accounts.json') or '')
+  local accountsText = env.read(W.DIR .. '/accounts.json')
+  local okA, accounts = false, nil
+  if accountsText and accountsText ~= '' then okA, accounts = pcall(env.decode, accountsText) end
   W.accounts = {}
   if okA and type(accounts) == 'table' then
     for id, key in pairs(accounts) do if W.validKey(key) then W.accounts[tostring(id)] = key end end

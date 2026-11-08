@@ -78,9 +78,14 @@ do
   T.eq(W.ledgerLine('t', 'k', 'Sam\tthe\nTrucker', 5, 10, 3), 't\tk\tSam the Trucker\t5\t10\t3\n', 'ledger lines are one line each')
 end
 
--- The server remembers who it is between restarts.
+-- The server remembers who it is between restarts, and a first start reads no empty files.
 do
+  local decoded = {}
+  local decode = J.decode
+  J.decode = function(text) decoded[#decoded + 1] = text; return decode(text) end
   local W, env = server()
+  J.decode = decode
+  T.eq(#decoded, 0, 'a first start decodes nothing (BeamMP logs an error for empty text)')
   T.check(W.validKey(W.serverId), 'the server has an id')
   local W2 = server(env.files)
   T.eq(W2.serverId, W.serverId, 'and keeps it after a restart')
