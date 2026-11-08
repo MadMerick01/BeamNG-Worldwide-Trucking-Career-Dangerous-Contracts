@@ -50,6 +50,10 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 6. Press **Save** often. Next time, **Teleport to last save** puts you right back.
 
 
+## Multiplayer
+
+Drive the career with friends on a BeamMP server running BeamNG.Earth. Each player's career is kept on the server, apart from their single-player one. To host one, download `worldwide-trucking-server.zip` from the [latest release](../../releases/latest) and follow [MULTIPLAYER-SETUP.md](docs/MULTIPLAYER-SETUP.md). Players only need BeamNG.Earth's app: the server sends them the mod.
+
 ## Updating
 
 Download the new `worldwide-trucking-dangerous-contracts.zip`, delete the old one from your `mods` folder and drop the new one in. Your saves carry over unless the changelog says otherwise.

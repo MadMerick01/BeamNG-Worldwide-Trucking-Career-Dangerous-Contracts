@@ -1,6 +1,6 @@
 # Multiplayer career — design
 
-Status: **design only, nothing built.** Written 8 Nov 2026 from a design discussion with MadMerick. Decisions are marked
+Status: **step 1 ("keeper") built**, 8 Nov 2026: careers kept on the server, career keys, seasons and the `trucking` command (`server/WorldwideTrucking/main.lua`, `multiplayer.lua`; setup in [MULTIPLAYER-SETUP.md](MULTIPLAYER-SETUP.md)). Written from a design discussion with MadMerick. Decisions are marked
 **Decided**; open questions are tagged **❓ OPEN**.
 
 ## The pitch
@@ -60,16 +60,21 @@ The career already has the seams this needs:
 
 ### The server's records
 
-`Resources/Server/WorldwideTrucking/careers/<season>/<player id>.json`: the same save document the game writes today,
-plus a running ledger of money events. The player id is the BeamMP account id from `MP.GetPlayerIdentifiers`, not the
-display name, so a renamed player keeps their career.
+In `Resources/Server/WorldwideTrucking/`:
+
+- `careers/season-N/<career key>.json`: the same save document the game writes in single player, kept as the JSON
+  text the game sent;
+- `careers/season-N/ledger.tsv`: one line per change of money (time, key, name, before, after, save generation);
+- `accounts.json`: BeamMP account id (`MP.GetPlayerIdentifiers(pid).beammp`) to career key, so a signed-in player
+  keeps their career on any PC and after renaming;
+- `server.json`: this server's own id, which the game files career keys under.
 
 **Decided (MadMerick, 8 Nov): guest accounts are allowed, and keep money and trucks too.** A BeamMP guest has no account id
 and a new random name each time, so the server gives every career a secret **career key** on first join. The game
 keeps it in a small file on the player's PC (one per server) and sends it on every join; the server finds the career by
 it. A guest's career therefore stays on the PC it was started on: a reinstall that deletes the file, or another PC,
 starts over. Account players are found by their account id, with the key as well. The key is never shown to other
-players, and the HUD tells a guest that signing in to BeamMP keeps their career safer.
+players. (Not built yet: a HUD note telling a guest that signing in to BeamMP keeps their career safer.)
 
 ### How much the server checks
 

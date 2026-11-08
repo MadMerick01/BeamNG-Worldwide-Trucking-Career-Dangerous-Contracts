@@ -27,6 +27,7 @@ function F.io(files)
     return F.copy(io.files[path])
   end
   io.mkdir = function() io.directories = io.directories + 1; return not io.mkdirFails end
+  io.remove = function(path) io.files[path] = nil end
   io.write = function(path, data)
     io.writes = io.writes + 1
     if io.writeFails then io.files[path] = 'partial JSON'; return false end
@@ -243,7 +244,7 @@ function F.controller(options)
   local events, logs = {}, {}
   local c = Core.new({ io = io, adapter = adapter, garage = garage, paused = options.paused, random = options.random,
     punctures = options.punctures, cargo = cargo, fuel = fuel, aircraft = options.aircraft,
-    streetView = options.streetView, openUrl = options.openUrl,
+    streetView = options.streetView, openUrl = options.openUrl, multiplayer = options.multiplayer,
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
   return c, io, adapter, garage, cargo, fuel, logs

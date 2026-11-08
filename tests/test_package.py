@@ -12,7 +12,7 @@ from zipfile import ZipFile
 
 from lupa.luajit21 import LuaRuntime
 
-from tools.package import build
+from tools.package import build, build_server
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -124,6 +124,15 @@ class PackageTest(unittest.TestCase):
         second = build(Path(self.temp.name) / 'second.zip')
         self.assertEqual(hashlib.sha256(self.output.read_bytes()).digest(),
                          hashlib.sha256(second.read_bytes()).digest())
+
+    def test_server_download_holds_the_plugin_and_the_mod(self):
+        server = build_server(Path(self.temp.name) / 'server.zip', self.output)
+        with ZipFile(server) as archive:
+            names = set(archive.namelist())
+            self.assertEqual(names, {'Resources/Server/WorldwideTrucking/main.lua',
+                                     'Resources/Client/worldwide-trucking-dangerous-contracts.zip', 'MULTIPLAYER-SETUP.md'})
+            self.assertEqual(archive.read('Resources/Client/worldwide-trucking-dangerous-contracts.zip'), self.output.read_bytes())
+            self.assertIsNone(archive.testzip())
 
     def test_place_list_matches_its_generator(self):
         result = subprocess.run([sys.executable, str(ROOT / 'tools' / 'make_places.py'), '--check'],

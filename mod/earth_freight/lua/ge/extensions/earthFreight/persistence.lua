@@ -282,9 +282,12 @@ function M.newProfile(base, pose, vehicle, balance)
   }
 end
 
-function M.new(io)
+-- The store of one career: the two slots in directory (the single-player folder when none is given; a multiplayer
+-- career has a folder of its own, see multiplayer.lua).
+function M.new(io, directory)
+  directory = directory or M.DIRECTORY
   local store = { generation = 0, slot = nil, blocked = true }
-  local paths = { a = M.DIRECTORY .. 'save-a.json', b = M.DIRECTORY .. 'save-b.json' }
+  local paths = { a = directory .. 'save-a.json', b = directory .. 'save-b.json' }
 
   -- Returns the newest readable save, or nil and why: 'missing' (no save files), 'unreadable'
   -- (files exist but none can be read; saving replaces them), 'newer_version' or 'storage_unavailable'.
@@ -331,7 +334,7 @@ function M.new(io)
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end
-    local dirOK, made = pcall(io.mkdir, M.DIRECTORY)
+    local dirOK, made = pcall(io.mkdir, directory)
     if not dirOK or made == false then return nil, 'directory_failed' end
     local slot = self.slot == 'a' and 'b' or 'a'
     local ok, result = pcall(io.write, paths[slot], clean)
