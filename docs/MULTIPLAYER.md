@@ -62,7 +62,14 @@ The career already has the seams this needs:
 
 `Resources/Server/WorldwideTrucking/careers/<season>/<player id>.json`: the same save document the game writes today,
 plus a running ledger of money events. The player id is the BeamMP account id from `MP.GetPlayerIdentifiers`, not the
-display name, so a renamed player keeps their career. ❓ OPEN: allow BeamMP guest accounts (no stable id)?
+display name, so a renamed player keeps their career.
+
+**Decided (Rowan, 8 Nov): guest accounts are allowed, and keep money and trucks too.** A BeamMP guest has no account id
+and a new random name each time, so the server gives every career a secret **career key** on first join. The game
+keeps it in a small file on the player's PC (one per server) and sends it on every join; the server finds the career by
+it. A guest's career therefore stays on the PC it was started on: a reinstall that deletes the file, or another PC,
+starts over. Account players are found by their account id, with the key as well. The key is never shown to other
+players, and the HUD tells a guest that signing in to BeamMP keeps their career safer.
 
 ### How much the server checks
 
@@ -93,7 +100,7 @@ the mod ship together and carry the same save schema.
 - **Shared job boards and town need.** Boards are now seeded by the player's own delivery count (`jobsDone`), so two
   players in one town see different jobs. Seed them from a per-town counter on the server instead, and keep town need on
   the server, so a delivery lowers the pay for everyone. Shortages already match for everyone (they come from the clock
-  hour and the town). ❓ OPEN: does a job one player takes disappear from everyone's board?
+  hour and the town). **Decided (Rowan, 8 Nov): not yet.** A job one player takes stays on everyone's board for now.
 - **Multiplayer HUD section.** "Go to a player" (teleport next to someone, free when not on a job, counted as a shipping
   booking when on one; shown by name and town only), and "Sync my truck" only if testing shows BeamMP desyncs after our
   respawns.
