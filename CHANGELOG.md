@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Flat tyres happen about a quarter as often.** On the road at normal speed you now get a puncture roughly once every 160 km instead of every 40 km. Driving fast and going off road still raise the chance as before, and a burst tyre still costs the same to fix. Your saves still work.
+
 ## Build 148 · 8 Nov 2026
 
 - **Multiplayer careers on BeamMP servers.** On a BeamNG.Earth server running the new Worldwide Trucking server plugin, your career is kept on the server: when you join, the HUD says "Getting your trucking career from the server" for a few seconds, then loads your truck and money there, or starts you a new career. Every Save goes to the server. Your single-player career is never touched, and you get it back as it was when you play alone again. Signed-in BeamMP players get their career on any PC; guests get theirs back on the same PC. On a server without the plugin, your multiplayer career is saved on your PC, still apart from your single-player one.

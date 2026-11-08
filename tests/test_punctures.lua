@@ -5,18 +5,18 @@ local punctures = require('earthFreight/punctures')
 local pricing = require('earthFreight/pricing')
 local places = require('earthFreight/places')
 local north = 1 / 111195.0802 -- degrees latitude per metre
-T.eq(punctures.AVERAGE_KM, 40, 'about one every 40 km'); T.eq(punctures.GAP_KM, 5, 'none within 5 km of the last')
+T.eq(punctures.AVERAGE_KM, 160, 'about one every 160 km'); T.eq(punctures.GAP_KM, 5, 'none within 5 km of the last')
 T.eq(punctures.SAFE_FINISH_METRES, 1000, 'none in the last km before the drop-off'); T.eq(punctures.OFF_ROAD_MULTIPLIER, 2, 'double off road')
 
 -- The chance: one per AVERAGE_KM at the reference speed, more at speed, double off road.
-T.near(punctures.chance(1000, 70, false), 1 / 40, 1e-12, '1 in 40 per km at 70 km/h')
-T.near(punctures.chance(1000, 140, false), 2 / 40, 1e-12, 'twice as likely at 140 km/h')
-T.near(punctures.chance(1000, 70, true), 2 / 40, 1e-12, 'twice as likely off road')
-T.near(punctures.chance(1000, 1000, true), 2.5 * 2 / 40, 1e-12, 'speed factor capped')
-T.near(punctures.chance(1000, 1, false), 0.25 / 40, 1e-12, 'crawling still has a small chance')
+T.near(punctures.chance(1000, 70, false), 1 / 160, 1e-12, '1 in 160 per km at 70 km/h')
+T.near(punctures.chance(1000, 140, false), 2 / 160, 1e-12, 'twice as likely at 140 km/h')
+T.near(punctures.chance(1000, 70, true), 2 / 160, 1e-12, 'twice as likely off road')
+T.near(punctures.chance(1000, 1000, true), 2.5 * 2 / 160, 1e-12, 'speed factor capped')
+T.near(punctures.chance(1000, 1, false), 0.25 / 160, 1e-12, 'crawling still has a small chance')
 T.eq(punctures.chance(0, 70, false), 0, 'no distance, no chance')
--- Over a 15 km run on road at 70 km/h, about a 1 in 3 chance.
-T.near(1 - math.exp(-15 * punctures.chance(1000, 70, false)), 0.31, 0.01, 'about 1 in 3 over 15 km on road')
+-- Over a 15 km run on road at 70 km/h, about a 1 in 11 chance.
+T.near(1 - math.exp(-15 * punctures.chance(1000, 70, false)), 0.09, 0.01, 'about 1 in 11 over 15 km on road')
 
 -- Game side: the burst runs the car's own deflate call; off road is read from the road map.
 do
