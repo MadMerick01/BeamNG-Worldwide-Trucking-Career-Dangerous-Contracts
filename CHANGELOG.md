@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Joining a trucking server now gives you a car.** BeamMP drops you in as a free camera with no vehicle, so the HUD sat waiting until you spawned one yourself. Now, a few seconds after your career arrives, the rusty starter Burnside is put down where you are and you're put in it. From there, Start here or Teleport to last save works as usual, and your own truck is handed over when you reach your save. Single player is unchanged.
+
 ## Build 150 · 8 Nov 2026
 
 - Fixed: a new trucking server no longer shows two "string given to JsonDecode is not valid json" errors in its window when it starts. They were harmless: the server was looking for its own files before it had made them.

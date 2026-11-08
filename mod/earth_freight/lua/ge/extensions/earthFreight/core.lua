@@ -322,8 +322,27 @@ function M.new(deps)
     end
   end
 
+  -- BeamMP drops a joining player into the world as a free camera, with no car, and the career can't start without
+  -- one. After a few seconds without a car, once the career is in, the starter car is put down where the camera is,
+  -- as the game's vehicle menu would: from there the usual start (Start here, or Teleport to last save, where the
+  -- player's own car is handed over) carries on. Once per level, so a player who leaves their car on purpose isn't
+  -- given another.
+  M.FIRST_CAR_SECONDS = 3
+  function c:spawnFirstCar(sample, dt)
+    if not self.mp or not self.mp:ready() or self.firstCarSpawned or not self.garage or not self.garage.spawnFirst
+        or self.loadStatus == 'mp_waiting' or type(sample) ~= 'table' or sample.reason ~= 'vehicle_required' then
+      self.noCarFor = 0
+      return
+    end
+    self.noCarFor = (self.noCarFor or 0) + dt
+    if self.noCarFor < M.FIRST_CAR_SECONDS then return end
+    self.firstCarSpawned = true
+    local ok, why = self.garage:spawnFirst(M.STARTER_MODEL, M.STARTER_CONFIG)
+    self.diag:event('first_car', ok and 'spawned' or tostring(why), ok and 'I' or 'W')
+  end
+
   function c:endMission()
-    self.mp = nil
+    self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
     self:interrupt('earth_level_required')
     self.adapter:invalidate()
@@ -1395,7 +1414,9 @@ function M.new(deps)
       self.mp:tick(self.clock)
       if self.mp:ready() and self.loadStatus == 'mp_waiting' then self:reload() end
     end
-    self:observe(self.adapter:sample(), dt)
+    local sample = self.adapter:sample()
+    self:observe(sample, dt)
+    self:spawnFirstCar(sample, dt)
     self:provideVehicle()
     self:watchHire()
     self:watchBeacon(dt)
