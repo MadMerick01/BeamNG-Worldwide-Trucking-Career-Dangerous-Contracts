@@ -100,6 +100,22 @@ Replacing the mod zip in `Resources/Client` and restarting the server is all it 
 players as they join. A build that changes the save document must also be read by the server, so the server plugin and
 the mod ship together and carry the same save schema.
 
+## Ship Day (built)
+
+**Decided (MadMerick, 8 Nov):** buying ports worldwide is too big for a server of about 10 players. Instead, every 3
+days a ship docks at one interesting port and everyone heads there: on BeamNG.Earth players only see each other when
+they are close, so this is what brings them together.
+
+- The server holds the schedule, the port list and who has which container (`ships.json` in the season folder). It
+  sends the ship to each player (`wwtcShip`), answers claims (`wwtcClaim`/`wwtcClaimed`, first come first served, one
+  at a time), frees abandoned containers (`wwtcRelease`) and announces deliveries in chat (`wwtcShipDone`).
+- Each container's destination and pay are worked out in the game (`shipday.lua`), the same on every PC: towns 15–70 km
+  by road from the port town, picked by a hash of the ship and container number. Pay is the usual pay by weight and
+  distance for "Container cargo", which pays twice the usual rate.
+- **No landing in the water:** Go to port goes to the centre of the town nearest the port's coordinates, never to the
+  coordinates themselves.
+- Not yet: the server doesn't check the pay of a container delivery against what it should be (the referee step).
+
 ## Later steps (agreed in principle, not scheduled)
 
 - **Shared job boards and town need.** Boards are now seeded by the player's own delivery count (`jobsDone`), so two

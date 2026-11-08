@@ -496,6 +496,19 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var s = Math.max(0, Math.ceil(seconds))
         return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2)
       }
+      // Ship Day: a free trip to the port, and a container from the ship there.
+      scope.goToPort = function () { if (scope.data.shipDay && scope.data.shipDay.goAllowed) core('goToPort()') }
+      scope.takeContainer = function (box) {
+        var n = box ? parseInt(box.n, 10) : 0
+        if (scope.data.shipDay && box.allowed && n > 0) core('takeContainer(' + n + ')')
+      }
+      // A long wait as days and hours, or hours and minutes: 2d 14h, 5h 12m.
+      scope.until = function (seconds) {
+        if (typeof seconds !== 'number' || !isFinite(seconds)) return ''
+        var m = Math.max(0, Math.floor(seconds / 60))
+        var d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60)
+        return d > 0 ? d + 'd ' + h + 'h' : h + 'h ' + (m % 60) + 'm'
+      }
       scope.cancelShipping = function () { if (scope.data.shipping && scope.data.shipping.booking) core('cancelShipping()') }
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       // Opens Google Street View of where the truck is in the player's web browser.
