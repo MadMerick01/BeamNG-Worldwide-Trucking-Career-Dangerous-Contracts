@@ -7,6 +7,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - No changes in the game. A new design document plans a multiplayer version of the career on BeamMP servers.
+- No changes in the game. The notes now name the author as MadMerick.
 
 ## Build 145 · 7 Nov 2026
 
