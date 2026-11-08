@@ -21,6 +21,8 @@ local function server(files, accounts)
   env.now = function() return '2026-11-08T01:00:00Z' end
   env.account = function(pid) return accounts and accounts[pid] end
   env.name = function(pid) return 'player' .. pid end
+  env.chats = {}
+  env.chat = function(pid, text) env.chats[#env.chats + 1] = { pid = pid, text = text } end
   env.print = function(text) env.printed[#env.printed + 1] = text end
   W.start(env)
   return W, env
@@ -239,6 +241,24 @@ do
   c:endMission(); mp.inSession = function() return false end; c:reload()
   F.advance(c, 10)
   T.eq(#spawned, 1, 'never in single player')
+end
+
+-- A joining player is told in chat how to turn on the HUD, and !hud says it again, to them alone.
+do
+  local W, env = server()
+  W.welcome(4)
+  T.eq(#env.chats, #W.WELCOME, 'every welcome line is sent')
+  T.check(env.chats[1].pid == 4, 'to the player who joined')
+  local all = ''
+  for _, c in ipairs(env.chats) do all = all .. c.text .. '\n' end
+  T.check(all:find('+ Add app', 1, true) ~= nil, 'with the steps to add the HUD')
+  T.check(W.onChat(5, ' !HUD '), '!hud is answered and hidden from everyone')
+  T.eq(env.chats[#env.chats].pid, 5, 'answered to whoever asked')
+  T.eq(#env.chats, #W.WELCOME * 2, 'with the same lines')
+  T.check(not W.onChat(5, 'hello all'), 'other chat goes through')
+  W.WELCOME = {}
+  W.welcome(6)
+  T.eq(#env.chats, 8, 'an empty welcome sends nothing')
 end
 
 T.done('multiplayer careers')

@@ -24,6 +24,14 @@ local W = {}
 -- The season. Raise it by one to start everyone over on their next join: rusty starter car and the starting money.
 -- The old season's careers stay in their folder (careers/season-N), untouched.
 W.SEASON = 1
+-- Sent in chat to each player as they finish joining, one message per line. Anyone can type !hud to see them again.
+-- Change the lines as you like, or make it {} to send nothing.
+W.WELCOME = {
+  'Welcome to the Worldwide Trucking Career!',
+  'No trucking HUD on screen? Press Esc > System > HUD Apps > .Earth (edit layout) > + Add app.',
+  'Pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom, press + Add to layout, then Save.',
+  'Your career is kept on this server. Press Save in the HUD to keep your progress. Type !hud to see this again.',
+}
 -- ==================================================================================================================
 
 W.DIR = 'Resources/Server/WorldwideTrucking'
@@ -203,6 +211,21 @@ end
 
 function W.onLeave(pid) W.players[pid] = nil end
 
+-- The welcome lines in chat, to a player who has just finished joining.
+function W.welcome(pid)
+  if not W.env.chat then return end
+  for _, line in ipairs(W.WELCOME or {}) do W.env.chat(pid, tostring(line)) end
+end
+
+-- A chat message: !hud sends the welcome again, to that player only, and isn't shown to everyone. True: hide it.
+function W.onChat(pid, message)
+  if tostring(message or ''):lower():match('^%s*!hud%s*$') then
+    W.welcome(pid)
+    return true
+  end
+  return false
+end
+
 -- The 'trucking' command in the server window: who is on and their money at their last save.
 function W.report()
   local lines = { string.format('[Trucking] season %d, %d player(s)', W.SEASON, (function()
@@ -265,6 +288,7 @@ if MP and MP.RegisterEvent then
       if id ~= nil and tostring(id) ~= '' then return tostring(id) end
     end,
     name = function(pid) return MP.GetPlayerName(pid) end,
+    chat = function(pid, text) MP.SendChatMessage(pid, text) end,
     print = print,
   })
 
@@ -278,6 +302,11 @@ if MP and MP.RegisterEvent then
   WWTC_onJoin = guarded('join', W.onJoin)
   WWTC_onSave = guarded('save', W.onSave)
   WWTC_onLeave = guarded('leave', W.onLeave)
+  WWTC_onPlayerJoin = guarded('welcome', W.welcome)
+  WWTC_onChat = function(pid, name, message)
+    local ok, hide = pcall(W.onChat, pid, message)
+    if ok and hide then return 1 end
+  end
   WWTC_onConsole = function(text)
     if tostring(text):match('^%s*trucking%s*$') then return W.report() end
   end
@@ -285,6 +314,8 @@ if MP and MP.RegisterEvent then
   MP.RegisterEvent('wwtcJoin', 'WWTC_onJoin')
   MP.RegisterEvent('wwtcSave', 'WWTC_onSave')
   MP.RegisterEvent('onPlayerDisconnect', 'WWTC_onLeave')
+  MP.RegisterEvent('onPlayerJoin', 'WWTC_onPlayerJoin')
+  MP.RegisterEvent('onChatMessage', 'WWTC_onChat')
   MP.RegisterEvent('onConsoleInput', 'WWTC_onConsole')
   print(string.format('[Trucking] plugin loaded: season %d, careers in %s (type "trucking" to list players)',
     W.SEASON, W.seasonDir()))
