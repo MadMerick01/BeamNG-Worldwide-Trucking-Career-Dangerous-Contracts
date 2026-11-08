@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- No changes in the game. **The trucking server now has a public web page** showing who's driving and in which town, the current Ship Day with a countdown and containers left, a live feed, the season leaderboard and how to join. It shows sample data, clearly marked, until the server starts sending its live stats.
+
 ## Build 154 · 8 Nov 2026
 
 - **Ship Day on trucking servers.** Every 3 days a ship docks at a port somewhere in the world, one of 15 ports from Kotor and Rio de Janeiro to Reykjavík and Hong Kong, carrying 20 containers of high-value cargo. The server announces it in chat, and a new **Ship Day** card at the top of the **Town** tab shows the ship, when it sails and every container with where it goes and what it pays. Press **Go to port (free)**, on the Town tab or the Relocate tab, to take your empty car to the town by the docks (always on land), then **Take** a container. It's first come, first served, one at a time, and everyone sees which are gone. Drive it 15 to 70 km inland and deliver it as usual for well above normal pay, and the whole server hears about it in chat. Abandoning a container frees it for someone else. Server hosts get the new plugin by unzipping the new server download over their server folder; ports, timing and the number of containers are settings at the top of the plugin. Careers and saves carry on as before. Single player is unchanged.

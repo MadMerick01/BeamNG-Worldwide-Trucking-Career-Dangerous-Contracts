@@ -96,6 +96,20 @@ To change it, edit the settings at the top of `Resources\Server\WorldwideTruckin
 - `W.PORTS`: the ports, in order. Each has a name, region and coordinates; keep the coordinates on the land side of
   the port. `W.SHIP_NAMES`: the ships' names.
 
+## The server page
+
+A public page shows what's happening on the server: who's driving and in which town, Ship Day with its countdown and
+containers left, a live feed, the season leaderboard and how to join. It is in this repo's `site` folder and GitHub
+Pages hosts it for free, so nothing is served from your PC.
+
+**Turn it on once:** on GitHub, open the repo's **Settings > Pages**, and under **Build and deployment** set **Source**
+to **GitHub Actions**. The next change to `site` on main publishes it (or run the **Server page** workflow by hand from
+the **Actions** tab). The page is then at `https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/`.
+
+Until the server sends its own stats, the page shows **sample data**, marked as such. The server will send them as
+`status.json` to the repo's `server-stats` branch every few minutes; the page reads that file (the format is the
+sample in `site/status.json`). Players are only ever shown by town.
+
 ## Updating
 
 - **The mod:** unzip the new `worldwide-trucking-server.zip` over the old one and restart the server. Players get the
