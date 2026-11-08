@@ -96,6 +96,37 @@ To change it, edit the settings at the top of `Resources\Server\WorldwideTruckin
 - `W.PORTS`: the ports, in order. Each has a name, region and coordinates; keep the coordinates on the land side of
   the port. `W.SHIP_NAMES`: the ships' names.
 
+## The server page
+
+A public page shows what's happening on the server: who's driving and in which town, Ship Day with its countdown and
+containers left, a live feed, the season leaderboard and how to join. It is in this repo's `site` folder and GitHub
+Pages hosts it for free, so nothing is served from your PC.
+
+**Turn it on once:** on GitHub, open the repo's **Settings > Pages**, and under **Build and deployment** set **Source**
+to **GitHub Actions**. The next change to `site` on main publishes it (or run the **Server page** workflow by hand from
+the **Actions** tab). The page is then at `https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/`.
+
+Until the server sends its own stats, the page shows **sample data**, marked as such.
+
+**Send the live stats (once):** the server sends `status.json` every few minutes to a small repo of its own, so the
+token on your PC can't touch the mod's repo.
+
+1. On GitHub, create a new **public** repository called **`trucking-server-stats`**, with **Add a README** ticked so it
+   has a `main` branch.
+2. Make a token: open [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
+   (fine-grained token). Give it a name, an expiry (a year is fine), **Repository access: Only select repositories**,
+   pick `trucking-server-stats`, and under **Permissions > Repository permissions** set **Contents** to **Read and
+   write**. Generate it and copy it.
+3. Paste the token, alone, into a new file `Resources\Server\WorldwideTrucking\github-token.txt` and save it. Never
+   share it or put it in `main.lua`.
+4. Restart the server. Within a few minutes `status.json` appears in the stats repo and the page shows the live
+   server: who's on and in which town, Ship Day, the feed and the leaderboard. If GitHub refuses the stats, the server
+   window says why.
+
+Players are only ever shown by town. The stats are also written to `Resources\Server\WorldwideTrucking\status.json`.
+If you name the stats repo differently, change `W.STATS_REPO` at the top of `main.lua` and the first address in
+`site/index.html`; set `W.STATS_REPO = ''` to send nothing.
+
 ## Updating
 
 - **The mod:** unzip the new `worldwide-trucking-server.zip` over the old one and restart the server. Players get the

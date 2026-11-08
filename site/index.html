@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worldwide Trucking Server</title>
+<meta name="description" content="What's happening on MadMerick's Worldwide Trucking Career multiplayer server for BeamNG.Earth: who's driving, Ship Day, deliveries and the season leaderboard.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+  :root {
+    --bg: #0c1318; --panel: #121c22; --line: #24343c; --text: #f2f6f5; --muted: #9fb0ac; --faint: #6f7f7b;
+    --accent: #a7e5c9; --green: #6fcf97; --ship: #56ccf2; --warn: #f2c94c; --red: #eb5757;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+  header h1 { margin: 0; font-size: 24px; line-height: 1.2; }
+  header .sub { color: var(--muted); font-size: 14px; }
+  .grow { flex: 1; min-width: 200px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; white-space: nowrap; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); }
+  .pill.on .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .pill.off .dot { background: var(--red); }
+  .banner { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--warn); border-radius: 8px; color: var(--warn); background: rgba(242, 201, 76, .06); font-size: 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .tile .label { color: var(--muted); font-size: 13px; }
+  .tile .value { font-size: 26px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 14px; min-width: 0; }
+  section h2 { margin: 0 0 10px; font-size: 16px; color: var(--accent); }
+  .ship { border: 2px solid var(--ship); }
+  .ship h2 { color: var(--ship); }
+  .ship .big { font-size: 20px; font-weight: 700; }
+  .countdown { font-size: 28px; font-weight: 700; color: var(--ship); font-variant-numeric: tabular-nums; }
+  .bar { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; margin: 6px 0 4px; }
+  .bar > div { height: 100%; background: var(--ship); }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  #map { height: 340px; border-radius: 8px; background: #0a1014; }
+  ul.list { list-style: none; margin: 0; padding: 0; }
+  ul.list li { padding: 7px 0; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: baseline; }
+  ul.list li:last-child { border-bottom: none; }
+  .when { flex: none; width: 64px; color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .who { font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 13px; }
+  td.num, th.num { text-align: right; }
+  .empty { color: var(--faint); font-style: italic; }
+  ol.steps { margin: 0; padding-left: 20px; }
+  ol.steps li { margin-bottom: 6px; }
+  footer { color: var(--faint); font-size: 13px; text-align: center; margin-top: 10px; }
+  .leaflet-container { font: inherit; }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel); color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="grow">
+      <h1 id="server-name">Worldwide Trucking Career</h1>
+      <div class="sub">MadMerick's BeamNG.Earth multiplayer trucking server</div>
+    </div>
+    <span class="pill" id="status"><span class="dot"></span><span id="status-text">Loading&hellip;</span></span>
+  </header>
+
+  <div class="banner" id="sample" hidden>Sample data: the server hasn't sent its live stats yet, so everything below is made up to show what the page will look like.</div>
+
+  <div class="tiles">
+    <div class="tile"><div class="label">Driving now</div><div class="value" id="t-online">&ndash;</div></div>
+    <div class="tile"><div class="label">Truckers this season</div><div class="value" id="t-truckers">&ndash;</div></div>
+    <div class="tile"><div class="label">Deliveries today</div><div class="value" id="t-deliveries">&ndash;</div></div>
+    <div class="tile"><div class="label">Earned today</div><div class="value" id="t-earned">&ndash;</div></div>
+    <div class="tile"><div class="label">Season</div><div class="value" id="t-season">&ndash;</div></div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <section class="ship" id="ship-card">
+        <h2>Ship Day</h2>
+        <div id="ship-body" class="empty">No ship in port.</div>
+      </section>
+      <section>
+        <h2>Where everyone is</h2>
+        <div id="map" role="img" aria-label="World map of the towns where players are driving, and the Ship Day port"></div>
+        <div class="small muted" style="margin-top:6px;">Towns only, never exact positions.</div>
+      </section>
+      <section>
+        <h2>Live feed</h2>
+        <ul class="list" id="feed"><li class="empty">Nothing yet.</li></ul>
+      </section>
+    </div>
+    <div>
+      <section>
+        <h2>Driving now</h2>
+        <ul class="list" id="online"><li class="empty">Nobody on right now.</li></ul>
+      </section>
+      <section>
+        <h2>Season leaderboard</h2>
+        <table>
+          <thead><tr><th>#</th><th>Trucker</th><th class="num">Money</th><th class="num">Jobs</th></tr></thead>
+          <tbody id="board"><tr><td colspan="4" class="empty">No careers yet.</td></tr></tbody>
+        </table>
+      </section>
+      <section>
+        <h2>How to join</h2>
+        <ol class="steps">
+          <li>Install <b>BeamNG.drive</b> and <a href="https://beammp.com">BeamMP</a>, and sign in to BeamMP. Signed-in players keep their career on any PC.</li>
+          <li>Download the <a href="https://github.com/TecnaGamer/BeamNG.Earth/releases">BeamNG.Earth app</a>, the same version as the server (<span id="earth-version">1.8.2</span>), and keep it running while you play.</li>
+          <li>In the BeamMP server browser, open the BeamNG.Earth tab and join <b id="join-name">Trucking Career Test | MadMerick</b>. The trucking mod downloads by itself.</li>
+          <li>First time only: press Esc, go to System &gt; HUD Apps &gt; .Earth (edit layout) &gt; + Add app, pick <b>BeamNG Worldwide Trucking Career: Dangerous Contracts</b>, then + Add to layout and Save. Type <b>!hud</b> in chat to see this again.</li>
+        </ol>
+        <p class="small muted" style="margin:8px 0 0;">Your money and trucks are kept on the server, separate from single player. Press Save in the HUD to keep your progress. Want the mod for single player? Get it from the <a href="https://github.com/MadMerick01/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/releases/latest">latest release</a>.</p>
+      </section>
+    </div>
+  </div>
+
+  <footer>Updated <span id="updated">&ndash;</span> &middot; Refreshes every minute &middot; Worldwide Trucking Career by MadMerick</footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+'use strict'
+// Where the live stats come from: the server sends status.json to the trucking-server-stats repo (its own repo, so the
+// server's GitHub token can't touch this one). Until it does, the sample next to this page is shown, marked as such.
+var STATS_URLS = [
+  'https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json',
+  'status.json'
+]
+var REFRESH_MS = 60000
+// Stats older than this mean the server is off (it sends them every few minutes while it runs).
+var STALE_MS = 15 * 60000
+
+var stats = null
+// Sample data is replayed as if it were sent just now, so its countdown and times read naturally.
+var shift = 0
+var map = null, layer = null
+
+function $(id) { return document.getElementById(id) }
+function text(value) { return value === null || value === undefined ? '' : String(value) }
+function num(value) { return typeof value === 'number' && isFinite(value) ? value : null }
+function money(value) { var n = num(value); return n === null ? '–' : '$' + Math.round(n).toLocaleString('en-US') }
+function count(value) { var n = num(value); return n === null ? '–' : Math.round(n).toLocaleString('en-US') }
+function time(value) { var t = Date.parse(value); return isFinite(t) ? t + shift : null }
+function el(tag, className, content) {
+  var node = document.createElement(tag)
+  if (className) node.className = className
+  if (content !== undefined) node.textContent = text(content)
+  return node
+}
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild) }
+
+function ago(at, now) {
+  var t = time(at)
+  if (t === null) return ''
+  var s = Math.max(0, Math.round((now - t) / 1000))
+  if (s < 60) return 'just now'
+  if (s < 3600) return Math.floor(s / 60) + ' min ago'
+  if (s < 86400) return Math.floor(s / 3600) + ' h ago'
+  return Math.floor(s / 86400) + ' d ago'
+}
+function until(at, now) {
+  var t = time(at)
+  if (t === null) return '–'
+  var s = Math.max(0, Math.floor((t - now) / 1000))
+  var d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60
+  var pad = function (n) { return (n < 10 ? '0' : '') + n }
+  return (d > 0 ? d + 'd ' : '') + pad(h) + ':' + pad(m) + ':' + pad(sec)
+}
+function validPoint(p) { return p && num(p.latitude) !== null && num(p.longitude) !== null && Math.abs(p.latitude) <= 90 && Math.abs(p.longitude) <= 180 }
+
+function renderStatus(now) {
+  var pill = $('status')
+  var updated = stats && time(stats.updated)
+  if (stats && stats.sample === true) {
+    pill.className = 'pill'
+    $('status-text').textContent = 'Sample data'
+    $('updated').textContent = 'with sample data'
+    return
+  }
+  var live = stats && stats.server && stats.server.online === true && updated !== null && now - updated < STALE_MS
+  pill.className = 'pill ' + (live ? 'on' : 'off')
+  $('status-text').textContent = live ? 'Server online' : 'Server offline'
+  $('updated').textContent = updated !== null ? ago(stats.updated, now) : '–'
+}
+
+function renderShip(now) {
+  var body = $('ship-body')
+  clear(body)
+  var ship = stats && stats.ship
+  if (!ship || !ship.port) { body.className = 'empty'; body.textContent = 'No ship in port.'; return }
+  body.className = ''
+  body.appendChild(el('div', 'big', text(ship.name) + ' at ' + text(ship.port)))
+  body.appendChild(el('div', 'muted small', ship.region))
+  var row = el('div')
+  row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px 20px;align-items:flex-end;margin-top:8px;'
+  var left = el('div')
+  left.appendChild(el('div', 'muted small', 'Sails in'))
+  var clock = el('div', 'countdown', until(ship.sailsAt, now))
+  clock.id = 'ship-countdown'
+  left.appendChild(clock)
+  row.appendChild(left)
+  var boxes = el('div', 'grow')
+  var total = num(ship.containers) || 0, free = Math.max(0, Math.min(total, num(ship.left) || 0))
+  boxes.appendChild(el('div', 'small', free + ' of ' + total + ' containers left on the dock'))
+  var bar = el('div', 'bar'), fill = el('div')
+  fill.style.width = (total > 0 ? Math.round(100 * free / total) : 0) + '%'
+  bar.appendChild(fill)
+  boxes.appendChild(bar)
+  row.appendChild(boxes)
+  body.appendChild(row)
+  if (ship.next && ship.next.port) {
+    body.appendChild(el('div', 'small muted', 'Next ship: ' + text(ship.next.port) + (ship.next.region ? ', ' + text(ship.next.region) : '')))
+  }
+}
+
+function renderTiles() {
+  var s = stats || {}
+  var players = Array.isArray(s.players) ? s.players : []
+  $('t-online').textContent = players.length + (s.server && num(s.server.maxPlayers) ? ' / ' + s.server.maxPlayers : '')
+  $('t-truckers').textContent = count(s.season && s.season.truckers)
+  $('t-deliveries').textContent = count(s.today && s.today.deliveries)
+  $('t-earned').textContent = money(s.today && s.today.earned)
+  var season = s.season && num(s.season.number)
+  var day = s.season && num(s.season.day)
+  $('t-season').textContent = season === null ? '–' : season + (day !== null ? ' · day ' + day : '')
+  if (s.server && s.server.name) { $('server-name').textContent = text(s.server.name); $('join-name').textContent = text(s.server.name) }
+  if (s.server && s.server.earthVersion) $('earth-version').textContent = text(s.server.earthVersion)
+}
+
+function renderOnline() {
+  var list = $('online')
+  clear(list)
+  var players = stats && Array.isArray(stats.players) ? stats.players : []
+  if (!players.length) { list.appendChild(el('li', 'empty', 'Nobody on right now.')); return }
+  players.forEach(function (p) {
+    var li = el('li')
+    var box = el('div', 'grow')
+    box.appendChild(el('div', 'who', p.name))
+    box.appendChild(el('div', 'small muted', [p.town, p.region].filter(Boolean).join(', ') || 'Somewhere on Earth'))
+    if (p.doing) box.appendChild(el('div', 'small', p.doing))
+    li.appendChild(box)
+    list.appendChild(li)
+  })
+}
+
+function renderFeed(now) {
+  var list = $('feed')
+  clear(list)
+  var feed = stats && Array.isArray(stats.feed) ? stats.feed.slice(0, 30) : []
+  if (!feed.length) { list.appendChild(el('li', 'empty', 'Nothing yet.')); return }
+  feed.forEach(function (e) {
+    var li = el('li')
+    li.appendChild(el('span', 'when', ago(e.at, now)))
+    var t = el('span', 'grow', e.text)
+    if (e.kind === 'ship') t.style.color = 'var(--ship)'
+    if (e.kind === 'season') t.style.color = 'var(--warn)'
+    li.appendChild(t)
+    list.appendChild(li)
+  })
+}
+
+function renderBoard() {
+  var body = $('board')
+  clear(body)
+  var rows = stats && Array.isArray(stats.leaderboard) ? stats.leaderboard.slice(0, 20) : []
+  if (!rows.length) {
+    var tr = el('tr'), td = el('td', 'empty', 'No careers yet.')
+    td.colSpan = 4; tr.appendChild(td); body.appendChild(tr)
+    return
+  }
+  rows.forEach(function (r, i) {
+    var tr = el('tr')
+    tr.appendChild(el('td', '', i + 1))
+    tr.appendChild(el('td', '', r.name))
+    tr.appendChild(el('td', 'num', money(r.balance)))
+    tr.appendChild(el('td', 'num', count(r.deliveries)))
+    body.appendChild(tr)
+  })
+}
+
+function renderMap() {
+  if (typeof L === 'undefined') { $('map').textContent = 'The map could not load.'; return }
+  if (!map) {
+    map = L.map('map', { worldCopyJump: true, scrollWheelZoom: false }).setView([20, 0], 2)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 12, subdomains: 'abcd',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    }).addTo(map)
+    layer = L.layerGroup().addTo(map)
+  }
+  layer.clearLayers()
+  var points = []
+  var ship = stats && stats.ship
+  if (ship && validPoint(ship)) {
+    var m = L.circleMarker([ship.latitude, ship.longitude], { radius: 10, color: '#56ccf2', weight: 3, fillOpacity: 0.25 })
+    var pop = el('div'); pop.appendChild(el('b', '', 'Ship Day: ' + text(ship.port))); pop.appendChild(el('div', '', ship.name))
+    m.bindPopup(pop).addTo(layer)
+    points.push([ship.latitude, ship.longitude])
+  }
+  var players = stats && Array.isArray(stats.players) ? stats.players : []
+  // Players in the same town share one marker.
+  var towns = {}
+  players.forEach(function (p) {
+    if (!validPoint(p)) return
+    var key = p.latitude.toFixed(2) + ',' + p.longitude.toFixed(2)
+    if (!towns[key]) towns[key] = { latitude: p.latitude, longitude: p.longitude, town: p.town, names: [] }
+    towns[key].names.push(text(p.name))
+  })
+  Object.keys(towns).forEach(function (k) {
+    var t = towns[k]
+    var m = L.circleMarker([t.latitude, t.longitude], { radius: 7, color: '#6fcf97', weight: 2, fillOpacity: 0.7 })
+    var pop = el('div'); pop.appendChild(el('b', '', t.town || 'A town')); pop.appendChild(el('div', '', t.names.join(', ')))
+    m.bindPopup(pop).addTo(layer)
+    points.push([t.latitude, t.longitude])
+  })
+  if (points.length > 1) map.fitBounds(points, { padding: [30, 30], maxZoom: 6 })
+  else if (points.length === 1) map.setView(points[0], 5)
+}
+
+function render() {
+  var now = Date.now()
+  $('sample').hidden = !(stats && stats.sample === true)
+  renderStatus(now)
+  renderTiles()
+  renderShip(now)
+  renderOnline()
+  renderFeed(now)
+  renderBoard()
+  renderMap()
+}
+
+// The first stats file that loads and looks right wins.
+function load(i) {
+  if (i >= STATS_URLS.length) { if (!stats) render(); return Promise.resolve() }
+  var url = STATS_URLS[i] + (STATS_URLS[i].indexOf('?') < 0 ? '?t=' : '&t=') + Date.now()
+  return fetch(url, { cache: 'no-store' })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json() })
+    .then(function (data) {
+      if (!data || data.version !== 1) throw new Error('not stats')
+      stats = data
+      var sent = Date.parse(data.updated)
+      shift = data.sample === true && isFinite(sent) ? Date.now() - sent : 0
+      render()
+    })
+    .catch(function () { return load(i + 1) })
+}
+
+load(0)
+setInterval(function () { load(0) }, REFRESH_MS)
+// The countdown and "updated" line tick every second between refreshes.
+setInterval(function () {
+  var now = Date.now()
+  var c = $('ship-countdown')
+  if (c && stats && stats.ship) c.textContent = until(stats.ship.sailsAt, now)
+  renderStatus(now)
+}, 1000)
+</script>
+</body>
+</html>

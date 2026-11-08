@@ -44,7 +44,9 @@ local function link(W, env, pid, deliver)
         elseif m.event == 'wwtcSave' then W.onSave(pid, m.data)
         elseif m.event == 'wwtcClaim' then W.onClaim(pid, m.data)
         elseif m.event == 'wwtcRelease' then W.onRelease(pid, m.data)
-        elseif m.event == 'wwtcShipDone' then W.onShipDone(pid, m.data) end
+        elseif m.event == 'wwtcShipDone' then W.onShipDone(pid, m.data)
+        elseif m.event == 'wwtcWhere' then W.onWhere(pid, m.data)
+        elseif m.event == 'wwtcDelivered' then W.onDelivered(pid, m.data) end
       else
         local found
         for i, m in ipairs(env.sent) do if m.pid == pid then found = i; break end end
@@ -378,6 +380,11 @@ do
   T.eq(c.load.to, boxes[1].to, 'bound for its town')
   T.eq(c:view().shipDay.containers[1].state, 'mine', 'and shows as mine')
   T.eq(c:view().shipDay.carrying, 1, 'the card says which one is on board')
+  F.advance(c, Core.WHERE_SECONDS + 1); pump()
+  local where = W.players[1].where
+  T.check(where and where.town == town.name, 'the server page is told the town, by name')
+  T.check(where.doing:find('container 1', 1, true) ~= nil, 'and what the player is doing')
+  T.eq(where.latitude, math.floor(town.latitude * 100 + 0.5) / 100, 'the town centre, never the player\'s own spot')
   -- A save keeps the container on board.
   T.check(c:manualSave(), 'saved with a container on board'); pump()
   local kept = J.decode(env.files[W.careerPath(c.mp.key)])
@@ -390,6 +397,8 @@ do
   T.eq(c.profile.progression.balance, balance + pay, 'paid')
   pump()
   T.check(env.chats[#env.chats].text:find(places.get(boxes[1].to).name, 1, true) ~= nil, 'the server tells everyone')
+  T.check(W.stats.feed[1].text:find('container 1', 1, true) ~= nil, 'the delivery is in the page\'s feed')
+  T.eq(W.status().today.deliveries, 1, 'and in today\'s totals')
   T.eq(c:view().shipDay.containers[1].state, 'delivered', 'and it shows delivered')
   -- Another claim the server refuses.
   F.drive(c, a, town)
@@ -409,6 +418,77 @@ do
   F.advance(c, SD.CLAIM_WAIT_SECONDS + 1)
   T.eq(c.shipClaim, nil, 'a claim the server never answers is dropped')
   c.mp.claim = quiet
+end
+
+-- The server page's stats: who's on and where, the feed, today's totals and the leaderboard; sent to GitHub.
+do
+  local W, env = server(nil, { [1] = 'a1' })
+  env.date = function() return '2026-11-08' end
+  W.onHello(1); W.onJoin(1, J.encode({ v = 1 }))
+  T.eq(W.stats.feed[1].text, 'player1 joined the server.', 'a join is in the feed')
+  W.onWhere(1, J.encode({ town = 'Quillota', region = 'Chile', latitude = -32.8812345, longitude = -71.2498765, doing = 'Carrying\n parts' }))
+  local st = W.status()
+  T.eq(st.players[1].town, 'Quillota', 'players are shown by town')
+  T.eq(st.players[1].latitude, -32.88, 'at the town, to a kilometre or so')
+  T.eq(st.players[1].doing, 'Carrying  parts', 'no line breaks from a game')
+  W.onDelivered(1, J.encode({ kind = 'job', what = '12 parts', from = 'Penrith', to = 'St Clair', pay = 3400 }))
+  T.eq(W.stats.feed[1].text, 'player1 delivered 12 parts from Penrith to St Clair for $3,400.', 'a delivery in the feed')
+  W.onDelivered(1, J.encode({ kind = 'contract', to = 'Death Road', pay = 1234567 }))
+  T.eq(W.stats.feed[1].text, 'player1 finished the Death Road dangerous contract for $1,234,567.', 'a dangerous contract')
+  W.onDelivered(1, J.encode({ kind = 'job', pay = -5 }))
+  st = W.status()
+  T.eq(st.today.deliveries, 3, 'today\'s deliveries'); T.eq(st.today.earned, 3400 + 1234567, 'and money, never below zero')
+  T.eq(st.leaderboard[1].deliveries, 3, 'counted on the leaderboard')
+  T.eq(st.season.number, W.SEASON, 'the season'); T.eq(st.season.day, 1, 'its first day'); T.eq(st.season.truckers, 1, 'one trucker')
+  T.check(st.ship and st.ship.port == W.PORTS[1].name and st.ship.sailsAt:match('^%d+%-%d+%-%d+T'), 'Ship Day with when it sails')
+  T.eq(st.ship.next.port, W.PORTS[2].name, 'and the next port')
+  env.date = function() return '2026-11-09' end
+  T.eq(W.status().today.deliveries, 0, 'today starts again at midnight')
+  -- A save puts the money on the leaderboard.
+  W.boardCareer(W.players[1], { progression = { balance = 50000, jobsDone = 9 } })
+  T.eq(W.status().leaderboard[1].balance, 50000, 'the money at the last save')
+  -- Kept over a restart.
+  local W2 = server(env.files)
+  T.eq(#W2.stats.feed, #W.stats.feed, 'the feed survives a restart')
+  for i = 1, W.FEED_MAX + 5 do W.feed('join', 'x' .. i) end
+  T.eq(#W.stats.feed, W.FEED_MAX, 'the feed keeps the latest few')
+  -- base64, for GitHub.
+  T.eq(W.base64('Man'), 'TWFu', 'base64'); T.eq(W.base64('Ma'), 'TWE=', 'base64 2'); T.eq(W.base64('M'), 'TQ==', 'base64 1')
+  T.eq(W.base64('é'), 'w6k=', 'and UTF-8')
+  -- Sending to GitHub.
+  local runs = {}
+  env.run = function(cmd)
+    runs[#runs + 1] = cmd
+    if cmd:find('-X PUT', 1, true) then return '{"content":{"sha":"new1"}}' end
+    return '{"sha":"old1"}'
+  end
+  W.STATS_REPO = ''
+  T.check(not W.pushStats('{}'), 'nothing is sent without a repo')
+  W.STATS_REPO = 'MadMerick01/trucking-server-stats'
+  T.check(not W.pushStats('{}'), 'or without a token'); T.eq(#runs, 0, 'and curl never runs')
+  env.files[W.DIR .. '/github-token.txt'] = 'github_pat_ABC123\n'
+  T.check(W.pushStats('{"a":1}'), 'sent once there is a token')
+  T.eq(#runs, 2, 'reads the file\'s version, then sends it')
+  T.check(runs[2]:find('https://api.github.com/repos/MadMerick01/trucking-server-stats/contents/status.json', 1, true) ~= nil, 'to the repo')
+  for _, cmd in ipairs(runs) do T.check(not cmd:find('ABC123', 1, true), 'the token is never on the command line') end
+  local body = J.decode(env.files[W.DIR .. '/.github-body.json'])
+  T.eq(body.sha, 'old1', 'replacing the version it read'); T.eq(body.content, W.base64('{"a":1}'), 'with the stats')
+  T.check(W.pushStats('{}'), 'sent again'); T.eq(#runs, 3, 'next time it already knows the version')
+  -- GitHub refuses: it reads the version again and tries once more, then gives up quietly.
+  env.run = function(cmd) runs[#runs + 1] = cmd; return '{"message":"Bad credentials"}' end
+  local before = #runs
+  T.check(not W.pushStats('{}'), 'refused')
+  T.eq(#runs - before, 3, 'one more try after reading the version again')
+  -- The timer: status.json is written here, and sent when due.
+  W.statsSentAt, W.statsChanged = nil, true
+  env.run = function() return '{"content":{"sha":"x"}}' end
+  W.statsTick()
+  T.check(J.decode(env.files[W.DIR .. '/status.json']).version == 1, 'status.json is written next to the plugin')
+  local sent = W.statsSentAt
+  env.time = env.time + 60; W.statsTick()
+  T.eq(W.statsSentAt, sent, 'not again straight away')
+  env.time = env.time + 600; W.statsTick()
+  T.check(W.statsSentAt > sent, 'but every 10 minutes even when nothing changed')
 end
 
 T.done('multiplayer careers')

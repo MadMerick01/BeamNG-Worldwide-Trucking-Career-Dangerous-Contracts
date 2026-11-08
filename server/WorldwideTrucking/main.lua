@@ -63,6 +63,13 @@ W.WELCOME = {
   'Pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom, press + Add to layout, then Save.',
   'Your career is kept on this server. Press Save in the HUD to keep your progress. Type !hud to see this again.',
 }
+-- The server page (GitHub Pages): every STATS_EVERY_SECONDS the server sends its stats (who's on and in which town,
+-- Ship Day, the live feed, today's totals and the leaderboard) to status.json in STATS_REPO on GitHub. Make STATS_REPO
+-- '' to send nothing. The GitHub token goes in github-token.txt next to this file, never in here. The stats are also
+-- written to status.json next to this file.
+W.STATS_REPO = 'MadMerick01/trucking-server-stats'
+W.STATS_BRANCH = 'main'
+W.STATS_EVERY_SECONDS = 180
 -- ==================================================================================================================
 
 W.DIR = 'Resources/Server/WorldwideTrucking'
@@ -143,6 +150,247 @@ function W.ledgerLine(time, key, name, before, after, generation)
   return table.concat({ time, key, name, tostring(before or ''), tostring(after), tostring(generation) }, '\t') .. '\n'
 end
 
+-- ----- The server page's stats --------------------------------------------------------------------------------------
+-- Kept in careers/season-N/stats.json: when the season started, the leaderboard (by career key), the live feed and
+-- today's totals. Only town names are ever kept or sent, never a player's position.
+W.FEED_MAX = 30
+
+local function clean(value, max)
+  if type(value) ~= 'string' then return nil end
+  value = value:gsub('%c', ' '):gsub('^%s+', ''):gsub('%s+$', '')
+  if value == '' then return nil end
+  return value:sub(1, max or 60)
+end
+
+local function dollars(n)
+  local s = tostring(math.floor(n))
+  local out = s:reverse():gsub('(%d%d%d)', '%1,'):reverse()
+  return '$' .. out:gsub('^,', '')
+end
+
+local function statsPath() return W.seasonDir() .. '/stats.json' end
+
+function W.loadStats()
+  local text = W.env.read(statsPath())
+  local ok, d = false, nil
+  if text and text ~= '' then ok, d = pcall(W.env.decode, text) end
+  d = ok and type(d) == 'table' and d or {}
+  W.stats = {
+    started = type(d.started) == 'number' and d.started or W.env.clock(),
+    board = type(d.board) == 'table' and d.board or {},
+    feed = type(d.feed) == 'table' and d.feed or {},
+    today = type(d.today) == 'table' and d.today or {},
+  }
+  if not d.started then W.saveStats() end
+end
+
+function W.saveStats()
+  W.env.write(statsPath(), W.env.encode(W.stats))
+  W.statsChanged = true
+end
+
+-- Today's totals start again at midnight (this PC's time).
+local function today()
+  local date = W.env.date and W.env.date() or ''
+  local t = W.stats.today
+  if t.date ~= date then
+    t.date, t.deliveries, t.earned = date, 0, 0
+  end
+  return t
+end
+
+function W.feed(kind, text)
+  table.insert(W.stats.feed, 1, { at = W.env.now(), kind = kind, text = text })
+  while #W.stats.feed > W.FEED_MAX do table.remove(W.stats.feed) end
+  W.saveStats()
+end
+
+local function boardEntry(p)
+  local e = W.stats.board[p.key]
+  if not e then e = { deliveries = 0, containers = 0 }; W.stats.board[p.key] = e end
+  e.name = clean(p.name, 32) or e.name or 'A trucker'
+  return e
+end
+
+-- A player's career came in (join) or was saved: their money and jobs done on the leaderboard.
+function W.boardCareer(p, save)
+  if not p or not p.key or type(save) ~= 'table' or type(save.progression) ~= 'table' then return end
+  local e = boardEntry(p)
+  if type(save.progression.balance) == 'number' then e.balance = save.progression.balance end
+  if type(save.progression.jobsDone) == 'number' then e.deliveries = save.progression.jobsDone end
+  W.saveStats()
+end
+
+-- Where a player is, from their game: a town (its centre) and what they're doing.
+function W.onWhere(pid, data)
+  local p = W.players[pid]
+  if not p or not p.key then return end
+  local ok, d = pcall(W.env.decode, data or '')
+  if not ok or type(d) ~= 'table' then return end
+  local lat, lon = tonumber(d.latitude), tonumber(d.longitude)
+  if not lat or not lon or math.abs(lat) > 90 or math.abs(lon) > 180 then lat, lon = nil, nil end
+  p.where = { town = clean(d.town, 40), region = clean(d.region, 60), doing = clean(d.doing, 80),
+    latitude = lat and math.floor(lat * 100 + 0.5) / 100, longitude = lon and math.floor(lon * 100 + 0.5) / 100 }
+  W.statsChanged = true
+end
+
+local function payOf(value)
+  local n = tonumber(value)
+  if not n or n < 0 or n > 100000000 then return nil end
+  return math.floor(n)
+end
+
+-- Counts a delivery for today and the leaderboard.
+local function counted(p, pay, container)
+  local t = today()
+  t.deliveries = (t.deliveries or 0) + 1
+  t.earned = (t.earned or 0) + (pay or 0)
+  local e = boardEntry(p)
+  e.deliveries = (e.deliveries or 0) + 1
+  if container then e.containers = (e.containers or 0) + 1 end
+end
+
+-- A delivery in the game (not a Ship Day container: those come as wwtcShipDone).
+function W.onDelivered(pid, data)
+  local p = W.players[pid]
+  if not p or not p.key then return end
+  local ok, d = pcall(W.env.decode, data or '')
+  if not ok or type(d) ~= 'table' then return end
+  local pay = payOf(d.pay)
+  local name, what, from, to = clean(p.name, 32) or 'A trucker', clean(d.what, 40), clean(d.from, 40), clean(d.to, 40)
+  local paid = pay and (' for ' .. dollars(pay)) or ''
+  local text
+  if d.kind == 'contract' then text = name .. ' finished the ' .. (to or 'dangerous') .. ' dangerous contract' .. paid .. '.'
+  elseif d.kind == 'drop' then text = name .. ' made an off-road drop' .. (what and (' of ' .. what) or '') .. paid .. '.'
+  elseif d.kind == 'beacon' then text = name .. ' dropped off a package, no questions asked' .. paid .. '.'
+  else
+    text = name .. ' delivered ' .. (what or 'a load') .. (from and (' from ' .. from) or '') .. (to and (' to ' .. to) or '') .. paid .. '.'
+  end
+  counted(p, pay, false)
+  W.feed('delivery', text)
+end
+
+-- The stats file the page reads.
+function W.status()
+  local now = W.env.clock()
+  local players = {}
+  for _, p in pairs(W.players) do
+    if p.key then
+      local w = p.where or {}
+      players[#players + 1] = { name = clean(p.name, 32) or 'A trucker', town = w.town, region = w.region,
+        latitude = w.latitude, longitude = w.longitude, doing = w.doing }
+    end
+  end
+  table.sort(players, function(a, b) return a.name < b.name end)
+  local board, truckers = {}, 0
+  for _, e in pairs(W.stats.board) do
+    truckers = truckers + 1
+    board[#board + 1] = { name = e.name, balance = e.balance or 0, deliveries = e.deliveries or 0, containers = e.containers or 0 }
+  end
+  table.sort(board, function(a, b) if a.balance ~= b.balance then return a.balance > b.balance end return a.name < b.name end)
+  while #board > 20 do table.remove(board) end
+  local t = today()
+  local ship
+  if W.shipOn() then
+    local at = W.shipAt(now)
+    local taken = 0
+    if W.claims and W.claims.ship == at.number then for _ in pairs(W.claims.boxes) do taken = taken + 1 end end
+    local nextPort = W.PORTS[at.number % #W.PORTS + 1]
+    ship = { number = at.number, name = at.name, port = at.port.name, region = at.port.region,
+      latitude = at.port.latitude, longitude = at.port.longitude, containers = W.SHIP_CONTAINERS,
+      left = math.max(0, W.SHIP_CONTAINERS - taken), sailsAt = os.date('!%Y-%m-%dT%H:%M:%SZ', now + at.left),
+      next = { port = nextPort.name, region = nextPort.region } }
+  end
+  return {
+    version = 1, updated = W.env.now(),
+    server = { name = W.env.setting and W.env.setting('name') or nil, online = true,
+      maxPlayers = W.env.setting and W.env.setting('maxPlayers') or nil },
+    season = { number = W.SEASON, day = math.floor((now - W.stats.started) / 86400) + 1, truckers = truckers },
+    today = { deliveries = t.deliveries or 0, earned = t.earned or 0 },
+    ship = ship, players = players, feed = W.stats.feed, leaderboard = board,
+  }
+end
+
+-- ----- Sending the stats to GitHub ----------------------------------------------------------------------------------
+local B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+function W.base64(data)
+  local out = {}
+  for i = 1, #data, 3 do
+    local a, b, c = data:byte(i, i + 2)
+    local n = a * 65536 + (b or 0) * 256 + (c or 0)
+    local d1, d2, d3, d4 = math.floor(n / 262144), math.floor(n / 4096) % 64, math.floor(n / 64) % 64, n % 64
+    out[#out + 1] = B64:sub(d1 + 1, d1 + 1) .. B64:sub(d2 + 1, d2 + 1)
+      .. (b and B64:sub(d3 + 1, d3 + 1) or '=') .. (c and B64:sub(d4 + 1, d4 + 1) or '=')
+  end
+  return table.concat(out)
+end
+
+local function readToken()
+  local text = W.env.read(W.DIR .. '/github-token.txt')
+  local token = text and text:match('^%s*([%w_]+)%s*$')
+  return token
+end
+
+local function curl(args)
+  local auth = W.DIR .. '/.github-auth.txt'
+  return W.env.run('curl -s -m 20 -H "@' .. auth .. '" -H "Accept: application/vnd.github+json" '
+    .. '-H "User-Agent: worldwide-trucking-server" ' .. args)
+end
+
+local function decoded(text)
+  if type(text) ~= 'string' or text == '' then return nil end
+  local ok, d = pcall(W.env.decode, text)
+  return ok and type(d) == 'table' and d or nil
+end
+
+-- Sends status.json to STATS_REPO. Returns true when GitHub took it.
+function W.pushStats(text)
+  if not W.env.run or not W.STATS_REPO or not W.STATS_REPO:match('^[%w._-]+/[%w._-]+$') then return false end
+  local token = readToken()
+  if not token then
+    if not W.tokenWarned then W.env.print('[Trucking] server page: put a GitHub token in github-token.txt to send stats') end
+    W.tokenWarned = true
+    return false
+  end
+  W.env.write(W.DIR .. '/.github-auth.txt', 'Authorization: Bearer ' .. token)
+  local url = 'https://api.github.com/repos/' .. W.STATS_REPO .. '/contents/status.json'
+  local branch = W.STATS_BRANCH:gsub('[^%w._/-]', '')
+  for attempt = 1, 2 do
+    if not W.statsSha then
+      local found = decoded(curl('"' .. url .. '?ref=' .. branch .. '"'))
+      W.statsSha = found and found.sha or nil
+    end
+    local body = { message = 'Server stats', content = W.base64(text), branch = branch, sha = W.statsSha }
+    W.env.write(W.DIR .. '/.github-body.json', W.env.encode(body))
+    local answer = decoded(curl('-X PUT --data-binary "@' .. W.DIR .. '/.github-body.json" "' .. url .. '"'))
+    if answer and type(answer.content) == 'table' and answer.content.sha then
+      W.statsSha = answer.content.sha
+      if W.pushFailed then W.env.print('[Trucking] server page: sending stats again') end
+      W.pushFailed = false
+      return true
+    end
+    -- Someone else changed the file, or it was never read: read it again and try once more.
+    W.statsSha = nil
+    if attempt == 2 and not W.pushFailed then
+      W.env.print('[Trucking] server page: GitHub did not take the stats: ' .. tostring(answer and answer.message or 'no answer'))
+      W.pushFailed = true
+    end
+  end
+  return false
+end
+
+-- Every timer tick: writes status.json here, and sends it every STATS_EVERY_SECONDS (every 10 minutes even when
+-- nothing changed, so the page knows the server is on).
+function W.statsTick()
+  local now = W.env.clock()
+  local due = now - (W.statsSentAt or -math.huge) >= (W.statsChanged and W.STATS_EVERY_SECONDS or 600)
+  if not due then return end
+  local text = W.env.encode(W.status())
+  W.env.write(W.DIR .. '/status.json', text)
+  W.statsSentAt, W.statsChanged = now, false
+  W.pushStats(text)
+end
+
 -- ----- The server's state, with storage and sending given to it (env), so tests can run it -----------------------
 -- env: read(path) -> text|nil, write(path, text) -> bool, append(path, text), mkdir(path), send(pid, event, text),
 --      encode(table) -> text, decode(text) -> table, bytes(i) -> number, now() -> 'YYYY-MM-DDTHH:MM:SSZ',
@@ -166,6 +414,7 @@ function W.start(env)
   end
   W.shipStart = env.epoch and env.epoch(W.SHIP_START) or nil
   W.loadClaims()
+  W.loadStats()
   local accountsText = env.read(W.DIR .. '/accounts.json')
   local okA, accounts = false, nil
   if accountsText and accountsText ~= '' then okA, accounts = pcall(env.decode, accountsText) end
@@ -213,6 +462,8 @@ function W.onJoin(pid, data)
   for _, frame in ipairs(W.frames(W.nextId, message)) do W.env.send(pid, 'wwtcCareer', frame) end
   W.shipTick()
   W.sendShip(pid)
+  if save then W.boardCareer(p, save) end
+  W.feed('join', (clean(p.name, 32) or 'A trucker') .. ' joined the server.')
   W.env.print(string.format('[Trucking] %s joined: %s, %s', tostring(p.name), account and 'signed in' or 'guest',
     save and ('balance $' .. tostring(save.progression.balance)) or 'new career'))
 end
@@ -242,10 +493,14 @@ function W.onSave(pid, frame)
       W.ledgerLine(W.env.now(), p.key, p.name, before, save.progression.balance, save.generation))
   end
   p.balance = save.progression.balance
+  W.boardCareer(p, save)
   answer(pid, true, save.generation)
 end
 
-function W.onLeave(pid) W.players[pid] = nil end
+function W.onLeave(pid)
+  if W.players[pid] then W.statsChanged = true end
+  W.players[pid] = nil
+end
 
 -- The welcome lines in chat, to a player who has just finished joining.
 function W.welcome(pid)
@@ -347,6 +602,8 @@ function W.shipTick()
   if not first then
     say(string.format('Ship Day! The %s has docked at %s, %s with %d containers. Press Go to port on the Town tab.',
       ship.name, ship.port.name, ship.port.region, W.SHIP_CONTAINERS))
+    W.feed('ship', string.format('Ship Day! The %s has docked at %s, %s with %d containers.',
+      ship.name, ship.port.name, ship.port.region, W.SHIP_CONTAINERS))
   end
   W.sendShipToAll()
 end
@@ -402,7 +659,8 @@ function W.onShipDone(pid, data)
   local ship = W.shipAt(W.env.clock())
   local claims = claimsFor(ship.number)
   local c = d.ship == claims.ship and claims.boxes[d.n]
-  if c and c.key == p.key and not c.delivered then
+  local fresh = c and c.key == p.key and not c.delivered
+  if fresh then
     c.delivered = true
     saveClaims()
     W.sendShipToAll()
@@ -412,7 +670,13 @@ function W.onShipDone(pid, data)
   local from = d.ship == ship.number and ship.port.name or 'the docks'
   say(string.format('%s delivered container %d from %s to %s%s.', tostring(p.name), math.floor(d.n), from, town,
     pay and (' for $' .. tostring(pay)) or ''))
+  if fresh then
+    counted(p, pay, true)
+    W.feed('delivery', string.format('%s delivered container %d from %s to %s%s.', clean(p.name, 32) or 'A trucker',
+      math.floor(d.n), from, town, pay and (' for ' .. dollars(pay)) or ''))
+  end
 end
+
 
 -- The 'trucking' command in the server window: who is on and their money at their last save.
 function W.report()
@@ -470,7 +734,21 @@ if MP and MP.RegisterEvent then
       return (math.random(0, 255) + extra) % 256
     end,
     now = function() return os.date('!%Y-%m-%dT%H:%M:%SZ') end,
-    clock = os.time, epoch = function(t) return os.time(t) end,
+    clock = os.time, epoch = function(t) return os.time(t) end, date = function() return os.date('%Y-%m-%d') end,
+    -- Runs a command (curl, to send the server page's stats) and returns what it printed.
+    run = function(command)
+      local f = io.popen and io.popen(command)
+      if not f then return nil end
+      local out = f:read('*a')
+      f:close()
+      return out
+    end,
+    setting = function(which)
+      local ids = MP.Settings
+      if not ids or not MP.Get then return nil end
+      local ok, value = pcall(MP.Get, which == 'name' and ids.Name or ids.MaxPlayers)
+      return ok and value or nil
+    end,
     account = function(pid)
       local ok, ids = pcall(MP.GetPlayerIdentifiers, pid)
       local id = ok and type(ids) == 'table' and ids.beammp or nil
@@ -495,7 +773,9 @@ if MP and MP.RegisterEvent then
   WWTC_onClaim = guarded('claim', W.onClaim)
   WWTC_onRelease = guarded('release', W.onRelease)
   WWTC_onShipDone = guarded('ship delivered', W.onShipDone)
-  WWTC_onShipTimer = guarded('ship', W.shipTick)
+  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.statsTick() end)
+  WWTC_onWhere = guarded('where', W.onWhere)
+  WWTC_onDelivered = guarded('delivered', W.onDelivered)
   WWTC_onChat = function(pid, name, message)
     local ok, hide = pcall(W.onChat, pid, message)
     if ok and hide then return 1 end
@@ -511,6 +791,8 @@ if MP and MP.RegisterEvent then
   MP.RegisterEvent('wwtcClaim', 'WWTC_onClaim')
   MP.RegisterEvent('wwtcRelease', 'WWTC_onRelease')
   MP.RegisterEvent('wwtcShipDone', 'WWTC_onShipDone')
+  MP.RegisterEvent('wwtcWhere', 'WWTC_onWhere')
+  MP.RegisterEvent('wwtcDelivered', 'WWTC_onDelivered')
   MP.RegisterEvent('WWTC_shipTimer', 'WWTC_onShipTimer')
   if MP.CreateEventTimer then MP.CreateEventTimer('WWTC_shipTimer', 15000) end
   WWTC_onShipTimer()

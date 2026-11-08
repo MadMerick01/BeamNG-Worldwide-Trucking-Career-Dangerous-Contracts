@@ -125,6 +125,7 @@ they are close, so this is what brings them together.
 - **Multiplayer HUD section.** "Go to a player" (teleport next to someone, free when not on a job, counted as a shipping
   booking when on one; shown by name and town only), and "Sync my truck" only if testing shows BeamMP desyncs after our
   respawns.
+- **Server page (first version built, 8 Nov):** a GitHub Pages site in `site/` (MadMerick: the server runs on their PC, GitHub Pages shows the info). It reads `status.json`, which the server plugin builds (who's on by town, Ship Day, feed, today's totals, leaderboard; the game reports its town and deliveries with `wwtcWhere`/`wwtcDelivered`) and sends every 3 minutes to its own `trucking-server-stats` repo with a fine-grained token kept in `github-token.txt`. A marked sample shows until it does.
 - **Webpage and Discord.** The server writes a stats file; a Discord webhook posts the live delivery feed and a daily
   leaderboard first, then a page on a free static host (online now by town, leaderboards, server totals, Dangerous
   Contract best times). Nothing is served from MadMerick's PC.
