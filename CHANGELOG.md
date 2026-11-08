@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 149 · 8 Nov 2026
+
 - **Flat tyres happen about a quarter as often.** On the road at normal speed you now get a puncture roughly once every 160 km instead of every 40 km. Driving fast and going off road still raise the chance as before, and a burst tyre still costs the same to fix. Your saves still work.
 
 ## Build 148 · 8 Nov 2026
