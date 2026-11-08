@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 150 · 8 Nov 2026
+
 - Fixed: a new trucking server no longer shows two "string given to JsonDecode is not valid json" errors in its window when it starts. They were harmless: the server was looking for its own files before it had made them.
 
 ## Build 149 · 8 Nov 2026
