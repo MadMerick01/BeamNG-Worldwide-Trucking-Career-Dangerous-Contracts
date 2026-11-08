@@ -927,6 +927,8 @@ test('Ship Day: the Town tab shows the ship, Go to port and the containers to ta
   const a = app()
   const town = html.slice(html.indexOf(`ng-if="tab === 'town'"`), html.indexOf(`ng-if="tab === 'garage'"`))
   for (const part of ['Ship Day:', 'goToPort()', 'takeContainer(b)', 'Go to port (free)']) assert.ok(town.includes(part), part)
+  const relocate = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`), html.indexOf(`ng-if="tab === 'home'"`))
+  for (const part of ['Ship Day:', 'goToPort()', 'Go to port (free)']) assert.ok(relocate.includes(part), part + ' on the Relocate tab too')
   const box = { n: 3, allowed: true }
   a.state({ state: 'READY', arrived: true, shipDay: { goAllowed: true, containers: [box] } })
   a.commands.length = 0
