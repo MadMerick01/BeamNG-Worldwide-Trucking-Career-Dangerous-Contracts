@@ -314,9 +314,14 @@ function M.new(deps)
   -- The server's answers (multiplayer.lua). Its career arriving loads it.
   function c:multiplayerEvent(event, data)
     if not self.mp then return end
-    local waiting = not self.mp:ready()
+    local waiting, before = not self.mp:ready(), self.mp.state
     self.mp:receive(event, data)
-    if waiting and self.mp:ready() and self.loadStatus == 'mp_waiting' then self:reload() end
+    if waiting and self.mp:ready() and self.loadStatus == 'mp_waiting' then self:reload()
+    elseif before == 'local' and self.mp.state == 'server' then
+      -- The server answered late, after the career was kept on this PC: its own career replaces that one.
+      self.diag:event('multiplayer', 'the server answered late: its career is loaded', 'W')
+      self:reload()
+    end
     if event == 'wwtcShip' then
       self.ship, self.shipAt = shipday.clean(self.mp.ship), self.clock
     elseif event == 'wwtcClaimed' then
@@ -1757,9 +1762,10 @@ function M.new(deps)
       elseif self.ownedParts then self.garage:keepParked(self.ownedParts.id) end
     end
     -- A server that never answers keeps the multiplayer career on this PC instead.
-    if self.mp and not self.mp:ready() then
+    if self.mp then
+      local waiting = not self.mp:ready()
       self.mp:tick(self.clock)
-      if self.mp:ready() and self.loadStatus == 'mp_waiting' then self:reload() end
+      if waiting and self.mp:ready() and self.loadStatus == 'mp_waiting' then self:reload() end
     end
     local sample = self.adapter:sample()
     self:observe(sample, dt)

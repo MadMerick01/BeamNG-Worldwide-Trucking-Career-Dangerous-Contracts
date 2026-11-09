@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Fixed a multiplayer career sometimes starting from scratch.** When you joined a trucking server, your game asked the server for your career only once. If that question got lost while BeamMP was still connecting, the game decided the server didn't keep careers and gave you a fresh one on your PC instead. Your real career was still on the server, just not loaded. Now the game keeps asking until the server answers, and if the answer comes late, your career from the server replaces the fresh one. Your saves on the server were never touched.
+
 ## Build 161 · 9 Nov 2026
 
 - **On a multiplayer server, everyone now plays the server's own version of the mod.** If your game runs an older copy, for example one you downloaded yourself or installed from BeamNG.Earth's Add-ons page, the server sends you off as you join. A message tells you how to fix it: turn off your own copy in the Mod Manager and on the Add-ons page, close BeamNG completely and join again, and the server gives you the right one. Your career on the server is safe and nothing in it changes. Before, an old copy could quietly hide new things such as Ship Day, or keep you off the server page. Server hosts can turn the check off in the server settings.
