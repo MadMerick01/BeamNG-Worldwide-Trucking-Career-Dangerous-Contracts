@@ -55,7 +55,8 @@
   ol.steps { margin: 0; padding-left: 20px; }
   ol.steps li { margin-bottom: 6px; }
   footer { color: var(--faint); font-size: 13px; text-align: center; margin-top: 10px; }
-  .leaflet-container { font: inherit; }
+  .leaflet-container { font: inherit; background: #1b2226; }
+  .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.85); }
   .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel); color: var(--text); }
 </style>
 </head>
@@ -111,7 +112,7 @@
         <h2>How to join</h2>
         <ol class="steps">
           <li>Install <b>BeamNG.drive</b> and <a href="https://beammp.com">BeamMP</a>, and sign in to BeamMP. Signed-in players keep their career on any PC.</li>
-          <li>Download the <a href="https://github.com/TecnaGamer/BeamNG.Earth/releases">BeamNG.Earth app</a>, the same version as the server (<span id="earth-version">1.8.2</span>), and keep it running while you play.</li>
+          <li>Download the <a href="https://github.com/TecnaGamer/BeamNG.Earth/releases/latest">BeamNG.Earth app</a>, the same version as the server (<span id="earth-version">the newest one</span>), and keep it running while you play.</li>
           <li>In the BeamMP server browser, open the BeamNG.Earth tab and join <b id="join-name">Trucking Career Test | MadMerick</b>. The trucking mod downloads by itself.</li>
           <li>First time only: press Esc, go to System &gt; HUD Apps &gt; .Earth (edit layout) &gt; + Add app, pick <b>BeamNG Worldwide Trucking Career: Dangerous Contracts</b>, then + Add to layout and Save. Type <b>!hud</b> in chat to see this again.</li>
         </ol>
@@ -288,9 +289,11 @@ function renderMap() {
   if (typeof L === 'undefined') { $('map').textContent = 'The map could not load.'; return }
   if (!map) {
     map = L.map('map', { worldCopyJump: true, scrollWheelZoom: false }).setView([20, 0], 2)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 12, subdomains: 'abcd',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    // OpenStreetMap's own tiles: no key or account (CARTO's now ask for one), credited as its tile policy asks.
+    // They are light; the .leaflet-tile-pane filter above darkens them to match the page.
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 12,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map)
     layer = L.layerGroup().addTo(map)
   }
