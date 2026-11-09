@@ -243,6 +243,8 @@ function W.boardCareer(p, save)
   if worth then e.truckValue = worth end
   -- What they paid for their base of operations, if they have one.
   e.baseValue = type(save.property) == 'table' and payOf(save.property.paid) or nil
+  local town = e.baseValue and type(save.property.town) == 'table' and save.property.town.name or (e.baseValue and save.property.name)
+  e.baseTown = e.baseValue and clean(town, 40) or nil
   W.saveStats()
 end
 
@@ -289,6 +291,153 @@ function W.onDelivered(pid, data)
   W.feed('delivery', text)
 end
 
+-- ----- Bases of operations (the Magnate update) ---------------------------------------------------------------------
+-- Kept in careers/season-N/bases.json, by career key: { name, town, latitude, longitude, boost, peak, asked }. A base sits
+-- at its town's centre (public), never at the spot its owner parked on. The game sizes and draws the circles the same
+-- way (mod magnate.lua): 20 km at $350,000 in a flat region, area in line with wealth, × √(region multiplier), at most
+-- 100 km. One base a town, at least BASE_APART_KM apart.
+W.BASE_APART_KM = 10
+W.BASE_START_WEALTH, W.BASE_START_KM, W.BASE_MAX_KM = 350000, 20, 100
+W.BASE_PRICE = 250000
+W.BASE_ASK_SECONDS = 600   -- a base asked for, but not yet in a save, is held this long
+
+local function basesPath() return W.seasonDir() .. '/bases.json' end
+
+function W.baseRadius(peak, boost)
+  peak = math.max(0, tonumber(peak) or 0)
+  boost = math.max(1, tonumber(boost) or 1)
+  return math.min(W.BASE_MAX_KM, W.BASE_START_KM * math.sqrt(peak / W.BASE_START_WEALTH) * math.sqrt(boost))
+end
+
+-- Kilometres between two { latitude, longitude } on the Earth's surface.
+function W.km(a, b)
+  local r = math.pi / 180
+  local dLat, dLon = (b.latitude - a.latitude) * r, (b.longitude - a.longitude) * r
+  local h = math.sin(dLat / 2) ^ 2 + math.cos(a.latitude * r) * math.cos(b.latitude * r) * math.sin(dLon / 2) ^ 2
+  return 2 * 6371.0088 * math.asin(math.min(1, math.sqrt(h)))
+end
+
+local function spotOf(t)
+  if type(t) ~= 'table' then return nil end
+  local lat, lon = tonumber(t.latitude), tonumber(t.longitude)
+  if not lat or not lon or math.abs(lat) > 90 or math.abs(lon) > 180 then return nil end
+  return lat, lon
+end
+
+function W.loadBases()
+  local text = W.env.read(basesPath())
+  local ok, d = false, nil
+  if text and text ~= '' then ok, d = pcall(W.env.decode, text) end
+  W.bases = {}
+  for _, b in ipairs(ok and type(d) == 'table' and d or {}) do
+    local lat, lon = spotOf(b)
+    if lat and type(b) == 'table' and W.validKey(b.key) then
+      W.bases[b.key] = { name = clean(b.name, 32) or 'A trucker', town = clean(b.town, 40), latitude = lat, longitude = lon,
+        boost = tonumber(b.boost) or 1, peak = payOf(b.peak) or 0, asked = tonumber(b.asked) }
+    end
+  end
+end
+
+local function saveBases()
+  local list = {}
+  for key, b in pairs(W.bases) do
+    list[#list + 1] = { key = key, name = b.name, town = b.town, latitude = b.latitude, longitude = b.longitude,
+      boost = b.boost, peak = b.peak, asked = b.asked }
+  end
+  table.sort(list, function(a, b) return a.key < b.key end)
+  W.env.write(basesPath(), W.env.encode(list))
+end
+
+-- Bases asked for but never saved are let go after BASE_ASK_SECONDS.
+local function dropStaleBases()
+  local now, changed = W.env.clock(), false
+  for key, b in pairs(W.bases) do
+    if b.asked and now - b.asked > W.BASE_ASK_SECONDS then W.bases[key] = nil; changed = true end
+  end
+  if changed then saveBases() end
+  return changed
+end
+
+-- Every base, for one player's game: owner, town, centre, radius, and whether it's theirs.
+function W.basesMessage(pid)
+  local p = W.players[pid]
+  local list = {}
+  for key, b in pairs(W.bases) do
+    list[#list + 1] = { name = b.name, town = b.town, latitude = b.latitude, longitude = b.longitude,
+      radiusKm = W.baseRadius(math.max(b.peak, W.BASE_PRICE), b.boost), mine = p ~= nil and p.key == key }
+  end
+  table.sort(list, function(a, b) return a.name < b.name end)
+  return W.env.encode({ v = W.PROTO, bases = list })
+end
+
+function W.sendBases(pid)
+  local p = W.players[pid]
+  if p and p.key then W.env.send(pid, 'wwtcBases', W.basesMessage(pid)) end
+end
+
+function W.sendBasesToAll()
+  for pid, p in pairs(W.players) do if p.key then W.sendBases(pid) end end
+  W.statsChanged = true
+end
+
+-- A player asks for a base in a town: theirs unless another base is within BASE_APART_KM.
+function W.onBaseClaim(pid, data)
+  local p = W.players[pid]
+  if not p or not p.key then return end
+  local ok, d = pcall(W.env.decode, data or '')
+  if not ok or type(d) ~= 'table' then return end
+  local lat, lon = spotOf(d)
+  if not lat then return end
+  dropStaleBases()
+  local town = clean(d.town, 40)
+  local why, by, near
+  local mine = W.bases[p.key]
+  if mine and not mine.asked then why = 'have_one' end
+  if not why then
+    for key, b in pairs(W.bases) do
+      if key ~= p.key and W.km(b, { latitude = lat, longitude = lon }) < W.BASE_APART_KM then why, by, near = 'too_close', b.name, b.town end
+    end
+  end
+  if not why then
+    local boost = tonumber(d.boost) or 1
+    W.bases[p.key] = { name = clean(p.name, 32) or 'A trucker', town = town, latitude = lat, longitude = lon,
+      boost = math.max(1, math.min(3, boost)), peak = 0, asked = W.env.clock() }
+    saveBases()
+  end
+  W.env.send(pid, 'wwtcBaseClaimed', W.env.encode({ v = W.PROTO, ok = why == nil, why = why, by = by, town = near or town }))
+  if not why then W.sendBasesToAll() end
+end
+
+-- A career came in (join) or was saved: its base, as the save has it. A base the server held for a claim becomes
+-- the player's when a save has it; a save without one lets go of a base that isn't still being asked for.
+function W.baseCareer(p, save)
+  if not p or not p.key or type(save) ~= 'table' then return end
+  local had = W.bases[p.key]
+  local property = type(save.property) == 'table' and save.property or nil
+  local town = property and type(property.town) == 'table' and property.town or nil
+  -- Only the town's centre is ever used: a save from before the game worked out the town (an older home) shows no
+  -- circle until the game's next save, rather than the spot where its owner parks.
+  local lat, lon = spotOf(town)
+  if lat then
+    local b = had or {}
+    -- A base already held keeps its town; one from a save made before the server knew of it takes the save's.
+    if not had or had.asked then
+      b.latitude, b.longitude = (had and had.latitude) or lat, (had and had.longitude) or lon
+      b.town = (had and had.town) or clean(town.name, 40)
+      b.boost = (had and had.boost) or math.max(1, math.min(3, tonumber(town.boost) or 1))
+    end
+    b.name, b.asked = clean(p.name, 32) or b.name or 'A trucker', nil
+    b.peak = math.max(b.peak or 0, payOf(property.peak) or 0)
+    W.bases[p.key] = b
+    saveBases()
+    W.sendBasesToAll()
+  elseif had and not had.asked and not property then
+    W.bases[p.key] = nil
+    saveBases()
+    W.sendBasesToAll()
+  end
+end
+
 -- The stats file the page reads.
 function W.status()
   local now = W.env.clock()
@@ -305,12 +454,20 @@ function W.status()
   for _, e in pairs(W.stats.board) do
     truckers = truckers + 1
     local balance, truck, base = e.balance or 0, e.truckValue or 0, e.baseValue or 0
-    board[#board + 1] = { name = e.name, balance = balance, truckValue = truck, baseValue = base, wealth = balance + truck + base,
+    board[#board + 1] = { name = e.name, balance = balance, truckValue = truck, baseValue = base, baseTown = e.baseTown,
+      wealth = balance + truck + base,
       deliveries = e.deliveries or 0, containers = e.containers or 0 }
   end
   -- Ranked by wealth: money plus what the truck and base are worth, so buying either doesn't drop you down.
   table.sort(board, function(a, b) if a.wealth ~= b.wealth then return a.wealth > b.wealth end return a.name < b.name end)
   while #board > 20 do table.remove(board) end
+  -- Every base's town and circle, for the map (town centres only).
+  local bases = {}
+  for _, b in pairs(W.bases or {}) do
+    bases[#bases + 1] = { name = b.name, town = b.town, latitude = math.floor(b.latitude * 100 + 0.5) / 100,
+      longitude = math.floor(b.longitude * 100 + 0.5) / 100, radiusKm = math.floor(W.baseRadius(math.max(b.peak, W.BASE_PRICE), b.boost) * 10 + 0.5) / 10 }
+  end
+  table.sort(bases, function(a, b) return a.name < b.name end)
   local t = today()
   local ship
   if W.shipOn() then
@@ -331,7 +488,7 @@ function W.status()
       maxPlayers = W.env.setting and W.env.setting('maxPlayers') or nil },
     season = { number = W.SEASON, day = math.floor((now - W.stats.started) / 86400) + 1, truckers = truckers },
     today = { deliveries = t.deliveries or 0, earned = t.earned or 0 },
-    ship = ship, players = players, feed = W.stats.feed, leaderboard = board,
+    ship = ship, players = players, feed = W.stats.feed, leaderboard = board, bases = bases,
   }
 end
 
@@ -443,6 +600,7 @@ function W.start(env)
   W.BUILD = build and build > 0 and build or nil
   W.loadClaims()
   W.loadStats()
+  W.loadBases()
   local accountsText = env.read(W.DIR .. '/accounts.json')
   local okA, accounts = false, nil
   if accountsText and accountsText ~= '' then okA, accounts = pcall(env.decode, accountsText) end
@@ -511,6 +669,8 @@ function W.onJoin(pid, data)
   for _, frame in ipairs(W.frames(W.nextId, message)) do W.env.send(pid, 'wwtcCareer', frame) end
   W.sendPlayersToAll()
   W.shipTick()
+  if save then W.baseCareer(p, save) end
+  W.sendBases(pid)
   W.sendShip(pid)
   if save then W.boardCareer(p, save) end
   W.feed('join', (clean(p.name, 32) or 'A trucker') .. ' joined the server.')
@@ -544,6 +704,7 @@ function W.onSave(pid, frame)
   end
   p.balance = save.progression.balance
   W.boardCareer(p, save)
+  W.baseCareer(p, save)
   answer(pid, true, save.generation)
 end
 
@@ -986,6 +1147,7 @@ if MP and MP.RegisterEvent then
   WWTC_onDelivered = guarded('delivered', W.onDelivered)
   WWTC_onFind = guarded('find', W.onFind)
   WWTC_onHere = guarded('here', W.onHere)
+  WWTC_onBaseClaim = guarded('base claim', W.onBaseClaim)
   WWTC_onChat = function(pid, name, message)
     local ok, hide = pcall(W.onChat, pid, message)
     if ok and hide then return 1 end
@@ -1005,6 +1167,7 @@ if MP and MP.RegisterEvent then
   MP.RegisterEvent('wwtcDelivered', 'WWTC_onDelivered')
   MP.RegisterEvent('wwtcFind', 'WWTC_onFind')
   MP.RegisterEvent('wwtcHere', 'WWTC_onHere')
+  MP.RegisterEvent('wwtcBaseClaim', 'WWTC_onBaseClaim')
   MP.RegisterEvent('WWTC_shipTimer', 'WWTC_onShipTimer')
   if MP.CreateEventTimer then MP.CreateEventTimer('WWTC_shipTimer', 15000) end
   WWTC_onShipTimer()

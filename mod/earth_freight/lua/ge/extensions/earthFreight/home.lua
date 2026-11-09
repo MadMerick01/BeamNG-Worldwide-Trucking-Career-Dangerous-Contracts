@@ -17,6 +17,8 @@ M.HOME_METRES = 200
 M.REPAIR_SHARE = 0.5
 -- How many cars home keeps besides the one the player drives.
 M.SPACES = persistence.HOME_SPACES
+-- How long the game waits for the server's answer before Buy can be pressed again.
+M.ASK_SECONDS = 15
 
 local MAX_INTEGER = 9007199254740991
 local dollars = pricing.dollars
@@ -60,17 +62,21 @@ function M.attach(c)
     return progression.balance + math.max(0, truck) + (self.property and self.property.paid or 0)
   end
 
-  -- The town a base's circle is around, from the places near its spot: { latitude, longitude, name,
-  -- boost }, or nil until a place there is loaded. A base bought before the Magnate update gets it here.
-  local function baseTown(self)
-    local p = self.property
-    if p.town then return p.town end
+  -- The town a spot belongs to, for a base's circle: { latitude, longitude, name, boost }, or nil until
+  -- a place there is loaded.
+  local function townAt(spot)
     local ok, found = pcall(function()
-      places.ensure(p)
-      return places.at(p) or (places.nearest(p, 1)[1] or {}).place
+      places.ensure(spot)
+      return places.at(spot) or (places.nearest(spot, 1)[1] or {}).place
     end)
     if not ok or type(found) ~= 'table' or not location.valid(found) then return nil end
-    p.town = { latitude = found.latitude, longitude = found.longitude, name = found.name, boost = places.boost(found) }
+    return { latitude = found.latitude, longitude = found.longitude, name = found.name, boost = places.boost(found) }
+  end
+
+  -- The town a base's circle is around. A base bought before the Magnate update gets it here.
+  local function baseTown(self)
+    local p = self.property
+    if not p.town then p.town = townAt(p) end
     return p.town
   end
 
@@ -87,10 +93,39 @@ function M.attach(c)
       radiusKm = magnate.radiusKm(p.peak, town.boost), peak = p.peak, mine = true }
   end
 
-  -- The share of the region multiplier the player's base adds at a point (0 outside its circle).
+  -- Every circle that counts for this player: their own, and on a server everyone else's.
+  function c:baseCircles()
+    local list = {}
+    local own = self:baseCircle()
+    if own then list[1] = own end
+    local others = self.mp and self.mp.state == 'server' and self.mp.bases or nil
+    for _, b in ipairs(others or {}) do
+      if not b.mine then
+        list[#list + 1] = { latitude = b.latitude, longitude = b.longitude, radiusKm = b.radiusKm, name = b.town, owner = b.name }
+      end
+    end
+    return list
+  end
+
+  -- The share of the region multiplier bases add at a point for this player: the owner's in their own
+  -- turf, a visitor's anywhere else in a circle, 0 outside them all.
   function c:baseShareAt(point)
-    local circle = self:baseCircle()
-    return circle and magnate.shareAt({ circle }, point) or 0
+    return magnate.shareAt(self:baseCircles(), point)
+  end
+
+  -- The function jobs.quote takes for that, or nil when there are no circles at all.
+  function c:baseShareFunction()
+    if #self:baseCircles() == 0 then return nil end
+    return function(point) return self:baseShareAt(point) end
+  end
+
+  -- Another player's base too close to this town for a new one, or nil (magnate.MIN_APART_KM).
+  local function tooClose(self, town)
+    local others = self.mp and self.mp.state == 'server' and self.mp.bases or nil
+    for _, b in ipairs(others or {}) do
+      if not b.mine and location.distance(b, town) < magnate.MIN_APART_KM * 1000 then return b end
+    end
+    return nil
   end
 
   -- What a repair of this much damage costs: REPAIR_SHARE of the usual price at home.
@@ -134,30 +169,71 @@ function M.attach(c)
     if not self:canAfford(M.PRICE) then
       return 'Not enough money. You need ' .. dollars(M.PRICE - self.profile.progression.balance) .. ' more.'
     end
+    if self.baseAsk and self.clock - self.baseAsk.at < M.ASK_SECONDS then return 'Asking the server...' end
+    local here = self.lastSample
+    local town = here and here.valid and location.valid(here) and townAt(here) or nil
+    local near = town and tooClose(self, town)
+    if near then
+      return string.format('Too close to %s\'s base in %s. Bases must be %d km apart.', near.name, near.town or 'a town nearby',
+        magnate.MIN_APART_KM)
+    end
     return nil
   end
 
-  -- Buys the spot where the car is parked as the player's home.
+  -- Buys the spot where the car is parked as the player's base. On a server, the server is asked first
+  -- (one base a town, MIN_APART_KM apart), and the base is bought when it says yes (baseClaimAnswered).
   function c:claimHome()
     local problem = self:claimProblem()
     local here = self.lastSample
     if not problem and not (here and here.valid and location.valid(here)) then problem = 'Waiting for a valid position.' end
+    local town = not problem and townAt(here) or nil
+    if not problem and not town then problem = 'Waiting for the towns nearby to load.' end
     if problem then
       self.homeFeedback = problem
       return false
     end
+    if self.mp and self.mp.state == 'server' then
+      self.baseAsk = { at = self.clock, spot = location.copy(here), town = town }
+      self.mp:claimBase({ town = town.name, latitude = town.latitude, longitude = town.longitude, boost = town.boost })
+      self.homeFeedback = 'Asking the server whether ' .. tostring(town.name) .. ' is free...'
+      return true
+    end
+    return self:buyBase(location.copy(here), town)
+  end
+
+  -- The server's answer: the base is bought where the player asked, or they are told who is there.
+  function c:baseClaimAnswered(d)
+    local ask = self.baseAsk
+    if type(d) ~= 'table' or not ask then return end
+    self.baseAsk = nil
+    if not d.ok then
+      self.homeFeedback = d.why == 'too_close'
+        and string.format('Too close to %s\'s base in %s. Bases must be %d km apart.', d.by or 'another trucker', d.town or 'a town nearby', magnate.MIN_APART_KM)
+        or d.why == 'have_one' and 'The server already has a base for you.'
+        or 'The server said no. Try again in a moment.'
+      return
+    end
+    local problem = self:claimProblem()
+    local here = self.lastSample
+    if not problem and not (here and here.valid and location.distance(here, ask.spot) <= M.HOME_METRES) then
+      problem = 'You moved away from the spot. Park there and press Buy again.'
+    end
+    if problem then
+      self.homeFeedback = problem
+      return
+    end
+    self:buyBase(ask.spot, ask.town)
+  end
+
+  -- Pays for the base and makes this spot and town the player's base.
+  function c:buyBase(spot, town)
     if not self:spend(M.PRICE, 'home') then
       self.homeFeedback = 'Not enough money.'
       return false
     end
-    local spot = location.copy(here)
-    local ok, near = pcall(function()
-      places.ensure(spot)
-      local found = places.at(spot) or (places.nearest(spot, 1)[1] or {}).place
-      return found and found.name or nil
-    end)
+    local near = town and town.name
     self.property = { latitude = spot.latitude, longitude = spot.longitude, paid = M.PRICE,
-      name = ok and type(near) == 'string' and near ~= '' and #near <= 256 and not near:find('%c') and near or nil }
+      name = type(near) == 'string' and near ~= '' and #near <= 256 and not near:find('%c') and near or nil, town = town }
     self.storedCars = self.storedCars or {}
     local circle = self:baseCircle()
     self.homeFeedback = 'This spot is your base of operations. You paid ' .. dollars(M.PRICE) .. '.'
@@ -279,6 +355,19 @@ function M.attach(c)
     if self.state ~= 'READY' or not self.arrived or not self.profile or self.error then return nil end
     local view = { price = M.PRICE, radiusMetres = M.HOME_METRES, repairShare = math.floor(M.REPAIR_SHARE * 100 + 0.5),
       spaces = M.SPACES, feedback = self.homeFeedback }
+    -- On a server, everyone else's bases, nearest first.
+    local others = {}
+    for _, b in ipairs(self.mp and self.mp.state == 'server' and self.mp.bases or {}) do
+      if not b.mine then
+        others[#others + 1] = { name = b.name, town = b.town, radiusKm = math.floor(b.radiusKm + 0.5),
+          distanceMetres = current and location.distance(current, b) or nil,
+          inside = current and location.distance(current, b) <= b.radiusKm * 1000 or false }
+      end
+    end
+    table.sort(others, function(a, b) return (a.distanceMetres or math.huge) < (b.distanceMetres or math.huge) end)
+    while #others > 5 do table.remove(others) end
+    view.others = #others > 0 and others or nil
+    view.visitorBonus = magnate.VISITOR_SHARE
     local p = self.property
     if not p then
       local problem = self:claimProblem()

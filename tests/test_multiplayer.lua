@@ -48,7 +48,8 @@ local function link(W, env, pid, deliver)
         elseif m.event == 'wwtcWhere' then W.onWhere(pid, m.data)
         elseif m.event == 'wwtcDelivered' then W.onDelivered(pid, m.data)
         elseif m.event == 'wwtcFind' then W.onFind(pid, m.data)
-        elseif m.event == 'wwtcHere' then W.onHere(pid, m.data) end
+        elseif m.event == 'wwtcHere' then W.onHere(pid, m.data)
+        elseif m.event == 'wwtcBaseClaim' then W.onBaseClaim(pid, m.data) end
       else
         local found
         for i, m in ipairs(env.sent) do if m.pid == pid then found = i; break end end
@@ -662,6 +663,77 @@ do
   T.eq(next(W.asks), nil, 'you cannot ask for yourself')
   W.onHere(1, J.encode({ v = 1, ask = 999, ok = true, latitude = 1, longitude = 1 }))
   T.eq(next(W.asks), nil, 'an answer nobody asked for is dropped')
+end
+
+-- The Magnate update on a server: a base is asked of the server (one a town, 10 km apart), everyone sees everyone's
+-- circles, a visitor's jobs pay more inside someone else's, and the page shows the circles.
+do
+  local W, env = server()
+  W.SHIP_CONTAINERS = 0
+  local function game(pid, pose)
+    local io = F.io({ [F.CONFIG] = F.config() })
+    local handler
+    local send, pump = link(W, env, pid, function(event, data) handler(event, data) end)
+    local mp = { inSession = function() return true end, send = send, encode = J.encode, decode = J.decode,
+      listen = function(h) handler = h; return true end }
+    local a = F.adapter(pose)
+    local c = F.controller({ io = io, multiplayer = mp, adapter = a })
+    pump()
+    F.advance(c, 2)
+    if not c.arrived then c:startHere(); F.advance(c, 2) end
+    pump()
+    return c, a, pump, io
+  end
+  local ropes = { latitude = -33.7328, longitude = 150.791 } -- Ropes Crossing, 8.6 km from Penrith
+  local c1, a1, pump1 = game(1, F.copy(F.PENRITH))
+  local c2, a2, pump2 = game(2, ropes)
+  local function pump() for _ = 1, 3 do pump1(); pump2() end end
+  c1.profile.progression.balance, c2.profile.progression.balance = 400000, 400000
+  F.advance(c1, 0.6); F.advance(c2, 0.6)
+  local before = {}
+  for _, j in ipairs(c2:view().town.jobs) do before[j.id] = j.pay end
+  -- Player 1 buys in Penrith: the server is asked first, and says yes.
+  T.check(c1:claimHome(), 'Buy asks the server'); T.eq(c1.property, nil, 'nothing bought before it answers')
+  T.eq(c1:claimProblem(), 'Asking the server...', 'and Buy waits for it')
+  pump()
+  T.check(c1.property ~= nil, 'bought once the server says yes'); T.eq(c1.property.town.name, 'Penrith', 'in Penrith')
+  T.eq(c1:view().balance, 400000 - 250000, 'paid')
+  -- Player 2 sees it, and can't buy within 10 km of it.
+  local others = c2:view().home.others
+  T.check(others and others[1].name == 'player1' and others[1].town == 'Penrith', 'the other base is listed')
+  T.check(others[1].inside, 'and player 2 is inside its circle'); T.eq(others[1].latitude, nil, 'never a spot')
+  T.check(c2:claimProblem():find('Too close to player1', 1, true), 'too close to buy')
+  -- Player 2's jobs here pay the visitors' bonus.
+  local town = 0
+  for _, j in ipairs(c2:view().town.jobs) do
+    if not j.drop and not j.contract and j.units > 0 then
+      town = town + 1
+      T.check(j.basePercent and j.basePercent >= 4 and j.basePercent <= 13, 'a visitor gets about +10% on ' .. j.id)
+      T.check(j.pay > before[j.id], 'and is paid more on ' .. j.id)
+    end
+  end
+  T.check(town > 0, 'town jobs checked')
+  -- Even if player 2's game didn't know, the server refuses: one base within 10 km.
+  W.onBaseClaim(2, J.encode({ v = 1, town = 'Ropes Crossing', latitude = ropes.latitude, longitude = ropes.longitude, boost = 1 }))
+  local answer = J.decode(env.sent[#env.sent].data)
+  T.check(not answer.ok and answer.why == 'too_close' and answer.by == 'player1', 'the server refuses too')
+  -- The save confirms the base, with its owner's best wealth, and the page shows the circle at the town.
+  F.advance(c1, 0.6); T.check(c1:manualSave(), 'saved'); pump()
+  local key = c1.mp.key
+  T.eq(W.bases[key].asked, nil, 'the base is confirmed by the save'); T.check(W.bases[key].peak >= 400000, 'with the best wealth')
+  local st = W.status()
+  T.eq(#st.bases, 1, 'one base on the page'); T.eq(st.bases[1].town, 'Penrith', 'at its town')
+  T.check(st.bases[1].radiusKm >= 20, 'with its circle')
+  T.near(st.bases[1].latitude, 0, 90, 'a town centre'); T.eq(st.leaderboard[1].baseTown, 'Penrith', 'and the leaderboard names it')
+  local W2 = server(env.files)
+  T.check(W2.bases[key] ~= nil and W2.bases[key].town == 'Penrith', 'bases survive a restart')
+  -- A base asked for but never saved is let go after a while, and the town is free again.
+  W.onBaseClaim(2, J.encode({ v = 1, town = 'Faraway', latitude = -34.5, longitude = 150.8, boost = 1 }))
+  local held = W.bases[c2.mp.key]
+  T.check(held ~= nil and held.asked ~= nil, 'held while the game buys it')
+  env.time = env.time + W.BASE_ASK_SECONDS + 1
+  W.onBaseClaim(1, J.encode({ v = 1, town = 'Nowhere', latitude = 10, longitude = 10, boost = 1 }))
+  T.eq(W.bases[c2.mp.key], nil, 'and let go when no save ever has it')
 end
 
 -- Restarting for an update: warnings in chat, every game saves itself, everyone is sent off, and the script is told.

@@ -98,6 +98,13 @@ function M.roadBonusFor(boost)
   return math.min(M.MAX_ROAD, 1 + ((boost or 1) - 1) * M.ROAD_SHARE)
 end
 
+-- What bases of operations add to a run's road bonus (magnate.lua): at each end, shareAt's share of the
+-- region multiplier there, averaged over the two ends and halved like the boost itself. 0 without shareAt.
+function M.baseExtra(shareAt, from, to)
+  if not shareAt then return 0 end
+  return (shareAt(from) * places.boost(from) + shareAt(to) * places.boost(to)) / 2 * M.ROAD_SHARE
+end
+
 -- The road bonus of a job: from the region boost at the average of its two ends.
 function M.roadBonus(from, to)
   return M.roadBonusFor((places.boost(from) + places.boost(to)) / 2)
@@ -206,7 +213,7 @@ function M.quote(job, units, needs, now, shareAt)
   if job.decent then need = math.max(1, need) end
   local short = M.shortage(to, good, now)
   local factor = need * (short and M.SHORTAGE_PAY or 1) * (job.jackpot or 1)
-  local extra = shareAt and (shareAt(from) * places.boost(from) + shareAt(to) * places.boost(to)) / 2 * M.ROAD_SHARE or 0
+  local extra = M.baseExtra(shareAt, from, to)
   local road = M.roadBonus(from, to) + extra
   local base = M.basePay(good, units, job.km)
   return { pay = units > 0 and math.max(10, round10(base * factor * road)) or 0, base = round10(base),

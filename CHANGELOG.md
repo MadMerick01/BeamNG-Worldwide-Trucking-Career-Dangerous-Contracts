@@ -6,6 +6,13 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Bases of operations now work on multiplayer servers.** Everyone sees everyone else's bases on the **Base** tab, with the owner, the town, the size of their circle and whether you are inside it. Jobs that start or end inside someone else's circle pay you a visitor's bonus: about 10% more on a town job with both ends inside, more in steep regions. Inside your own circle you still get the owner's bonus.
+- Only one base is allowed per town, and bases must be at least 10 km apart. When you press Buy, the server is asked first, so two truckers can't grab the same town, and you're told whose base is too close.
+- Where two circles overlap, the bigger one pushes the border towards the smaller one, and the owner's bonus only counts on your side of the border. Every base keeps the 5 km around its town, however rich its neighbours get. Get richer than your neighbour and your border moves forward.
+- Ship Day containers now get the base bonus too, like any town job.
+- The server's web page now draws every base's circle on the map, and the leaderboard has a Base column naming each trucker's base town.
+- Server hosts: run the server updater to get bases on your server. Saves still work, and a home bought before this update shows up on the server after its owner's next save.
+
 - **The Magnate update begins: your home is now a base of operations.** Buy one on the new **Base** tab (it replaces the Home tab) for $250,000, parked in any town. Around that town grows a circle of influence, and jobs that start or end inside it pay you more: about 20% more on a town job with both ends inside, and 40% more on an off-road drop, a little more again in steep regions. The circle is big from the start (it reaches about 20 km out in a flat region for a trucker worth $350,000) and grows as you get richer, where your wealth is your cash plus your truck plus your base. It never shrinks, and bases in steep regions reach further. The Base tab shows how far your circle reaches and how much wealth takes it further, and the job board marks each job your base pays extra on. Everything a home did still works: the stored car, Swap cars, half-price repairs and Relocate (now listed as Base).
 - If you already own a home, it becomes your base for free, with its circle around the nearest town. Your saves keep working.
 - On a multiplayer server, the season leaderboard's wealth now includes what each trucker paid for their base, so buying one doesn't drop you down the table. Server hosts: run the server updater to get it.

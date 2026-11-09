@@ -11,6 +11,8 @@ local M = {}
 M.START_WEALTH, M.START_KM, M.MAX_KM = 350000, 20, 100
 M.OWNER_SHARE, M.VISITOR_SHARE = 0.4, 0.2
 M.CORE_KM = 5
+-- On a server, bases are at least this far apart, town centre to town centre, so cores never overlap.
+M.MIN_APART_KM = 10
 
 -- The circle's radius in km for this much wealth, at a base whose region multiplier is boost.
 function M.radiusKm(wealth, boost)

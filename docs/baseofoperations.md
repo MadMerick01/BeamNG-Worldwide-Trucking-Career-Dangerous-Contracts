@@ -1,7 +1,10 @@
 # The Magnate update: bases of operations
 
-Status: **step 1 built** (single player: the base replaces the home, its circle and the owner's bonus on town jobs and
-off-road drops), 9 Nov 2026. Dangerous contracts, heli jobs and beacon packages get the bonus with step 2. All open questions answered by MadMerick on 9 Nov. Written from MadMerick's idea. Decisions are marked **Decided**.
+Status: **steps 1 and 2 built**, 9 Nov 2026: the base replaces the home; its circle and the owner's bonus; on a
+server, bases kept by the server (one a town, 10 km apart), everyone's circles, visitors' bonus, turf pushing, Ship Day
+containers, and circles and a Base column on the web page. Commission (step 3) is next.
+Dangerous contracts, heli jobs and beacon packages get no base bonus: they run on famous roads and remote spots far
+from towns, where a town's circle means little.
 
 ## The pitch
 
@@ -152,8 +155,8 @@ toward the smaller one.
 
 - A town job's ends are the pickup town and the drop-off town, measured from the town centre to the base's centre.
 - An off-road drop's spot counts as its own end.
-- Ship Day containers, dangerous contracts, heli jobs and beacon packages: the same rule applies (the pickup town and
-  the drop-off town). **Decided (MadMerick, 9 Nov):** Ship Day gets the bonus and commission like any job, so a base
+- Ship Day containers: the same rule applies (the port town and the drop-off town). Dangerous contracts, heli jobs and
+  beacon packages get no base bonus (decided while building step 1: they happen far from towns). **Decided (MadMerick, 9 Nov):** Ship Day gets the bonus and commission like any job, so a base
   near a port is worth having.
 
 The board shows the bonus before you take a job: the drop-off line reads, for example, "Lithgow ×1.4 +0.2 (Sam's

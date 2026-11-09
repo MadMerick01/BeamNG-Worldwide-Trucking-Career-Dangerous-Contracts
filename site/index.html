@@ -107,8 +107,8 @@
       <section>
         <h2>Season leaderboard</h2>
         <div class="board-wrap"><table>
-          <thead><tr><th>#</th><th>Trucker</th><th class="num">Cash</th><th class="num">Truck</th><th class="num">Wealth</th><th class="num">Jobs</th></tr></thead>
-          <tbody id="board"><tr><td colspan="6" class="empty">No careers yet.</td></tr></tbody>
+          <thead><tr><th>#</th><th>Trucker</th><th class="num">Cash</th><th class="num">Truck</th><th>Base</th><th class="num">Wealth</th><th class="num">Jobs</th></tr></thead>
+          <tbody id="board"><tr><td colspan="7" class="empty">No careers yet.</td></tr></tbody>
         </table></div>
         <p class="note">Ranked by wealth: cash plus what your truck and base of operations are worth, as of your last save.</p>
       </section>
@@ -277,12 +277,12 @@ function renderBoard() {
   // Wealth is cash plus what the truck and base are worth; a page from an older server sorts by it too.
   rows = rows.map(function (r) {
     var cash = Number(r.balance) || 0, truck = Number(r.truckValue) || 0, base = Number(r.baseValue) || 0
-    return { name: r.name, balance: cash, truckValue: truck, wealth: r.wealth != null ? Number(r.wealth) || 0 : cash + truck + base, deliveries: r.deliveries }
+    return { name: r.name, balance: cash, truckValue: truck, baseTown: r.baseTown, hasBase: base > 0, wealth: r.wealth != null ? Number(r.wealth) || 0 : cash + truck + base, deliveries: r.deliveries }
   })
   rows.sort(function (a, b) { return b.wealth - a.wealth })
   if (!rows.length) {
     var tr = el('tr'), td = el('td', 'empty', 'No careers yet.')
-    td.colSpan = 6; tr.appendChild(td); body.appendChild(tr)
+    td.colSpan = 7; tr.appendChild(td); body.appendChild(tr)
     return
   }
   rows.forEach(function (r, i) {
@@ -291,6 +291,7 @@ function renderBoard() {
     tr.appendChild(el('td', '', r.name))
     tr.appendChild(el('td', 'num', money(r.balance)))
     tr.appendChild(el('td', 'num', money(r.truckValue)))
+    tr.appendChild(el('td', '', r.hasBase ? text(r.baseTown || 'Yes') : '–'))
     tr.appendChild(el('td', 'num wealth', money(r.wealth)))
     tr.appendChild(el('td', 'num', count(r.deliveries)))
     body.appendChild(tr)
@@ -318,6 +319,15 @@ function renderMap() {
     m.bindPopup(pop).addTo(layer)
     points.push([ship.latitude, ship.longitude])
   }
+  // Bases of operations: each owner's circle of influence around their town.
+  var bases = stats && Array.isArray(stats.bases) ? stats.bases : []
+  bases.forEach(function (b) {
+    if (!validPoint(b) || !(Number(b.radiusKm) > 0)) return
+    var c = L.circle([b.latitude, b.longitude], { radius: Math.min(100, Number(b.radiusKm)) * 1000, color: '#f2c94c', weight: 2, fillOpacity: 0.08 })
+    var pop = el('div'); pop.appendChild(el('b', '', text(b.name) + "'s base")); pop.appendChild(el('div', '', (text(b.town) || 'A town') + ', ' + Math.round(b.radiusKm) + ' km circle'))
+    c.bindPopup(pop).addTo(layer)
+    points.push([b.latitude, b.longitude])
+  })
   var players = stats && Array.isArray(stats.players) ? stats.players : []
   // Players in the same town share one marker.
   var towns = {}

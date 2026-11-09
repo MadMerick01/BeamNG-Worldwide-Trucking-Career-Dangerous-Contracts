@@ -330,6 +330,8 @@ function M.new(deps)
       self:answerLocate(self.mp.locate)
     elseif event == 'wwtcFound' then
       self:playerFound(self.mp.found)
+    elseif event == 'wwtcBaseClaimed' then
+      self:baseClaimAnswered(self.mp.baseClaimed)
     end
     if event == 'wwtcSaveNow' then self:saveForRestart() end
     if event == 'wwtcSaved' and self.mp.saveError then
@@ -908,7 +910,7 @@ function M.new(deps)
   function c:containerQuote(box)
     local good = goods.get(shipday.GOOD)
     local units, slots, kg, inTrailer = trailers.fits(self:space(), self:trailerSpace(), good)
-    return { units = units, slots = slots, kg = kg, trailerUnits = inTrailer, pay = shipday.pay(box, units) }
+    return { units = units, slots = slots, kg = kg, trailerUnits = inTrailer, pay = shipday.pay(box, units, self:baseShareFunction()) }
   end
 
   -- Why a container can't be taken now, or nil when it can.
@@ -1188,7 +1190,7 @@ function M.new(deps)
     -- teleport to the start leaves the trailer behind.
     local units, slots, kg, inTrailer = trailers.fits(self:space(), not job.contract and self:trailerSpace() or nil, good)
     -- Ends inside the player's base circle pay more (magnate.lua).
-    local quote = jobs.quote(job, units, self.needs, self.now(), self.property and function(point) return self:baseShareAt(point) end or nil)
+    local quote = jobs.quote(job, units, self.needs, self.now(), self:baseShareFunction())
     quote.units, quote.slots, quote.kg, quote.trailerUnits = units, slots, kg, inTrailer
     return quote
   end
