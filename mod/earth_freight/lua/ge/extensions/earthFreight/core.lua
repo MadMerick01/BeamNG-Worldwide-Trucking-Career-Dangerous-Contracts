@@ -922,8 +922,9 @@ function M.new(deps)
     return nil
   end
 
-  -- Asks the server for a container. It's loaded when the server says it's this player's (claimAnswered).
-  function c:takeContainer(n)
+  -- Asks the server for a container. It's loaded when the server says it's this player's (claimAnswered), with the
+  -- share of a full load picked on the slider (a percentage, 100 when not given), like a job from the board.
+  function c:takeContainer(n, share)
     local ship = self:shipDay()
     local town = shipday.portTown(ship)
     local problem = self:containerProblem(ship, town)
@@ -939,7 +940,7 @@ function M.new(deps)
       self.shipFeedback = problem
       return false
     end
-    self.shipClaim = { ship = ship.ship, n = n, at = self.clock }
+    self.shipClaim = { ship = ship.ship, n = n, at = self.clock, share = share or 100 }
     self.mp:claim(ship.ship, n)
     self.shipFeedback = 'Asking the dock for container ' .. n .. '...'
     return true
@@ -967,6 +968,7 @@ function M.new(deps)
       return
     end
     local good = goods.get(shipday.GOOD)
+    quote.units, quote.pay = jobs.share(quote.units, quote.pay, claim.share or 100)
     self.load = { good = good.id, units = quote.units, slots = quote.units * good.slots, kg = quote.units * good.kg,
       pay = quote.pay, from = box.from, to = box.to, drivenKm = 0, ship = { ship = claim.ship, n = claim.n } }
     if (quote.trailerUnits or 0) > 0 then self.load.trailerUnits = math.min(quote.trailerUnits, quote.units) end
@@ -1014,7 +1016,7 @@ function M.new(deps)
       secondsLeft = math.max(0, ship.left - (self.clock - (self.shipAt or self.clock))),
       total = ship.containers, free = free, atPort = atPort, containers = list,
       goAllowed = tripProblem == nil, goProblem = not atPort and tripProblem or nil,
-      problem = atPort and takeProblem or nil, units = units or 0,
+      problem = atPort and takeProblem or nil, units = units or 0, unitKg = goods.get(shipday.GOOD).kg,
       carrying = held and held.ship == ship.ship and held.n or nil,
       feedback = self.shipFeedback,
     }
@@ -2615,7 +2617,11 @@ function M.searchShipping(query)
 end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 function M.goToPort() return safely(function() return ensure():goToPort() end) end
-function M.takeContainer(n) return safely(function() return ensure():takeContainer(tonumber(n)) end) end
+-- share is the load slider's percentage of a full load, as for takeJob.
+function M.takeContainer(n, share)
+  local s = type(share) == 'number' and share >= jobs.SHARE_STEP and share <= 100 and share % jobs.SHARE_STEP == 0 and share or 100
+  return safely(function() return ensure():takeContainer(tonumber(n), s) end)
+end
 function M.findPlayer(player)
   if type(player) ~= 'number' then return false end
   return safely(function() return ensure():findPlayer(player) end)

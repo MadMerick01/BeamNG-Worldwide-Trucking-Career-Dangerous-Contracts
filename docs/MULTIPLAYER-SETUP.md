@@ -84,21 +84,22 @@ Startup folder (press Win+R and type `shell:startup`).
 
 ## Ship Day
 
-Every 3 days a ship docks at the next port on the server's list with 20 containers of high-value cargo. Everyone
+Every day a ship docks at the next port on the server's list with 5 containers of high-value cargo. Everyone
 hears about it in chat, and the **Town** tab shows a **Ship Day** card: the ship, its port, how long until it sails and
 every container with its destination and pay.
 
 - **Go to port (free)** takes an empty car to the town by the docks. It always lands on the town centre, never on the
   port's own coordinates, so nobody lands in the water.
 - At the port, press **Take** on a container. First come, first served: the server decides who gets it, and everyone
-  sees it as taken. One container at a time.
+  sees it as taken. One container at a time. The **Load** slider above the containers picks how much of a
+  full load to take, 10% to 100%, like the town job board, and the pay shown changes with it.
 - Drive it to its town, 15 to 70 km inland, and press **Deliver** as usual. Everyone sees the delivery in chat.
 - Abandoning a container gives it back for someone else.
 
 To change it, edit the settings at the top of `Resources\Server\WorldwideTrucking\main.lua` and restart:
 
-- `W.SHIP_START`: when the first ship docks (this PC's time). `W.SHIP_EVERY_HOURS`: hours between ships (72).
-- `W.SHIP_CONTAINERS`: containers per ship (20). Set it to 0 to turn Ship Day off.
+- `W.SHIP_START`: when the first ship docks (this PC's time). `W.SHIP_EVERY_HOURS`: hours between ships (24).
+- `W.SHIP_CONTAINERS`: containers per ship (5). Set it to 0 to turn Ship Day off.
 - `W.PORTS`: the ports, in order. Each has a name, region and coordinates; keep the coordinates on the land side of
   the port. `W.SHIP_NAMES`: the ships' names.
 

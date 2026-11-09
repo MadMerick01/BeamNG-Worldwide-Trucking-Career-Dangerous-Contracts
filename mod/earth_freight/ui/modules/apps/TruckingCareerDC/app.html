@@ -332,9 +332,14 @@
           <div ng-if="data.shipDay.atPort && data.shipDay.problem" style="color:#f2c94c;margin-top:4px;">{{data.shipDay.problem}}</div>
           <div ng-if="shipDayOpen() && data.shipDay.units === 0" style="font-size:12px;color:#eb5757;">Container cargo needs a cargo box: fit one with Buy parts on the Garage tab.</div>
           <div ng-if="shipDayOpen()" style="margin-top:4px;">
+            <div ng-if="data.shipDay.atPort && !data.shipDay.carrying && data.shipDay.units > 1" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c9d6d2;">
+              <span style="flex:none;width:62px;">Load {{shareOf(containerJob())}}%</span>
+              <input type="range" min="10" max="100" step="10" ng-model="shares.container" ng-init="shares.container = shareOf(containerJob())" aria-label="How much container cargo to take" style="flex:1;min-width:0;">
+              <span style="flex:none;">{{containerTaken().units}} units, {{containerTaken().kg | number:0}} kg</span>
+            </div>
             <div ng-repeat="b in data.shipDay.containers" style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(86,141,122,.3);font-size:13px;">
               <div style="flex:1;min-width:0;"><b>#{{b.n}}</b> &rarr; {{b.to}} <span style="color:#7d8b88;font-size:12px;">{{km(b.distanceMetres)}} km</span></div>
-              <div ng-if="b.state === 'free'" style="flex:none;font-weight:bold;color:#56ccf2;">${{b.pay | number:0}}</div>
+              <div ng-if="b.state === 'free'" style="flex:none;font-weight:bold;color:#56ccf2;" title="${{b.pay | number:0}} for a full load">${{containerTaken(b).pay | number:0}}</div>
               <button type="button" ng-if="b.state === 'free' && data.shipDay.atPort" ng-click="takeContainer(b)" ng-disabled="!b.allowed" style="flex:none;padding:3px 8px;">Take</button>
               <div ng-if="b.state === 'mine'" style="flex:none;color:#6fcf97;">Yours</div>
               <div ng-if="b.state === 'taken'" style="flex:none;color:#7d8b88;font-size:12px;">Taken{{b.by ? ' by ' + b.by : ''}}</div>

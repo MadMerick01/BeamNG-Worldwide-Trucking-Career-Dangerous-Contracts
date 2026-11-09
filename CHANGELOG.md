@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Ship Day containers now have a Load slider.** At the port, open the Ship Day card on the Town tab and set the Load slider above the containers, from 10% to 100% of a full load, just like on the town job board. The pay next to each container changes with it, and the container you take is loaded with that much cargo. A lighter load is easier on a small car or a rough road.
+- **One ship a day, with 5 containers each.** Ships now dock every day instead of every three days, and each carries 5 containers instead of 20, so they go quickly and there is a fresh ship to race for each day. Your saves and careers are not affected. Server hosts: the server updater keeps your own Ship Day settings, so to get the new rhythm, set `W.SHIP_EVERY_HOURS = 24` and `W.SHIP_CONTAINERS = 5` at the top of the trucking plugin's `main.lua` and restart.
+
 ## Build 162 · 9 Nov 2026
 
 - **Fixed a multiplayer career sometimes starting from scratch.** When you joined a trucking server, your game asked the server for your career only once. If that question got lost while BeamMP was still connecting, the game decided the server didn't keep careers and gave you a fresh one on your PC instead. Your real career was still on the server, just not loaded. Now the game keeps asking until the server answers, and if the answer comes late, your career from the server replaces the fresh one. Your saves on the server were never touched.

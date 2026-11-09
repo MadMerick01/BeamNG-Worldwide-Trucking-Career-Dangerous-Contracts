@@ -317,14 +317,16 @@ do
   T.eq(#env.chats, 8, 'an empty welcome sends nothing')
 end
 
--- Ship Day on the server: a ship every few days at the next port, containers first come first served.
+-- Ship Day on the server: a ship every day at the next port, containers first come first served.
 do
   local W, env = server(nil, { [1] = 'a1', [2] = 'a2' })
   local first = W.shipAt(env.clock())
   T.eq(first.number, 1, 'the first ship is in port from the start')
   T.eq(first.port.id, W.PORTS[1].id, 'at the first port')
   local later = W.shipAt(env.clock() + W.SHIP_EVERY_HOURS * 3600 + 5)
-  T.eq(later.number, 2, 'a new ship every few days')
+  T.eq(later.number, 2, 'a new ship every day')
+  T.eq(W.SHIP_EVERY_HOURS, 24, 'one new ship a day')
+  T.eq(W.SHIP_CONTAINERS, 5, 'with 5 containers')
   T.eq(later.port.id, W.PORTS[2].id, 'at the next port')
   T.near(first.left, W.SHIP_EVERY_HOURS * 3600, 1, 'the first stays the whole time')
   -- Two players on the server.
@@ -386,6 +388,7 @@ end
 do
   local SD = require('earthFreight/shipday')
   local places = require('earthFreight/places')
+  local jobs = require('earthFreight/jobs')
   local W, env = server()
   W.PORTS = { { id = 'sydney', name = 'Port Jackson', region = 'Sydney', latitude = -33.86, longitude = 151.21 } }
   local io = F.io({ [F.CONFIG] = F.config() })
@@ -459,6 +462,13 @@ do
   T.check(c:takeContainer(3)); pump()
   c:abandonJob(); c:abandonJob(); pump()
   T.eq(W.claims.boxes[3], nil, 'an abandoned container is free again')
+  -- The load slider: a share of a full load, and that share of the pay.
+  local full = c:containerQuote(boxes[5])
+  T.check(c:takeContainer(5, 50)); pump()
+  local half = jobs.share(full.units, full.pay, 50)
+  T.eq(c.load.units, half, 'half a load on the slider takes half the units')
+  T.check(c.load.units < full.units and c.load.pay < full.pay, 'and pays less than a full load')
+  c:abandonJob(); c:abandonJob(); pump()
   -- A dock that never answers.
   local quiet = c.mp.claim
   c.mp.claim = function() return true end

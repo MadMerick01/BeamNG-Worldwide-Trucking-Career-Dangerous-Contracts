@@ -937,7 +937,18 @@ test('Ship Day: the Town tab shows the ship, Go to port and the containers to ta
   a.scope.takeContainer({ n: 4, allowed: false })
   a.scope.takeContainer({ n: 'x); evil(', allowed: true })
   assert.deepEqual(a.commands.map(c => c.replace(/^if earthFreight_core then earthFreight_core\.| end$/g, '')),
-    ['goToPort()', 'takeContainer(3)'])
+    ['goToPort()', 'takeContainer(3, 100)'])
+  // The load slider: one share for every container, sent with the one taken, and the pay shown for it.
+  assert.ok(town.includes('ng-model="shares.container"'), 'a load slider for the containers')
+  a.state({ state: 'READY', arrived: true, shipDay: { goAllowed: true, units: 10, unitKg: 25, containers: [box] } })
+  a.scope.shares.container = '40'
+  assert.equal(a.scope.containerTaken({ pay: 1000 }).units, 4)
+  assert.equal(a.scope.containerTaken({ pay: 1000 }).kg, 100)
+  assert.equal(a.scope.containerTaken({ pay: 1000 }).pay, 400)
+  a.commands.length = 0
+  a.scope.takeContainer(box)
+  assert.equal(a.commands[0].replace(/^if earthFreight_core then earthFreight_core\.| end$/g, ''), 'takeContainer(3, 40)')
+  a.scope.shares.container = '100'
   a.state({ state: 'READY', arrived: true, shipDay: { goAllowed: false, containers: [] } })
   a.commands.length = 0
   a.scope.goToPort()
