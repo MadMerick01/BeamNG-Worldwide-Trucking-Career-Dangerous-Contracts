@@ -33,13 +33,14 @@
 -- order) and writes every change of money to a ledger. It does not yet work out what a delivery should pay.
 local W = {}
 
--- Ship Day: every SHIP_EVERY_HOURS a ship docks at the next port on this list, carrying SHIP_CONTAINERS containers.
+-- Ship Day: every SHIP_EVERY_HOURS (one a day) a ship docks at the next port on this list, carrying SHIP_CONTAINERS
+-- containers (5, so they go quickly).
 -- The first docks at SHIP_START (this PC's local time). Players are sent to the town nearest the coordinates, so a
 -- point just off the coast is still safe, but keep each one on the port's land side. Add, remove or reorder ports
 -- freely; set SHIP_CONTAINERS to 0 to turn Ship Day off.
 W.SHIP_START = { year = 2026, month = 11, day = 8, hour = 20 }
-W.SHIP_EVERY_HOURS = 72
-W.SHIP_CONTAINERS = 20
+W.SHIP_EVERY_HOURS = 24
+W.SHIP_CONTAINERS = 5
 W.PORTS = {
   { id = 'valparaiso', name = 'Valparaíso', region = 'Chile', latitude = -33.0458, longitude = -71.6197 },
   { id = 'kotor', name = 'Kotor', region = 'Montenegro', latitude = 42.4247, longitude = 18.7712 },
@@ -306,7 +307,9 @@ function W.status()
   if W.shipOn() then
     local at = W.shipAt(now)
     local taken = 0
-    if W.claims and W.claims.ship == at.number then for _ in pairs(W.claims.boxes) do taken = taken + 1 end end
+    if W.claims and W.claims.ship == at.number then
+      for n in pairs(W.claims.boxes) do if n <= W.SHIP_CONTAINERS then taken = taken + 1 end end
+    end
     local nextPort = W.PORTS[at.number % #W.PORTS + 1]
     ship = { number = at.number, name = at.name, port = at.port.name, region = at.port.region,
       latitude = at.port.latitude, longitude = at.port.longitude, containers = W.SHIP_CONTAINERS,

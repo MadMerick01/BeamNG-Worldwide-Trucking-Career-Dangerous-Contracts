@@ -1,4 +1,4 @@
--- Ship Day (multiplayer, on a server running the Worldwide Trucking plugin). Every few days the server docks a ship at
+-- Ship Day (multiplayer, on a server running the Worldwide Trucking plugin). Every day the server docks a ship at
 -- the next port on its list, with a number of containers. Players go to the port, each takes a container (first come,
 -- first served: the server keeps who has which) and drives it to a town inland for high pay.
 -- The server only says which ship, which port and how many containers; what is in each container, where it goes and

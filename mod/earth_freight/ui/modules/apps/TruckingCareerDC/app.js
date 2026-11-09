@@ -504,9 +504,15 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       // Ship Day: a free trip to the port, and a container from the ship there.
       scope.goToPort = function () { if (scope.data.shipDay && scope.data.shipDay.goAllowed) core('goToPort()') }
+      // The same load slider for the ship's containers: one share for all of them, as only one is taken at a time.
+      scope.containerJob = function (box) {
+        var s = scope.data && scope.data.shipDay
+        return { id: 'container', units: s ? s.units : 0, unitKg: s ? s.unitKg : 0, pay: box ? box.pay : 0 }
+      }
+      scope.containerTaken = function (box) { return scope.taken(scope.containerJob(box)) }
       scope.takeContainer = function (box) {
         var n = box ? parseInt(box.n, 10) : 0
-        if (scope.data.shipDay && box.allowed && n > 0) core('takeContainer(' + n + ')')
+        if (scope.data.shipDay && box.allowed && n > 0) core('takeContainer(' + n + ', ' + scope.shareOf({ id: 'container' }) + ')')
       }
       // A long wait as days and hours, or hours and minutes: 2d 14h, 5h 12m.
       scope.until = function (seconds) {
