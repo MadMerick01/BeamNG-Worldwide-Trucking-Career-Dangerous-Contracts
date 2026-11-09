@@ -315,24 +315,31 @@
         <p role="status" ng-if="data.tradeFeedback" style="margin:6px 0;">{{data.tradeFeedback}}</p>
       </div>
       <div ng-if="tab === 'town'">
-        <div ng-if="data.shipDay" style="margin:0 0 8px;padding:10px;border:2px solid #56ccf2;border-radius:6px;">
-          <div style="font-weight:bold;color:#56ccf2;">Ship Day: {{data.shipDay.name}} at {{data.shipDay.port}}</div>
-          <div style="font-size:13px;color:#c9d6d2;">{{data.shipDay.region}} &middot; {{data.shipDay.free}} of {{data.shipDay.total}} containers left &middot; sails in {{until(data.shipDay.secondsLeft)}}</div>
-          <div ng-if="data.shipDay.carrying" style="color:#6fcf97;">Container {{data.shipDay.carrying}} is on board: drive it to its town and press Deliver there.</div>
-          <div ng-if="!data.shipDay.atPort" style="margin-top:6px;">
-            <button type="button" ng-click="goToPort()" ng-disabled="!data.shipDay.goAllowed" ng-style="{opacity: data.shipDay.goAllowed ? 1 : 0.5}" style="padding:6px 12px;background:#56ccf2;color:#0c1318;font-weight:bold;border:1px solid #56ccf2;border-radius:4px;">Go to port (free)</button>
-            <div style="font-size:12px;color:#c9d6d2;margin-top:2px;">Takes your empty car to {{data.shipDay.town}}, next to the docks.</div>
+        <div ng-if="data.shipDay" style="margin:0 0 8px;padding:6px 10px;border:2px solid #56ccf2;border-radius:6px;">
+          <div class="ef-hit" role="button" tabindex="0" ng-click="toggle('shipday')" aria-expanded="{{shipDayOpen()}}" title="{{shipDayOpen() ? 'Hide the containers' : 'Show the containers'}}">
+            <span class="ef-ar" aria-hidden="true" style="color:#56ccf2;">{{shipDayOpen() ? '&#9660;' : '&#9654;'}}</span>
+            <div style="flex:1;min-width:0;">
+              <div class="ef-line" style="font-weight:bold;color:#56ccf2;">Ship Day: {{data.shipDay.name}} at {{data.shipDay.port}}</div>
+              <div class="ef-line" style="font-size:13px;color:#c9d6d2;">{{data.shipDay.region}} &middot; {{data.shipDay.free}} of {{data.shipDay.total}} containers left &middot; sails in {{until(data.shipDay.secondsLeft)}}</div>
+            </div>
+          </div>
+          <div ng-if="data.shipDay.carrying" style="color:#6fcf97;padding-left:18px;">Container {{data.shipDay.carrying}} is on board: drive it to its town and press Deliver there.</div>
+          <div ng-if="!data.shipDay.atPort" style="margin:4px 0 0 18px;">
+            <button type="button" ng-click="goToPort()" ng-disabled="!data.shipDay.goAllowed" ng-style="{opacity: data.shipDay.goAllowed ? 1 : 0.5}" style="padding:4px 10px;background:#56ccf2;color:#0c1318;font-weight:bold;border:1px solid #56ccf2;border-radius:4px;">Go to port (free)</button>
+            <div ng-if="shipDayOpen()" style="font-size:12px;color:#c9d6d2;margin-top:2px;">Takes your empty car to {{data.shipDay.town}}, next to the docks.</div>
             <div ng-if="data.shipDay.goProblem" style="color:#f2c94c;">{{data.shipDay.goProblem}}</div>
           </div>
           <div ng-if="data.shipDay.atPort && data.shipDay.problem" style="color:#f2c94c;margin-top:4px;">{{data.shipDay.problem}}</div>
-          <div ng-if="data.shipDay.units === 0" style="font-size:12px;color:#eb5757;">Container cargo needs a cargo box: fit one with Buy parts on the Garage tab.</div>
-          <div ng-repeat="b in data.shipDay.containers" style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(86,141,122,.3);font-size:13px;">
-            <div style="flex:1;min-width:0;"><b>#{{b.n}}</b> &rarr; {{b.to}} <span style="color:#7d8b88;font-size:12px;">{{km(b.distanceMetres)}} km</span></div>
-            <div ng-if="b.state === 'free'" style="flex:none;font-weight:bold;color:#56ccf2;">${{b.pay | number:0}}</div>
-            <button type="button" ng-if="b.state === 'free' && data.shipDay.atPort" ng-click="takeContainer(b)" ng-disabled="!b.allowed" style="flex:none;padding:3px 8px;">Take</button>
-            <div ng-if="b.state === 'mine'" style="flex:none;color:#6fcf97;">Yours</div>
-            <div ng-if="b.state === 'taken'" style="flex:none;color:#7d8b88;font-size:12px;">Taken{{b.by ? ' by ' + b.by : ''}}</div>
-            <div ng-if="b.state === 'delivered'" style="flex:none;color:#7d8b88;font-size:12px;">Delivered</div>
+          <div ng-if="shipDayOpen() && data.shipDay.units === 0" style="font-size:12px;color:#eb5757;">Container cargo needs a cargo box: fit one with Buy parts on the Garage tab.</div>
+          <div ng-if="shipDayOpen()" style="margin-top:4px;">
+            <div ng-repeat="b in data.shipDay.containers" style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(86,141,122,.3);font-size:13px;">
+              <div style="flex:1;min-width:0;"><b>#{{b.n}}</b> &rarr; {{b.to}} <span style="color:#7d8b88;font-size:12px;">{{km(b.distanceMetres)}} km</span></div>
+              <div ng-if="b.state === 'free'" style="flex:none;font-weight:bold;color:#56ccf2;">${{b.pay | number:0}}</div>
+              <button type="button" ng-if="b.state === 'free' && data.shipDay.atPort" ng-click="takeContainer(b)" ng-disabled="!b.allowed" style="flex:none;padding:3px 8px;">Take</button>
+              <div ng-if="b.state === 'mine'" style="flex:none;color:#6fcf97;">Yours</div>
+              <div ng-if="b.state === 'taken'" style="flex:none;color:#7d8b88;font-size:12px;">Taken{{b.by ? ' by ' + b.by : ''}}</div>
+              <div ng-if="b.state === 'delivered'" style="flex:none;color:#7d8b88;font-size:12px;">Delivered</div>
+            </div>
           </div>
           <div ng-if="data.shipDay.feedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.shipDay.feedback}}</div>
         </div>
