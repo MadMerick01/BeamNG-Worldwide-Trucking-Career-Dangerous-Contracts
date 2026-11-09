@@ -26,10 +26,10 @@
     { "at": "2026-11-08T17:40:00Z", "kind": "season", "text": "Season 1 has begun. Everyone starts with a rusty Burnside and $6,000." }
   ],
   "leaderboard": [
-    { "name": "MadMerick", "balance": 184300, "deliveries": 41 },
-    { "name": "Sam", "balance": 152950, "deliveries": 37 },
-    { "name": "Jonno", "balance": 98120, "deliveries": 22 },
-    { "name": "Ruby", "balance": 61400, "deliveries": 18 },
-    { "name": "Kez", "balance": 23310, "deliveries": 7 }
+    { "name": "Sam", "balance": 152950, "truckValue": 148000, "wealth": 300950, "deliveries": 37 },
+    { "name": "MadMerick", "balance": 184300, "truckValue": 96500, "wealth": 280800, "deliveries": 41 },
+    { "name": "Jonno", "balance": 98120, "truckValue": 61200, "wealth": 159320, "deliveries": 22 },
+    { "name": "Ruby", "balance": 61400, "truckValue": 12800, "wealth": 74200, "deliveries": 18 },
+    { "name": "Kez", "balance": 23310, "truckValue": 4000, "wealth": 27310, "deliveries": 7 }
   ]
 }

@@ -225,12 +225,22 @@ local function boardEntry(p)
   return e
 end
 
--- A player's career came in (join) or was saved: their money and jobs done on the leaderboard.
+local function payOf(value)
+  local n = tonumber(value)
+  if not n or n < 0 or n > 100000000 then return nil end
+  return math.floor(n)
+end
+
+-- A player's career came in (join) or was saved: their money, truck's worth and jobs done on the leaderboard.
 function W.boardCareer(p, save)
   if not p or not p.key or type(save) ~= 'table' or type(save.progression) ~= 'table' then return end
   local e = boardEntry(p)
   if type(save.progression.balance) == 'number' then e.balance = save.progression.balance end
   if type(save.progression.jobsDone) == 'number' then e.deliveries = save.progression.jobsDone end
+  -- The truck's worth: what the game says it is worth now, else (an older game) what a second-hand one cost.
+  local car = type(save.vehicle) == 'table' and save.vehicle or {}
+  local worth = payOf(car.worth) or payOf(car.value)
+  if worth then e.truckValue = worth end
   W.saveStats()
 end
 
@@ -245,12 +255,6 @@ function W.onWhere(pid, data)
   p.where = { town = clean(d.town, 40), region = clean(d.region, 60), doing = clean(d.doing, 80),
     latitude = lat and math.floor(lat * 100 + 0.5) / 100, longitude = lon and math.floor(lon * 100 + 0.5) / 100 }
   W.statsChanged = true
-end
-
-local function payOf(value)
-  local n = tonumber(value)
-  if not n or n < 0 or n > 100000000 then return nil end
-  return math.floor(n)
 end
 
 -- Counts a delivery for today and the leaderboard.
@@ -298,9 +302,12 @@ function W.status()
   local board, truckers = {}, 0
   for _, e in pairs(W.stats.board) do
     truckers = truckers + 1
-    board[#board + 1] = { name = e.name, balance = e.balance or 0, deliveries = e.deliveries or 0, containers = e.containers or 0 }
+    local balance, truck = e.balance or 0, e.truckValue or 0
+    board[#board + 1] = { name = e.name, balance = balance, truckValue = truck, wealth = balance + truck,
+      deliveries = e.deliveries or 0, containers = e.containers or 0 }
   end
-  table.sort(board, function(a, b) if a.balance ~= b.balance then return a.balance > b.balance end return a.name < b.name end)
+  -- Ranked by wealth: money plus what the truck is worth, so buying a better truck doesn't drop you down.
+  table.sort(board, function(a, b) if a.wealth ~= b.wealth then return a.wealth > b.wealth end return a.name < b.name end)
   while #board > 20 do table.remove(board) end
   local t = today()
   local ship
