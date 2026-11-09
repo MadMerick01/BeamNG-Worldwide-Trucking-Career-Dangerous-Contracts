@@ -208,6 +208,22 @@ class UpdateScriptRun(unittest.TestCase):
         self.assertTrue(list(self.backups.glob('failed-*.log')), 'the failed log is kept')
         self.assertIn('[Trucking] plugin loaded', self.read('Server.log'), 'the old version is running again')
 
+    def test_refuses_a_folder_that_is_not_a_server(self):
+        self.new_releases()
+        elsewhere = Path(self.temp.name) / 'downloads'
+        elsewhere.mkdir()
+        self.settings.write_text(json.dumps({'ServerFolder': str(elsewhere)}))
+        result = self.update('-Now')
+        out = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 2, out)
+        self.assertIn("this isn't a server folder", out)
+        self.assertEqual([p.name for p in elsewhere.iterdir()], [], 'nothing is put in it')
+
+    def test_the_settings_example_ships_blank(self):
+        example = json.loads((ROOT / 'server' / 'update' / 'update-settings.example.json').read_text())
+        self.assertEqual(example['DiscordWebhook'], '', 'no webhook in the download')
+        self.assertNotIn('ServerFolder', [k for k, v in example.items() if v], 'and no one\'s own folder')
+
     def test_a_missing_earth_setting_stops_before_touching_the_server(self):
         self.new_releases()
         self.settings.write_text(json.dumps({'ServerFolder': str(self.server), 'EarthSettings': {'G.GONE': '1'}}))

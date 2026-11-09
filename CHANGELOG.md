@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The server update script now refuses to run outside a server folder**, so it can't fill the wrong folder with server files if it's put somewhere else. The update guide now asks hosts to back up their server by hand before the first run, says it's used at their own risk, and explains how to point the script at a server folder anywhere on their PC. Nothing changes in the game, and careers are unaffected.
+
 ## Build 157 · 9 Nov 2026
 
 - **Trucking servers can now update themselves.** Server hosts get `update-server.bat` in the server download: double-click it (or let Windows run it every night) and it fetches the newest BeamNG.Earth and trucking releases, warns players in chat and on Discord with a countdown, backs up the server, puts your BeamNG.Earth and trucking settings back, restarts the server and checks it started, going back to the old version if it didn't. The guide is `SERVER-UPDATES.md` in the server download. To get the script, unzip the new server download over your server folder once; after that it keeps itself up to date. Careers are kept and are in every backup.

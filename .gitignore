@@ -3,3 +3,5 @@ __pycache__/
 .venv/
 update-settings.json
 update-state.json
+github-token.txt
+.github-body.json
