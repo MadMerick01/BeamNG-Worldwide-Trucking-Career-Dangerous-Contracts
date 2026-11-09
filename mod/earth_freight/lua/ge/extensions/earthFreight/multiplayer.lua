@@ -119,6 +119,12 @@ function M.new(deps)
       if not d then return false end
       self.claimed = d
       return true
+    elseif event == 'wwtcSaveNow' then
+      -- The server restarts for an update soon: the game saves now (core.lua).
+      local d = decode(data)
+      if not d then return false end
+      self.restartIn = type(d.seconds) == 'number' and d.seconds or nil
+      return true
     elseif event == 'wwtcSaved' then
       local d = decode(data)
       if not d then return false end
@@ -195,7 +201,7 @@ function M.game()
   local listening = false
   function g.listen(handler)
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
-    for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed' }) do
+    for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true

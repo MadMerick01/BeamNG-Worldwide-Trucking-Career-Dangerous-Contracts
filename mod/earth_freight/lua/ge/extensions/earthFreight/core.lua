@@ -322,6 +322,7 @@ function M.new(deps)
     elseif event == 'wwtcClaimed' then
       self:claimAnswered(self.mp.claimed)
     end
+    if event == 'wwtcSaveNow' then self:saveForRestart() end
     if event == 'wwtcSaved' and self.mp.saveError then
       self.feedback = 'The server did not keep your last save (' .. self.mp.saveError .. '). Press Save to try again.'
       self.diag:event('multiplayer_save_refused', self.mp.saveError, 'W')
@@ -2197,6 +2198,17 @@ function M.new(deps)
     self.feedback = self:named('Saved') .. '.'
     self.diag:clear('manual_save_succeeded'); self.diag:event('manual_save_succeeded', 'generation ' .. saved.generation)
     return true
+  end
+
+  -- The server restarts for an update in about a minute: save now, as Save would, so nothing is lost. A save that
+  -- can't happen right now says why, so the player can sort it and press Save themselves.
+  function c:saveForRestart()
+    self.diag:event('server_restart', 'saving', 'I')
+    if self:manualSave() then
+      self.feedback = 'Saved for the server update. The server restarts in about a minute.'
+    else
+      self.feedback = 'The server restarts for an update in about a minute. ' .. tostring(self.feedback or '')
+    end
   end
 
   -- Asks for a save once things have settled: see watchAutoSave. A later ask replaces it.

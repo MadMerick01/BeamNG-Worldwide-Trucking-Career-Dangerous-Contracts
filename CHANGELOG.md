@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Trucking servers can now update themselves.** Server hosts get `update-server.bat` in the server download: double-click it (or let Windows run it every night) and it fetches the newest BeamNG.Earth and trucking releases, warns players in chat and on Discord with a countdown, backs up the server, puts your BeamNG.Earth and trucking settings back, restarts the server and checks it started, going back to the old version if it didn't. The guide is `SERVER-UPDATES.md` in the server download. To get the script, unzip the new server download over your server folder once; after that it keeps itself up to date. Careers are kept and are in every backup.
+- **On a trucking server, your game now saves itself about a minute and a half before the server restarts for an update**, and the server says in chat when it's restarting and that your career is kept. Single player is unchanged, and saves carry on as before.
+
 ## Build 155 · 8 Nov 2026
 
 - **The trucking server now has a public web page** showing who's driving and in which town, the current Ship Day with a countdown and containers left, a live feed of deliveries and joins, today's totals, the season leaderboard and how to join. On a server, your game now tells the server which town you're in (never your exact spot), what you're doing and each delivery, for that page. Server hosts turn on the live stats once with a GitHub token, as the hosting guide explains; until then the page shows sample data, clearly marked. Saves are unaffected.

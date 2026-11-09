@@ -1,3 +1,5 @@
 dist/
 __pycache__/
 .venv/
+update-settings.json
+update-state.json

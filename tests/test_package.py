@@ -130,7 +130,10 @@ class PackageTest(unittest.TestCase):
         with ZipFile(server) as archive:
             names = set(archive.namelist())
             self.assertEqual(names, {'Resources/Server/WorldwideTrucking/main.lua',
-                                     'Resources/Client/worldwide-trucking-dangerous-contracts.zip', 'MULTIPLAYER-SETUP.md'})
+                                     'Resources/Client/worldwide-trucking-dangerous-contracts.zip', 'MULTIPLAYER-SETUP.md',
+                                     'SERVER-UPDATES.md', 'update-server.ps1', 'update-server.bat',
+                                     'update-settings.example.json'})
+            self.assertNotIn('update-settings.json', names, 'the host\'s own settings are never in the download')
             self.assertEqual(archive.read('Resources/Client/worldwide-trucking-dangerous-contracts.zip'), self.output.read_bytes())
             self.assertIsNone(archive.testzip())
 

@@ -18,6 +18,7 @@
 --   server -> game  wwtcClaimed '{"v","ship","n","ok","why"}'
 --   game -> server  wwtcRelease '{"v","ship","n"}'  gives it back (job abandoned)
 --   game -> server  wwtcShipDone '{"v","ship","n","town","pay"}'  delivered; announced in chat
+--   server -> game  wwtcSaveNow '{"v","seconds"}'  the server restarts for an update soon: save now
 -- A frame is 'v|id|i|n|piece': piece i of n of message id. The server keeps the save's own JSON text as it came, so
 -- nothing about it is rounded or reordered on the way through.
 --
@@ -678,6 +679,78 @@ function W.onShipDone(pid, data)
 end
 
 
+-- ----- Restarting for an update -----------------------------------------------------------------------------------
+-- The update script (update-server.ps1) asks for a restart by writing restart.json next to this file:
+-- {"at": when to stop, in seconds since 1970 (UTC), "why": "what's being updated"}. Everyone is warned in chat, every
+-- game saves itself RESTART_SAVE_AHEAD seconds before, and at the time everyone is sent off with a message. Then the
+-- file is deleted, which tells the script the server is ready to stop. With nobody on, that happens straight away.
+-- Deleting the file before then calls the update off.
+W.RESTART_FILE = W.DIR .. '/restart.json'
+W.RESTART_WARN = { 1800, 900, 600, 300, 120, 60 }
+W.RESTART_SAVE_AHEAD = 90
+
+local function minutes(seconds)
+  local m = math.max(1, math.floor((seconds + 30) / 60))
+  return m == 1 and '1 minute' or (tostring(m) .. ' minutes')
+end
+
+-- Everyone on the server, joined to the career or not: pid -> name.
+function W.online()
+  local list = W.env.players and W.env.players() or nil
+  if type(list) ~= 'table' then
+    list = {}
+    for pid, p in pairs(W.players) do list[pid] = p.name or '' end
+  end
+  local n = 0
+  for _ in pairs(list) do n = n + 1 end
+  return list, n
+end
+
+function W.restartTick()
+  local env = W.env
+  local text = env.read(W.RESTART_FILE)
+  local ok, r = false, nil
+  if text and text ~= '' then ok, r = pcall(env.decode, text) end
+  if not ok or type(r) ~= 'table' or type(r.at) ~= 'number' then
+    if W.restart and W.restart.told then say('The server update is off. Carry on trucking!') end
+    W.restart = nil
+    return
+  end
+  if not W.restart or W.restart.at ~= r.at then W.restart = { at = r.at, warned = {}, told = false } end
+  local R = W.restart
+  local why = clean(r.why, 120)
+  local list, n = W.online()
+  local left = r.at - env.clock()
+  if n == 0 or left <= 0 then
+    if n > 0 then
+      say('The server is restarting for an update now. Your career is kept on the server. Join again in a few minutes.')
+      for pid in pairs(list) do
+        if env.kick then pcall(env.kick, pid, 'The server is updating. Your career is kept. Join again in a few minutes.') end
+      end
+    end
+    env.print(string.format('[Trucking] ready for the update (%d player(s) sent off)', n))
+    if env.remove then env.remove(W.RESTART_FILE) else env.write(W.RESTART_FILE, '') end
+    W.restart = nil
+    return
+  end
+  local due = not R.told
+  for _, s in ipairs(W.RESTART_WARN) do
+    if left <= s and not R.warned[s] then due = true end
+  end
+  if due then
+    for _, s in ipairs(W.RESTART_WARN) do if left <= s + 14 then R.warned[s] = true end end
+    R.told = true
+    say(string.format('The server restarts for an update in %s%s. Your career is kept on the server, and your game '
+      .. 'saves itself a minute before. Join again a few minutes after.', minutes(left), why and (' (' .. why .. ')') or ''))
+  end
+  if left <= W.RESTART_SAVE_AHEAD and not R.saveAsked then
+    R.saveAsked = true
+    for pid, p in pairs(W.players) do
+      if p.key then env.send(pid, 'wwtcSaveNow', env.encode({ v = W.PROTO, seconds = math.floor(left) })) end
+    end
+  end
+end
+
 -- The 'trucking' command in the server window: who is on and their money at their last save.
 function W.report()
   local lines = { string.format('[Trucking] season %d, %d player(s)', W.SEASON, (function()
@@ -756,6 +829,9 @@ if MP and MP.RegisterEvent then
     end,
     name = function(pid) return MP.GetPlayerName(pid) end,
     chat = function(pid, text) MP.SendChatMessage(pid, text) end,
+    players = function() return MP.GetPlayers and MP.GetPlayers() or nil end,
+    kick = function(pid, reason) MP.DropPlayer(pid, reason) end,
+    remove = function(path) os.remove(path) end,
     print = print,
   })
 
@@ -773,7 +849,7 @@ if MP and MP.RegisterEvent then
   WWTC_onClaim = guarded('claim', W.onClaim)
   WWTC_onRelease = guarded('release', W.onRelease)
   WWTC_onShipDone = guarded('ship delivered', W.onShipDone)
-  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.statsTick() end)
+  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.statsTick(); W.restartTick() end)
   WWTC_onWhere = guarded('where', W.onWhere)
   WWTC_onDelivered = guarded('delivered', W.onDelivered)
   WWTC_onChat = function(pid, name, message)

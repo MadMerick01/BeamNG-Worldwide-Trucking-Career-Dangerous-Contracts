@@ -129,6 +129,12 @@ If you name the stats repo differently, change `W.STATS_REPO` at the top of `mai
 
 ## Updating
 
+**The easy way:** double-click `update-server.bat` in the server folder. It updates BeamNG.Earth and the trucking mod,
+warns players, saves everyone, backs up, keeps your settings and rolls back if the new version doesn't start. It can
+also run every night by itself. [SERVER-UPDATES.md](SERVER-UPDATES.md) explains it.
+
+By hand:
+
 - **The mod:** unzip the new `worldwide-trucking-server.zip` over the old one and restart the server. Players get the
   new mod when they next join.
 - **BeamNG.Earth:** unzip its new host zip over the old one, redo step 4 (the update replaces its `main.lua`), and
