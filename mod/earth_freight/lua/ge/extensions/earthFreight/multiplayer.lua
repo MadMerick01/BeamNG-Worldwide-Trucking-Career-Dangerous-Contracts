@@ -11,6 +11,12 @@ local M = {
   -- How long to wait for the server's answer before treating it as a server without the plugin.
   WAIT_SECONDS = 20,
 }
+-- This copy's build number, written into the ZIP by the release workflow (tools/package.py); nil in a copy not
+-- built by it. Sent on joining, so a server can turn away an older copy than its own.
+do
+  local ok, build = pcall(require, 'earthFreight/build')
+  M.BUILD = ok and type(build) == 'number' and build or nil
+end
 M.KEYS = M.ROOT .. 'keys.json'
 M.LOCAL = M.ROOT .. 'local/'
 M.PREFS = M.ROOT .. 'prefs.json'
@@ -107,7 +113,7 @@ function M.new(deps)
           or d.season < 1 or d.season ~= math.floor(d.season) then return false end
       self.server, self.season = d.server, d.season
       local key = keys()[d.server]
-      deps.send('wwtcJoin', deps.encode({ v = M.PROTO, key = validId(key) and key or nil }))
+      deps.send('wwtcJoin', deps.encode({ v = M.PROTO, key = validId(key) and key or nil, build = M.BUILD }))
       return true
     elseif event == 'wwtcCareer' then
       if not self.server then return false end

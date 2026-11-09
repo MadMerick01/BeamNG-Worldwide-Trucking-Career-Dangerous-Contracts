@@ -9,7 +9,8 @@
 -- The game talks to it with these events (each message is one string; a long one comes in frames, see below):
 --   game -> server  wwtcHello  'v'                         asks who this server is
 --   server -> game  wwtcServer '{"v","server","season"}'   this server's id and season
---   game -> server  wwtcJoin   '{"v","key"}'              the game's key for this server, or none
+--   game -> server  wwtcJoin   '{"v","key","build"}'      the game's key for this server, or none, and the mod's build
+--                   (none from a copy older than this check, or not made by the release workflow)
 --   server -> game  wwtcCareer frames of '{"v","key","season","save"}'  the player's key and career (save null: none)
 --   game -> server  wwtcSave   frames of the save document (JSON), sent after every save in game
 --   server -> game  wwtcSaved  '{"v","ok","generation","why"}'
@@ -77,6 +78,10 @@ W.WELCOME = {
 W.STATS_REPO = 'MadMerick01/trucking-server-stats'
 W.STATS_BRANCH = 'main'
 W.STATS_EVERY_SECONDS = 180
+-- Players must run this server's own build of the trucking mod. A player whose game runs an older copy (their own
+-- download or BeamNG.Earth's Add-ons page, loaded instead of the one this server hands out) is sent off with a message
+-- saying how to fix it. Make it false to let older copies play.
+W.REQUIRE_LATEST = true
 -- ==================================================================================================================
 
 W.DIR = 'Resources/Server/WorldwideTrucking'
@@ -420,6 +425,10 @@ function W.start(env)
     env.write(W.DIR .. '/server.json', env.encode({ id = W.serverId }))
   end
   W.shipStart = env.epoch and env.epoch(W.SHIP_START) or nil
+  -- The build of the mod this server hands out, written by the release workflow (tools/package.py). None: a copy
+  -- not built by it, which checks no player's build.
+  local build = tonumber((env.read(W.DIR .. '/build.txt') or ''):match('^%s*(%d+)%s*$'))
+  W.BUILD = build and build > 0 and build or nil
   W.loadClaims()
   W.loadStats()
   local accountsText = env.read(W.DIR .. '/accounts.json')
@@ -450,10 +459,31 @@ function W.onHello(pid)
   W.env.send(pid, 'wwtcServer', W.env.encode({ v = W.PROTO, server = W.serverId, season = W.SEASON }))
 end
 
+-- Whether a game's build of the mod is older than this server's: no build at all is a copy from before the check.
+function W.outdated(build)
+  if not W.REQUIRE_LATEST or not W.BUILD then return false end
+  build = tonumber(build)
+  return build == nil or build < W.BUILD
+end
+
+-- Sends off a player whose game runs an older copy of the mod, saying why and how to fix it. Their career is not
+-- loaded, so nothing of it changes.
+function W.turnAway(pid, build)
+  local have = tonumber(build) and ('build ' .. math.floor(tonumber(build))) or 'an old build'
+  local why = string.format('Your Worldwide Trucking mod is out of date (%s; this server runs build %d). Turn off your'
+    .. ' own copy of it in the Mod Manager and on the BeamNG.Earth Add-ons page, close BeamNG completely and join'
+    .. ' again: the server then gives you the right one. Your career is safe.', have, W.BUILD)
+  W.env.chat(pid, why)
+  W.env.print(string.format('[Trucking] %s sent off: their game runs %s of the mod, this server build %d',
+    tostring(W.env.name(pid)), have, W.BUILD))
+  if W.env.kick then W.env.kick(pid, why) end
+end
+
 -- Finds the player's career key: their account's, else the one their game sent, else a new one.
 function W.onJoin(pid, data)
   local ok, d = pcall(W.env.decode, data or '')
   if not ok or type(d) ~= 'table' or tonumber(d.v) ~= W.PROTO then return end
+  if W.outdated(d.build) then return W.turnAway(pid, d.build) end
   local p = player(pid)
   local account = W.env.account(pid)
   local key = account and W.accounts[account] or (W.validKey(d.key) and d.key) or W.newKey(W.env.bytes)

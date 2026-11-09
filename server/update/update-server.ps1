@@ -59,7 +59,7 @@ $OnWindows = ($PSVersionTable.PSVersion.Major -lt 6) -or $IsWindows
 
 # The trucking plugin's settings (top of Resources\Server\WorldwideTrucking\main.lua) that an update keeps as you set them.
 $DefaultTruckingSettings = @('W.SEASON', 'W.WELCOME', 'W.STATS_REPO', 'W.STATS_BRANCH', 'W.STATS_EVERY_SECONDS',
-  'W.SHIP_START', 'W.SHIP_EVERY_HOURS', 'W.SHIP_CONTAINERS', 'W.PORTS', 'W.SHIP_NAMES')
+  'W.SHIP_START', 'W.SHIP_EVERY_HOURS', 'W.SHIP_CONTAINERS', 'W.PORTS', 'W.SHIP_NAMES', 'W.REQUIRE_LATEST')
 # Folders that updates never replace and that are too big to back up every time (BeamNG.Earth's shared road store
 # can grow to 2 GB, and baked packs are yours).
 $Untouched = @('Resources/Server/BeamNGEarth/store', 'Resources/Server/BeamNGEarth/bake')
