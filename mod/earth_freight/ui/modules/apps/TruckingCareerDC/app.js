@@ -153,7 +153,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var mount = function (on) { core('uiMounted(' + (on ? 'true' : 'false') + ')') }
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
-        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Home' },
+        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Base' },
         { id: 'streetview', label: 'Street View' }]
       // Two rows of tabs: the job on top, the extras below, each sharing its row's width.
       scope.tabRows = [scope.tabs.slice(0, 4), scope.tabs.slice(4)]
@@ -551,7 +551,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.buyParts = function () { if (scope.data.buyPartsAllowed) core('buyParts()') }
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
       scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar(false)') }
-      // Keep and store at home: the old car goes home instead of being traded in.
+      // Keep and store at base: the old car goes to the base instead of being traded in.
       scope.keepCar = function () { if (scope.data.keepCarAllowed) core('buyCar(true)') }
       // Home: Buy this spot asks to confirm on the HUD first; Swap cars needs no confirm.
       scope.claimHome = function () { if (scope.data.home && scope.data.home.claimAllowed) core('claimHome()') }

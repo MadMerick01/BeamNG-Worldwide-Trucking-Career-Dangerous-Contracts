@@ -741,7 +741,7 @@ function M.new(deps)
     local here = self.lastSample
     local problem = self:shippingProblem()
     if not problem and not destination then problem = 'Pick a destination.' end
-    if not problem and shipping.arrived(here, destination) then problem = 'You are already in ' .. destination.name .. '.' end
+    if not problem and shipping.arrived(here, destination) then problem = destination.id == 'home' and 'You are already at your base.' or ('You are already in ' .. destination.name .. '.') end
     local fee = not problem and (free and 0 or shipping.fee(here, destination)) or nil
     if not problem and not self:spend(fee, 'shipping') then problem = 'Not enough money. Relocating to ' .. destination.name .. ' costs ' .. dollars(fee) .. '.' end
     if problem then
@@ -1187,7 +1187,8 @@ function M.new(deps)
     -- A hitched trailer is loaded first, then the car. A dangerous contract only loads the car: its
     -- teleport to the start leaves the trailer behind.
     local units, slots, kg, inTrailer = trailers.fits(self:space(), not job.contract and self:trailerSpace() or nil, good)
-    local quote = jobs.quote(job, units, self.needs, self.now())
+    -- Ends inside the player's base circle pay more (magnate.lua).
+    local quote = jobs.quote(job, units, self.needs, self.now(), self.property and function(point) return self:baseShareAt(point) end or nil)
     quote.units, quote.slots, quote.kg, quote.trailerUnits = units, slots, kg, inTrailer
     return quote
   end
@@ -1845,7 +1846,9 @@ function M.new(deps)
         distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
         units = q.units, kg = q.kg, unitSlots = good.slots, unitKg = good.kg,
         fluid = good.kind == 'fluid' or nil, unitLitres = good.litres, litres = good.litres and q.units * good.litres or nil,
-        shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road > 1.005 and q.road or nil, outside = job.outside,
+        shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road - (q.baseBonus or 0) > 1.005 and q.road - (q.baseBonus or 0) or nil,
+        -- What the player's base adds, as a percentage of the pay without it.
+        basePercent = q.baseBonus and math.floor(q.baseBonus / (q.road - q.baseBonus) * 100 + 0.5) or nil, outside = job.outside,
         allowed = allowed and q.units > 0 and (not section or self:canAfford(contracts.FEE)) }
     end
     return out

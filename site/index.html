@@ -110,7 +110,7 @@
           <thead><tr><th>#</th><th>Trucker</th><th class="num">Cash</th><th class="num">Truck</th><th class="num">Wealth</th><th class="num">Jobs</th></tr></thead>
           <tbody id="board"><tr><td colspan="6" class="empty">No careers yet.</td></tr></tbody>
         </table></div>
-        <p class="note">Ranked by wealth: cash plus what your truck is worth, as of your last save.</p>
+        <p class="note">Ranked by wealth: cash plus what your truck and base of operations are worth, as of your last save.</p>
       </section>
       <section>
         <h2>How to join</h2>
@@ -274,10 +274,10 @@ function renderBoard() {
   var body = $('board')
   clear(body)
   var rows = stats && Array.isArray(stats.leaderboard) ? stats.leaderboard.slice(0, 20) : []
-  // Wealth is cash plus what the truck is worth; a page from an older server sorts by it too.
+  // Wealth is cash plus what the truck and base are worth; a page from an older server sorts by it too.
   rows = rows.map(function (r) {
-    var cash = Number(r.balance) || 0, truck = Number(r.truckValue) || 0
-    return { name: r.name, balance: cash, truckValue: truck, wealth: r.wealth != null ? Number(r.wealth) || 0 : cash + truck, deliveries: r.deliveries }
+    var cash = Number(r.balance) || 0, truck = Number(r.truckValue) || 0, base = Number(r.baseValue) || 0
+    return { name: r.name, balance: cash, truckValue: truck, wealth: r.wealth != null ? Number(r.wealth) || 0 : cash + truck + base, deliveries: r.deliveries }
   })
   rows.sort(function (a, b) { return b.wealth - a.wealth })
   if (!rows.length) {

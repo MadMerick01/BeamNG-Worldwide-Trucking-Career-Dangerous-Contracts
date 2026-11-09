@@ -813,7 +813,7 @@ function M.attach(c)
     local cost, kept = pending.cost, nil
     if keep then
       if not self:homeSpaceFree() then
-        self.carFeedback = self.property and 'Your home has no room for another car.' or 'You need a home to keep your old car.'
+        self.carFeedback = self.property and 'Your base has no room for another car.' or 'You need a base to keep your old car.'
         return false
       end
       kept = self:oldCarRecord(pending)
@@ -852,7 +852,7 @@ function M.attach(c)
     self.photoModel, self.photoStamp = nil, nil
     self.owedDamage, self.punctureDamage, self.fuel = 0, 0, nil
     self.carFeedback = 'Bought ' .. tostring(pending.name) .. ' for ' .. dollars(cost) .. '.'
-      .. (kept and (' Your ' .. tostring(kept.name or kept.config.model) .. ' is stored at home.') or '')
+      .. (kept and (' Your ' .. tostring(kept.name or kept.config.model) .. ' is stored at your base.') or '')
     self:autoSaveSoon('buying your car')
     self:photoSoon()
     return true

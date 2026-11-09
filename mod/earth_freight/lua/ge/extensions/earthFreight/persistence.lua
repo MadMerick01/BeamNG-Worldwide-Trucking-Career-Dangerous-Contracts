@@ -165,10 +165,22 @@ local function needs(list)
   return out
 end
 
--- The home the player bought: { latitude, longitude, paid, name }. Returns a clean copy, or nil.
+-- The base of operations (once the home) the player bought: { latitude, longitude, paid, name }, the
+-- spot they parked on. Since the Magnate update also its circle's centre, the town it is in
+-- ({ latitude, longitude, name, boost }, its region multiplier), and peak, the most wealth the owner
+-- has had, which sizes the circle. Older homes have neither and get them in game. Returns a clean
+-- copy, or nil.
 local function property(p)
   if type(p) ~= 'table' or not location.valid(p) or not integer(p.paid, 0) or not optionalString(p.name) then return nil end
-  return { latitude = p.latitude, longitude = p.longitude, paid = p.paid, name = p.name }
+  if not amount(p.peak) then return nil end
+  local town = nil
+  if p.town ~= nil then
+    local t = p.town
+    if type(t) ~= 'table' or not location.valid(t) or not optionalString(t.name)
+        or not location.finite(t.boost) or t.boost < 1 or t.boost > 10 then return nil end
+    town = { latitude = t.latitude, longitude = t.longitude, name = t.name, boost = t.boost }
+  end
+  return { latitude = p.latitude, longitude = p.longitude, paid = p.paid, name = p.name, town = town, peak = p.peak }
 end
 
 -- A car stored at home, kept as the active car is: its config, name, the damage it owes, its fuel,

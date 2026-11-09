@@ -231,7 +231,7 @@ local function payOf(value)
   return math.floor(n)
 end
 
--- A player's career came in (join) or was saved: their money, truck's worth and jobs done on the leaderboard.
+-- A player's career came in (join) or was saved: their money, truck's and base's worth and jobs done on the leaderboard.
 function W.boardCareer(p, save)
   if not p or not p.key or type(save) ~= 'table' or type(save.progression) ~= 'table' then return end
   local e = boardEntry(p)
@@ -241,6 +241,8 @@ function W.boardCareer(p, save)
   local car = type(save.vehicle) == 'table' and save.vehicle or {}
   local worth = payOf(car.worth) or payOf(car.value)
   if worth then e.truckValue = worth end
+  -- What they paid for their base of operations, if they have one.
+  e.baseValue = type(save.property) == 'table' and payOf(save.property.paid) or nil
   W.saveStats()
 end
 
@@ -302,11 +304,11 @@ function W.status()
   local board, truckers = {}, 0
   for _, e in pairs(W.stats.board) do
     truckers = truckers + 1
-    local balance, truck = e.balance or 0, e.truckValue or 0
-    board[#board + 1] = { name = e.name, balance = balance, truckValue = truck, wealth = balance + truck,
+    local balance, truck, base = e.balance or 0, e.truckValue or 0, e.baseValue or 0
+    board[#board + 1] = { name = e.name, balance = balance, truckValue = truck, baseValue = base, wealth = balance + truck + base,
       deliveries = e.deliveries or 0, containers = e.containers or 0 }
   end
-  -- Ranked by wealth: money plus what the truck is worth, so buying a better truck doesn't drop you down.
+  -- Ranked by wealth: money plus what the truck and base are worth, so buying either doesn't drop you down.
   table.sort(board, function(a, b) if a.wealth ~= b.wealth then return a.wealth > b.wealth end return a.name < b.name end)
   while #board > 20 do table.remove(board) end
   local t = today()

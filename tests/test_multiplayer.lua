@@ -517,6 +517,10 @@ do
   T.eq(W.status().leaderboard[1].name, 'Cashy', 'an older game: a second-hand truck counts what was paid')
   W.boardCareer(richer, { progression = { balance = 70000 }, vehicle = { worth = -5 } })
   T.eq(W.status().leaderboard[1].truckValue, 15000, 'a bad worth is ignored')
+  -- A base of operations counts as wealth too.
+  W.boardCareer(W.players[1], { progression = { balance = 50000 }, vehicle = { worth = 30000 }, property = { paid = 250000 } })
+  board = W.status().leaderboard
+  T.eq(board[1].baseValue, 250000, 'the base at what was paid'); T.eq(board[1].wealth, 330000, 'cash, truck and base')
   -- Kept over a restart.
   local W2 = server(env.files)
   T.eq(#W2.stats.feed, #W.stats.feed, 'the feed survives a restart')

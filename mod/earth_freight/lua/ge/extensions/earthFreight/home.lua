@@ -1,12 +1,15 @@
--- Home: a spot on Earth the player buys, where they park while they claim it. It keeps one car
--- stored besides the one they drive. Swap cars puts the stored car out in place of the active one,
--- within HOME_METRES of home. Repairs there cost REPAIR_SHARE of the usual price, and Relocate
--- lists it at the usual fee. A car bill, with a free space at home, can keep the old car and send
--- it home instead of trading it in.
+-- The base of operations (the home, before the Magnate update): a spot on Earth the player buys,
+-- where they park while they claim it. It keeps one car stored besides the one they drive. Swap cars
+-- puts the stored car out in place of the active one, within HOME_METRES of the spot. Repairs there
+-- cost REPAIR_SHARE of the usual price, and Relocate lists it at the usual fee. A car bill, with a
+-- free space at the base, can keep the old car and send it there instead of trading it in.
+-- Around the town it is in is the base's circle of influence (magnate.lua): its size comes from
+-- the owner's best wealth and the region, and jobs with an end inside pay the owner more.
 local location = require('earthFreight/location')
 local pricing = require('earthFreight/pricing')
 local places = require('earthFreight/places')
 local persistence = require('earthFreight/persistence')
+local magnate = require('earthFreight/magnate')
 local M = {}
 
 M.PRICE = 250000
@@ -45,6 +48,51 @@ function M.attach(c)
     return d ~= nil and d <= M.HOME_METRES
   end
 
+  -- What the player is worth: cash, plus what their truck is worth, plus what they paid for their base.
+  function c:wealth()
+    local progression = self.profile and self.profile.progression
+    if not progression then return 0 end
+    local truck = self.ownedParts and self.ownedParts.value
+    if type(truck) ~= 'number' then
+      local saved = self.profile.vehicle
+      truck = type(saved) == 'table' and (saved.worth or saved.value) or 0
+    end
+    return progression.balance + math.max(0, truck) + (self.property and self.property.paid or 0)
+  end
+
+  -- The town a base's circle is around, from the places near its spot: { latitude, longitude, name,
+  -- boost }, or nil until a place there is loaded. A base bought before the Magnate update gets it here.
+  local function baseTown(self)
+    local p = self.property
+    if p.town then return p.town end
+    local ok, found = pcall(function()
+      places.ensure(p)
+      return places.at(p) or (places.nearest(p, 1)[1] or {}).place
+    end)
+    if not ok or type(found) ~= 'table' or not location.valid(found) then return nil end
+    p.town = { latitude = found.latitude, longitude = found.longitude, name = found.name, boost = places.boost(found) }
+    return p.town
+  end
+
+  -- The base's circle of influence, or nil: { latitude, longitude, radiusKm, name, boost, peak, mine }.
+  -- The circle never shrinks: it is sized by the most wealth the player has had.
+  function c:baseCircle()
+    local p = self.property
+    if not p then return nil end
+    local town = baseTown(self)
+    if not town then return nil end
+    local wealth = math.floor(self:wealth())
+    if wealth > (p.peak or 0) then p.peak = wealth end
+    return { latitude = town.latitude, longitude = town.longitude, name = town.name, boost = town.boost,
+      radiusKm = magnate.radiusKm(p.peak, town.boost), peak = p.peak, mine = true }
+  end
+
+  -- The share of the region multiplier the player's base adds at a point (0 outside its circle).
+  function c:baseShareAt(point)
+    local circle = self:baseCircle()
+    return circle and magnate.shareAt({ circle }, point) or 0
+  end
+
   -- What a repair of this much damage costs: REPAIR_SHARE of the usual price at home.
   function c:repairPrice(damage, value)
     local cost = pricing.repairCost(damage, value)
@@ -52,18 +100,18 @@ function M.attach(c)
     return cost
   end
 
-  -- Home as a Relocate destination.
+  -- The base as a Relocate destination.
   function c:homeDestination()
     local p = self.property
     if not p then return nil end
-    return { id = 'home', name = 'Home', region = p.name or string.format('%.5f, %.5f', p.latitude, p.longitude),
+    return { id = 'home', name = 'Base', region = p.name or string.format('%.5f, %.5f', p.latitude, p.longitude),
       latitude = p.latitude, longitude = p.longitude }
   end
 
   -- Why the player cannot do anything at home now (claim or swap), or nil.
   local function busy(self)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not self.garage then
-      return 'Home is unavailable right now.'
+      return 'Your base is unavailable right now.'
     end
     if self.hire then return self:awayText() end
     if self.onFoot then return 'Get back in your car first.' end
@@ -80,7 +128,7 @@ function M.attach(c)
 
   -- Why Buy this spot cannot be pressed now, or nil.
   function c:claimProblem()
-    if self.property then return 'You already own a home.' end
+    if self.property then return 'You already own a base.' end
     local problem = busy(self)
     if problem then return problem end
     if not self:canAfford(M.PRICE) then
@@ -111,10 +159,13 @@ function M.attach(c)
     self.property = { latitude = spot.latitude, longitude = spot.longitude, paid = M.PRICE,
       name = ok and type(near) == 'string' and near ~= '' and #near <= 256 and not near:find('%c') and near or nil }
     self.storedCars = self.storedCars or {}
-    self.homeFeedback = 'This spot is your home. You paid ' .. dollars(M.PRICE) .. '.'
+    local circle = self:baseCircle()
+    self.homeFeedback = 'This spot is your base of operations. You paid ' .. dollars(M.PRICE) .. '.'
     self.diag:event('home_bought', string.format('%.5f,%.5f', spot.latitude, spot.longitude))
-    self:showFlash('delivered', 'HOME BOUGHT', 'Your home has room for one more car. Buy a car and choose Keep and store at home on its bill.')
-    self:autoSaveSoon('your home')
+    self:showFlash('delivered', 'BASE BOUGHT', circle
+      and string.format('Your circle reaches %d km around %s. Jobs that start or end inside it pay you more.', math.floor(circle.radiusKm + 0.5), circle.name or 'your base')
+      or 'Jobs that start or end near your base pay you more.')
+    self:autoSaveSoon('your base')
     return true
   end
 
@@ -130,15 +181,15 @@ function M.attach(c)
 
   -- Why Swap cars cannot be pressed now, or nil.
   function c:swapProblem()
-    if not self.property then return 'Buy a home first.' end
-    if not self:storedCar() then return 'No car is stored at home yet.' end
+    if not self.property then return 'Buy a base first.' end
+    if not self:storedCar() then return 'No car is stored at your base yet.' end
     local problem = busy(self)
     if problem then return problem end
     if self.load then return 'Deliver or abandon your job before swapping cars.' end
     if self:towDebtProblem() then return self:towDebtProblem() end
     if not self:atHome() then
       local d = self:homeDistance()
-      return 'Drive to your home to swap cars' .. (d and (': it is ' .. string.format('%.1f', d / 1000) .. ' km away.') or '.')
+      return 'Drive to your base to swap cars' .. (d and (': it is ' .. string.format('%.1f', d / 1000) .. ' km away.') or '.')
     end
     return nil
   end
@@ -192,7 +243,7 @@ function M.attach(c)
     end
     self.photoModel, self.photoStamp, self.homeCard = nil, nil, nil
     self:photoSoon()
-    self.homeFeedback = 'Swapped. Your ' .. tostring(outgoing.name or oldModel) .. ' is stored at home.'
+    self.homeFeedback = 'Swapped. Your ' .. tostring(outgoing.name or oldModel) .. ' is stored at your base.'
     self.diag:event('cars_swapped', tostring(oldModel) .. ' -> ' .. tostring(model))
     self:autoSaveSoon('swapping cars')
     return true
@@ -242,6 +293,15 @@ function M.attach(c)
     local owned = self.ownedParts
     view.active = owned and { name = owned.name or owned.model, value = owned.value } or nil
     view.stored = self:storedCarCard()
+    local circle = self:baseCircle()
+    if circle then
+      local radius = math.floor(circle.radiusKm + 0.5)
+      local next = radius < magnate.MAX_KM and math.min(magnate.MAX_KM, radius + 10) or nil
+      view.circle = { town = circle.name, radiusKm = radius, boost = circle.boost, wealth = math.floor(self:wealth()),
+        peak = circle.peak, share = magnate.OWNER_SHARE, bonus = math.floor(magnate.OWNER_SHARE * circle.boost * 10 + 0.5) / 10,
+        nextKm = next, nextWealth = next and math.ceil(magnate.wealthFor(next, circle.boost) / 1000) * 1000 or nil,
+        maxKm = magnate.MAX_KM, inside = current and location.distance(current, circle) <= circle.radiusKm * 1000 or false }
+    end
     local problem = self:swapProblem()
     view.swapAllowed, view.swapProblem = problem == nil, view.stored and problem or nil
     return view
