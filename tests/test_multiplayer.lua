@@ -491,4 +491,58 @@ do
   T.check(W.statsSentAt > sent, 'but every 10 minutes even when nothing changed')
 end
 
+-- Restarting for an update: warnings in chat, every game saves itself, everyone is sent off, and the script is told.
+do
+  local W, env = server()
+  local kicked = {}
+  env.kick = function(pid, why) kicked[#kicked + 1] = { pid = pid, why = why } end
+  env.remove = function(path) env.files[path] = nil end
+  env.players = function() return {} end
+  env.files[W.RESTART_FILE] = J.encode({ at = env.time + 600, why = 'BeamNG.Earth 1.9.1-beta' })
+  W.restartTick()
+  T.eq(env.files[W.RESTART_FILE], nil, 'with nobody on, the server is ready for the update straight away')
+  T.eq(#env.chats, 0, 'and says nothing')
+  -- With a player on.
+  local io = F.io({ [F.CONFIG] = F.config() })
+  local handler
+  local send, pump = link(W, env, 1, function(event, data) handler(event, data) end)
+  local mp = { inSession = function() return true end, send = send, encode = J.encode, decode = J.decode,
+    listen = function(h) handler = h; return true end }
+  local c = F.controller({ io = io, multiplayer = mp })
+  pump()
+  F.advance(c, 2)
+  if not c.arrived then c:startHere(); F.advance(c, 2) end
+  T.check(c:manualSave()); pump()
+  env.players = function() return { [1] = 'player1' } end
+  env.chats = {}
+  env.files[W.RESTART_FILE] = J.encode({ at = env.time + 600, why = 'BeamNG.Earth 1.9.1-beta' })
+  W.restartTick()
+  T.eq(#env.chats, 1, 'everyone is warned')
+  T.check(env.chats[1].text:find('10 minutes (BeamNG.Earth 1.9.1-beta)', 1, true) ~= nil, 'when, and why')
+  env.time = env.time + 15; W.restartTick()
+  T.eq(#env.chats, 1, 'once')
+  env.time = env.time + 300; W.restartTick()
+  T.check(env.chats[#env.chats].text:find('5 minutes', 1, true) ~= nil, 'and again at 5 minutes')
+  T.check(env.files[W.RESTART_FILE] ~= nil, 'not ready yet')
+  -- A minute and a half before, every game saves itself.
+  c.profile.progression.balance = 7777
+  local generation = c.profile.generation
+  env.time = env.time + 200; W.restartTick(); pump()
+  T.check(c.profile.generation > generation, 'the game saved itself')
+  T.eq(J.decode(env.files[W.careerPath(c.mp.key)]).progression.balance, 7777, 'and the server has it')
+  T.check(c.feedback:find('Saved for the server update', 1, true) ~= nil, 'the player is told')
+  T.eq(#kicked, 0, 'nobody is sent off early')
+  env.time = env.time + 100; W.restartTick()
+  T.eq(#kicked, 1, 'at the time, everyone is sent off')
+  T.check(kicked[1].why:find('career is kept', 1, true) ~= nil, 'with a message')
+  T.eq(env.files[W.RESTART_FILE], nil, 'and the script is told the server is ready')
+  -- An update called off.
+  env.chats = {}
+  env.files[W.RESTART_FILE] = J.encode({ at = env.time + 600 })
+  W.restartTick()
+  env.files[W.RESTART_FILE] = nil
+  W.restartTick()
+  T.check(env.chats[#env.chats].text:find('update is off', 1, true) ~= nil, 'a cancelled update is called off in chat')
+end
+
 T.done('multiplayer careers')

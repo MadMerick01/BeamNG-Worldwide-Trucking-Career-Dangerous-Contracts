@@ -39,6 +39,11 @@ def build_server(output: Path, mod_zip: Path) -> Path:
         'Resources/Server/WorldwideTrucking/main.lua': (root / 'server' / 'WorldwideTrucking' / 'main.lua').read_bytes(),
         'Resources/Client/worldwide-trucking-dangerous-contracts.zip': mod_zip.read_bytes(),
         'MULTIPLAYER-SETUP.md': (root / 'docs' / 'MULTIPLAYER-SETUP.md').read_bytes(),
+        # The update script and its guide. Never update-settings.json: that's the host's own, with their webhook.
+        'SERVER-UPDATES.md': (root / 'docs' / 'SERVER-UPDATES.md').read_bytes(),
+        'update-server.ps1': (root / 'server' / 'update' / 'update-server.ps1').read_bytes(),
+        'update-server.bat': (root / 'server' / 'update' / 'update-server.bat').read_bytes(),
+        'update-settings.example.json': (root / 'server' / 'update' / 'update-settings.example.json').read_bytes(),
     }
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)

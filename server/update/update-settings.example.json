@@ -1,0 +1,23 @@
+{
+  "_read_me": "Settings for update-server.ps1. Copy this file to update-settings.json (the script does it the first time) and edit that copy in Notepad. Updates never overwrite update-settings.json. Keep it private: it holds your Discord webhook.",
+
+  "DiscordWebhook": "",
+
+  "WarningMinutes": 10,
+  "KeepBackups": 5,
+  "ServerFolder": "",
+  "BackupFolder": "",
+
+  "UpdateEarth": true,
+  "UpdateTrucking": true,
+  "EarthDevBuilds": false,
+  "EarthMinAgeHours": 0,
+
+  "EarthSettings": {
+    "G.MEET_M": "100000000",
+    "G.SHARE_OUT_KBPS": "256"
+  },
+
+  "StartSeconds": 120,
+  "MustSeeInLog": ["[BeamNG.Earth] plugin loaded", "[Trucking] plugin loaded"]
+}
