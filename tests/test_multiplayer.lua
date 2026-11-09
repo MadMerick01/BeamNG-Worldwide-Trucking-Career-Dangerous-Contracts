@@ -46,7 +46,9 @@ local function link(W, env, pid, deliver)
         elseif m.event == 'wwtcRelease' then W.onRelease(pid, m.data)
         elseif m.event == 'wwtcShipDone' then W.onShipDone(pid, m.data)
         elseif m.event == 'wwtcWhere' then W.onWhere(pid, m.data)
-        elseif m.event == 'wwtcDelivered' then W.onDelivered(pid, m.data) end
+        elseif m.event == 'wwtcDelivered' then W.onDelivered(pid, m.data)
+        elseif m.event == 'wwtcFind' then W.onFind(pid, m.data)
+        elseif m.event == 'wwtcHere' then W.onHere(pid, m.data) end
       else
         local found
         for i, m in ipairs(env.sent) do if m.pid == pid then found = i; break end end
@@ -489,6 +491,105 @@ do
   T.eq(W.statsSentAt, sent, 'not again straight away')
   env.time = env.time + 600; W.statsTick()
   T.check(W.statsSentAt > sent, 'but every 10 minutes even when nothing changed')
+end
+
+-- Relocate to a player: two truckers on one server, one joins the other for the usual fee, and nobody else learns
+-- where anyone is.
+do
+  local location = require('earthFreight/location')
+  local shipping = require('earthFreight/shipping')
+  local W, env = server()
+  W.SHIP_CONTAINERS = 0
+  local function game(pid, pose)
+    local io = F.io({ [F.CONFIG] = F.config() })
+    local handler
+    local send, pump = link(W, env, pid, function(event, data) handler(event, data) end)
+    local mp = { inSession = function() return true end, send = send, encode = J.encode, decode = J.decode,
+      listen = function(h) handler = h; return true end }
+    local a = F.adapter(pose)
+    local c = F.controller({ io = io, multiplayer = mp, adapter = a })
+    pump()
+    F.advance(c, 2)
+    if not c.arrived then c:startHere(); F.advance(c, 2) end
+    pump()
+    return c, a, pump, io
+  end
+  local penrith = F.copy(F.PENRITH)
+  local katoomba = { latitude = -33.7198, longitude = 150.3074 }
+  local c1, a1, pump1 = game(1, penrith)
+  local c2, a2, pump2, io2 = game(2, katoomba)
+  local function pump() for _ = 1, 3 do pump1(); pump2() end end
+  F.advance(c2, Core.WHERE_SECONDS + 1); pump()
+  W.sendPlayersToAll(); pump()
+  local v = c1:view().shipping.players
+  T.check(v ~= nil, 'the Relocate tab lists players on a server')
+  T.eq(#v.list, 1, 'everyone else, not yourself'); T.eq(v.list[1].name, 'player2', 'by name')
+  T.check(v.list[1].town ~= nil, 'and town'); T.check(v.list[1].fee > 0 and v.list[1].allowed, 'with about what it costs')
+  T.eq(v.list[1].latitude, nil, 'never their spot')
+  T.check(v.findable, 'others can relocate to you, unless you turn it off')
+  -- Join: player 2's game says where it is, only player 1 hears, and the usual relocation is booked and taken.
+  local sample2 = a2.sample
+  a2.sample = function(self) local t = sample2(self); if t.valid then t.heading = 90 end; return t end
+  F.advance(c2, 0.2)
+  local balance = c1.profile.progression.balance
+  local sent = #env.sent
+  T.check(c1:findPlayer(2), 'Join asks the server')
+  pump()
+  for i = sent + 1, #env.sent do
+    local m = env.sent[i]
+    if m and m.event == 'wwtcFound' then T.eq(m.pid, 1, 'the spot goes to the player who asked only') end
+  end
+  T.check(c1.booking ~= nil and c1.booking.id == 'player', 'a relocation to the player is booked')
+  local fee = c1.booking.fee
+  T.eq(fee, shipping.fee(penrith, c1.booking), 'for the usual fee')
+  T.eq(c1.profile.progression.balance, balance - fee, 'paid')
+  local landed = a1.teleports[#a1.teleports]
+  T.check(landed ~= nil, 'and teleported')
+  local away = location.distance(landed, katoomba)
+  T.check(away > 1 and away < 50, 'next to them (' .. math.floor(away) .. ' m)')
+  T.check(c1.shippingFeedback:find('player2', 1, true) ~= nil, 'the player is told who they are going to')
+  a1.pose = F.copy(landed); F.advance(c1, 3)
+  T.eq(c1.booking, nil, 'arriving uses the booking'); T.eq(c1.stranded, nil, 'and counts as a relocation')
+  T.check(location.bearing(katoomba, landed) > 260 and location.bearing(katoomba, landed) < 280, 'behind their car, which faces east')
+  T.eq(next(W.asks), nil, 'the server keeps nothing of it')
+  -- Turned off: player 2 says no, and it stays off.
+  T.check(c2:setFindable(false))
+  T.check(not c2:view().shipping.players.findable, 'turned off')
+  T.eq(io2.files['/settings/earthFreight/mp/prefs.json'].findable, false, 'kept on the PC')
+  a1.pose = F.copy(penrith); c1.stranded = nil; F.advance(c1, 2)
+  T.check(c1:findPlayer(2)); pump()
+  T.eq(c1.booking, nil, 'no booking'); T.check(c1.shippingFeedback:find('does not let', 1, true) ~= nil, 'told why')
+  c2:setFindable(true)
+  -- Not in their car.
+  c2.onFoot = true
+  local onFoot = c2.garage.onFoot
+  c2.garage.onFoot = function() return true end
+  F.advance(c2, 0.2)
+  T.check(c1:findPlayer(2)); pump()
+  T.eq(c1.booking, nil, 'no booking while they are on foot')
+  T.check(c1.shippingFeedback:find('not driving', 1, true) ~= nil, 'told to try again')
+  c2.garage.onFoot = onFoot; F.advance(c2, 0.2)
+  -- Not with cargo on board.
+  c1.load = { good = 'parts', units = 1 }
+  T.check(not c1:findPlayer(2), 'not on a job'); T.check(c1.shippingFeedback:find('cargo', 1, true) ~= nil, 'told why')
+  c1.load = nil
+  -- A game that never answers.
+  local here = c2.mp.here
+  c2.mp.here = function() return true end
+  T.check(c1:findPlayer(2)); pump()
+  T.check(not c1:findPlayer(2), 'one ask at a time')
+  F.advance(c1, Core.FIND_WAIT_SECONDS + 1)
+  T.eq(c1.finding, nil, 'given up on'); T.check(c1.shippingFeedback:find('did not answer', 1, true) ~= nil, 'and told')
+  c2.mp.here = here
+  -- Gone.
+  W.onLeave(2); pump()
+  T.eq(#c1:view().shipping.players.list, 0, 'a player who leaves is off the list')
+  T.check(not c1:findPlayer(2), 'and cannot be joined')
+  -- A forged answer from someone who wasn't asked goes nowhere.
+  W.onFind(1, J.encode({ v = 1, to = 1 }))
+  T.eq(next(W.asks), nil, 'you cannot ask for yourself')
+  W.onHere(1, J.encode({ v = 1, ask = 999, ok = true, latitude = 1, longitude = 1 }))
+  T.eq(next(W.asks), nil, 'an answer nobody asked for is dropped')
 end
 
 -- Restarting for an update: warnings in chat, every game saves itself, everyone is sent off, and the script is told.

@@ -945,3 +945,17 @@ test('Ship Day: the Town tab shows the ship, Go to port and the containers to ta
   assert.equal(a.scope.until(2 * 86400 + 14 * 3600 + 59), '2d 14h')
   assert.equal(a.scope.until(5 * 3600 + 12 * 60), '5h 12m')
 })
+test('Relocate to a player: a Join button for each player, sent by number only, and the opt-out', () => {
+  const a = app()
+  const relocate = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`), html.indexOf(`ng-if="tab === 'home'"`))
+  for (const part of ['Relocate to a player', 'findPlayer(p)', 'Let other players relocate to me']) assert.ok(relocate.includes(part), part)
+  const sam = { id: 0, name: 'Sam', allowed: true }
+  a.state({ state: 'READY', arrived: true, shipping: { players: { list: [sam], findable: true } } })
+  a.commands.length = 0
+  a.scope.findPlayer(sam)
+  a.scope.findPlayer({ id: 2, allowed: false })
+  a.scope.findPlayer({ id: '1); evil(', allowed: true })
+  a.scope.setFindable(false)
+  assert.deepEqual(a.commands.map(c => c.replace(/^if earthFreight_core then earthFreight_core\.| end$/g, '')),
+    ['findPlayer(0)', 'setFindable(false)'])
+})

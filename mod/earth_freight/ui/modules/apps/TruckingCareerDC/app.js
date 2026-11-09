@@ -509,6 +509,14 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60)
         return d > 0 ? d + 'd ' + h + 'h' : h + 'h ' + (m % 60) + 'm'
       }
+      // Relocate to a player: by the server's number for them, and whether others may relocate to this player.
+      scope.findPlayer = function (p) {
+        var id = p ? Number(p.id) : NaN
+        if (scope.data.shipping && scope.data.shipping.players && p.allowed && Number.isInteger(id) && id >= 0) core('findPlayer(' + id + ')')
+      }
+      scope.setFindable = function (on) {
+        if (scope.data.shipping && scope.data.shipping.players) core('setFindable(' + (on ? 'true' : 'false') + ')')
+      }
       scope.cancelShipping = function () { if (scope.data.shipping && scope.data.shipping.booking) core('cancelShipping()') }
       scope.save = function () { if (scope.data.saveAllowed) core('save()') }
       // Opens Google Street View of where the truck is in the player's web browser.

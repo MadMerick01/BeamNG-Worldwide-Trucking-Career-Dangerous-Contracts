@@ -13,6 +13,29 @@ local M = {
 }
 M.KEYS = M.ROOT .. 'keys.json'
 M.LOCAL = M.ROOT .. 'local/'
+M.PREFS = M.ROOT .. 'prefs.json'
+
+-- Text from the server for the HUD: one line, trimmed, at most max characters.
+function M.cleanText(value, max)
+  if type(value) ~= 'string' then return nil end
+  value = value:gsub('%c', ' '):gsub('^%s+', ''):gsub('%s+$', '')
+  if value == '' then return nil end
+  return value:sub(1, max or 60)
+end
+
+-- The server's player list, checked: an id and a name each, and a town where the server knows it.
+function M.cleanPlayers(list)
+  local out = {}
+  for _, p in ipairs(list) do
+    if type(p) == 'table' and type(p.id) == 'number' and p.id >= 0 and p.id == math.floor(p.id) and #out < 64 then
+      local lat, lon = tonumber(p.latitude), tonumber(p.longitude)
+      local spot = lat and lon and math.abs(lat) <= 90 and math.abs(lon) <= 180 and { latitude = lat, longitude = lon } or nil
+      out[#out + 1] = { id = p.id, name = M.cleanText(p.name, 32) or 'A trucker', town = M.cleanText(p.town, 40),
+        region = M.cleanText(p.region, 60), doing = M.cleanText(p.doing, 80), near = spot }
+    end
+  end
+  return out
+end
 
 local function validId(k) return type(k) == 'string' and #k == 32 and not k:find('[^0-9a-f]') end
 
@@ -125,6 +148,24 @@ function M.new(deps)
       if not d then return false end
       self.restartIn = type(d.seconds) == 'number' and d.seconds or nil
       return true
+    elseif event == 'wwtcPlayers' then
+      -- Everyone else on the server, by name and town, for Relocate to a player.
+      local d = decode(data)
+      if not d or type(d.players) ~= 'table' then return false end
+      self.players = M.cleanPlayers(d.players)
+      return true
+    elseif event == 'wwtcLocate' then
+      -- Someone wants to relocate to this player: the game answers with here() (core.lua).
+      local d = decode(data)
+      if not d or type(d.ask) ~= 'number' then return false end
+      self.locate = { ask = d.ask, name = M.cleanText(d.name, 32) or 'A trucker' }
+      return true
+    elseif event == 'wwtcFound' then
+      -- The answer to find(): the other player's spot, or why not.
+      local d = decode(data)
+      if not d then return false end
+      self.found = d
+      return true
     elseif event == 'wwtcSaved' then
       local d = decode(data)
       if not d then return false end
@@ -159,6 +200,24 @@ function M.new(deps)
   -- The server page: where the player is (a town, never exact coordinates) and what they're doing, and each delivery.
   function s:where(t) return shipEvent('wwtcWhere', t) end
   function s:delivered(t) return shipEvent('wwtcDelivered', t) end
+  -- Relocate to a player: asks where player id is, and answers the same question about this player.
+  function s:find(id) return shipEvent('wwtcFind', { to = id }) end
+  function s:here(t) return shipEvent('wwtcHere', t) end
+  -- Whether other players may relocate to this one: yes unless turned off, kept on this PC for every server.
+  function s:findable()
+    if self.findableKept == nil then
+      local ok, present = pcall(io.exists, M.PREFS)
+      local prefs = ok and present and select(2, pcall(io.read, M.PREFS)) or nil
+      self.findableKept = not (type(prefs) == 'table' and prefs.findable == false)
+    end
+    return self.findableKept
+  end
+  function s:setFindable(on)
+    self.findableKept = on == true
+    pcall(io.mkdir, M.ROOT)
+    pcall(io.write, M.PREFS, { findable = self.findableKept })
+    return self.findableKept
+  end
   function s:shipDelivered(ship, n, town, pay) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay }) end
   return s
 end
@@ -201,7 +260,8 @@ function M.game()
   local listening = false
   function g.listen(handler)
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
-    for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow' }) do
+    for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow',
+        'wwtcPlayers', 'wwtcLocate', 'wwtcFound' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true

@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Relocate to another player on a trucking server, so you can do jobs together.** The **Relocate** tab now has a **Relocate to a player** card listing everyone else on the server by name, the town they're near and what they're doing, with roughly what it costs to get there. Press **Join** and your game asks theirs where they are, books a relocation to a spot just behind their car and teleports you there in one press. It costs the same as any relocation (from $100, plus a little per km), and like any relocation it needs an empty car: you can't take a job's cargo with you. If they're on foot or flying a helicopter, you're told to try again in a moment. Their exact spot only ever goes to your game, never to other players or the server page, and they get a pop-up saying you're on the way. Don't want visitors? Untick **Let other players relocate to me** on the Relocate tab; your game remembers it. Server hosts get it by unzipping the new server download over their server folder. Careers and saves carry on as before, and single player is unchanged.
+
 ## Build 158 · 9 Nov 2026
 
 - **The server update script now refuses to run outside a server folder**, so it can't fill the wrong folder with server files if it's put somewhere else. The update guide now asks hosts to back up their server by hand before the first run, says it's used at their own risk, and explains how to point the script at a server folder anywhere on their PC. Nothing changes in the game, and careers are unaffected.

@@ -116,15 +116,29 @@ they are close, so this is what brings them together.
   coordinates themselves.
 - Not yet: the server doesn't check the pay of a container delivery against what it should be (the referee step).
 
+## Relocate to a player (built)
+
+MadMerick, 9 Nov: "there need to be a way to relocate to a player, so you can do jobs together."
+
+- The **Relocate** tab lists everyone else on the server by name and town (`wwtcPlayers`, from the towns the games
+  already report, sent every 15 s and on every join and leave). Never a position.
+- **Join** sends `wwtcFind` to the server, which asks that player's game (`wwtcLocate`); their game answers (`wwtcHere`)
+  with its exact spot and heading, or no. The server passes the spot to the asker only (`wwtcFound`) and keeps nothing.
+- The asker's game books a normal relocation to a spot 20 m behind the other car and teleports there in one press.
+- **Fairness (chosen):** the usual relocation fee and rules, not free: an empty car, no job on board, no garage bill
+  owed. A free jump would make a friend parked in a far-off region a free worldwide taxi, and the fee is small anyway
+  ($100 plus $0.02 a km). Taking the trip doesn't affect the other player's job in any way.
+- **Privacy:** the other player gets a pop-up when someone relocates to them, and can untick "Let other players relocate
+  to me" (kept on their PC in `mp/prefs.json`, for every server). A player on foot, in a helicopter or the sightseeing
+  car, or not yet back at their save answers no, so nobody lands under a helicopter.
+
 ## Later steps (agreed in principle, not scheduled)
 
 - **Shared job boards and town need.** Boards are now seeded by the player's own delivery count (`jobsDone`), so two
   players in one town see different jobs. Seed them from a per-town counter on the server instead, and keep town need on
   the server, so a delivery lowers the pay for everyone. Shortages already match for everyone (they come from the clock
   hour and the town). **Decided (MadMerick, 8 Nov): not yet.** A job one player takes stays on everyone's board for now.
-- **Multiplayer HUD section.** "Go to a player" (teleport next to someone, free when not on a job, counted as a shipping
-  booking when on one; shown by name and town only), and "Sync my truck" only if testing shows BeamMP desyncs after our
-  respawns.
+- **Multiplayer HUD section.** "Sync my truck" only if testing shows BeamMP desyncs after our respawns.
 - **Server page (first version built, 8 Nov):** a GitHub Pages site in `site/` (MadMerick: the server runs on their PC, GitHub Pages shows the info). It reads `status.json`, which the server plugin builds (who's on by town, Ship Day, feed, today's totals, leaderboard; the game reports its town and deliveries with `wwtcWhere`/`wwtcDelivered`) and sends every 3 minutes to its own `trucking-server-stats` repo with a fine-grained token kept in `github-token.txt`. A marked sample shows until it does.
 - **Webpage and Discord.** The server writes a stats file; a Discord webhook posts the live delivery feed and a daily
   leaderboard first, then a page on a free static host (online now by town, leaderboards, server totals, Dangerous
