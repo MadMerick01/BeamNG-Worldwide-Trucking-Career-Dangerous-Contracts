@@ -141,6 +141,9 @@ function M.new(deps)
     odometer = odometer.new(),
     -- Sends game UI events, such as the pop-ups that show over the game's own menus.
     trigger = deps.trigger,
+    -- The game's camera: whether it is the free camera, and back to the car's own camera. The parts
+    -- menu turns the free camera on; without this the camera is left as the menu leaves it.
+    camera = deps.camera,
     -- The Street View window's little web server, and how a web page is opened in the player's
     -- browser; without them there is no Street View button.
     streetView = deps.streetView, openUrl = deps.openUrl,
@@ -1781,6 +1784,7 @@ function M.new(deps)
     self:watchBeacon(dt)
     self:watchParts()
     self:watchPartsBill()
+    self:watchPartsCamera()
     self:watchTrailer()
     self:afterRespawn()
     self:watchFuel()
@@ -2423,6 +2427,8 @@ function M.new(deps)
     if on then self.hudSeen = true end
     if self.ui:mount(on, self.clock) then
       self.diag:clear('ui_initialised'); self.diag:event('ui_initialised', 'Earth Freight HUD')
+      -- The HUD is built again when the game's menus close, the parts menu among them.
+      self:partsMenuClosed(false)
     end
   end
 
@@ -2459,6 +2465,27 @@ local function gamePaused()
   end
   return false
 end
+-- The game's camera. The parts menu switches to the free camera and can leave it on when it closes,
+-- so the player is put back on the car's own camera (driver, chase, orbit...) they had before.
+local function gameCamera()
+  local function commands()
+    local cmd = rawget(_G, 'commands')
+    if type(cmd) ~= 'table' or type(cmd.isFreeCamera) ~= 'function' or type(cmd.setGameCamera) ~= 'function' then return nil end
+    return cmd
+  end
+  return {
+    isFree = function()
+      local cmd = commands()
+      return cmd ~= nil and cmd.isFreeCamera() == true
+    end,
+    backToCar = function()
+      local cmd = commands()
+      if not cmd or not cmd.isFreeCamera() then return false end
+      cmd.setGameCamera()
+      return true
+    end,
+  }
+end
 -- Opens a page of this computer's own web server in the player's browser. The game's
 -- openWebBrowser does not open http://127.0.0.1 addresses, so a one-line page that forwards to
 -- the address is saved in the user folder and opened as a file, which Windows hands to the default
@@ -2491,7 +2518,7 @@ local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
       punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
-      log = rawget(_G, 'log'),
+      log = rawget(_G, 'log'), camera = gameCamera(),
       streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(),
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
@@ -2536,6 +2563,14 @@ function M.save() return safely(function() return ensure():manualSave() end) end
 function M.requestRepairQuote() return safely(function() return ensure():requestRepairQuote() end) end
 function M.repairVehicle() return safely(function() return ensure():repairVehicle() end) end
 function M.buyParts() return safely(function() return ensure():buyParts() end) end
+-- The HUD's Buy parts button is about to open the parts menu.
+function M.partsMenuOpening() return safely(function() return ensure():partsMenuOpening() end) end
+-- The game's UI moved from one screen to another: leaving the parts menu is the menu closing.
+function M.onUiChangedState(to, from)
+  if type(from) ~= 'string' or not from:find('vehicleconfig', 1, true) then return end
+  if type(to) == 'string' and to:find('vehicleconfig', 1, true) then return end
+  return safely(function() if active then active:partsMenuClosed(true) end end)
+end
 function M.revertParts() return safely(function() return ensure():revertParts(false) end) end
 function M.buyCar(keep) return safely(function() return ensure():buyCar(keep == true) end) end
 function M.revertCar() return safely(function() return ensure():revertCar(false) end) end
