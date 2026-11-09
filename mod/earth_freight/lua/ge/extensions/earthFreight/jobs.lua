@@ -183,7 +183,10 @@ end
 -- jackpot, level }: factor is the need, shortage and jackpot together, which the colour is from.
 -- An off-road drop goes to no town, so it has no need or shortage: road is its steep-ground bonus.
 -- A dangerous contract pays its section's pay times a 5 km job at the base rate, and nothing else.
-function M.quote(job, units, needs, now)
+-- shareAt, when given, is the base of operations' share of the region multiplier at a point (see
+-- magnate.lua): that share of each end's multiplier is added on top of the usual capped bonus, and
+-- the quote's baseBonus is how much it added to road.
+function M.quote(job, units, needs, now, shareAt)
   local good, from, to = goods.get(job.good), places.get(job.from), places.get(job.to)
   if job.contract then
     local base, times = M.basePay(good, units, M.BASE_KM), contracts.get(job.contract).pay
@@ -192,19 +195,22 @@ function M.quote(job, units, needs, now)
   end
   if job.drop then
     local factor, road = job.jackpot or 1, M.steepBonus(from)
+    local extra = shareAt and shareAt(job.drop) * places.boost(from) * M.DROP_STEEP_SHARE or 0
+    road = road + extra
     local base = M.basePay(good, units, M.DROP_KM)
     return { pay = units > 0 and math.max(10, round10(base * factor * road)) or 0, base = round10(base),
-      factor = factor, need = 1, road = road, shortage = false, jackpot = job.jackpot,
+      factor = factor, need = 1, road = road, baseBonus = extra > 0 and extra or nil, shortage = false, jackpot = job.jackpot,
       level = job.jackpot and 'sweet' or 'normal' }
   end
   local need = M.need(to, good, needs, now)
   if job.decent then need = math.max(1, need) end
   local short = M.shortage(to, good, now)
   local factor = need * (short and M.SHORTAGE_PAY or 1) * (job.jackpot or 1)
-  local road = M.roadBonus(from, to)
+  local extra = shareAt and (shareAt(from) * places.boost(from) + shareAt(to) * places.boost(to)) / 2 * M.ROAD_SHARE or 0
+  local road = M.roadBonus(from, to) + extra
   local base = M.basePay(good, units, job.km)
   return { pay = units > 0 and math.max(10, round10(base * factor * road)) or 0, base = round10(base),
-    factor = factor, need = need, road = road, shortage = short, jackpot = job.jackpot,
+    factor = factor, need = need, road = road, baseBonus = extra > 0 and extra or nil, shortage = short, jackpot = job.jackpot,
     level = (short or job.jackpot) and 'sweet' or M.level(factor) }
 end
 

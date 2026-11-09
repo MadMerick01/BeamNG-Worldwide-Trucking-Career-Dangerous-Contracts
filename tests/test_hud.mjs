@@ -127,9 +127,9 @@ test('paying a bill asks to confirm that total, and a new total asks again', () 
   assert.ok(html.includes('ng-click="cancelPay(); buyParts()"') && html.includes('ng-click="cancelPay(); buyCar()"'), 'only the confirm pays')
   assert.ok(html.includes('ng-click="cancelPay(); keepCar()"') && html.includes('ng-click="cancelPay(); claimHome()"'), 'keeping a car and buying a home confirm too')
 })
-test('Home: Buy this spot and Swap cars only call Lua when it allows them, and Home is a tab', () => {
+test('Base: Buy this spot and Swap cars only call Lua when it allows them, and Base is a tab', () => {
   const a = app()
-  assert.ok(a.scope.tabs.some(t => t.id === 'home' && t.label === 'Home'))
+  assert.ok(a.scope.tabs.some(t => t.id === 'home' && t.label === 'Base'))
   let count = a.commands.length
   a.state({ state: 'READY' }); a.scope.claimHome(); a.scope.swapCars()
   a.state({ state: 'READY', home: { claimAllowed: false, swapAllowed: false } }); a.scope.claimHome(); a.scope.swapCars()

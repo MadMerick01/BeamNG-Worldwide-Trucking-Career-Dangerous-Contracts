@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Magnate update begins: your home is now a base of operations.** Buy one on the new **Base** tab (it replaces the Home tab) for $250,000, parked in any town. Around that town grows a circle of influence, and jobs that start or end inside it pay you more: about 20% more on a town job with both ends inside, and 40% more on an off-road drop, a little more again in steep regions. The circle is big from the start (it reaches about 20 km out in a flat region for a trucker worth $350,000) and grows as you get richer, where your wealth is your cash plus your truck plus your base. It never shrinks, and bases in steep regions reach further. The Base tab shows how far your circle reaches and how much wealth takes it further, and the job board marks each job your base pays extra on. Everything a home did still works: the stored car, Swap cars, half-price repairs and Relocate (now listed as Base).
+- If you already own a home, it becomes your base for free, with its circle around the nearest town. Your saves keep working.
+- On a multiplayer server, the season leaderboard's wealth now includes what each trucker paid for their base, so buying one doesn't drop you down the table. Server hosts: run the server updater to get it.
+
 ## Build 165 · 9 Nov 2026
 
 - **The server's season leaderboard now ranks truckers by wealth: their cash plus what their truck is worth.** It shows each trucker's Cash, Truck value, Wealth and Jobs, so spending your money on a better truck no longer drops you down the table. Your truck's value is the one on the Your truck card, and it reaches the leaderboard the next time you save, so drivers who haven't saved since this update show a truck value of $0 (or what they paid for a second-hand truck) until they do. Saves still work as before. Server hosts: run the server updater to get the new leaderboard.
