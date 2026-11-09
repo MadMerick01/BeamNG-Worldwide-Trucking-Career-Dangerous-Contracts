@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 160 · 9 Nov 2026
+
 - No changes in the game. **The server page's map works again**: it showed "API key required" over every tile, because its old map provider started asking for a key. It now uses OpenStreetMap's own map, darkened to match the page, which needs no key. The How to join box now says to get the newest BeamNG.Earth app instead of naming version 1.8.2.
 
 ## Build 159 · 9 Nov 2026
