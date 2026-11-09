@@ -945,6 +945,28 @@ test('Ship Day: the Town tab shows the ship, Go to port and the containers to ta
   assert.equal(a.scope.until(2 * 86400 + 14 * 3600 + 59), '2d 14h')
   assert.equal(a.scope.until(5 * 3600 + 12 * 60), '5h 12m')
 })
+test('Ship Day: the Town tab card folds to a summary and Go to port, and remembers it', () => {
+  const town = html.slice(html.indexOf(`ng-if="tab === 'town'"`), html.indexOf(`ng-if="tab === 'garage'"`))
+  assert.ok(town.includes(`ng-click="toggle('shipday')"`), 'the card has a fold')
+  const list = town.indexOf('<div ng-if="shipDayOpen()"'), repeat = town.indexOf('ng-repeat="b in data.shipDay.containers"')
+  assert.ok(list >= 0 && list < repeat, 'the containers only show when it is open')
+  assert.ok(town.indexOf('Go to port (free)') < list, 'Go to port shows when it is folded')
+  const saved = {}
+  const storage = { getItem: k => (k in saved ? saved[k] : null), setItem: (k, v) => { saved[k] = String(v) } }
+  const a = app(storage)
+  a.state({ state: 'READY', arrived: true, shipDay: { goAllowed: true, atPort: false, containers: [] } })
+  assert.equal(a.scope.shipDayOpen(), false, 'it starts folded')
+  a.scope.toggle('shipday')
+  assert.equal(a.scope.shipDayOpen(), true)
+  const b = app(storage)
+  b.state({ state: 'READY', arrived: true, shipDay: { goAllowed: true, atPort: false, containers: [] } })
+  assert.equal(b.scope.shipDayOpen(), true, 'kept after the game restarts')
+  b.scope.toggle('shipday')
+  b.state({ state: 'READY', arrived: true, shipDay: { atPort: true, containers: [] } })
+  assert.equal(b.scope.shipDayOpen(), true, 'at the port with no container, the list opens to pick one')
+  b.state({ state: 'READY', arrived: true, shipDay: { atPort: true, carrying: 3, containers: [] } })
+  assert.equal(b.scope.shipDayOpen(), false, 'once one is on board it folds again')
+})
 test('Relocate to a player: a Join button for each player, sent by number only, and the opt-out', () => {
   const a = app()
   const relocate = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`), html.indexOf(`ng-if="tab === 'home'"`))

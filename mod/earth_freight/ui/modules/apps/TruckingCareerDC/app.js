@@ -338,6 +338,12 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         return typeof v === 'boolean' ? v : !!FOLD_DEFAULTS[id]
       }
       scope.toggle = function (id) { kept.folds[id] = !scope.isOpen(id); storeFolds(kept.folds) }
+      // The Ship Day card folds to two lines and Go to port, so it doesn't push the town's jobs off
+      // the HUD. At the port with no container yet, the list opens: that is when the player picks one.
+      scope.shipDayOpen = function () {
+        var s = scope.data && scope.data.shipDay
+        return scope.isOpen('shipday', !!(s && s.atPort && !s.carrying))
+      }
       // One town job at a time shows its details, load slider and GPS.
       scope.jobOpen = function (id) { return kept.openJob === id }
       scope.toggleJob = function (id) { kept.openJob = kept.openJob === id ? null : id }
