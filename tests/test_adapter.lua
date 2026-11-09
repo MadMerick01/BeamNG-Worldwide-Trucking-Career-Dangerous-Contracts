@@ -144,4 +144,58 @@ do
   T.check(broken:sample().valid, 'a failing camera does not break the position'); T.eq(broken:sample().cameraHeading, nil, 'and gives no direction')
 end
 
+-- BeamNG.Earth's modding API (1.9.0 on) comes first; the internals stand in when it is missing or fails.
+do
+  local pose = { lat = -41.29, lon = 174.78, heading = 45, camera = false }
+  local calls = {}
+  local api = { version = function() return 1, 1 end,
+    pose = function() return pose end,
+    place = function() return { place = 'Wellington', country = 'New Zealand' } end,
+    gpsSet = function(lat, lon, name) calls.gps = { lat, lon, name }; return true end,
+    teleport = function(lat, lon, name) calls.tp = { lat, lon, name }; return true end }
+  local icore = { _state = function() return { anchor = anchor } end,
+    teleport = function() calls.coreTp = true; return true end }
+  local mods = { gps = { setDestination = function() calls.coreGps = true end },
+    statusbar = { location = function() return { place = 'From the status bar' } end } }
+  local car = { getID = function() return 1 end, getPosition = function() return { x = 0, y = 111195.0802, z = 0 } end,
+    getDirectionVector = function() return { x = 0, y = 1, z = 0 } end }
+  local apiOn = true
+  local g = Adapter.new({ core = function() return icore end, api = function() return apiOn and api or nil end,
+    module = function(n) return mods[n] end, vehicle = function() return car end })
+  local s = g:sample()
+  T.eq(s.source, 'api', 'the API is asked first'); T.eq(s.latitude, -41.29, 'API latitude')
+  T.eq(s.heading, 45, 'the API heading (true north) is used')
+  T.eq(g:placeNames().place, 'Wellington', 'place names from the API')
+  T.check(g:setDestination({ latitude = 1, longitude = 2 }, 'Depot'), 'GPS through the API')
+  T.eq(calls.gps[3], 'Depot', 'GPS name through the API'); T.eq(calls.coreGps, nil, 'internals not touched')
+  T.check(g:teleport({ latitude = 3, longitude = 4 }, 'Port'), 'teleport through the API')
+  T.eq(calls.tp[1], 3, 'teleport latitude'); T.eq(calls.coreTp, nil, 'core teleport not touched')
+  api.teleport = function() return false, 'Companion server not connected' end
+  local ok, why, detail = g:teleport({ latitude = 3, longitude = 4 })
+  T.check(not ok and why == 'teleport_refused' and detail == 'Companion server not connected', 'the API saying no is reported')
+  T.eq(calls.coreTp, nil, 'a refusal is not retried through the internals')
+  -- A failing or changed API falls back to the internals.
+  api.pose = function() error('changed') end; api.place = function() error('changed') end
+  api.gpsSet = function() error('changed') end; api.teleport = function() error('changed') end
+  T.eq(g:sample().source, 'anchor', 'a failing API pose falls back to the anchor')
+  T.near(g:sample().latitude, 1, 1e-9, 'anchor position'); T.near(g:sample().heading, 0, 1e-9, 'heading from the car')
+  T.eq(g:placeNames().place, 'From the status bar', 'a failing API place falls back to the status bar')
+  T.check(g:setDestination({ latitude = 1, longitude = 2 }) and calls.coreGps, 'a failing API GPS falls back')
+  T.check(g:teleport({ latitude = 1, longitude = 2 }) and calls.coreTp, 'a failing API teleport falls back')
+  api.pose = function() return { lat = 1, lon = 2, camera = true } end
+  T.eq(g:sample().source, 'anchor', 'the free camera is not the car')
+  api.pose = function() return nil end
+  T.eq(g:sample().source, 'anchor', 'no API pose yet falls back')
+  apiOn = false; T.eq(g:sample().source, 'anchor', 'no API (older Earth) uses the internals')
+  -- The API alone counts as Earth being there.
+  local only = Adapter.new({ core = function() return nil end, api = function() return { version = function() return 1 end,
+    pose = function() return { lat = 5, lon = 6 } end } end, module = function() end, vehicle = function() return car end })
+  T.eq(only:sample().source, 'api', 'the API without a core global still works')
+  -- Only version 1 of the API is used.
+  _G.beamngEarth_api = { version = function() return 2, 0 end }; T.eq(Adapter.findApi(), nil, 'a new major version is not used')
+  _G.beamngEarth_api = { version = function() error('x') end }; T.eq(Adapter.findApi(), nil, 'a broken version check')
+  _G.beamngEarth_api = { version = function() return 1, 0 end }; T.check(Adapter.findApi() ~= nil, 'version 1 found')
+  _G.beamngEarth_api = nil
+end
+
 T.done('Earth adapter (mocked engine)')
