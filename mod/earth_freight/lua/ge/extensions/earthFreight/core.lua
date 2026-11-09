@@ -321,6 +321,10 @@ function M.new(deps)
       self.ship, self.shipAt = shipday.clean(self.mp.ship), self.clock
     elseif event == 'wwtcClaimed' then
       self:claimAnswered(self.mp.claimed)
+    elseif event == 'wwtcLocate' then
+      self:answerLocate(self.mp.locate)
+    elseif event == 'wwtcFound' then
+      self:playerFound(self.mp.found)
     end
     if event == 'wwtcSaveNow' then self:saveForRestart() end
     if event == 'wwtcSaved' and self.mp.saveError then
@@ -412,6 +416,7 @@ function M.new(deps)
     self.whereSent, self.whereAt = nil, nil
     self.hudSeen, self.hudHints, self.hudMissingFor = nil, nil, nil
     self.ship, self.shipAt, self.shipClaim, self.shipFeedback = nil, nil, nil, nil
+    self.finding = nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
     self:interrupt('earth_level_required')
@@ -785,6 +790,113 @@ function M.new(deps)
     self.shipFeedback = ok and ('Off to ' .. ship.port.name .. '. The terrain takes a few seconds to load.')
       or (self.shippingFeedback or 'BeamNG.Earth did not take the teleport.')
     return ok
+  end
+
+  -- ===== Relocate to a player (multiplayer) ======================================================================
+  -- The Relocate tab lists the other players on the server by name and town. Picking one asks the server, which asks
+  -- that player's game where it is; the answer comes back to this game only, and books the usual relocation (the same
+  -- fee, an empty car, never on a job) to a spot LAND_BEHIND_METRES behind their car, and teleports there.
+  M.FIND_WAIT_SECONDS = 10
+  M.LAND_BEHIND_METRES = 20
+
+  function c:otherPlayers()
+    return self.mp and self.mp.state == 'server' and self.mp.players or nil
+  end
+
+  -- Asks where another player is, to relocate to them.
+  function c:findPlayer(id)
+    local who
+    for _, p in ipairs(self:otherPlayers() or {}) do if p.id == id then who = p end end
+    local problem = self:shippingProblem()
+    if not problem and not who then problem = 'That player is not on the server any more.' end
+    if not problem and self.finding then problem = 'Waiting for ' .. self.finding.name .. ' to answer.' end
+    if problem then
+      self.shippingFeedback = problem
+      return false
+    end
+    self.finding = { id = id, name = who.name, at = self.clock }
+    self.mp:find(id)
+    self.shippingFeedback = 'Asking ' .. who.name .. ' where they are...'
+    self.diag:event('find_player', tostring(id))
+    return true
+  end
+
+  -- Their answer: book the relocation to them and teleport, or say why not.
+  function c:playerFound(d)
+    local f = self.finding
+    if not f or type(d) ~= 'table' or tonumber(d.to) ~= f.id then return false end
+    self.finding = nil
+    local spot = d.ok == true and location.valid(d) and location.copy(d) or nil
+    if not spot then
+      self.shippingFeedback = d.why == 'off' and (f.name .. ' does not let other players relocate to them.')
+        or d.why == 'gone' and (f.name .. ' is not on the server any more.')
+        or (f.name .. ' is not driving their car right now. Try again in a moment.')
+      return false
+    end
+    -- Never on top of their car: behind it, or to one side when its heading isn't known.
+    local behind = location.finite(d.heading) and (d.heading + 180) % 360 or 180
+    local land = location.destination(spot, behind, M.LAND_BEHIND_METRES) or spot
+    if shipping.arrived(self.lastSample, land) then
+      self.shippingFeedback = f.name .. ' is less than ' .. math.floor(shipping.ARRIVE_METRES / 1000) .. ' km away. Drive to them.'
+      return false
+    end
+    places.ensure(land)
+    local near = places.nearest(land, 1)[1]
+    local booked = self:book({ id = 'player', name = f.name,
+      region = near and (near.place.name .. ', ' .. near.place.region) or 'somewhere remote',
+      latitude = land.latitude, longitude = land.longitude })
+    if not booked then return false end
+    local fee = self.booking.fee
+    local ok = self:teleportToBooking()
+    if ok then self.shippingFeedback = 'Off to ' .. f.name .. ' for ' .. dollars(fee) .. '. The terrain takes a few seconds to load.' end
+    return ok
+  end
+
+  function c:watchFind()
+    if self.finding and self.clock - self.finding.at > M.FIND_WAIT_SECONDS then
+      self.shippingFeedback = self.finding.name .. '\'s game did not answer. Try again.'
+      self.finding = nil
+    end
+  end
+
+  -- Someone wants to relocate to this player: where the car is, unless it's turned off or the player is away from it.
+  function c:answerLocate(ask)
+    if not ask or not self.mp then return end
+    local sample = self.lastSample
+    if not self.mp:findable() then
+      self.mp:here({ ask = ask.ask, ok = false, why = 'off' })
+      return
+    end
+    if self.state ~= 'READY' or not self.arrived or self.hire or self.onFoot or type(sample) ~= 'table' or not sample.valid then
+      self.mp:here({ ask = ask.ask, ok = false, why = 'away' })
+      return
+    end
+    local heading = location.finite(sample.heading) and sample.heading or self.heading
+    self.mp:here({ ask = ask.ask, ok = true, latitude = sample.latitude, longitude = sample.longitude, heading = heading })
+    self:toast('info', 'A trucker is on the way', ask.name .. ' is relocating to you. Turn this off on the Relocate tab.', 8)
+    self.diag:event('located', ask.name)
+  end
+
+  function c:setFindable(on)
+    if not self.mp or self.mp.state ~= 'server' then return false end
+    self.mp:setFindable(on == true)
+    self.shippingFeedback = on and 'Other players can relocate to you.' or 'Other players can no longer relocate to you.'
+    return true
+  end
+
+  -- The players on the Relocate tab, with roughly what it costs to reach each (from their town; the real fee is
+  -- worked out from where they are when you press Join).
+  function c:playersView(current, problem)
+    local list = self:otherPlayers()
+    if not list then return nil end
+    local rows = {}
+    for _, p in ipairs(list) do
+      local fee = p.near and shipping.fee(current, p.near) or nil
+      rows[#rows + 1] = { id = p.id, name = p.name, town = p.town, region = p.region, doing = p.doing, fee = fee,
+        distanceMetres = p.near and location.distance(current, p.near) or nil,
+        allowed = problem == nil and not self.finding and (fee == nil or self:canAfford(fee)) }
+    end
+    return { list = rows, findable = self.mp:findable(), finding = self.finding and self.finding.name or nil }
   end
 
   -- How many units of container cargo the car (and a hitched trailer) takes, and what one container pays.
@@ -1654,6 +1766,7 @@ function M.new(deps)
     self:spawnFirstCar(sample, dt)
     self:hintHud(sample, dt)
     self:watchClaim()
+    self:watchFind()
     self:reportWhere(sample)
     self:provideVehicle()
     self:watchHire()
@@ -1954,11 +2067,12 @@ function M.new(deps)
       offerView = { id = offer.id, name = offer.name, region = offer.region, boost = jobs.roadBonusFor(offer.boost), fee = fee,
         secondsLeft = left, here = here, allowed = problem == nil and not here and self:canAfford(fee) }
     end
+    local playersView = self:playersView(current, problem)
     local b = self.booking
     -- Teleport there rests while Earth carries out the last press.
     local teleporting = self.bookingTeleportAt ~= nil and self.clock - self.bookingTeleportAt < TELEPORT_WAIT_SECONDS
     return {
-      offer = offerView, home = homeView, destinations = list, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
+      offer = offerView, home = homeView, destinations = list, players = playersView, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
       problem = problem, feedback = self.shippingFeedback,
       pending = self.offer and { name = self.offer.name, fee = self.offer.fee, radiusKm = shipping.OFFER_RADIUS_METRES / 1000,
         distanceMetres = location.distance(current, self.offer) } or nil,
@@ -2496,6 +2610,11 @@ end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 function M.goToPort() return safely(function() return ensure():goToPort() end) end
 function M.takeContainer(n) return safely(function() return ensure():takeContainer(tonumber(n)) end) end
+function M.findPlayer(player)
+  if type(player) ~= 'number' then return false end
+  return safely(function() return ensure():findPlayer(player) end)
+end
+function M.setFindable(on) return safely(function() return ensure():setFindable(on == true) end) end
 function M.cancelShipping() return safely(function() return ensure():cancelShipping() end) end
 function M.setPlayerName(name) return safely(function() return ensure():setPlayerName(name) end) end
 -- The player car's answers to fuel.lua's commands.

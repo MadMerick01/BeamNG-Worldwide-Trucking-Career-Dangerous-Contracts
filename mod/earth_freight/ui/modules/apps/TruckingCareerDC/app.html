@@ -600,6 +600,21 @@
           <div ng-if="data.shipDay.goProblem" style="color:#f2c94c;">{{data.shipDay.goProblem}}</div>
           <div ng-if="data.shipDay.feedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.shipDay.feedback}}</div>
         </div>
+        <div ng-if="data.shipping.players && !data.shipping.booking" style="margin:0 0 8px;padding:10px;border:1px solid #56ccf2;border-radius:6px;">
+          <div style="font-weight:bold;color:#56ccf2;">Relocate to a player</div>
+          <div style="font-size:13px;color:#c9d6d2;">Join another trucker on this server and work near them. Same fee as any relocation, with an empty car.</div>
+          <div ng-if="!data.shipping.players.list.length" style="font-size:13px;color:#7d8b88;margin-top:4px;">Nobody else is trucking on this server right now.</div>
+          <div ng-repeat="p in data.shipping.players.list track by p.id" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+            <div style="flex:1;min-width:0;"><b>{{p.name}}</b> <span style="color:#7d8b88;font-size:12px;">{{p.town ? ('near ' + p.town) : 'somewhere'}}<span ng-if="p.doing"> &middot; {{p.doing}}</span></span></div>
+            <div ng-if="p.fee != null" style="font-size:13px;">about ${{p.fee | number:0}}</div>
+            <button type="button" aria-label="Relocate to {{p.name}}" ng-click="findPlayer(p)" ng-disabled="!p.allowed" style="padding:4px 8px;">Join</button>
+          </div>
+          <div ng-if="data.shipping.players.finding" role="status" style="margin-top:4px;color:#c9d6d2;">Asking {{data.shipping.players.finding}} where they are...</div>
+          <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:13px;color:#c9d6d2;">
+            <input type="checkbox" ng-checked="data.shipping.players.findable" ng-click="setFindable(!data.shipping.players.findable)" aria-label="Let other players relocate to me" />
+            Let other players relocate to me
+          </label>
+        </div>
         <div ng-if="data.shipping.offer && !data.shipping.booking" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
           <div style="font-weight:bold;color:#f2c94c;">Relocation paid: {{data.shipping.offer.name}}</div>
           <div>The town of {{data.shipping.offer.name}} ({{data.shipping.offer.region}}, rough roads pay &times;{{data.shipping.offer.boost | number:1}}) will pay your relocation if you come and deliver in its difficult region.</div>

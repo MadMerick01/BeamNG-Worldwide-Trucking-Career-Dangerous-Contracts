@@ -19,6 +19,12 @@
 --   game -> server  wwtcRelease '{"v","ship","n"}'  gives it back (job abandoned)
 --   game -> server  wwtcShipDone '{"v","ship","n","town","pay"}'  delivered; announced in chat
 --   server -> game  wwtcSaveNow '{"v","seconds"}'  the server restarts for an update soon: save now
+--   server -> game  wwtcPlayers '{"v","players":[{"id","name","town","region","latitude","longitude","doing"}]}'
+--                   everyone else on the server, by town (its centre), for Relocate to a player
+--   game -> server  wwtcFind   '{"v","to"}'  asks to relocate to player 'to'; the server asks that player's game:
+--   server -> game  wwtcLocate '{"v","ask","name"}'  someone (name) wants to relocate to you: where are you?
+--   game -> server  wwtcHere   '{"v","ask","ok","latitude","longitude","heading","why"}'  ('off' or 'away' when not ok)
+--   server -> game  wwtcFound  '{"v","to","name","ok","latitude","longitude","heading","why"}'  to the asker only
 -- A frame is 'v|id|i|n|piece': piece i of n of message id. The server keeps the save's own JSON text as it came, so
 -- nothing about it is rounded or reordered on the way through.
 --
@@ -461,6 +467,7 @@ function W.onJoin(pid, data)
   W.nextId = W.nextId + 1
   local message = '{"v":' .. W.PROTO .. ',"key":"' .. key .. '","season":' .. W.SEASON .. ',"save":' .. (text or 'null') .. '}'
   for _, frame in ipairs(W.frames(W.nextId, message)) do W.env.send(pid, 'wwtcCareer', frame) end
+  W.sendPlayersToAll()
   W.shipTick()
   W.sendShip(pid)
   if save then W.boardCareer(p, save) end
@@ -499,8 +506,13 @@ function W.onSave(pid, frame)
 end
 
 function W.onLeave(pid)
-  if W.players[pid] then W.statsChanged = true end
+  local was = W.players[pid]
+  if was then W.statsChanged = true end
   W.players[pid] = nil
+  for n, a in pairs(W.asks or {}) do
+    if a.from == pid or a.to == pid then W.asks[n] = nil end
+  end
+  if was and was.key and W.sendPlayersToAll then W.sendPlayersToAll() end
 end
 
 -- The welcome lines in chat, to a player who has just finished joining.
@@ -679,6 +691,84 @@ function W.onShipDone(pid, data)
 end
 
 
+-- ----- Relocate to a player ----------------------------------------------------------------------------------------
+-- The Relocate tab lists everyone else on the server by name and town (never their position). A player who picks one
+-- asks the server (wwtcFind), the server asks that player's game where it is (wwtcLocate), and that game answers
+-- (wwtcHere) with its exact spot, or a no: the player has turned it off, or isn't in their car. The spot goes only to
+-- the player who asked (wwtcFound), is never kept or written down, and their game books the usual relocation there.
+W.FIND_WAIT_SECONDS = 30
+
+-- The list for one player: everyone else whose career is in, with their town.
+function W.playersMessage(pid)
+  local list = {}
+  for other, p in pairs(W.players) do
+    if other ~= pid and p.key then
+      local w = p.where or {}
+      list[#list + 1] = { id = other, name = clean(p.name, 32) or 'A trucker', town = w.town, region = w.region,
+        latitude = w.latitude, longitude = w.longitude, doing = w.doing }
+    end
+  end
+  table.sort(list, function(a, b) if a.name ~= b.name then return a.name < b.name end return a.id < b.id end)
+  return W.env.encode({ v = W.PROTO, players = list })
+end
+
+function W.sendPlayersToAll()
+  for pid, p in pairs(W.players) do
+    if p.key then W.env.send(pid, 'wwtcPlayers', W.playersMessage(pid)) end
+  end
+end
+
+W.asks, W.nextAsk = {}, 0
+
+local function found(pid, to, name, fields)
+  local message = { v = W.PROTO, to = to, name = name }
+  for k, v in pairs(fields) do message[k] = v end
+  W.env.send(pid, 'wwtcFound', W.env.encode(message))
+end
+
+-- A player asks to relocate to another: that player's game is asked where it is.
+function W.onFind(pid, data)
+  local p = W.players[pid]
+  if not p or not p.key then return end
+  local ok, d = pcall(W.env.decode, data or '')
+  if not ok or type(d) ~= 'table' then return end
+  local to = tonumber(d.to)
+  local target = to and W.players[to]
+  if not target or not target.key or to == pid then return found(pid, to, nil, { ok = false, why = 'gone' }) end
+  local now = W.env.clock()
+  for n, a in pairs(W.asks) do
+    if now - a.at > W.FIND_WAIT_SECONDS or a.from == pid then W.asks[n] = nil end
+  end
+  W.nextAsk = W.nextAsk + 1
+  W.asks[W.nextAsk] = { from = pid, to = to, at = now }
+  W.env.send(to, 'wwtcLocate', W.env.encode({ v = W.PROTO, ask = W.nextAsk, name = clean(p.name, 32) or 'A trucker' }))
+end
+
+local function number(v, limit)
+  v = tonumber(v)
+  if v and v == v and math.abs(v) <= limit then return v end
+end
+
+-- That player's game answers: its spot goes to the player who asked, and nowhere else.
+function W.onHere(pid, data)
+  local ok, d = pcall(W.env.decode, data or '')
+  if not ok or type(d) ~= 'table' then return end
+  local n = tonumber(d.ask)
+  local a = n and W.asks[n]
+  if not a or a.to ~= pid then return end
+  W.asks[n] = nil
+  local asker = W.players[a.from]
+  if not asker or not asker.key then return end
+  local name = clean((W.players[pid] or {}).name, 32) or 'A trucker'
+  local lat, lon = number(d.latitude, 90), number(d.longitude, 180)
+  if d.ok == true and lat and lon then
+    found(a.from, pid, name, { ok = true, latitude = lat, longitude = lon, heading = number(d.heading, 360) })
+  else
+    local why = (d.why == 'off' or d.why == 'away') and d.why or 'away'
+    found(a.from, pid, name, { ok = false, why = why })
+  end
+end
+
 -- ----- Restarting for an update -----------------------------------------------------------------------------------
 -- The update script (update-server.ps1) asks for a restart by writing restart.json next to this file:
 -- {"at": when to stop, in seconds since 1970 (UTC), "why": "what's being updated"}. Everyone is warned in chat, every
@@ -849,9 +939,11 @@ if MP and MP.RegisterEvent then
   WWTC_onClaim = guarded('claim', W.onClaim)
   WWTC_onRelease = guarded('release', W.onRelease)
   WWTC_onShipDone = guarded('ship delivered', W.onShipDone)
-  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.statsTick(); W.restartTick() end)
+  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.statsTick(); W.restartTick(); W.sendPlayersToAll() end)
   WWTC_onWhere = guarded('where', W.onWhere)
   WWTC_onDelivered = guarded('delivered', W.onDelivered)
+  WWTC_onFind = guarded('find', W.onFind)
+  WWTC_onHere = guarded('here', W.onHere)
   WWTC_onChat = function(pid, name, message)
     local ok, hide = pcall(W.onChat, pid, message)
     if ok and hide then return 1 end
@@ -869,6 +961,8 @@ if MP and MP.RegisterEvent then
   MP.RegisterEvent('wwtcShipDone', 'WWTC_onShipDone')
   MP.RegisterEvent('wwtcWhere', 'WWTC_onWhere')
   MP.RegisterEvent('wwtcDelivered', 'WWTC_onDelivered')
+  MP.RegisterEvent('wwtcFind', 'WWTC_onFind')
+  MP.RegisterEvent('wwtcHere', 'WWTC_onHere')
   MP.RegisterEvent('WWTC_shipTimer', 'WWTC_onShipTimer')
   if MP.CreateEventTimer then MP.CreateEventTimer('WWTC_shipTimer', 15000) end
   WWTC_onShipTimer()
