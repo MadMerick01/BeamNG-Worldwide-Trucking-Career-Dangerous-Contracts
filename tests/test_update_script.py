@@ -57,7 +57,7 @@ class UpdateScriptFunctions(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             old = TRUCKING_LUA.replace('W.SEASON = 1', 'W.SEASON = 4') \
                 .replace("'Welcome to the Worldwide Trucking Career!',", "'Welcome, {truckers} -- \"G\\'day\"',") \
-                .replace('W.SHIP_CONTAINERS = 20', 'W.SHIP_CONTAINERS = 0')
+                .replace('W.SHIP_CONTAINERS = 5', 'W.SHIP_CONTAINERS = 0')
             new = TRUCKING_LUA.replace('W.PROTO = 1', 'W.PROTO = 1 -- new version')
             Path(d, 'old.lua').write_text(old, encoding='utf-8')
             Path(d, 'new.lua').write_text(new, encoding='utf-8')
