@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 158 · 9 Nov 2026
+
 - **The server update script now refuses to run outside a server folder**, so it can't fill the wrong folder with server files if it's put somewhere else. The update guide now asks hosts to back up their server by hand before the first run, says it's used at their own risk, and explains how to point the script at a server folder anywhere on their PC. Nothing changes in the game, and careers are unaffected.
 
 ## Build 157 · 9 Nov 2026
