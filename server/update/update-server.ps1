@@ -304,6 +304,12 @@ $BackupDir = if ($S.BackupFolder) { $S.BackupFolder } else { $ServerDir + '-back
 if (-not (Test-Path -LiteralPath $BackupDir)) { New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null }
 $BackupDir = (Resolve-Path -LiteralPath $BackupDir).Path.TrimEnd('\', '/')
 $Exe = Join-Path $ServerDir $S.ServerExe
+if (-not (Test-Path -LiteralPath $Exe)) {
+  # Never update a folder that isn't a server: the script would fill it with server files.
+  Write-Host "There's no $($S.ServerExe) in $ServerDir, so this isn't a server folder."
+  Write-Host 'Put the script in your server folder, or set "ServerFolder" in update-settings.json. See SERVER-UPDATES.md.'
+  exit 2
+}
 $LogPath = Join-Path $ServerDir $S.LogFile
 $StatePath = Join-Path $ServerDir 'update-state.json'
 $RestartPath = Join-Path $ServerDir 'Resources/Server/WorldwideTrucking/restart.json'

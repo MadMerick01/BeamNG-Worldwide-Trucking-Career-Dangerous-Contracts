@@ -1,7 +1,13 @@
 # Updating the trucking server
 
 When BeamNG.Earth or the trucking mod has a new release, one script updates your server: **`update-server.bat`**, in
-your server folder (for example `D:\WWTruckingCareerOnline`). Double-click it, or let Windows run it every night.
+your server folder (the folder with `BeamMP-Server.exe` and `ServerConfig.toml`, for example `C:\TruckingServer`).
+Double-click it, or let Windows run it every night.
+
+> **Use it at your own risk, and back up your server first.** The script stops your server and replaces files in its
+> folder. It makes its own backup each time and goes back to it if the new version doesn't start, but before your
+> first run, copy your whole server folder somewhere safe by hand, so you have a copy that doesn't depend on the
+> script.
 
 Single player needs none of this: the BeamNG.Earth app and the mod update themselves there.
 
@@ -19,7 +25,8 @@ Single player needs none of this: the BeamNG.Earth app and the mod update themse
    saves itself, so they lose next to nothing. At the time, everyone is sent off with "The server is updating. Your
    career is kept. Join again in a few minutes." With nobody on, it skips the wait.
 4. **Stops the server and backs it up.** The whole server folder, careers included, is copied to a dated folder in
-   `D:\WWTruckingCareerOnline-backups`. The newest 5 backups are kept and older ones deleted.
+   folder next to your server folder with `-backups` on the end, such as `C:\TruckingServer-backups`. The newest 5
+   backups are kept and older ones deleted.
 5. **Copies in the new files and starts the server.** It never replaces `ServerConfig.toml` (your AuthKey and server
    name), `update-settings.json`, the careers or BeamNG.Earth's road store.
 6. **Checks it worked.** It waits for both `[BeamNG.Earth] plugin loaded` and `[Trucking] plugin loaded` in the
@@ -33,16 +40,22 @@ Careers are safe throughout. They live on the server, an update never changes th
 
 ## Setting it up (once)
 
-1. Download the newest `worldwide-trucking-server.zip` and unzip it over your server folder, as for any trucking
+1. **Back up your server folder** by copying it somewhere safe.
+2. Download the newest `worldwide-trucking-server.zip` and unzip it over your server folder, as for any trucking
    update. This puts `update-server.bat`, `update-server.ps1`, `update-settings.example.json` and this guide in the
    server folder. After this once, the script keeps itself up to date.
-2. Double-click `update-server.bat`. The first time, it makes **`update-settings.json`** from the example, and since
+3. **Check where your server is.** The script updates the server in the folder it's in, so it must sit next to
+   `BeamMP-Server.exe`; it refuses to run anywhere else. To keep the script somewhere else, run it once (it makes
+   `update-settings.json` next to itself and stops), then set `"ServerFolder"` in that file to your server folder, with every `\` written twice, for example
+   `"ServerFolder": "C:\\TruckingServer"`. `"BackupFolder"` works the same way if you want backups elsewhere.
+4. Double-click `update-server.bat`. The first time, it makes **`update-settings.json`** from the example, and since
    it doesn't yet know which versions your server has, it updates both to the newest. That's a good first test: do it
    when nobody's on.
-3. Optional, **Discord**: in your Discord server, open the channel's settings, then Integrations > Webhooks > New
+5. Optional, **Discord**: in your Discord server, open the channel's settings, then Integrations > Webhooks > New
    Webhook, and press Copy Webhook URL. Paste it between the quotes of `"DiscordWebhook": ""` in
    `update-settings.json` (open it in Notepad). **Keep this file private.** Anyone with the webhook can post in that
-   channel. It isn't in any download and updates never overwrite it.
+   channel. It isn't in any download and updates never overwrite it. If you share your server files or ask for help,
+   leave out `update-settings.json` and `Resources\Server\WorldwideTrucking\github-token.txt`.
 
 If Windows says scripts are blocked, run the `.bat`, not the `.ps1`: the `.bat` starts it with permission to run.
 
