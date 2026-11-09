@@ -7,6 +7,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **Leaving the parts menu now puts you back on your car's camera.** After pressing **Buy parts** (or **Parts menu** for a trailer) and closing the game's parts menu, you used to be left in the free camera and had to press Shift+C. Now you're back on the camera you were driving with, such as the driver or chase camera. If you were already in the free camera before pressing Buy parts, you stay in it. Your saves still work.
+## Build 164 · 9 Nov 2026
 
 - **Ship Day containers now have a Load slider.** At the port, open the Ship Day card on the Town tab and set the Load slider above the containers, from 10% to 100% of a full load, just like on the town job board. The pay next to each container changes with it, and the container you take is loaded with that much cargo. A lighter load is easier on a small car or a rough road.
 - **One ship a day, with 5 containers each.** Ships now dock every day instead of every three days, and each carries 5 containers instead of 20, so they go quickly and there is a fresh ship to race for each day. Your saves and careers are not affected. Server hosts: the server updater keeps your own Ship Day settings, so to get the new rhythm, set `W.SHIP_EVERY_HOURS = 24` and `W.SHIP_CONTAINERS = 5` at the top of the trucking plugin's `main.lua` and restart.
