@@ -10,6 +10,11 @@ local M = {
   ROOT = '/settings/earthFreight/mp/',
   -- How long to wait for the server's answer before treating it as a server without the plugin.
   WAIT_SECONDS = 20,
+  -- The question is asked again every HELLO_EVERY seconds while waiting: one asked while BeamMP is still joining can
+  -- be lost, which left a player on a trucking server with a career kept on their PC instead of the server's. After
+  -- giving up it is still asked every LATE_EVERY seconds for LATE_FOR seconds, and a late answer brings the server's
+  -- career in.
+  HELLO_EVERY = 5, LATE_EVERY = 15, LATE_FOR = 600,
 }
 -- This copy's build number, written into the ZIP by the release workflow (tools/package.py); nil in a copy not
 -- built by it. Sent on joining, so a server can turn away an older copy than its own.
@@ -86,14 +91,21 @@ function M.new(deps)
   end
 
   function s:start(clock)
-    self.askedAt = clock or 0
+    self.askedAt, self.helloAt = clock or 0, clock or 0
     deps.send('wwtcHello', tostring(M.PROTO))
   end
 
-  -- Gives up on the server after WAIT_SECONDS: its career is then kept on this PC.
+  -- Asks again until the server answers; gives up after WAIT_SECONDS (the career is then kept on this PC), but still
+  -- asks now and then for a while.
   function s:tick(clock)
-    if self.state == 'waiting' and self.askedAt and (clock or 0) - self.askedAt > M.WAIT_SECONDS then
-      self.state, self.dir = 'local', M.LOCAL
+    clock = clock or 0
+    if self.server or self.state == 'server' or not self.askedAt then return end
+    local since = clock - self.askedAt
+    if self.state == 'waiting' and since > M.WAIT_SECONDS then self.state, self.dir = 'local', M.LOCAL end
+    local every = self.state == 'waiting' and M.HELLO_EVERY or M.LATE_EVERY
+    if since <= M.LATE_FOR and clock - (self.helloAt or self.askedAt) >= every then
+      self.helloAt = clock
+      deps.send('wwtcHello', tostring(M.PROTO))
     end
   end
 
@@ -111,6 +123,8 @@ function M.new(deps)
       local d = decode(data)
       if not d or tonumber(d.v) ~= M.PROTO or not validId(d.server) or type(d.season) ~= 'number'
           or d.season < 1 or d.season ~= math.floor(d.season) then return false end
+      -- Asked more than once, the server answers each time: the game joins once.
+      if self.server then return true end
       self.server, self.season = d.server, d.season
       local key = keys()[d.server]
       deps.send('wwtcJoin', deps.encode({ v = M.PROTO, key = validId(key) and key or nil, build = M.BUILD }))

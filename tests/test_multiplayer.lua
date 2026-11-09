@@ -195,10 +195,56 @@ do
   local store = MPC.store(s, io)
   T.eq(select(2, store:load()), 'mp_waiting', 'and waits for its answer')
   T.check(store.blocked, 'nothing can be saved while waiting')
-  s:tick(MPC.WAIT_SECONDS + 1)
+  for t = 1, MPC.WAIT_SECONDS + 1 do s:tick(t) end
   T.eq(s.state, 'local', 'no answer: the career is kept on this PC')
   T.eq(s:directory(), MPC.LOCAL, 'in a folder of its own')
   T.check(not s:push(F.save()), 'and nothing is sent')
+  local hellos = 0
+  for _, e in ipairs(sent) do if e == 'wwtcHello' then hellos = hellos + 1 end end
+  T.check(hellos >= 4, 'it asked again while waiting')
+  s:tick(MPC.LATE_FOR + 100); s:tick(MPC.LATE_FOR + 200)
+  local after = 0
+  for _, e in ipairs(sent) do if e == 'wwtcHello' then after = after + 1 end end
+  T.eq(after, hellos + 0, 'and stops asking in the end')
+end
+
+-- A first question lost while BeamMP is still joining: asked again, the server's career comes.
+do
+  local W, env = server()
+  local io = F.io()
+  local s
+  local dropped = false
+  local send, pump = link(W, env, 1, function(event, data) s:receive(event, data) end)
+  s = MPC.new({ send = function(e, d) if e == 'wwtcHello' and not dropped then dropped = true; return end; send(e, d) end,
+    encode = J.encode, decode = J.decode, io = io })
+  s:start(0); pump()
+  T.eq(s.state, 'waiting', 'the first question was lost')
+  s:tick(MPC.HELLO_EVERY); pump()
+  T.eq(s.state, 'server', 'asked again, the server answers')
+  local joins = 0
+  for _, line in ipairs(env.printed) do if line:find('joined', 1, true) then joins = joins + 1 end end
+  T.eq(joins, 1, 'one join')
+  s:tick(MPC.HELLO_EVERY * 3)
+  local queued = 0
+  for _, m in ipairs(env.sent) do if m.pid == 1 then queued = queued + 1 end end
+  T.eq(queued, 0, 'and nothing more is asked')
+end
+
+-- A server that answers only after the game gave up: its career replaces the one kept on this PC.
+do
+  local W, env = server()
+  local io = F.io({ [F.CONFIG] = F.config() })
+  local handler, deaf = nil, true
+  local send, pump = link(W, env, 1, function(event, data) handler(event, data) end)
+  local mp = { inSession = function() return true end, encode = J.encode, decode = J.decode,
+    send = function(e, d) if not deaf then send(e, d) end end, listen = function(h) handler = h; return true end }
+  local c = F.controller({ io = io, multiplayer = mp })
+  F.advance(c, MPC.WAIT_SECONDS + 2)
+  T.eq(c.mp.state, 'local', 'no answer in time: kept on this PC')
+  deaf = false
+  F.advance(c, MPC.LATE_EVERY + 1); pump()
+  T.eq(c.mp.state, 'server', 'a late answer joins the server')
+  T.check(c.feedback:find('new career on this server', 1, true) ~= nil, 'and loads its career')
 end
 
 -- The whole game: joining a server shows a wait, then the server's career.
