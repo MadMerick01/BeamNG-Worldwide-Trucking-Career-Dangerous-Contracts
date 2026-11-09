@@ -51,6 +51,9 @@
   th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
   th { color: var(--muted); font-weight: 500; font-size: 13px; }
   td.num, th.num { text-align: right; }
+  td.wealth { font-weight: 600; }
+  .board-wrap { overflow-x: auto; }
+  .note { color: var(--faint); font-size: 13px; margin: 8px 0 0; }
   .empty { color: var(--faint); font-style: italic; }
   ol.steps { margin: 0; padding-left: 20px; }
   ol.steps li { margin-bottom: 6px; }
@@ -103,10 +106,11 @@
       </section>
       <section>
         <h2>Season leaderboard</h2>
-        <table>
-          <thead><tr><th>#</th><th>Trucker</th><th class="num">Money</th><th class="num">Jobs</th></tr></thead>
-          <tbody id="board"><tr><td colspan="4" class="empty">No careers yet.</td></tr></tbody>
-        </table>
+        <div class="board-wrap"><table>
+          <thead><tr><th>#</th><th>Trucker</th><th class="num">Cash</th><th class="num">Truck</th><th class="num">Wealth</th><th class="num">Jobs</th></tr></thead>
+          <tbody id="board"><tr><td colspan="6" class="empty">No careers yet.</td></tr></tbody>
+        </table></div>
+        <p class="note">Ranked by wealth: cash plus what your truck is worth, as of your last save.</p>
       </section>
       <section>
         <h2>How to join</h2>
@@ -270,9 +274,15 @@ function renderBoard() {
   var body = $('board')
   clear(body)
   var rows = stats && Array.isArray(stats.leaderboard) ? stats.leaderboard.slice(0, 20) : []
+  // Wealth is cash plus what the truck is worth; a page from an older server sorts by it too.
+  rows = rows.map(function (r) {
+    var cash = Number(r.balance) || 0, truck = Number(r.truckValue) || 0
+    return { name: r.name, balance: cash, truckValue: truck, wealth: r.wealth != null ? Number(r.wealth) || 0 : cash + truck, deliveries: r.deliveries }
+  })
+  rows.sort(function (a, b) { return b.wealth - a.wealth })
   if (!rows.length) {
     var tr = el('tr'), td = el('td', 'empty', 'No careers yet.')
-    td.colSpan = 4; tr.appendChild(td); body.appendChild(tr)
+    td.colSpan = 6; tr.appendChild(td); body.appendChild(tr)
     return
   }
   rows.forEach(function (r, i) {
@@ -280,6 +290,8 @@ function renderBoard() {
     tr.appendChild(el('td', '', i + 1))
     tr.appendChild(el('td', '', r.name))
     tr.appendChild(el('td', 'num', money(r.balance)))
+    tr.appendChild(el('td', 'num', money(r.truckValue)))
+    tr.appendChild(el('td', 'num wealth', money(r.wealth)))
     tr.appendChild(el('td', 'num', count(r.deliveries)))
     body.appendChild(tr)
   })

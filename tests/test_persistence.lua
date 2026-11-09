@@ -21,7 +21,7 @@ local edits = {
   function(s) s.vehicle.config='pickup.pc' end, function(s) s.vehicle.config={ parts = {} } end,
   function(s) s.vehicle.config={ model = 'pickup', vars = { x = 0/0 } } end,
   function(s) s.vehicle.config={ model = 'pickup', [true] = 1 } end,
-  function(s) s.atStart=false end, function(s) s.vehicle.fuelLitres=-1 end, function(s) s.vehicle.fuelLitres=0/0 end,
+  function(s) s.atStart=false end, function(s) s.vehicle.fuelLitres=-1 end, function(s) s.vehicle.worth=-1 end, function(s) s.vehicle.fuelLitres=0/0 end,
   function(s) s.progression.lastPunctureKm=-1 end,
   function(s) s.playerName='' end, function(s) s.playerName=' Sam' end, function(s) s.playerName=('x'):rep(81) end,
   function(s) s.playerName='Sam"' end, function(s) s.playerName='Sam\n' end, function(s) s.playerName=7 end,
@@ -47,6 +47,7 @@ do
   T.eq(v.load.drivenKm,3.5,'distance kept'); T.check(v.load~=s.load,'load copied')
   T.eq(P.validate(F.save()).load,nil,'no load is fine')
   s=F.save(); s.vehicle.fuelLitres=31.5; T.eq(P.validate(s).vehicle.fuelLitres,31.5,'fuel kept')
+  s=F.save(); s.vehicle.worth=42000; T.eq(P.validate(s).vehicle.worth,42000,'the truck\'s worth kept for the leaderboard')
 end
 -- A job on board keeps its pay, and recent deliveries are kept.
 do

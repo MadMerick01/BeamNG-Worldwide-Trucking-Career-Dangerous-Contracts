@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The server's season leaderboard now ranks truckers by wealth: their cash plus what their truck is worth.** It shows each trucker's Cash, Truck value, Wealth and Jobs, so spending your money on a better truck no longer drops you down the table. Your truck's value is the one on the Your truck card, and it reaches the leaderboard the next time you save, so drivers who haven't saved since this update show a truck value of $0 (or what they paid for a second-hand truck) until they do. Saves still work as before. Server hosts: run the server updater to get the new leaderboard.
+
 ## Build 164 · 9 Nov 2026
 
 - **Ship Day containers now have a Load slider.** At the port, open the Ship Day card on the Town tab and set the Load slider above the containers, from 10% to 100% of a full load, just like on the town job board. The pay next to each container changes with it, and the container you take is loaded with that much cargo. A lighter load is easier on a small car or a rough road.

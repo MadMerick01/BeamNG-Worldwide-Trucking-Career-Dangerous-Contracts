@@ -505,6 +505,18 @@ do
   -- A save puts the money on the leaderboard.
   W.boardCareer(W.players[1], { progression = { balance = 50000, jobsDone = 9 } })
   T.eq(W.status().leaderboard[1].balance, 50000, 'the money at the last save')
+  T.eq(W.status().leaderboard[1].truckValue, 0, 'no truck worth known yet')
+  -- Ranked by wealth: money plus the truck's worth, not money alone.
+  W.boardCareer(W.players[1], { progression = { balance = 50000, jobsDone = 9 }, vehicle = { worth = 30000 } })
+  local richer = { key = string.rep('b', 32), name = 'Cashy' }
+  W.boardCareer(richer, { progression = { balance = 70000, jobsDone = 2 }, vehicle = { worth = 1000 } })
+  local board = W.status().leaderboard
+  T.eq(board[1].wealth, 80000, 'money and truck together'); T.eq(board[1].truckValue, 30000, 'the truck at the last save')
+  T.eq(board[2].name, 'Cashy', 'more cash but less wealth ranks below')
+  W.boardCareer(richer, { progression = { balance = 70000 }, vehicle = { value = 15000 } })
+  T.eq(W.status().leaderboard[1].name, 'Cashy', 'an older game: a second-hand truck counts what was paid')
+  W.boardCareer(richer, { progression = { balance = 70000 }, vehicle = { worth = -5 } })
+  T.eq(W.status().leaderboard[1].truckValue, 15000, 'a bad worth is ignored')
   -- Kept over a restart.
   local W2 = server(env.files)
   T.eq(#W2.stats.feed, #W.stats.feed, 'the feed survives a restart')

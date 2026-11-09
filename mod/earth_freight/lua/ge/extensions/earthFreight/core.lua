@@ -2301,7 +2301,9 @@ function M.new(deps)
         -- The car's name, for the start page before the car is back and for the car once it is.
         name = self:savedVehicleName(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres,
-        value = self:savedVehicleUsed() and self.ownedParts.value or nil, km = self:savedVehicleUsed() and self.ownedParts.km or nil },
+        value = self:savedVehicleUsed() and self.ownedParts.value or nil, km = self:savedVehicleUsed() and self.ownedParts.km or nil,
+        -- What the car is worth now (the Your truck card's value), for a server's leaderboard. Never read back.
+        worth = self.ownedParts and type(self.ownedParts.value) == 'number' and math.floor(self.ownedParts.value + 0.5) or nil },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       trailer = self:savedTrailer(),
       property = copy(self.property),
