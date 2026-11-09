@@ -448,6 +448,7 @@ test('Refuel sits on the Garage tab, and the Town tab has no cargo slots card', 
   a.scope.openPartsMenu()
   assert.match(a.commands.at(-1), /core_vehicles\.openPartsSelectorUI\(\)/)
   assert.match(a.commands.at(-1), /menu\.vehicleconfig\.parts/)
+  assert.match(a.commands.at(-2), /earthFreight_core\.partsMenuOpening\(\)/, 'Lua notes the camera before the menu opens')
 })
 test('the HUD minimises to a Worldwide Trucking button, and stays that way after a rebuild or a restart', () => {
   const saved = {}

@@ -35,6 +35,11 @@ M.TOW_RANGE = 50
 M.RESET_DAMAGE_DROP = 1
 -- How long the HUD app has to show the parts bill box before a corner pop-up shows it instead.
 M.BILL_FALLBACK_SECONDS = 1.5
+-- After the parts menu closes, the camera is checked at these times (seconds), as the game can turn
+-- the free camera back on a moment after the menu has gone.
+M.CAMERA_CHECKS = { 0, 0.5, 1.5 }
+-- A HUD rebuilt this soon after Buy parts was pressed is the menu opening, not closing.
+M.PARTS_MENU_MIN_SECONDS = 1
 -- How long a second-hand car has to spawn before its sale is dropped.
 M.USED_SPAWN_SECONDS = 5
 -- The Rust Bucket to Rig line on the start page: a car worth RUST_VALUE (the starter Burnside)
@@ -685,6 +690,44 @@ function M.attach(c)
     local ok = self:buyParts()
     self:toast(ok and 'success' or 'warning', 'Parts bill', self.partsFeedback or 'Could not pay. Try again on the Garage tab.')
     return ok
+  end
+
+  -- Buy parts opens the game's parts menu, which switches to the free camera. Remembers whether the
+  -- player was on the free camera already, so closing the menu can put them back as they were.
+  function c:partsMenuOpening()
+    local free = false
+    if self.camera and self.camera.isFree then
+      local ok, value = pcall(self.camera.isFree)
+      free = ok and value == true
+    end
+    self.partsCamera = { free = free, at = self.clock }
+    self.partsCameraChecks = nil
+    return true
+  end
+
+  -- The parts menu closed: the game said so (fromGame), or the HUD was built again. Back on the
+  -- car's own camera, unless the player was on the free camera before pressing Buy parts.
+  function c:partsMenuClosed(fromGame)
+    local p = self.partsCamera
+    if not p then return false end
+    if not fromGame and self.clock - p.at < M.PARTS_MENU_MIN_SECONDS then return false end
+    self.partsCamera = nil
+    if p.free then return false end
+    self.partsCameraChecks = {}
+    for i, after in ipairs(M.CAMERA_CHECKS) do self.partsCameraChecks[i] = self.clock + after end
+    self:watchPartsCamera()
+    return true
+  end
+
+  -- Called every tick: the camera checks after the parts menu closed.
+  function c:watchPartsCamera()
+    local checks = self.partsCameraChecks
+    if not checks then return end
+    while checks[1] and self.clock >= checks[1] do
+      table.remove(checks, 1)
+      if self.camera and self.camera.backToCar then pcall(self.camera.backToCar) end
+    end
+    if not checks[1] then self.partsCameraChecks = nil end
   end
 
   -- The HUD app showed the parts bill box.

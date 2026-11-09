@@ -578,6 +578,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // Open the game's own parts menu (Ctrl+W) and car selector (Ctrl+E); the bill then shows up on the Garage tab.
       scope.openPartsMenu = function (forTrailer) {
         if (scope.data.garageLocked && !(forTrailer && scope.data.trailer && scope.data.trailer.shop)) return
+        // Lua notes the camera first, so it can put the player back on it when the menu closes.
+        core('partsMenuOpening()')
         call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
           "elseif guihooks then guihooks.trigger('ChangeState', {state = 'menu.vehicleconfig.parts'}) end")
       }

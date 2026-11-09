@@ -219,7 +219,10 @@ function M.attach(c)
     end
     self.trailerShop = { carId = carId, paid = paid, fitted = paid }
     self.trailerFeedback = 'Fit cargo boxes or tanks to your trailer in the parts menu. The bill shows up here.'
-    if self.garage.openPartsMenu then self.garage:openPartsMenu() end
+    if self.garage.openPartsMenu then
+      self:partsMenuOpening()
+      self.garage:openPartsMenu()
+    end
     self.diag:event('trailer_parts_open', tostring(out.id))
     return true
   end

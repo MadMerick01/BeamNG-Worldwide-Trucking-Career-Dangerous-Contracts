@@ -729,6 +729,39 @@ do
   T.eq(#states, 0, 'but leaves the parts menu open for the player to close')
 end
 
+-- Buy parts and the camera: the parts menu turns on the free camera, and closing it puts the player
+-- back on the car's own camera, unless they were on the free camera before.
+do
+  local Core = require('earthFreight/core')
+  local Workshop = require('earthFreight/workshop')
+  local c = F.controller()
+  local free, backs = false, 0
+  c.camera = { isFree = function() return free end,
+    backToCar = function() backs = backs + 1; local was = free; free = false; return was end }
+  T.check(not c:partsMenuClosed(true), 'nothing to do before Buy parts')
+  T.check(c:partsMenuOpening(), 'Buy parts notes the camera'); free = true
+  T.check(not c:partsMenuClosed(false), 'a HUD built as the menu opens is not the menu closing')
+  F.advance(c, Workshop.PARTS_MENU_MIN_SECONDS + 0.5)
+  T.check(c:partsMenuClosed(true), 'the menu closed')
+  T.check(not free, 'back on the car\'s own camera')
+  free = true; F.advance(c, 2)
+  T.check(not free, 'and again when the game turns the free camera back on a moment later')
+  local count = backs; F.advance(c, 3)
+  T.eq(backs, count, 'only checked for a moment')
+  T.check(not c:partsMenuClosed(true), 'once per Buy parts')
+  -- Already on the free camera: left on it.
+  free = true; c:partsMenuOpening(); F.advance(c, 2)
+  T.check(not c:partsMenuClosed(true), 'a player on the free camera before stays on it')
+  T.check(free, 'still free')
+  -- The HUD built again after the menu closes counts as it closing.
+  free = false; c:partsMenuOpening(); free = true
+  c:mount(false); F.advance(c, 2); c:mount(true)
+  F.advance(c, 1)
+  T.check(not free, 'the HUD coming back puts the car\'s camera back too')
+  -- The game's UI moving between other screens is ignored; leaving the parts menu is its closing.
+  T.check(pcall(Core.onUiChangedState, 'play', 'menu.vehicleconfig.parts'), 'the game\'s UI hook is safe to call')
+end
+
 -- Repairs are priced by the car's Value, as in Enduro.
 do
   local pricing = require('earthFreight/pricing')
