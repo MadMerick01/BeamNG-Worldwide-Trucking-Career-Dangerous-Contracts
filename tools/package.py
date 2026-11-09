@@ -5,7 +5,7 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 
-def build(output: Path) -> Path:
+def build(output: Path, number: int | None = None) -> Path:
     root = Path(__file__).resolve().parents[1]
     source = root / 'mod' / 'earth_freight'
     entries = {}
@@ -18,6 +18,9 @@ def build(output: Path) -> Path:
     entries['README.md'] = (root / 'README.md').read_bytes()
     entries['CHANGELOG.md'] = (root / 'CHANGELOG.md').read_bytes()
     entries['LICENSE'] = (root / 'LICENSE').read_bytes()
+    if number:
+        # The build number, sent to a multiplayer server on joining so it can turn away older copies.
+        entries['lua/ge/extensions/earthFreight/build.lua'] = f'return {int(number)}\n'.encode()
     output = output.resolve()
     if output.is_relative_to(source):
         raise ValueError('Write the archive outside the mod source folder.')
@@ -31,7 +34,7 @@ def build(output: Path) -> Path:
     return output
 
 
-def build_server(output: Path, mod_zip: Path) -> Path:
+def build_server(output: Path, mod_zip: Path, number: int | None = None) -> Path:
     """The BeamMP server download: unzipped into a BeamMP server's folder, it adds the trucking server plugin and
     the mod that BeamMP sends to every player who joins."""
     root = Path(__file__).resolve().parents[1]
@@ -45,6 +48,9 @@ def build_server(output: Path, mod_zip: Path) -> Path:
         'update-server.bat': (root / 'server' / 'update' / 'update-server.bat').read_bytes(),
         'update-settings.example.json': (root / 'server' / 'update' / 'update-settings.example.json').read_bytes(),
     }
+    if number:
+        # The build of the mod this server hands out: players running an older copy are turned away.
+        entries['Resources/Server/WorldwideTrucking/build.txt'] = f'{int(number)}\n'.encode()
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(output, 'w', compression=ZIP_DEFLATED) as archive:
@@ -62,8 +68,9 @@ if __name__ == '__main__':
                         default=Path(__file__).resolve().parents[1] / 'dist' / 'worldwide-trucking-dangerous-contracts.zip')
     parser.add_argument('--server-output', type=Path,
                         help='also build the BeamMP server download here, holding the mod built to --output')
+    parser.add_argument('--build', type=int, help='the build number (the release workflow\'s run number)')
     args = parser.parse_args()
-    mod = build(args.output)
+    mod = build(args.output, args.build)
     print(mod)
     if args.server_output:
-        print(build_server(args.server_output, mod))
+        print(build_server(args.server_output, mod, args.build))

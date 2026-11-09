@@ -646,4 +646,46 @@ do
   T.check(env.chats[#env.chats].text:find('update is off', 1, true) ~= nil, 'a cancelled update is called off in chat')
 end
 
+-- Only this server's build of the mod may play: an older copy is sent off with a message, its career untouched.
+do
+  local W, env = server({ ['Resources/Server/WorldwideTrucking/build.txt'] = '160\n' })
+  local kicked = {}
+  env.kick = function(pid, why) kicked[#kicked + 1] = { pid = pid, why = why } end
+  T.eq(W.BUILD, 160, 'the server knows its build')
+  W.onHello(1); W.onJoin(1, J.encode({ v = 1 }))
+  T.eq(#kicked, 1, 'a copy from before builds were sent is turned away')
+  T.check(kicked[1].why:find('an old build', 1, true) ~= nil and kicked[1].why:find('build 160', 1, true) ~= nil,
+    'the message says which builds')
+  T.check(kicked[1].why:find('Add-ons', 1, true) ~= nil, 'and how to fix it')
+  T.eq(env.chats[#env.chats].text, kicked[1].why, 'also said in chat')
+  T.eq(W.players[1] == nil or W.players[1].key == nil, true, 'no career is loaded for it')
+  local careers = 0
+  for _, m in ipairs(env.sent) do if m.event == 'wwtcCareer' then careers = careers + 1 end end
+  T.eq(careers, 0, 'no career is sent')
+  W.onHello(2); W.onJoin(2, J.encode({ v = 1, build = 159 }))
+  T.eq(#kicked, 2, 'an older build is turned away'); T.check(kicked[2].why:find('build 159', 1, true) ~= nil, 'naming it')
+  W.onHello(3); W.onJoin(3, J.encode({ v = 1, build = 160 }))
+  W.onHello(4); W.onJoin(4, J.encode({ v = 1, build = 161 }))
+  T.eq(#kicked, 2, 'the same or a newer build plays')
+  T.check(W.players[3].key ~= nil and W.players[4].key ~= nil, 'and gets its career')
+  W.REQUIRE_LATEST = false
+  W.onHello(5); W.onJoin(5, J.encode({ v = 1 }))
+  T.eq(#kicked, 2, 'the check can be turned off')
+  -- A server not built by the release workflow checks nothing.
+  local W2, env2 = server()
+  local kicked2 = 0
+  env2.kick = function() kicked2 = kicked2 + 1 end
+  T.eq(W2.BUILD, nil, 'no build file, no build')
+  W2.onHello(1); W2.onJoin(1, J.encode({ v = 1 }))
+  T.eq(kicked2, 0, 'and nobody is turned away')
+  -- The game sends its build.
+  local sentJoin
+  MPC.BUILD = 160
+  local s = MPC.new({ send = function(e, d) if e == 'wwtcJoin' then sentJoin = J.decode(d) end end, encode = J.encode,
+    decode = J.decode, io = { exists = function() return false end } })
+  s:receive('wwtcServer', J.encode({ v = 1, server = string.rep('a', 32), season = 1 }))
+  T.eq(sentJoin.build, 160, 'the game says its build on joining')
+  MPC.BUILD = nil
+end
+
 T.done('multiplayer careers')

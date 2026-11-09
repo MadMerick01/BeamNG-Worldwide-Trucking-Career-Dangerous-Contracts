@@ -63,6 +63,12 @@ Startup folder (press Win+R and type `shell:startup`).
   Save. The server also posts these steps in chat to each player as they join (anyone can type `!hud` to see
   them again), and a player without the HUD gets a pop-up with them after about 20 seconds. To change the chat
   message, edit the `W.WELCOME` lines near the top of `Resources\Server\WorldwideTrucking\main.lua` and restart.
+- **Everyone plays the server's build of the mod.** A player whose game runs an older copy (their own download, or
+  one from BeamNG.Earth's Add-ons page, loaded instead of the server's) is sent off as they join, with a message
+  saying which builds and how to fix it: turn off their own copy in the Mod Manager and on the Add-ons page, close
+  BeamNG completely and join again. Their career isn't touched. The server window says who was sent off. To let older
+  copies play, set `W.REQUIRE_LATEST = false` near the top of `main.lua`. The check needs a server download from build
+  161 or later (it holds `build.txt` next to `main.lua`).
 
 ## Careers, guests and seasons
 

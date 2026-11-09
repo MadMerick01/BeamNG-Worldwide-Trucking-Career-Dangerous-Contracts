@@ -137,6 +137,16 @@ class PackageTest(unittest.TestCase):
             self.assertEqual(archive.read('Resources/Client/worldwide-trucking-dangerous-contracts.zip'), self.output.read_bytes())
             self.assertIsNone(archive.testzip())
 
+    def test_build_number_is_stamped_into_both_downloads(self):
+        mod = build(Path(self.temp.name) / 'numbered.zip', 160)
+        server = build_server(Path(self.temp.name) / 'numbered-server.zip', mod, 160)
+        with ZipFile(mod) as archive:
+            self.assertEqual(archive.read('lua/ge/extensions/earthFreight/build.lua'), b'return 160\n')
+        with ZipFile(server) as archive:
+            self.assertEqual(archive.read('Resources/Server/WorldwideTrucking/build.txt'), b'160\n')
+        with ZipFile(self.output) as archive:
+            self.assertNotIn('lua/ge/extensions/earthFreight/build.lua', archive.namelist(), 'no number, no build file')
+
     def test_place_list_matches_its_generator(self):
         result = subprocess.run([sys.executable, str(ROOT / 'tools' / 'make_places.py'), '--check'],
                                 capture_output=True, text=True)
