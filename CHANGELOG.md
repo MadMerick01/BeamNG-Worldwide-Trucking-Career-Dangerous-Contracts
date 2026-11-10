@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 169 · 10 Nov 2026
+
 - **The server's web page now shows who owns which ground.** Where two bases' circles overlap, the map cuts each one off at the border the game uses, so the bigger circle pushes into the smaller one, and every base's protected 5 km core is shaded. On a phone the page now fits the screen: the leaderboard scrolls sideways inside its own box instead of the whole page. Nothing changes in the game itself, and saves still work.
 
 ## Build 168 · 10 Nov 2026
