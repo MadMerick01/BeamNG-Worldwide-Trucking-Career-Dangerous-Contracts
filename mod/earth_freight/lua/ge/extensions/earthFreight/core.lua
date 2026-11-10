@@ -413,10 +413,35 @@ function M.new(deps)
       doing = doing })
   end
 
-  -- Tells the server a delivery happened, for its live feed and today's totals.
-  function c:reportDelivery(kind, good, units, from, to, pay)
+  -- The two ends of a delivery for the server's commission (magnate.lua): the town centres only, never a spot.
+  local function townEnds(a, b)
+    if not a or not b then return nil end
+    return { { latitude = a.latitude, longitude = a.longitude }, { latitude = b.latitude, longitude = b.longitude } }
+  end
+  M.townEnds = townEnds
+
+  -- Commission from the server for the player's base: added to the money once (by batch id), told in a toast, and
+  -- saved, which is what tells the server it's paid. Waits until the career is in and the player is on the road.
+  function c:watchCommission()
+    local d = self.mp and self.mp.commission
+    if not d or not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return end
+    self.mp.commission = nil
+    if d.id <= (self.profile.commissionId or 0) then return end
+    self.profile.commissionId = d.id
+    if d.amount > 0 then
+      self:addMoney(d.amount)
+      self:toast('info', 'Commission', d.jobs == 1 and d.by
+        and string.format('%s delivered in your turf: +%s commission.', d.by, dollars(d.amount))
+        or string.format('%d jobs in your turf paid you %s commission.', d.jobs, dollars(d.amount)))
+      self.diag:event('commission', string.format('#%d %d from %d jobs', d.id, d.amount, d.jobs))
+    end
+    self:autoSaveSoon('your commission')
+  end
+
+  -- Tells the server a delivery happened, for its live feed, today's totals and base owners' commission.
+  function c:reportDelivery(kind, good, units, from, to, pay, ends)
     if not self.mp or self.mp.state ~= 'server' then return end
-    self.mp:delivered({ kind = kind, what = good and amount(good, units) or nil, from = from, to = to, pay = pay })
+    self.mp:delivered({ kind = kind, what = good and amount(good, units) or nil, from = from, to = to, pay = pay, ends = ends })
   end
 
   function c:endMission()
@@ -1498,8 +1523,10 @@ function M.new(deps)
       self.offer = nil
     end
     local section = load.contract and contracts.get(load.contract)
+    -- An off-road drop counts for the turf of the town it was taken in, at both ends.
+    local town = not load.beacon and not section and places.get(load.from) or nil
     self:reportDelivery(load.beacon and 'beacon' or (section and 'contract' or 'drop'), not load.beacon and good or nil,
-      load.units, nil, section and section.name or nil, load.pay)
+      load.units, nil, section and section.name or nil, load.pay, townEnds(town, town))
     if load.beacon then
       self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), 'Dropped off. Nobody saw a thing, and nobody asked.'
         .. refund)
@@ -1540,10 +1567,10 @@ function M.new(deps)
     self:addMoney(load.pay)
     jobs.delivered(self.needs, place, good, self.now())
     self:finishJob()
-    if load.ship and self.mp then self.mp:shipDelivered(load.ship.ship, load.ship.n, place.name, load.pay)
+    local from = places.get(load.from)
+    if load.ship and self.mp then self.mp:shipDelivered(load.ship.ship, load.ship.n, place.name, load.pay, townEnds(from, place))
     else
-      local from = places.get(load.from)
-      self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay)
+      self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay, townEnds(from, place))
     end
     local refund = ''
     if self.offer and shipping.offerPays(place, self.offer) then
@@ -1778,6 +1805,7 @@ function M.new(deps)
     self:hintHud(sample, dt)
     self:watchClaim()
     self:watchFind()
+    self:watchCommission()
     self:reportWhere(sample)
     self:provideVehicle()
     self:watchHire()
@@ -2310,6 +2338,7 @@ function M.new(deps)
         -- What the car is worth now (the Your truck card's value), for a server's leaderboard. Never read back.
         worth = self.ownedParts and type(self.ownedParts.value) == 'number' and math.floor(self.ownedParts.value + 0.5) or nil },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
+      commissionId = self.profile.commissionId,
       trailer = self:savedTrailer(),
       property = copy(self.property),
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,

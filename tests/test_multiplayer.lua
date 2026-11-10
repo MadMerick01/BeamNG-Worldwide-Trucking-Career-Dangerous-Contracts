@@ -725,6 +725,32 @@ do
   T.eq(#st.bases, 1, 'one base on the page'); T.eq(st.bases[1].town, 'Penrith', 'at its town')
   T.check(st.bases[1].radiusKm >= 20, 'with its circle')
   T.near(st.bases[1].latitude, 0, 90, 'a town centre'); T.eq(st.leaderboard[1].baseTown, 'Penrith', 'and the leaderboard names it')
+  -- Commission: player 2's delivery from Ropes Crossing to Penrith, both in player 1's turf, pays player 1 5% on top.
+  local town = { latitude = -33.75, longitude = 150.7 }
+  local balance1, balance2 = c1.profile.progression.balance, c2.profile.progression.balance
+  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 1000, from = 'Ropes Crossing', to = 'Penrith', ends = { ropes, town } }))
+  T.eq(W.bases[key].batch.amount, 50, '2.5% for each end in the turf'); T.eq(c2.profile.progression.balance, balance2, 'nothing taken from the driver')
+  pump(); F.advance(c1, 0.6)
+  T.eq(c1.profile.progression.balance, balance1 + 50, 'paid into the owner\'s money')
+  T.eq(c1.profile.commissionId, W.bases[key].batch and W.bases[key].batch.id or c1.profile.commissionId, 'once, by its batch')
+  F.advance(c1, 4); pump()
+  T.eq(W.bases[key].batch, nil, 'the save tells the server it is paid')
+  -- Sent again (a lost answer), it isn't paid twice.
+  c1.mp.commission = { id = c1.profile.commissionId, amount = 50, jobs = 1 }; F.advance(c1, 0.6)
+  T.eq(c1.profile.progression.balance, balance1 + 50, 'never paid twice')
+  -- The owner's own deliveries pay them no commission, and nothing is owed outside every circle.
+  W.onDelivered(1, J.encode({ v = 1, kind = 'job', pay = 1000, ends = { town, ropes } }))
+  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 1000, ends = { { latitude = 10, longitude = 10 }, { latitude = 10.1, longitude = 10 } } }))
+  T.eq(W.bases[key].batch, nil, 'nothing for your own jobs or far away')
+  -- At most $20,000 a day for each base.
+  for _ = 1, 30 do W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 20000, ends = { ropes, town } })) end
+  local b = W.bases[key]
+  T.eq((b.batch and b.batch.amount or 0) + b.owed + 50, W.COMMISSION_DAY_MAX, 'capped for the day')
+  -- Dangerous contracts pay none.
+  local before = b.dayTotal
+  env.date = function() return '2099-01-01' end
+  W.onDelivered(2, J.encode({ v = 1, kind = 'contract', pay = 5000, ends = { ropes, town } }))
+  T.eq(b.dayTotal, before, 'no commission on a dangerous contract')
   local W2 = server(env.files)
   T.check(W2.bases[key] ~= nil and W2.bases[key].town == 'Penrith', 'bases survive a restart')
   -- A base asked for but never saved is let go after a while, and the town is free again.

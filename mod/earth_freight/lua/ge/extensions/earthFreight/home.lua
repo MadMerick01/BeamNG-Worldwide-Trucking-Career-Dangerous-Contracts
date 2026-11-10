@@ -389,7 +389,7 @@ function M.attach(c)
       view.circle = { town = circle.name, radiusKm = radius, boost = circle.boost, wealth = math.floor(self:wealth()),
         peak = circle.peak, share = magnate.OWNER_SHARE, bonus = math.floor(magnate.OWNER_SHARE * circle.boost * 10 + 0.5) / 10,
         nextKm = next, nextWealth = next and math.ceil(magnate.wealthFor(next, circle.boost) / 1000) * 1000 or nil,
-        maxKm = magnate.MAX_KM, inside = current and location.distance(current, circle) <= circle.radiusKm * 1000 or false }
+        maxKm = magnate.MAX_KM, commission = self.mp ~= nil and self.mp.state == 'server' or nil, inside = current and location.distance(current, circle) <= circle.radiusKm * 1000 or false }
     end
     local problem = self:swapProblem()
     view.swapAllowed, view.swapProblem = problem == nil, view.stored and problem or nil

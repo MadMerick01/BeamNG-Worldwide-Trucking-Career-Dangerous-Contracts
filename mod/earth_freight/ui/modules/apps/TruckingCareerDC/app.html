@@ -705,6 +705,7 @@
           <div ng-if="data.home.circle" style="margin:6px 0;padding:8px;border:1px solid rgba(167,229,201,.4);border-radius:6px;font-size:13px;">
             <div><b>Your circle reaches {{data.home.circle.radiusKm}} km</b> around {{data.home.circle.town || 'your base'}}<span ng-if="data.home.circle.boost > 1.05"> (&times;{{data.home.circle.boost | number:1}} region: steep ground makes it bigger)</span>.<span ng-if="data.home.circle.inside" style="color:#6fcf97;"> You are inside it.</span></div>
             <div style="color:#c9d6d2;">Jobs that start or end inside pay you +{{data.home.circle.bonus | number:1}} on the region multiplier at that end.</div>
+            <div ng-if="data.home.circle.commission" style="color:#c9d6d2;">When another trucker picks up or drops off in your turf, you get 2.5% of their pay for each end, up to $20,000 a day. It's paid to you when you're next on the server.</div>
             <div style="color:#c9d6d2;">Your wealth: ${{data.home.circle.wealth | number:0}} (cash, truck and base).<span ng-if="data.home.circle.nextKm"> At ${{data.home.circle.nextWealth | number:0}} your circle reaches {{data.home.circle.nextKm}} km.</span><span ng-if="!data.home.circle.nextKm"> Your circle is as big as it gets.</span> It never shrinks.</div>
           </div>
           <div ng-if="data.home.owned.here" style="font-size:13px;color:#6fcf97;">You are at your base. Repairs here are {{data.home.repairShare}}% off.</div>

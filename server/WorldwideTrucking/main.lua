@@ -289,6 +289,7 @@ function W.onDelivered(pid, data)
   end
   counted(p, pay, false)
   W.feed('delivery', text)
+  if d.kind == 'job' or d.kind == 'drop' then W.commission(p, pay, d.ends) end
 end
 
 -- ----- Bases of operations (the Magnate update) ---------------------------------------------------------------------
@@ -332,8 +333,12 @@ function W.loadBases()
   for _, b in ipairs(ok and type(d) == 'table' and d or {}) do
     local lat, lon = spotOf(b)
     if lat and type(b) == 'table' and W.validKey(b.key) then
+      local batch = type(b.batch) == 'table' and payOf(b.batch.id) and payOf(b.batch.amount)
+        and { id = payOf(b.batch.id), amount = payOf(b.batch.amount), jobs = payOf(b.batch.jobs) or 1, by = clean(b.batch.by, 32) } or nil
       W.bases[b.key] = { name = clean(b.name, 32) or 'A trucker', town = clean(b.town, 40), latitude = lat, longitude = lon,
-        boost = tonumber(b.boost) or 1, peak = payOf(b.peak) or 0, asked = tonumber(b.asked) }
+        boost = tonumber(b.boost) or 1, peak = payOf(b.peak) or 0, asked = tonumber(b.asked),
+        owed = payOf(b.owed) or 0, jobs = payOf(b.jobs) or 0, by = clean(b.by, 32), batch = batch, lastId = payOf(b.lastId) or 0,
+        day = type(b.day) == 'string' and b.day or nil, dayTotal = payOf(b.dayTotal) or 0 }
     end
   end
 end
@@ -342,7 +347,8 @@ local function saveBases()
   local list = {}
   for key, b in pairs(W.bases) do
     list[#list + 1] = { key = key, name = b.name, town = b.town, latitude = b.latitude, longitude = b.longitude,
-      boost = b.boost, peak = b.peak, asked = b.asked }
+      boost = b.boost, peak = b.peak, asked = b.asked, owed = b.owed, jobs = b.jobs, by = b.by, batch = b.batch,
+      lastId = b.lastId, day = b.day, dayTotal = b.dayTotal }
   end
   table.sort(list, function(a, b) return a.key < b.key end)
   W.env.write(basesPath(), W.env.encode(list))
@@ -428,14 +434,82 @@ function W.baseCareer(p, save)
     end
     b.name, b.asked = clean(p.name, 32) or b.name or 'A trucker', nil
     b.peak = math.max(b.peak or 0, payOf(property.peak) or 0)
+    -- Commission the game has added to the money in this save is paid.
+    if b.batch and (payOf(save.commissionId) or 0) >= b.batch.id then b.batch = nil end
     W.bases[p.key] = b
     saveBases()
     W.sendBasesToAll()
+    W.sendCommission(p.key)
   elseif had and not had.asked and not property then
     W.bases[p.key] = nil
     saveBases()
     W.sendBasesToAll()
   end
+end
+
+-- ----- Commission ---------------------------------------------------------------------------------------------------
+-- A delivery by someone else with an end in a base's turf pays that base's owner COMMISSION_SHARE of the pay for each
+-- such end (5% for both), as new money: the driver keeps all of theirs. At most COMMISSION_DAY_MAX a base a day. It
+-- builds up while the owner is away and goes to their game as a batch (wwtcCommission { id, amount, jobs, by }); the
+-- game adds it to their money and saves with commissionId = id, and that save is what marks the batch paid.
+W.COMMISSION_SHARE = 0.025
+W.COMMISSION_DAY_MAX = 20000
+W.BASE_CORE_KM = 5
+
+-- Whose turf a spot is: a base's own 5 km core first, else the circle with the smallest distance ÷ radius.
+function W.turfAt(spot)
+  local best, bestScore
+  for key, b in pairs(W.bases or {}) do
+    if not b.asked then
+      local km, r = W.km(b, spot), W.baseRadius(math.max(b.peak, W.BASE_PRICE), b.boost)
+      if km <= W.BASE_CORE_KM then return key end
+      if km <= r and (not bestScore or km / r < bestScore) then best, bestScore = key, km / r end
+    end
+  end
+  return best
+end
+
+-- Sends a base owner what they're owed, if they're on: the batch already sent, else a new one.
+function W.sendCommission(key)
+  local b = W.bases and W.bases[key]
+  if not b then return end
+  local pid
+  for id, p in pairs(W.players) do if p.key == key then pid = id end end
+  if not pid then return end
+  if not b.batch and (b.owed or 0) > 0 then
+    b.lastId = (b.lastId or 0) + 1
+    b.batch = { id = b.lastId, amount = b.owed, jobs = b.jobs or 1, by = b.by }
+    b.owed, b.jobs, b.by = 0, 0, nil
+    saveBases()
+  end
+  if b.batch then
+    W.env.send(pid, 'wwtcCommission', W.env.encode({ v = W.PROTO, id = b.batch.id, amount = b.batch.amount,
+      jobs = b.batch.jobs, by = b.batch.by }))
+  end
+end
+
+-- A delivery's commission: ends are the town centres { latitude, longitude } at each end.
+function W.commission(p, pay, ends)
+  if not p or not p.key or not pay or pay <= 0 or type(ends) ~= 'table' or not W.bases then return end
+  local paid = {}
+  for i = 1, 2 do
+    local lat, lon = spotOf(ends[i])
+    local key = lat and W.turfAt({ latitude = lat, longitude = lon })
+    if key and key ~= p.key then paid[key] = (paid[key] or 0) + pay * W.COMMISSION_SHARE end
+  end
+  local date = W.env.date and W.env.date() or ''
+  for key, amount in pairs(paid) do
+    local b = W.bases[key]
+    if b.day ~= date then b.day, b.dayTotal = date, 0 end
+    amount = math.min(math.floor(amount + 0.5), W.COMMISSION_DAY_MAX - b.dayTotal)
+    if amount > 0 then
+      b.dayTotal = b.dayTotal + amount
+      b.owed, b.jobs, b.by = (b.owed or 0) + amount, (b.jobs or 0) + 1, clean(p.name, 32) or 'A trucker'
+      W.feed('commission', string.format("%s's delivery paid %s %s commission.", clean(p.name, 32) or 'A trucker', b.name, dollars(amount)))
+    end
+  end
+  if next(paid) then saveBases() end
+  for key in pairs(paid) do W.sendCommission(key) end
 end
 
 -- The stats file the page reads.
@@ -671,6 +745,7 @@ function W.onJoin(pid, data)
   W.shipTick()
   if save then W.baseCareer(p, save) end
   W.sendBases(pid)
+  W.sendCommission(key)
   W.sendShip(pid)
   if save then W.boardCareer(p, save) end
   W.feed('join', (clean(p.name, 32) or 'A trucker') .. ' joined the server.')
@@ -890,6 +965,7 @@ function W.onShipDone(pid, data)
     counted(p, pay, true)
     W.feed('delivery', string.format('%s delivered container %d from %s to %s%s.', clean(p.name, 32) or 'A trucker',
       math.floor(d.n), from, town, pay and (' for ' .. dollars(pay)) or ''))
+    W.commission(p, pay, d.ends)
   end
 end
 

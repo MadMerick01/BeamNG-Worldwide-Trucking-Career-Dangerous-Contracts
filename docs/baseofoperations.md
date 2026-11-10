@@ -1,10 +1,12 @@
 # The Magnate update: bases of operations
 
-Status: **steps 1 and 2 built**, 9 Nov 2026: the base replaces the home; its circle and the owner's bonus; on a
+Status: **steps 1 to 3 built**, 10 Nov 2026: the base replaces the home; its circle and the owner's bonus; on a
 server, bases kept by the server (one a town, 10 km apart), everyone's circles, visitors' bonus, turf pushing, Ship Day
-containers, and circles and a Base column on the web page. Commission (step 3) is next.
-Dangerous contracts, heli jobs and beacon packages get no base bonus: they run on famous roads and remote spots far
-from towns, where a town's circle means little.
+containers, circles and a Base column on the web page, and commission.
+Dangerous contracts, heli jobs and beacon packages get no base bonus and no commission: they run on famous roads and
+remote spots far from towns, where a town's circle means little. An off-road drop counts for the town it was taken in,
+at both ends. Commission is marked paid when the owner's next save reaches the server (the save carries the batch's
+id), so it is never lost or paid twice.
 
 ## The pitch
 
