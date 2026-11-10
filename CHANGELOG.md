@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 173 · 10 Nov 2026
+
 - **Your progress now saves itself every 5 minutes.** If you've driven, earned or spent anything since your last save, the game saves on its own once five minutes have passed. It never saves while you're moving: it waits until you next stop for a few seconds, the same way it already saves after a delivery, so there's no hitch on the road. The Save line in the HUD says "Saved automatically." when it happens.
 - It works partway through a job (your load and the distance you've driven with it are kept, just as when you press Save), and it waits while a relocation is booked, while you're away from your car, in a helicopter or on foot, and while a dangerous contract teleport is still loading. Sitting parked with nothing new doesn't save again and again.
 - It works the same on a multiplayer server: each auto save goes to the server, like pressing Save. Pressing Save yourself, or any other save, starts the five minutes again.
