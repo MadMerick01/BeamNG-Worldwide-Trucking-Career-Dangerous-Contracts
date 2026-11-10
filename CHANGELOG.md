@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **A booked relocation no longer leaves you stranded.** Sometimes, while BeamNG.Earth loaded the terrain after a relocation you had booked and paid for on the **Relocate** tab, your car was picked up for a moment a few km short of the destination. The HUD then said "You teleported without booking a relocation. Go back to where you left from", and stayed that way even once you were there. Now arriving at your booking always counts as relocating: the booking is used up, the warning clears and jobs, driving and Save work again. If you're stuck with that warning right now, press **Cancel booking** on the **Relocate** tab to get the fee back, then load this build: you carry on from your last save as usual. Your saves still work.
+
 ## Build 170 · 10 Nov 2026
 
 - **The server's web page now wears the Magnate update look.** It opens with a "The Magnate Update" banner over a hillside shot, with the game's title card beneath it. Headings use the same bold, narrow lettering as the banner. On the map, each base gets a glowing gold circle and a dark tag such as "Sam's base · 41 km", which shows once you zoom in on a region. Base towns on the leaderboard are picked out in gold. Nothing changes in the game itself, and saves still work.
