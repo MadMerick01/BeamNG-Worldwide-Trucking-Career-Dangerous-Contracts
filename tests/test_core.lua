@@ -266,6 +266,47 @@ do
   T.eq(c:view().saveFeedback, 'Saved automatically after buying parts.', 'named after what was done')
 end
 
+-- Timed save: every five minutes with something new to keep, the game saves itself at the next stop, never while
+-- driving, a relocation is booked or a dangerous contract teleport is loading. Parked and idle, it writes nothing.
+do
+  local c, io, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c:manualSave(), 'saved by hand first')
+  local writes = io.writes
+  F.advance(c, Core.TIMED_SAVE_SECONDS + 30)
+  T.eq(io.writes, writes, 'parked with nothing new: no save')
+  -- Drive for longer than five minutes: nothing is written on the move.
+  for _ = 1, Core.TIMED_SAVE_SECONDS + 20 do
+    a.pose = location.destination(a.pose, 90, 20); c:tick(1)
+  end
+  T.check(c.autoSave and c.autoSave.timed, 'a timed save is waiting')
+  T.eq(io.writes, writes, 'not saved while driving')
+  F.advance(c, Core.AUTOSAVE_SECONDS + 2)
+  T.eq(io.writes, writes + 1, 'saved at the stop')
+  T.eq(c:view().saveFeedback, 'Saved automatically.', 'and says so')
+  T.eq(c:view().unsavedDistanceKm, 0, 'the distance is kept')
+  T.near(c.profile.resume.latitude, a.pose.latitude, 1e-6, 'where the car stopped')
+  -- A relocation booked holds it off, as it does Save.
+  for _ = 1, 10 do a.pose = location.destination(a.pose, 90, 20); c:tick(1) end
+  c.booking = { id = 'x', name = 'X', region = 'Y', fee = 0 }
+  F.advance(c, Core.TIMED_SAVE_SECONDS + 10)
+  T.eq(io.writes, writes + 1, 'not while a relocation is booked')
+  c.booking = nil
+  -- So does a dangerous contract teleport still loading.
+  c.contractTeleportAt = c.clock
+  F.advance(c, Core.AUTOSAVE_SECONDS + 2)
+  T.eq(io.writes, writes + 1, 'not while a contract teleport loads')
+  c.contractTeleportAt = nil
+  F.advance(c, Core.AUTOSAVE_SECONDS + 2)
+  T.eq(io.writes, writes + 2, 'saved once it is clear')
+  -- A save made any other way starts the five minutes again.
+  for _ = 1, 10 do a.pose = location.destination(a.pose, 90, 20); c:tick(1) end
+  F.advance(c, Core.TIMED_SAVE_SECONDS - 60)
+  T.check(c:manualSave(), 'saved by hand')
+  F.advance(c, 120)
+  T.eq(io.writes, writes + 3, 'no timed save straight after')
+end
+
 -- The Nearby list shows which way each town is, and its GPS button routes there.
 do
   local c, _, a = F.controller()

@@ -70,7 +70,7 @@ W.WELCOME = {
   'Welcome to the Worldwide Trucking Career!',
   'No trucking HUD on screen? Press Esc > System > HUD Apps > .Earth (edit layout) > + Add app.',
   'Pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom, press + Add to layout, then Save.',
-  'Your career is kept on this server. Press Save in the HUD to keep your progress. Type !hud to see this again.',
+  'Your career is kept on this server. It saves itself every 5 minutes, or press Save in the HUD. Type !hud to see this again.',
 }
 -- The server page (GitHub Pages): every STATS_EVERY_SECONDS the server sends its stats (who's on and in which town,
 -- Ship Day, the live feed, today's totals and the leaderboard) to status.json in STATS_REPO on GitHub. Make STATS_REPO

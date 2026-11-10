@@ -45,11 +45,14 @@ local TELEPORT_WAIT_SECONDS = 30
 -- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
 -- been stopped this long and nothing else is going on.
 local AUTOSAVE_SECONDS = 3
+-- Every this many seconds of play with something new to keep (distance driven, money earned or spent, a new
+-- name), the game also saves itself, in the same way: at the next stop, never while driving.
+local TIMED_SAVE_SECONDS = 5 * 60
 -- Whether the Street View window was on, so it starts again with the game.
 local STREET_VIEW_FILE = '/settings/earthFreight/streetview.json'
 -- The real businesses found for towns, so each town is only looked up once (see business.lua).
 local BUSINESS_FILE = '/settings/earthFreight/businesses.json'
-M.AUTOSAVE_SECONDS = AUTOSAVE_SECONDS
+M.AUTOSAVE_SECONDS, M.TIMED_SAVE_SECONDS = AUTOSAVE_SECONDS, TIMED_SAVE_SECONDS
 -- A puncture's tyre repair, as damage points, so every repair quote and bill includes it. Like
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
 local PUNCTURE_DAMAGE = punctures.TYRE_REPAIR_COST / pricing.REPAIR_COST_PER_DAMAGE
@@ -264,6 +267,8 @@ function M.new(deps)
     -- The name typed on the start page; like money, a changed name is kept by Save.
     self.playerName = self.profile and self.profile.playerName or nil
     self.savedName = self.playerName
+    -- The five minutes before the next timed save start again with each load and each save.
+    self.savedAt = self.clock
     self.mode = (self.profile and not self.profile.atStart) and 'resume' or 'start'
     self.creationBase = location.copy(self.profile and self.profile.base or self.unsavedBase
       or (self.configuration and self.configuration.base))
@@ -1817,6 +1822,7 @@ function M.new(deps)
     self:watchFuel()
     self:watchInsurance()
     self:watchTow()
+    self:watchTimedSave()
     self:watchAutoSave()
     if self.streetView then
       self.streetView:poll(self.clock, function() return self:streetViewPosition() end)
@@ -2277,6 +2283,7 @@ function M.new(deps)
     self.savedName = saved.playerName
     self.savedDistanceKm = saved.progression.totalDistanceKm
     self.savedBalance = saved.progression.balance
+    self.savedAt = self.clock
     return saved
   end
 
@@ -2377,6 +2384,23 @@ function M.new(deps)
     if self.profile then self.autoSave = { what = what, since = nil } end
   end
 
+  -- Whether anything Save keeps has changed since the last save: distance driven, money or the name. A player
+  -- parked and away from the keyboard is not saved over and over.
+  function c:unsavedProgress()
+    local p = self.profile and self.profile.progression
+    if not p then return false end
+    return p.totalDistanceKm ~= self.savedDistanceKm or p.balance ~= self.savedBalance or self.playerName ~= self.savedName
+  end
+
+  -- Every TIMED_SAVE_SECONDS since the last save, asks for one, which watchAutoSave makes at the next stop. A save
+  -- already asked for (after a delivery, say) is left as it is: it saves the same progress.
+  function c:watchTimedSave()
+    if self.autoSave or not self.profile or self.error then return end
+    if self.clock - (self.savedAt or self.clock) < TIMED_SAVE_SECONDS then return end
+    if not self:unsavedProgress() then return end
+    self.autoSave = { timed = true, since = nil }
+  end
+
   -- Called every tick: saves the game the player asked for with autoSaveSoon once the car has been
   -- stopped for AUTOSAVE_SECONDS in its own car, with no bill, booking, respawn or claim waiting.
   -- Until then it keeps waiting, so a player who drives straight off is saved at their next stop.
@@ -2389,6 +2413,8 @@ function M.new(deps)
       and not self.pendingParts and not self.pendingCar and not self.insurancePending
       and not self.refuelPending and not self.respawned and not self.partsCheckDue
       and not self:trailerSaveProblem()
+      -- Not while BeamNG.Earth is still taking the car to a dangerous contract's start and loading its terrain.
+      and not (self.contractTeleportAt and self.clock - self.contractTeleportAt < TELEPORT_WAIT_SECONDS)
       and sample and sample.valid and self.odometer:stopped()
     if not settled then due.since = nil; return end
     due.since = due.since or self.clock
@@ -2396,8 +2422,11 @@ function M.new(deps)
     self.autoSave = nil
     -- A save that fails says so, as Save does; the last save is untouched.
     if self:manualSave() then
-      self.feedback = 'Saved automatically after ' .. due.what .. '.'
-      self.diag:event('auto_save', due.what)
+      self.feedback = due.timed and 'Saved automatically.' or ('Saved automatically after ' .. due.what .. '.')
+      self.diag:event('auto_save', due.timed and 'timed' or due.what)
+    elseif due.timed then
+      -- A timed save that could not happen tries again in another five minutes, not every tick.
+      self.savedAt = self.clock
     end
   end
 
