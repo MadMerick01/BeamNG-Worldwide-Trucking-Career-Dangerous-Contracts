@@ -207,6 +207,15 @@ function M.new(deps)
       if not d then return false end
       self.baseClaimed = { ok = d.ok == true, why = M.cleanText(d.why, 20), by = M.cleanText(d.by, 32), town = M.cleanText(d.town, 40) }
       return true
+    elseif event == 'wwtcCommission' then
+      -- Commission owed to this player's base: { id, amount, jobs, by }, added to the money in core.lua.
+      local d = decode(data)
+      if not d then return false end
+      local id, amount = tonumber(d.id), tonumber(d.amount)
+      if not id or id < 1 or id ~= math.floor(id) or not amount or amount < 0 or amount > 1000000 then return false end
+      self.commission = { id = id, amount = math.floor(amount), jobs = math.max(1, math.floor(tonumber(d.jobs) or 1)),
+        by = M.cleanText(d.by, 32) }
+      return true
     elseif event == 'wwtcFound' then
       -- The answer to find(): the other player's spot, or why not.
       local d = decode(data)
@@ -267,7 +276,7 @@ function M.new(deps)
   end
   -- A base of operations: asks the server whether this town is free (one base a town, 10 km apart).
   function s:claimBase(t) return shipEvent('wwtcBaseClaim', t) end
-  function s:shipDelivered(ship, n, town, pay) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay }) end
+  function s:shipDelivered(ship, n, town, pay, ends) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay, ends = ends }) end
   return s
 end
 
@@ -310,7 +319,7 @@ function M.game()
   function g.listen(handler)
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
     for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow',
-        'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed' }) do
+        'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true
