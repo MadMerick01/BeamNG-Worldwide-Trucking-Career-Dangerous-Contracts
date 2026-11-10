@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 171 · 10 Nov 2026
+
 - **Parts you fit now count in what your truck is worth.** Before, a truck was always worth the price of the version it came as, so a Burnside starter stayed at $3,500 however much you spent on it. Now every part that differs from how the truck came adds its price, and parts you take off without replacing take theirs away. You'll see the new worth on the Your truck card, on the Rust Bucket to Rig line, in your wealth (and so your base's circle) and on the server's leaderboard.
 - Because a truck with better parts is worth more, its repairs cost a bit more and it trades in for more when you buy another car.
 - Your saves still work, and parts already on your truck count straight away, with nothing to do. A car parked at your base shows the worth it had when you parked it.
