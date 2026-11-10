@@ -88,10 +88,16 @@ function M.attach(c)
     return { id = vehicle.id, damage = vehicle.damage + self.owedDamage + self.punctureDamage }
   end
 
-  -- The game Value of the player's own car, when vehicleId is that car; repairs are priced from it.
+  -- What the player's own car is worth, when vehicleId is that car: its price plus the parts
+  -- fitted since (pricing.carWorth). Repairs and trade-ins are priced from it.
   function c:carValueOf(vehicleId)
     local owned = self.ownedParts
-    if owned and vehicleId ~= nil and owned.id == vehicleId then return owned.value end
+    if owned and vehicleId ~= nil and owned.id == vehicleId then return pricing.carWorth(owned) end
+  end
+
+  -- What the player's own car is worth now, or nil.
+  function c:carWorth()
+    return self.ownedParts and pricing.carWorth(self.ownedParts) or nil
   end
 
   -- The player's car for the start page's Your truck card, like a character sheet: its name,
@@ -104,11 +110,11 @@ function M.attach(c)
     local owned = self.ownedParts
     if self.error then return nil end
     if not owned or not self.arrived then return self:savedCarCard() end
-    local d = self.lastDamage
-    return { name = owned.name or owned.model, value = owned.value,
+    local d, worth = self.lastDamage, pricing.carWorth(owned)
+    return { name = owned.name or owned.model, value = worth,
       preview = self:carPicture(owned.model, owned.configFile),
-      repair = d and d.id == owned.id and pricing.repairCost(d.damage, owned.value) or 0,
-      climb = M.climb(owned.value) }
+      repair = d and d.id == owned.id and pricing.repairCost(d.damage, worth) or 0,
+      climb = M.climb(worth) }
   end
 
   -- The picture of the player's car: our photo of it with the parts paid for, once one has been
@@ -144,8 +150,8 @@ function M.attach(c)
         local ok, v, n = pcall(self.garage.carValue, self.garage, model, configFile)
         if ok then value, name = v, n end
       end
-      -- A second-hand car is worth what was paid for it.
-      value = saved.value or value
+      -- A second-hand car is worth what was paid for it; the worth saved with it counts its parts.
+      value = saved.worth or saved.value or value
       known = { from = saved, model = model, configFile = configFile, name = saved.name or name or model, value = value,
         repair = saved.damage and pricing.repairCost(saved.damage, value) or 0,
         space = cargo.capacity({ parts = M.configParts(config) }) }
@@ -542,7 +548,7 @@ function M.attach(c)
     self.owedDamage = self.owedDamage + before.damage - raw.damage
     self.quote = nil
     self.diag:event('reset_owed', string.format('%.1f damage', before.damage - raw.damage))
-    local owed = pricing.repairCost(self.owedDamage, owned.value)
+    local owed = pricing.repairCost(self.owedDamage, pricing.carWorth(owned))
     if owed > 0 then
       local towed = self.towedAt and self.clock - self.towedAt <= M.GRACE_SECONDS
       self:showFlash('cancelled', 'REPAIR STILL OWED', (towed and 'Towing does not fix the car. ' or 'Resetting the car does not fix it for free. ')
@@ -550,8 +556,13 @@ function M.attach(c)
     end
   end
 
-  -- Adopts the fitted parts as paid for, when there is nothing to charge against.
+  -- Adopts the fitted parts as paid for, when there is nothing to charge against. Lines them up
+  -- with the parts the car's config comes with, so the parts fitted since count in its worth.
   function c:adoptParts(snapshot)
+    if snapshot.stock == nil and self.garage and self.garage.stockParts then
+      local ok, stock = pcall(self.garage.stockParts, self.garage, snapshot)
+      snapshot.stock = ok and stock or nil
+    end
     self.ownedParts, self.pendingParts, self.pendingCar = snapshot, nil, nil
     self.diag:event('parts_owned', tostring(snapshot.model) .. ' #' .. tostring(snapshot.id))
   end
@@ -713,10 +724,11 @@ function M.attach(c)
   -- player's, opens a bill: the car's price, plus parts changed on it since, less the trade-in of
   -- the player's car. The swap mends the old car, so its damage is frozen into the bill.
   -- What the player's car trades in for, less the repair its damage needs: the trade-in and repair.
+  -- Both go by what the car is worth with its parts.
   function c:tradeIn(oldDamage)
-    local owned = self.ownedParts
-    local repair = pricing.repairCost(oldDamage, owned.value)
-    return math.max(0, math.floor((owned.value or pricing.DEFAULT_CAR_PRICE) * pricing.CAR_TRADE_IN_SHARE + 0.5) - repair), repair
+    local worth = pricing.carWorth(self.ownedParts)
+    local repair = pricing.repairCost(oldDamage, worth)
+    return math.max(0, math.floor((worth or pricing.DEFAULT_CAR_PRICE) * pricing.CAR_TRADE_IN_SHARE + 0.5) - repair), repair
   end
 
   -- The damage the player's car has now, frozen into a car bill when it opens.
@@ -779,7 +791,8 @@ function M.attach(c)
     local name = self:savedVehicleName()
     return persistence.storedCar({ config = config, name = name,
       damage = pending.oldDamage and pending.oldDamage > 0 and math.min(9007199254740991, pending.oldDamage) or nil,
-      fuelLitres = pending.oldFuel, value = owned.used and owned.value or nil, km = owned.used and owned.km or nil })
+      fuelLitres = pending.oldFuel, value = owned.used and owned.value or nil, km = owned.used and owned.km or nil,
+      worth = pricing.carWorth(owned) })
   end
 
   -- Pays the car bill. With keep, the old car is sent home instead of traded in.

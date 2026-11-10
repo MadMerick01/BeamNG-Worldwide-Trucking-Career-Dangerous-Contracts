@@ -113,6 +113,43 @@ T.eq(parts.values.pickup_intake_race, 800, 'part value read'); T.eq(parts.names.
 T.eq(parts.values.pickup_engine_v8, nil, 'unreadable value left out'); T.eq(parts.names.pickup, 'pickup', 'lookup errors contained')
 _, why = G.new(env()):parts()
 T.eq(why, 'parts_unavailable', 'no parts tree, no parts')
+T.eq(parts.slots['/pickup_engine/pickup_intake/'], 'pickup_intake', 'slot names kept')
+T.eq(parts.parents['/pickup_engine/pickup_intake/'], '/pickup_engine/', 'with the slot above')
+T.eq(parts.slots['/'], '', 'the root has no slot name')
+-- The parts the car's own config comes with, lined up with the fitted slots.
+local stockEnv = env({
+  manager = partsEnv.manager,
+  jbeam = function() return { getPart = function(_, name)
+    if name == 'pickup_engine_i6' then return { information = { value = 3000, name = 'I6 Engine' } } end
+    if name == 'pickup_intake_race' then return { information = { value = 800, name = 'Race Intake' } } end
+  end } end,
+  read = function(path)
+    if path == 'vehicles/pickup/base.pc' then return { format = 2, mainPartName = 'pickup', parts = {
+      pickup_engine = 'pickup_engine_i6', pickup_bumper = 'pickup_bumper_f', pickup_i6_intake = 'pickup_i6_intake_stock' } } end
+    if path == 'vehicles/pickup/tree.pc' then return { partsTree = { chosenPartName = 'pickup', path = '/', children = {
+      pickup_engine = { chosenPartName = 'pickup_engine_v8', path = '/pickup_engine/' } } } } end
+    error('missing')
+  end,
+})
+local sg = G.new(stockEnv)
+local snap = sg:parts(); snap.configFile = 'vehicles/pickup/base.pc'
+local stock = sg:stockParts(snap)
+T.eq(stock['/'], 'pickup', 'the root is the main part')
+T.eq(stock['/pickup_engine/'], 'pickup_engine_i6', 'a slot the config names, by slot name')
+T.eq(stock['/pickup_bumper/'], 'pickup_bumper_f', 'an emptied slot keeps the part it came with')
+T.eq(stock['/pickup_engine/pickup_intake/'], '', 'a slot under a changed part came with it')
+T.eq(stock['#pickup_i6_intake'], 'pickup_i6_intake_stock', 'a config slot the car no longer has')
+T.eq(snap.values.pickup_engine_i6, 3000, 'stock parts priced'); T.eq(snap.names.pickup_engine_i6, 'I6 Engine', 'and named')
+snap.stock = stock
+T.eq(require('earthFreight/pricing').partsWorth(snap), 250 + 800 - 3000 - 250 - 250,
+  'the V8 and its intake added, the I6, its intake and the bumper taken off')
+snap = sg:parts(); snap.configFile = 'vehicles/pickup/tree.pc'
+stock = sg:stockParts(snap)
+T.eq(stock['/pickup_engine/'], 'pickup_engine_v8', 'a config with a tree lines up by path')
+T.eq(stock['/pickup_engine/pickup_intake/'], 'pickup_intake_race', 'slots it does not have stay as fitted')
+snap.configFile = 'vehicles/pickup/gone.pc'; T.eq(sg:stockParts(snap), nil, 'an unreadable config, no stock parts')
+snap.configFile = nil; T.eq(sg:stockParts(snap), nil, 'nor without a config')
+T.eq(G.new(partsEnv):stockParts(sg:parts()), nil, 'nor without a way to read it')
 local revert = { model = 'pickup', partsTree = { chosenPartName = 'pickup' }, vars = { ['$tune'] = 1 }, paints = { 'blue' } }
 T.check(G.new(partsEnv):repair(revert), 'respawn with given parts accepted')
 T.eq(replaced.options.config.partsTree.chosenPartName, 'pickup', 'respawns with the given parts')

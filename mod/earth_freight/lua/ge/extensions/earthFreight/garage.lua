@@ -26,6 +26,8 @@ local function defaults()
     -- The parts menu's own Save, which writes a config and takes its photo.
     partmgmt = function() return rawget(_G, 'core_vehicle_partmgmt') or (extensions and extensions.core_vehicle_partmgmt) end,
     exists = function(path) return FS:fileExists(path) end,
+    -- Reads a JSON file, such as a car config's .pc, as a table.
+    read = function(path) return jsonReadFile(path) end,
     remove = function(path) return FS:removeFile(path) end,
   }
 end
@@ -38,11 +40,18 @@ local function copy(value)
 end
 
 -- Flattens a 0.39 partsTree into { [slot path] = part name }; an empty slot has part name ''.
-local function fitted(node, out)
-  if type(node) ~= 'table' then return out end
-  if type(node.chosenPartName) == 'string' then out[tostring(node.path or node.id or '')] = node.chosenPartName end
+-- With slots, also fills { [slot path] = slot name } (the key in its parent's children), and
+-- parents, { [slot path] = its parent's path }; the root's slot name is ''.
+local function fitted(node, out, slots, parents, slotName, parentPath, depth)
+  depth = depth or 1
+  if type(node) ~= 'table' or depth > 64 then return out end
+  local path = tostring(node.path or node.id or '')
+  if type(node.chosenPartName) == 'string' then
+    out[path] = node.chosenPartName
+    if slots then slots[path], parents[path] = slotName or '', parentPath end
+  end
   if type(node.children) == 'table' then
-    for _, child in pairs(node.children) do fitted(child, out) end
+    for key, child in pairs(node.children) do fitted(child, out, slots, parents, tostring(key), path, depth + 1) end
   end
   return out
 end
@@ -261,7 +270,8 @@ function M.new(environment)
     if not vehicle then return nil, 'vehicle_required' end
     local data = vehicleData(id)
     if not data or type(data.config.partsTree) ~= 'table' then return nil, 'parts_unavailable' end
-    local parts = fitted(data.config.partsTree, {})
+    local slots, parents = {}, {}
+    local parts = fitted(data.config.partsTree, {}, slots, parents)
     local values, names = {}, {}
     for _, partName in pairs(parts) do
       if partName ~= '' and names[partName] == nil then
@@ -279,7 +289,63 @@ function M.new(environment)
     -- After a photo the game may say the car came from our photo config, which has no name or price.
     local photo = type(configFile) == 'string' and configFile:match('([^/\\]+)%.pc$') == M.PHOTO_KEY or nil
     return { id = id, model = model, config = copy(data.config), parts = parts, values = values, names = names,
-      configFile = configFile, value = value, name = name or model, photo = photo }
+      slots = slots, parents = parents, configFile = configFile, value = value, name = name or model, photo = photo }
+  end
+
+  -- The parts the car's own config (its .pc file) comes with, lined up with the fitted slots of
+  -- snapshot (from g:parts), so pricing.partsWorth can price what was changed since:
+  -- { [slot path] = part name }, plus '#slot name' entries for config slots the car no longer has.
+  -- A slot the config does not name keeps its fitted part as stock, unless the part above it was
+  -- changed (it came with that part). Also prices the stock parts no longer fitted into
+  -- snapshot.values and names. Nil when the config file can't be read.
+  function g:stockParts(snapshot)
+    if type(snapshot) ~= 'table' or type(snapshot.parts) ~= 'table' or type(snapshot.configFile) ~= 'string' then return nil end
+    if type(env.read) ~= 'function' then return nil end
+    local ok, pc = pcall(env.read, snapshot.configFile)
+    if not ok or type(pc) ~= 'table' then return nil end
+    local stock = {}
+    if type(pc.partsTree) == 'table' then
+      -- A config saved with a tree: slots line up by path.
+      fitted(pc.partsTree, stock)
+      for path, part in pairs(snapshot.parts) do if stock[path] == nil then stock[path] = part end end
+    elseif type(pc.parts) == 'table' then
+      -- A format 2 config names each slot's part by slot name.
+      local slots, parents, byName, seen = snapshot.slots or {}, snapshot.parents or {}, {}, {}
+      for slot, part in pairs(pc.parts) do if type(part) == 'string' then byName[tostring(slot)] = part end end
+      local function stockOf(path, depth)
+        if stock[path] ~= nil then return stock[path] end
+        local slot, part = slots[path], nil
+        if slot == '' then
+          part = type(pc.mainPartName) == 'string' and pc.mainPartName ~= '' and pc.mainPartName or snapshot.parts[path]
+        elseif slot and byName[slot] ~= nil then
+          part = byName[slot]
+          seen[slot] = true
+        else
+          local parent = parents[path]
+          local changed = parent ~= nil and depth < 64 and stockOf(parent, depth + 1) ~= snapshot.parts[parent]
+          part = changed and '' or snapshot.parts[path]
+        end
+        stock[path] = part
+        return part
+      end
+      for path in pairs(snapshot.parts) do stockOf(path, 1) end
+      for slot in pairs(byName) do
+        if not seen[slot] and byName[slot] ~= '' then stock['#' .. slot] = byName[slot] end
+      end
+    else
+      return nil
+    end
+    -- What each stock part costs, for the parts no longer fitted.
+    local data = snapshot.id ~= nil and vehicleData(snapshot.id) or nil
+    snapshot.values, snapshot.names = snapshot.values or {}, snapshot.names or {}
+    for _, part in pairs(stock) do
+      if part ~= '' and snapshot.names[part] == nil then
+        local value, name
+        if data then value, name = partInfo(data, part) end
+        snapshot.values[part], snapshot.names[part] = value, name or part
+      end
+    end
+    return stock
   end
 
   -- Respawns the vehicle where it stands, which leaves every part new. With no config it keeps the

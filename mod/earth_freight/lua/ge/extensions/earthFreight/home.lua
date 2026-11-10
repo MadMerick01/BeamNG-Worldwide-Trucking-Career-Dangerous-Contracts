@@ -54,7 +54,7 @@ function M.attach(c)
   function c:wealth()
     local progression = self.profile and self.profile.progression
     if not progression then return 0 end
-    local truck = self.ownedParts and self.ownedParts.value
+    local truck = self:carWorth()
     if type(truck) ~= 'number' then
       local saved = self.profile.vehicle
       truck = type(saved) == 'table' and (saved.worth or saved.value) or 0
@@ -252,7 +252,7 @@ function M.attach(c)
     local fuelLitres = self.fuel and self.fuel.vehicleId == owned.id and self.fuel.litres or nil
     local used = self:savedVehicleUsed()
     return M.cleanCar({ config = self:savedVehicleConfig(), name = self:savedVehicleName(), damage = self:savedVehicleDamage(),
-      fuelLitres = fuelLitres, value = used and owned.value or nil, km = used and owned.km or nil })
+      fuelLitres = fuelLitres, value = used and owned.value or nil, km = used and owned.km or nil, worth = self:carWorth() })
   end
 
   -- Why Swap cars cannot be pressed now, or nil.
@@ -342,7 +342,8 @@ function M.attach(c)
         local ok, found = pcall(self.garage.preview, self.garage, model, configFile)
         if ok and type(found) == 'string' then preview = found end
       end
-      value = car.value or value
+      -- What it was worth with its parts when it was parked, else its price.
+      value = car.worth or car.value or value
       known = { from = car, name = car.name or name or model, value = value, preview = preview, km = car.km,
         repair = car.damage and pricing.repairCost(car.damage, value) or 0 }
       self.homeCard = known
@@ -380,7 +381,7 @@ function M.attach(c)
     view.owned = { latitude = p.latitude, longitude = p.longitude, name = p.name, paid = p.paid, distanceMetres = d,
       here = d ~= nil and d <= M.HOME_METRES }
     local owned = self.ownedParts
-    view.active = owned and { name = owned.name or owned.model, value = owned.value } or nil
+    view.active = owned and { name = owned.name or owned.model, value = self:carWorth() } or nil
     view.stored = self:storedCarCard()
     local circle = self:baseCircle()
     if circle then
