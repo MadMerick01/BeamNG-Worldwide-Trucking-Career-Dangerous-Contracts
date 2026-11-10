@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 167 · 10 Nov 2026
+
 - **Bases of operations now work on multiplayer servers.** Everyone sees everyone else's bases on the **Base** tab, with the owner, the town, the size of their circle and whether you are inside it. Jobs that start or end inside someone else's circle pay you a visitor's bonus: about 10% more on a town job with both ends inside, more in steep regions. Inside your own circle you still get the owner's bonus.
 - Only one base is allowed per town, and bases must be at least 10 km apart. When you press Buy, the server is asked first, so two truckers can't grab the same town, and you're told whose base is too close.
 - Where two circles overlap, the bigger one pushes the border towards the smaller one, and the owner's bonus only counts on your side of the border. Every base keeps the 5 km around its town, however rich its neighbours get. Get richer than your neighbour and your border moves forward.
