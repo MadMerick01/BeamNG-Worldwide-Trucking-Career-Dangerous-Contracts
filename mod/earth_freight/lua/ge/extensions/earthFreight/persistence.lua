@@ -189,8 +189,10 @@ function M.storedCar(car)
   if type(car) ~= 'table' then return nil end
   local config = plainConfig(car.config)
   if not config or not optionalString(car.name) or not amount(car.damage) or not amount(car.fuelLitres)
-      or not amount(car.value) or not amount(car.km) then return nil end
-  return { config = config, name = car.name, damage = car.damage, fuelLitres = car.fuelLitres, value = car.value, km = car.km }
+      or not amount(car.value) or not amount(car.km) or not amount(car.worth) then return nil end
+  -- worth: what it was worth with its parts when it was parked, for its card at home.
+  return { config = config, name = car.name, damage = car.damage, fuelLitres = car.fuelLitres, value = car.value, km = car.km,
+    worth = car.worth }
 end
 
 -- How many cars home keeps besides the one the player drives.

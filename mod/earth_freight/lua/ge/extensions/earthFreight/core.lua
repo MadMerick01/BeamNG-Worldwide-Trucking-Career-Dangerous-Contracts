@@ -2335,8 +2335,9 @@ function M.new(deps)
         name = self:savedVehicleName(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres,
         value = self:savedVehicleUsed() and self.ownedParts.value or nil, km = self:savedVehicleUsed() and self.ownedParts.km or nil,
-        -- What the car is worth now (the Your truck card's value), for a server's leaderboard. Never read back.
-        worth = self.ownedParts and type(self.ownedParts.value) == 'number' and math.floor(self.ownedParts.value + 0.5) or nil },
+        -- What the car is worth now with its parts (the Your truck card's value), for a server's
+        -- leaderboard and the card before the car is back. Worked out again once it is.
+        worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId,
       trailer = self:savedTrailer(),

@@ -740,6 +740,14 @@ do
   T.eq(pricing.repairCost(1000, 5000), 200, 'a $5,000 car pays a fifth as much per point')
   T.eq(pricing.repairCost(49, 100000), 0, 'a scratch is free')
   T.eq(pricing.dollars(1234567), '$1,234,567', 'dollars formatted')
+  -- A car's worth: its price plus the parts fitted in place of its config's own.
+  local car = { value = 3500, parts = { a = 'x', b = 'turbo', c = '', d = 'mystery' }, stock = { a = 'x', b = 'stock', c = 'bumper', d = '' },
+    values = { x = 100, turbo = 2400, stock = 400, bumper = 300 } }
+  T.eq(pricing.partsWorth(car), 2400 - 400 - 300 + pricing.DEFAULT_PART_PRICE, 'added parts at their price, less the stock ones they replaced')
+  T.eq(pricing.carWorth(car), 3500 + 1950, 'the car with its parts')
+  T.eq(pricing.partsWorth({ value = 3500, parts = { a = 'turbo' }, values = { turbo = 2400 } }), 0, 'stock parts unknown, nothing added')
+  T.eq(pricing.carWorth({ parts = {}, stock = {} }), nil, 'no price, no worth')
+  T.eq(pricing.carWorth({ value = 100, parts = { a = '' }, stock = { a = 'big' }, values = { big = 5000 } }), 0, 'never below $0')
 end
 
 -- New game: asks once, then starts over in Penrith with the starting money.
@@ -1352,7 +1360,7 @@ do
   T.eq(c.ownedParts.model, 'sport', 'driving the new car')
   local stored = c.storedCars[1]
   T.eq(stored.config.model, 'pickup', 'the old car is at home'); T.eq(stored.config.parts.engine, 'pickup_engine_v8', 'with its parts')
-  T.eq(stored.damage, 2000, 'and the repair it needs')
+  T.eq(stored.damage, 2000, 'and the repair it needs'); T.eq(stored.worth, 20000, 'and what it was worth')
   T.eq(c:view().home.stored.name, 'pickup', 'shown on the Home tab'); T.eq(c:view().home.stored.repair, pricing.repairCost(2000, 20000), 'with its repair')
   -- Home is full: the next bill only trades in.
   c:openUsedCars(true); T.eq(c:view().usedCars.offers[1].keepCost, nil, 'no keep price with home full')
@@ -1409,6 +1417,7 @@ do
   T.eq(#saved.storedCars, 1, 'the stored car saved'); T.eq(saved.storedCars[1].config.model, 'pickup', 'the pickup')
   local r = F.controller({ io = io })
   T.eq(r.property.paid, Home.PRICE, 'home back after a reload'); T.eq(r.storedCars[1].damage, 2000, 'with the stored car')
+  T.eq(r.storedCars[1].worth, 20000, 'and its worth')
 end
 
 -- The Magnate update: a base's circle of influence around its town, sized by wealth, and the owner's
@@ -1724,6 +1733,32 @@ do
   T.eq(c:view().car.preview, nil, 'a broken picture lookup leaves the card without one')
   g.damage = 5000; c:tick(0.1)
   T.check(c:view().car.repair > 0, 'damage shows as the repair it needs')
+end
+
+-- Parts count in what the truck is worth: on the Your truck card, in repairs and the trade-in,
+-- in wealth and in the worth saved for a server's leaderboard.
+do
+  local Workshop, pricing = require('earthFreight/workshop'), require('earthFreight/pricing')
+  local g = F.garage()
+  g.fitted = { engine = 'pickup_engine_v8', intake = 'pickup_intake_stock' }
+  -- The config the pickup came as fits the stock intake.
+  function g:stockParts(snapshot) return { engine = 'pickup_engine_v8', intake = 'pickup_intake_stock' } end
+  local c, io = F.controller({ garage = g })
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(c:view().car.value, 20000, 'a stock car is worth its price')
+  local tradeBefore = c:tradeIn(0)
+  local wealthBefore = c:wealth()
+  g:fit('intake', 'pickup_intake_race'); c:vehicleSpawned(); c:tick(0.1)
+  local paid = c:view().partsChange.cost
+  T.check(c:buyParts(), 'race intake bought')
+  local worth = 20000 + 800 - 100
+  T.eq(c:view().car.value, worth, 'worth its price plus the part, less the stock part it replaced')
+  T.eq(c:carValueOf(c.ownedParts.id), worth, 'repairs are priced from it')
+  T.eq(c:view().car.climb, Workshop.climb(worth), 'and it moves up the Rust Bucket to Rig line')
+  T.eq(c:tradeIn(0), tradeBefore + math.floor((800 - 100) * pricing.CAR_TRADE_IN_SHARE + 0.5), 'the trade-in counts the part')
+  T.eq(c:wealth(), wealthBefore - paid + 700, 'wealth keeps the part, less the stock one sold back for less')
+  T.check(c:manualSave(), 'saved'); T.eq(io.files[A].vehicle.worth, worth, 'the worth saved for the leaderboard counts the part')
+  T.eq(io.files[A].vehicle.value, nil, 'while a new car still saves no price of its own')
 end
 
 -- A photo of the player's car after parts are paid for, shown on the Your truck card.

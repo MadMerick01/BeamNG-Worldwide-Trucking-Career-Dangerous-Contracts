@@ -72,6 +72,37 @@ function M.partsDiff(owned, fitted)
   return { added = added, removed = removed, cost = math.max(0, total) }
 end
 
+-- What a car's parts add to its worth beyond the config it came as: each part fitted in place of
+-- the config's own at the price the parts bill charges for it, less the price of the config's part
+-- it replaced. Negative when parts were taken off. snapshot.stock is the config's parts, lined up
+-- with snapshot.parts (garage:stockParts); 0 when they are not known.
+function M.partsWorth(snapshot)
+  if type(snapshot) ~= 'table' or type(snapshot.stock) ~= 'table' or type(snapshot.parts) ~= 'table' then return 0 end
+  local function price(part)
+    if part == '' then return 0 end
+    local value = snapshot.values and snapshot.values[part]
+    return math.floor((value or M.DEFAULT_PART_PRICE) + 0.5)
+  end
+  local total, seen = 0, {}
+  local function compare(slot)
+    if seen[slot] then return end
+    seen[slot] = true
+    local before, after = snapshot.stock[slot] or '', snapshot.parts[slot] or ''
+    if before ~= after then total = total + price(after) - price(before) end
+  end
+  for slot in pairs(snapshot.stock) do compare(slot) end
+  for slot in pairs(snapshot.parts) do compare(slot) end
+  return total
+end
+
+-- What a car is worth: its own price (a second-hand car's is what was paid for it) plus what its
+-- parts add. Never below $0; nil when its price is not known. Repairs, trade-ins, the Your truck
+-- card, wealth and a server's leaderboard all use it.
+function M.carWorth(snapshot)
+  if type(snapshot) ~= 'table' or type(snapshot.value) ~= 'number' then return nil end
+  return math.max(0, math.floor(snapshot.value + M.partsWorth(snapshot) + 0.5))
+end
+
 -- Whole dollars with thousands separators, such as $12,500.
 function M.dollars(amount)
   local text = tostring(math.floor(amount))

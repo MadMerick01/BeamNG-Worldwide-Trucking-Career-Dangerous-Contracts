@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Parts you fit now count in what your truck is worth.** Before, a truck was always worth the price of the version it came as, so a Burnside starter stayed at $3,500 however much you spent on it. Now every part that differs from how the truck came adds its price, and parts you take off without replacing take theirs away. You'll see the new worth on the Your truck card, on the Rust Bucket to Rig line, in your wealth (and so your base's circle) and on the server's leaderboard.
+- Because a truck with better parts is worth more, its repairs cost a bit more and it trades in for more when you buy another car.
+- Your saves still work, and parts already on your truck count straight away, with nothing to do. A car parked at your base shows the worth it had when you parked it.
+
 ## Build 170 · 10 Nov 2026
 
 - **The server's web page now wears the Magnate update look.** It opens with a "The Magnate Update" banner over a hillside shot, with the game's title card beneath it. Headings use the same bold, narrow lettering as the banner. On the map, each base gets a glowing gold circle and a dark tag such as "Sam's base · 41 km", which shows once you zoom in on a region. Base towns on the leaderboard are picked out in gold. Nothing changes in the game itself, and saves still work.
