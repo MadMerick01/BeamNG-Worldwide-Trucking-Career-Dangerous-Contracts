@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The server's web page now shows who owns which ground.** Where two bases' circles overlap, the map cuts each one off at the border the game uses, so the bigger circle pushes into the smaller one, and every base's protected 5 km core is shaded. On a phone the page now fits the screen: the leaderboard scrolls sideways inside its own box instead of the whole page. Nothing changes in the game itself, and saves still work.
+
 ## Build 168 · 10 Nov 2026
 
 - **Your base now earns commission on a multiplayer server.** When another trucker picks up or drops off a job in your turf, you get 2.5% of their pay for each end, so 5% when both ends are yours. The server pays it as extra money and takes nothing from the driver. Each base can earn up to $20,000 a day. If you're on the server, a message tells you as it comes in. If you're away, it waits for you and is paid in one go when you next join. Town jobs, off-road drops and Ship Day containers all count. Dangerous contracts, heli jobs and beacon packages don't. The server's live feed shows each commission, and the Base tab explains how it works. Saves still work. Server hosts: run the server updater to get it.
