@@ -2172,6 +2172,8 @@ function M.new(deps)
       startTown = startTown,
       startHereAllowed = self:startHereAllowed(),
       startingMoney = STARTING_MONEY,
+      -- On a BeamMP server: the start page then calls the career the server's, not the offline one on this PC.
+      online = self.mp ~= nil or nil,
       playerName = self.playerName,
       nameUnsaved = self.playerName ~= self.savedName,
       newGameAllowed = self:newGameAllowed(),
