@@ -48,6 +48,21 @@ function M.cleanPlayers(list)
   return out
 end
 
+-- The server's bases of operations, checked: each owner's name, the town, its centre and the circle's radius in km,
+-- and whether it is this player's own.
+function M.cleanBases(list)
+  local out = {}
+  for _, b in ipairs(type(list) == 'table' and list or {}) do
+    local lat, lon, r = type(b) == 'table' and tonumber(b.latitude), type(b) == 'table' and tonumber(b.longitude),
+      type(b) == 'table' and tonumber(b.radiusKm)
+    if lat and lon and r and math.abs(lat) <= 90 and math.abs(lon) <= 180 and r > 0 and r <= 100 and #out < 256 then
+      out[#out + 1] = { name = M.cleanText(b.name, 32) or 'A trucker', town = M.cleanText(b.town, 40),
+        latitude = lat, longitude = lon, radiusKm = r, mine = b.mine == true }
+    end
+  end
+  return out
+end
+
 local function validId(k) return type(k) == 'string' and #k == 32 and not k:find('[^0-9a-f]') end
 
 -- Splits text into frames ('v|id|i|n|piece'), as the server does.
@@ -180,6 +195,18 @@ function M.new(deps)
       if not d or type(d.ask) ~= 'number' then return false end
       self.locate = { ask = d.ask, name = M.cleanText(d.name, 32) or 'A trucker' }
       return true
+    elseif event == 'wwtcBases' then
+      -- Every base of operations on the server, for the circles (magnate.lua).
+      local d = decode(data)
+      if not d or type(d.bases) ~= 'table' then return false end
+      self.bases = M.cleanBases(d.bases)
+      return true
+    elseif event == 'wwtcBaseClaimed' then
+      -- The answer to claimBase(): { ok, why, by, town }.
+      local d = decode(data)
+      if not d then return false end
+      self.baseClaimed = { ok = d.ok == true, why = M.cleanText(d.why, 20), by = M.cleanText(d.by, 32), town = M.cleanText(d.town, 40) }
+      return true
     elseif event == 'wwtcFound' then
       -- The answer to find(): the other player's spot, or why not.
       local d = decode(data)
@@ -238,6 +265,8 @@ function M.new(deps)
     pcall(io.write, M.PREFS, { findable = self.findableKept })
     return self.findableKept
   end
+  -- A base of operations: asks the server whether this town is free (one base a town, 10 km apart).
+  function s:claimBase(t) return shipEvent('wwtcBaseClaim', t) end
   function s:shipDelivered(ship, n, town, pay) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay }) end
   return s
 end
@@ -281,7 +310,7 @@ function M.game()
   function g.listen(handler)
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
     for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow',
-        'wwtcPlayers', 'wwtcLocate', 'wwtcFound' }) do
+        'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true

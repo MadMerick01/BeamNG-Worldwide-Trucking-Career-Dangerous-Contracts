@@ -26,10 +26,14 @@
     { "at": "2026-11-08T17:40:00Z", "kind": "season", "text": "Season 1 has begun. Everyone starts with a rusty Burnside and $6,000." }
   ],
   "leaderboard": [
-    { "name": "Sam", "balance": 152950, "truckValue": 148000, "wealth": 300950, "deliveries": 37 },
-    { "name": "MadMerick", "balance": 184300, "truckValue": 96500, "wealth": 280800, "deliveries": 41 },
+    { "name": "Sam", "balance": 152950, "truckValue": 148000, "baseValue": 250000, "baseTown": "Katoomba", "wealth": 550950, "deliveries": 37 },
+    { "name": "MadMerick", "balance": 184300, "truckValue": 96500, "baseValue": 250000, "baseTown": "Parramatta", "wealth": 530800, "deliveries": 41 },
     { "name": "Jonno", "balance": 98120, "truckValue": 61200, "wealth": 159320, "deliveries": 22 },
     { "name": "Ruby", "balance": 61400, "truckValue": 12800, "wealth": 74200, "deliveries": 18 },
     { "name": "Kez", "balance": 23310, "truckValue": 4000, "wealth": 27310, "deliveries": 7 }
+  ],
+  "bases": [
+    { "name": "Sam", "town": "Katoomba", "latitude": -33.71, "longitude": 150.31, "radiusKm": 34.6 },
+    { "name": "MadMerick", "town": "Parramatta", "latitude": -33.82, "longitude": 151.0, "radiusKm": 28.3 }
   ]
 }

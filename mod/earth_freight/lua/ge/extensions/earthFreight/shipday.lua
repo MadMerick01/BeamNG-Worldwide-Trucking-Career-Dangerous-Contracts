@@ -94,11 +94,13 @@ end
 local function round10(n) return math.floor(n / 10 + 0.5) * 10 end
 
 -- What a container pays for this many units of its cargo: the usual pay by weight and distance (the cargo's rate is
--- twice the usual), with the rough road bonus, and nothing for town need.
-function M.pay(box, units)
+-- twice the usual), with the rough road bonus, and nothing for town need. shareAt adds the bases of operations'
+-- bonus, as on a town job (jobs.baseExtra).
+function M.pay(box, units, shareAt)
   if units <= 0 then return 0 end
   local good = goods.get(M.GOOD)
-  local road = jobs.roadBonus(places.get(box.from), places.get(box.to))
+  local from, to = places.get(box.from), places.get(box.to)
+  local road = jobs.roadBonus(from, to) + jobs.baseExtra(shareAt, from, to)
   return math.max(10, round10(jobs.basePay(good, units, box.km) * road))
 end
 
