@@ -264,12 +264,14 @@ do
   pump()
   T.eq(c.loadStatus, 'missing', 'a new player gets a new career on the server')
   T.check(c:view().balance ~= 123, 'not the single-player money')
+  T.eq(c:view().online, true, 'the start page calls it the career on this server')
   T.check(c.feedback:find('new career on this server', 1, true) ~= nil, 'the player is told')
   -- Back in single player, the single-player career is there as it was.
   mp.inSession = function() return false end
   c:endMission(); c:reload()
   T.eq(c.profile.progression.balance, 123, 'single player keeps its own career')
   T.eq(c.mp, nil, 'and talks to no server')
+  T.eq(c:view().online, nil, 'and calls it the offline career again')
 end
 
 -- BeamMP drops a joining player in with no car: after a few seconds the starter car is put down for them, once.

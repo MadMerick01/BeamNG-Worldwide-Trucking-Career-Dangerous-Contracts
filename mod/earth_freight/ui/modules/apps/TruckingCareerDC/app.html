@@ -109,12 +109,42 @@
               <div ng-if="data.trailer.owned" style="grid-column:1 / -1;"><div style="color:#c9d6d2;">Trailer</div><div style="font-weight:bold;font-size:17px;overflow-wrap:anywhere;">{{data.trailer.owned.name}}</div><div style="font-size:12px;color:#c9d6d2;">{{data.trailer.owned.stored ? 'in the garage' : (data.trailer.owned.hitched ? 'hitched' : 'out, not hitched')}}</div></div>
             </div>
           </div>
-          <div ng-if="!firstLaunch(data)" style="margin-top:12px;font-size:12px;font-weight:bold;letter-spacing:2px;color:#c9d6d2;">YOUR CAREER</div>
+          <div ng-if="!firstLaunch(data)" style="display:flex;align-items:baseline;gap:8px;margin-top:12px;"><span style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#c9d6d2;">{{data.online ? 'YOUR CAREER ON THIS SERVER' : 'YOUR CAREER'}}</span><span ng-if="!data.online" title="Kept on this PC. A server keeps a separate career for you." style="padding:0 6px;border:1px solid #7d8b88;border-radius:3px;font-size:11px;font-weight:bold;letter-spacing:1px;color:#c9d6d2;">OFFLINE CAREER</span></div>
           <div ng-if="!firstLaunch(data)" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 14px;margin-top:6px;padding:10px;border:1px solid #568d7a;border-radius:8px;">
             <div><div style="color:#c9d6d2;">Money</div><div style="font-weight:bold;font-size:17px;">${{data.balance | number:0}}</div></div>
             <div><div style="color:#c9d6d2;">Driven</div><div style="font-weight:bold;font-size:17px;">{{data.totalDistanceKm | number:0}} km</div></div>
             <div ng-if="data.career"><div style="color:#c9d6d2;">Jobs done</div><div style="font-weight:bold;font-size:17px;">{{data.career.jobsDone | number:0}}</div></div>
             <div ng-if="data.career"><div style="color:#c9d6d2;">Dangerous</div><div style="font-weight:bold;font-size:17px;" ng-style="{color: data.career.contractsDone > 0 ? '#eb5757' : '#f2f6f5'}">{{data.career.contractsDone}} of {{data.career.contractsTotal}}</div></div>
+          </div>
+          <div ng-if="!data.online" style="margin-top:12px;padding:10px;border:2px solid #f2c94c;border-radius:8px;background:rgba(242,201,76,.06);">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#f2c94c;">PLAY ONLINE</div>
+                <div role="status" style="margin-top:2px;font-weight:bold;" ng-style="{color: server.status === 'online' ? '#6fcf97' : (server.status === 'offline' ? '#eb5757' : '#c9d6d2')}"><span aria-hidden="true">&#9679;</span>
+                  <span ng-if="server.status === 'online'">Server online<span ng-if="server.players != null"> &middot; {{server.players}}<span ng-if="server.max"> of {{server.max}}</span> trucking now</span></span>
+                  <span ng-if="server.status === 'offline'">Server offline right now</span>
+                  <span ng-if="server.status === 'checking'">Checking the server&hellip;</span>
+                  <span ng-if="server.status === 'unknown'">Can't reach the server's status</span></div>
+                <div ng-if="server.season" style="font-size:12px;color:#c9d6d2;">Season {{server.season}}<span ng-if="server.day">, day {{server.day}}</span><span ng-if="server.truckers"> &middot; {{server.truckers}} truckers so far</span></div>
+              </div>
+              <button type="button" ng-click="toggleOnline()" aria-expanded="{{!!intro.online}}" style="flex:none;padding:7px 14px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">{{intro.online ? 'Hide' : 'Play online'}}</button>
+            </div>
+            <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Online, everyone trucks on the same Earth. Other truckers' bases with their turf and commission, Ship Day and the season leaderboard are online only.</div>
+            <div ng-if="intro.online" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(242,201,76,.35);font-size:13px;">
+              <div style="font-weight:bold;color:#f2c94c;">How to join</div>
+              <ol style="margin:4px 0 0;padding-left:20px;">
+                <li>Install <b>BeamMP</b> from beammp.com and sign in. Signed-in players keep their online career on any PC.</li>
+                <li>Keep the <b>BeamNG.Earth app</b> running, the same version as the server.</li>
+                <li>Start BeamNG from the BeamMP launcher, open the server browser's BeamNG.Earth tab and join <b>{{server.name || 'WW Trucking Career | MadMerick'}}</b>. The server sends its own copy of this mod.</li>
+                <li>If the server says your copy is out of date, turn this mod off on the BeamNG.Earth Add-ons page and in the Mod Manager, close BeamNG and join again.</li>
+              </ol>
+              <div style="margin-top:6px;color:#c9d6d2;">Your offline career stays here on this PC. The server keeps a separate one that starts in the rusty starter car.</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+                <button type="button" ng-click="openLink('server')" title="Opens the live server page in your browser and copies the link" style="padding:5px 12px;">Live map and leaderboard</button>
+                <button type="button" ng-click="openLink('discord')" title="Opens the Discord invite in your browser and copies the link" style="padding:5px 12px;">Discord</button>
+              </div>
+              <div ng-if="intro.linkOpened" role="status" style="margin-top:4px;font-size:12px;color:#7d8b88;">The link is copied too, in case your browser didn't open.</div>
+            </div>
           </div>
         </div>
       </div>

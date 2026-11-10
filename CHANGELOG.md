@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The start page now has a Play online card.** It shows whether the multiplayer server is up and how many truckers are on it right now, with the season and day, and checks again every minute while the page is open. Press **Play online** to see how to join, plus buttons that open the live map and leaderboard page and the Discord in your browser (the link is copied too, in case your browser doesn't open).
+- Your career on the start page is now labelled **Offline career**, because it's kept on this PC. A server keeps a separate career for you, and the start page calls that one "Your career on this server". The card explains that other truckers' bases with their turf and commission, Ship Day and the season leaderboard are online only.
+- Nothing to do to get it, and your saves still work.
+
 ## Build 171 · 10 Nov 2026
 
 - **Parts you fit now count in what your truck is worth.** Before, a truck was always worth the price of the version it came as, so a Burnside starter stayed at $3,500 however much you spent on it. Now every part that differs from how the truck came adds its price, and parts you take off without replacing take theirs away. You'll see the new worth on the Your truck card, on the Rust Bucket to Rig line, in your wealth (and so your base's circle) and on the server's leaderboard.
