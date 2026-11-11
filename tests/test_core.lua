@@ -852,6 +852,23 @@ do
   T.check(c:view().repairOwed ~= nil, 'shown as repair still owed')
 end
 
+-- A booked relocation where Earth puts the car down first a few km off while it loads the terrain,
+-- then at the booking in one long loading frame that doesn't read as a jump: still relocated, not
+-- stranded with "You teleported without booking a relocation".
+do
+  local shipping = require('earthFreight/shipping')
+  local c, _, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local coroico = shipping.get('coroico')
+  T.check(c:bookShipping('coroico'), 'booked'); T.check(c:teleportToBooking(), 'teleport asked')
+  a.pose = location.destination(coroico, 0, 8000); c:tick(0.1)
+  T.check(c.stranded ~= nil and c.booking ~= nil, 'the first spot, off the booking, strands for now')
+  a.pose = location.destination(coroico, 0, 500); c:tick(60)
+  T.eq(c.booking, nil, 'the booking is used up on landing'); T.eq(c.stranded, nil, 'and the stranding forgiven')
+  T.eq(c:view().flash.title, 'RELOCATED TO COROICO', 'told they arrived')
+  T.check(c:view().saveAllowed, 'Save works')
+end
+
 -- Shipping: book with an empty car, teleport to the coordinates, arrive with the booking used up.
 do
   local shipping = require('earthFreight/shipping')

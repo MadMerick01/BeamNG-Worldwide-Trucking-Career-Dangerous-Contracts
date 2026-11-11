@@ -654,6 +654,13 @@ function M.new(deps)
       if jump > odometer.SHORT_HOP_METRES and not insured then self:teleported(before, sample) end
       return
     end
+    -- Landing at a booking is seen from where the car is, not only from a jump: while Earth loads the
+    -- terrain the car can turn up first somewhere near the destination (which strands it, booking still
+    -- held), then reach the booking in a long loading frame that does not read as a jump.
+    if self.booking and shipping.arrived(sample, self.booking) then
+      self:landAtBooking('')
+      return
+    end
     if self.stranded then
       if shipping.returned(sample, self.stranded) then self:unstrand() end
       return
@@ -698,18 +705,7 @@ function M.new(deps)
       lost = ' Your job is cancelled' .. (fee > 0 and (', which cost ' .. dollars(fee)) or '') .. '.'
     end
     if self.booking and shipping.arrived(to, self.booking) then
-      local b = self.booking
-      self.booking, self.stranded, self.bookingTeleportAt = nil, nil, nil
-      local paid = ''
-      if b.offer then
-        self.offer = { latitude = b.latitude, longitude = b.longitude, name = b.name, fee = b.fee }
-        paid = ' ' .. b.name .. ' pays back your ' .. dollars(b.fee) .. ' relocation when you deliver within '
-          .. math.floor(shipping.OFFER_RADIUS_METRES / 1000) .. ' km of it.'
-      end
-      self:showFlash(lost ~= '' and 'cancelled' or 'delivered', 'RELOCATED TO ' .. b.name:upper(),
-        'Welcome to ' .. b.region .. '. Find a load in town.' .. paid .. lost)
-      self:autoSaveSoon('your relocation')
-      self.diag:event('shipped', b.id)
+      self:landAtBooking(lost)
     elseif self.stranded and shipping.returned(to, self.stranded) then
       self:unstrand()
       if lost ~= '' then self:showFlash('cancelled', 'LOAD LOST', 'You are back where you teleported from.' .. lost) end
@@ -719,6 +715,23 @@ function M.new(deps)
         .. coordinates(self.stranded) .. ' (copy them on the Route tab), or book a relocation on the Relocate tab.' .. lost)
       self.diag:event('stranded', coordinates(self.stranded), 'W')
     end
+  end
+
+  -- The car is at its booked relocation: the booking is used up, and anything the teleport on the way
+  -- there looked like (stranded somewhere in between while Earth loaded) is forgiven.
+  function c:landAtBooking(lost)
+    local b = self.booking
+    self.booking, self.stranded, self.bookingTeleportAt = nil, nil, nil
+    local paid = ''
+    if b.offer then
+      self.offer = { latitude = b.latitude, longitude = b.longitude, name = b.name, fee = b.fee }
+      paid = ' ' .. b.name .. ' pays back your ' .. dollars(b.fee) .. ' relocation when you deliver within '
+        .. math.floor(shipping.OFFER_RADIUS_METRES / 1000) .. ' km of it.'
+    end
+    self:showFlash(lost ~= '' and 'cancelled' or 'delivered', 'RELOCATED TO ' .. b.name:upper(),
+      'Welcome to ' .. b.region .. '. Find a load in town.' .. paid .. lost)
+    self:autoSaveSoon('your relocation')
+    self.diag:event('shipped', b.id)
   end
 
   -- What the player is told while on foot. (Away in a helicopter or the sightseeing car: c:awayText.)

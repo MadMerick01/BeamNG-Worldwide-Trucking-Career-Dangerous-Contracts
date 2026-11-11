@@ -9,6 +9,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 ## Build 179 · 11 Nov 2026
 
 - **Fixed: the Store at depot, Send to base and Park at base buttons did nothing.** Swap trailers and Use this trailer didn't work either. All five buttons now work. Your save still works.
+- **A booked relocation no longer leaves you stranded.** Sometimes, while BeamNG.Earth loaded the terrain after a relocation you had booked and paid for on the **Relocate** tab, your car was picked up for a moment a few km short of the destination. The HUD then said "You teleported without booking a relocation. Go back to where you left from", and stayed that way even once you were there. Now arriving at your booking always counts as relocating: the booking is used up, the warning clears and jobs, driving and Save work again. If you're stuck with that warning right now, press **Cancel booking** on the **Relocate** tab to get the fee back, then load this build: you carry on from your last save as usual. Your saves still work.
 
 ## Build 178 · 11 Nov 2026
 
