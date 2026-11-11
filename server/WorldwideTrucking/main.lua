@@ -11,9 +11,14 @@
 --   server -> game  wwtcServer '{"v","server","season"}'   this server's id and season
 --   game -> server  wwtcJoin   '{"v","key","build"}'      the game's key for this server, or none, and the mod's build
 --                   (none from a copy older than this check, or not made by the release workflow)
+--                   With "again": true, a player the server lost (see 'rejoin') joins back without their career
+--                   being sent, answered by
+--   server -> game  wwtcRejoined '{"v","key"}'
 --   server -> game  wwtcCareer frames of '{"v","key","season","save"}'  the player's key and career (save null: none)
 --   game -> server  wwtcSave   frames of the save document (JSON), sent after every save in game
---   server -> game  wwtcSaved  '{"v","ok","generation","why"}'
+--   server -> game  wwtcSaved  '{"v","ok","generation","why"}'  why 'rejoin': the server doesn't know this player
+--                   (BeamMP lost them, or this plugin was reloaded): the game joins again and sends the save again.
+--                   The same save sent twice is answered ok, so a game can send again one it never heard back about.
 --   server -> game  wwtcShip   '{"v","ship","name","port","containers","left","taken"}'  Ship Day: the ship in port
 --   game -> server  wwtcClaim  '{"v","ship","n"}'  asks for container n; answered by
 --   server -> game  wwtcClaimed '{"v","ship","n","ok","why"}'
@@ -740,6 +745,7 @@ function W.onJoin(pid, data)
   if W.outdated(d.build) then return W.turnAway(pid, d.build) end
   local p = player(pid)
   local account = W.env.account(pid)
+  if d.again == true then return W.rejoin(pid, p, account, d.key) end
   local key = account and W.accounts[account] or (W.validKey(d.key) and d.key) or W.newKey(W.env.bytes)
   if account and W.accounts[account] ~= key then
     W.accounts[account] = key
@@ -763,19 +769,47 @@ function W.onJoin(pid, data)
     save and ('balance $' .. tostring(save.progression.balance)) or 'new career'))
 end
 
+-- A player the server had lost joins back, still in the same game: they keep the career they have (their key; a
+-- signed-in player's must be their account's), and nothing is sent but the answer.
+function W.rejoin(pid, p, account, key)
+  if not W.validKey(key) or (account and W.accounts[account] and W.accounts[account] ~= key) then return end
+  if account and not W.accounts[account] then
+    W.accounts[account] = key
+    W.env.write(W.DIR .. '/accounts.json', W.env.encode(W.accounts))
+  end
+  local was = p.key
+  p.key, p.account, p.name = key, account, W.env.name(pid)
+  local _, save = readSave(key)
+  p.balance = save and save.progression and save.progression.balance or nil
+  W.env.send(pid, 'wwtcRejoined', W.env.encode({ v = W.PROTO, key = key }))
+  if not was then
+    W.env.print(string.format('[Trucking] %s joined back after the server lost track of them', tostring(p.name)))
+    W.statsChanged = true
+    W.sendPlayersToAll()
+  end
+end
+
 local function answer(pid, ok, generation, why)
   W.env.send(pid, 'wwtcSaved', W.env.encode({ v = W.PROTO, ok = ok, generation = generation, why = why }))
 end
 
 function W.onSave(pid, frame)
-  local p = W.players[pid]
-  if not p or not p.key then return end
+  local p = player(pid)
   local text = W.receive(p.inbox, frame)
   if not text then return end
+  -- A save from a player this server doesn't know (it lost them, or was reloaded) is never dropped without a word:
+  -- the game is told to join again, and then sends it again.
+  if not p.key then
+    W.env.print(string.format('[Trucking] a save from %s, who the server had lost: asked to join again',
+      tostring(W.env.name(pid))))
+    return answer(pid, false, nil, 'rejoin')
+  end
   if #text > W.SAVE_MAX then return answer(pid, false, nil, 'too_big') end
   local ok, save = pcall(W.env.decode, text)
   if not ok then return answer(pid, false, nil, 'not_a_save') end
-  local _, previous = readSave(p.key)
+  local kept, previous = readSave(p.key)
+  -- The save already kept, sent again by a game that never heard back about it.
+  if kept == text and type(save) == 'table' then return answer(pid, true, save.generation) end
   local fine, why = W.checkSave(save, previous)
   if not fine then
     W.env.print(string.format('[Trucking] save from %s refused: %s', tostring(p.name), why))
