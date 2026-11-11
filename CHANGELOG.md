@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 184 · 11 Nov 2026
+
 - **On a trucking server, you can now join another trucker's base as part of their corp.** If you don't own a base, press **Ask to join** next to one under Other truckers' bases on the Base tab. The owner sees your request on their Base tab and presses **Accept** or **Turn down**. A corp holds up to 5 truckers, owner included, and you can be in one corp at a time.
 - As a corp member, you pay no toll on deliveries in your corp's turf, and jobs that start or end there pay you +0.2 on the region multiplier. The owner keeps +0.4, and every toll from truckers outside the corp still goes to the owner. Members don't pay the owner anything.
 - Corp members get a yard at the owner's base. It keeps one car and one trailer for you, just like owning a base: **Swap cars**, Park at base, Swap trailers, a second trailer and half-price repairs there. Relocate lists it as **Corp yard**. Only members are told where the yard is.
