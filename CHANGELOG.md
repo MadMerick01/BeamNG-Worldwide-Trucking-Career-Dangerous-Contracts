@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 178 · 11 Nov 2026
+
 - **Magnate 2: base circles are now sized for the whole world.** A new base reaches 1,600 km at $250,000 of wealth (cash, truck, trailer and base) and keeps growing as you get richer, with no limit: about 2,550 km at $637,500, 3,200 km at $1 million and 6,400 km at $4 million. Ten players worth a million or two each can split the planet between them. Circles still never shrink, steep regions still reach further, and a bigger neighbour still pushes the border towards a smaller one.
 - **Delivering in someone else's turf now costs a 20% turf toll, paid to that turf's owner.** If a job's drop-off is in another trucker's turf, 20% of its pay goes to them. The job board shows "drop-off in Belake's turf: 20% toll" and the pay after the toll before you take the job, and the delivery message says how much was taken. An off-road drop counts for the town you took it in. Dangerous contracts and beacon packages pay no toll, and there's none in your own turf, outside every turf or in single player. Base owners get each toll as it happens, or in one go the next time they join, and there's no daily limit.
 - **Visitors no longer get a bonus in someone else's circle, and commission is gone.** The turf toll replaces both. Your own turf still pays you +0.4 on the region multiplier.
