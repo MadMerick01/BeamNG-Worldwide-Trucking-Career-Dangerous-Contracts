@@ -15,6 +15,15 @@ local M = {
   -- giving up it is still asked every LATE_EVERY seconds for LATE_FOR seconds, and a late answer brings the server's
   -- career in.
   HELLO_EVERY = 5, LATE_EVERY = 15, LATE_FOR = 600,
+  -- A save the server hasn't confirmed after CONFIRM_SECONDS is shown as not kept there yet, and sent again every
+  -- RESEND_EVERY seconds until it is. BeamMP can lose a player while their game keeps running (a "ghost"
+  -- connection): their saves then never reach the server, and joining again used to bring back the server's older
+  -- career over the newer one on their PC.
+  CONFIRM_SECONDS = 30, RESEND_EVERY = 30,
+  -- Next to the career's save slots: the generation and money of the newest save sent and not yet confirmed. A
+  -- save on this PC newer than the server's is only kept on joining when it matches this, so a copy edited by hand
+  -- still loses to the server's.
+  UNCONFIRMED = 'unconfirmed.json',
 }
 -- This copy's build number, written into the ZIP by the release workflow (tools/package.py); nil in a copy not
 -- built by it. Sent on joining, so a server can turn away an older copy than its own.
@@ -65,6 +74,20 @@ end
 
 local function validId(k) return type(k) == 'string' and #k == 32 and not k:find('[^0-9a-f]') end
 
+-- On joining: the save on this PC in dir when it is newer than the server's (serverSave, or nil for none) and is
+-- the one this PC sent and the server never confirmed (UNCONFIRMED). Otherwise nil, and the server's career wins.
+function M.unsent(io, dir, serverSave)
+  local ok, present = pcall(io.exists, dir .. M.UNCONFIRMED)
+  if not ok or not present then return nil end
+  local readOK, marker = pcall(io.read, dir .. M.UNCONFIRMED)
+  if not readOK or type(marker) ~= 'table' then return nil end
+  local save = persistence.new(io, dir):load()
+  if not save or save.generation ~= marker.generation or save.progression.balance ~= marker.balance then return nil end
+  local serverGeneration = serverSave and tonumber(serverSave.generation) or 0
+  if save.generation <= serverGeneration then return nil end
+  return save
+end
+
 -- Splits text into frames ('v|id|i|n|piece'), as the server does.
 function M.frames(id, text, size)
   size = size or M.CHUNK
@@ -114,7 +137,9 @@ function M.new(deps)
   -- asks now and then for a while.
   function s:tick(clock)
     clock = clock or 0
-    if self.server or self.state == 'server' or not self.askedAt then return end
+    self.now = clock
+    if self.state == 'server' then return self:resend(clock) end
+    if self.server or not self.askedAt then return end
     local since = clock - self.askedAt
     if self.state == 'waiting' and since > M.WAIT_SECONDS then self.state, self.dir = 'local', M.LOCAL end
     local every = self.state == 'waiting' and M.HELLO_EVERY or M.LATE_EVERY
@@ -158,12 +183,30 @@ function M.new(deps)
       end
       local dir = M.ROOT .. self.server .. '/season-' .. tostring(self.season) .. '/'
       pcall(io.mkdir, dir)
-      -- The server's career replaces whatever this PC kept of it; none on the server means a new career.
-      for _, slot in ipairs({ 'save-a.json', 'save-b.json' }) do
-        if io.remove then pcall(io.remove, dir .. slot) end
+      local serverSave = type(d.save) == 'table' and d.save or nil
+      self.confirmedBalance = serverSave and type(serverSave.progression) == 'table'
+        and tonumber(serverSave.progression.balance) or nil
+      -- Saves made here that never reached the server (a lost connection) are kept and sent to it now.
+      local unsent = M.unsent(io, dir, serverSave)
+      if not unsent then
+        -- The server's career replaces whatever this PC kept of it; none on the server means a new career.
+        for _, slot in ipairs({ 'save-a.json', 'save-b.json', M.UNCONFIRMED }) do
+          if io.remove then pcall(io.remove, dir .. slot) end
+        end
+        if serverSave then pcall(io.write, dir .. 'save-a.json', serverSave) end
       end
-      if type(d.save) == 'table' then pcall(io.write, dir .. 'save-a.json', d.save) end
       self.key, self.dir, self.state = d.key, dir, 'server'
+      if unsent then
+        self.recovered = { balance = unsent.progression.balance, from = self.confirmedBalance }
+        self:push(unsent)
+      end
+      return true
+    elseif event == 'wwtcRejoined' then
+      -- The server had lost this player and has them back (see 'rejoin' below): what it missed is sent again.
+      local d = decode(data)
+      if not d or d.key ~= self.key then return false end
+      self.rejoinAskedAt = nil
+      if self.pending then self:sendText(self.pending.text) end
       return true
     elseif event == 'wwtcShip' then
       -- Ship Day: the ship in port and its containers' states (checked by shipday.clean in the game).
@@ -225,21 +268,74 @@ function M.new(deps)
     elseif event == 'wwtcSaved' then
       local d = decode(data)
       if not d then return false end
-      if d.ok == true then self.saveError, self.savedGeneration = nil, d.generation
-      else self.saveError = type(d.why) == 'string' and d.why:sub(1, 40) or 'refused' end
+      if d.ok == true then
+        self.saveError, self.savedGeneration = nil, d.generation
+        if self.pending and tonumber(d.generation) and d.generation >= self.pending.generation then
+          self.confirmedBalance = self.pending.balance
+          self:clearPending()
+        end
+      elseif d.why == 'rejoin' then
+        -- The server no longer knows this player (it lost the connection, or its plugin was reloaded): join again,
+        -- without reloading the career, then send the save again. Not a refusal: nothing is shown for it.
+        self:rejoin()
+      else
+        self.saveError = type(d.why) == 'string' and d.why:sub(1, 40) or 'refused'
+        -- The server has a newer save than this one (from another PC): this one is never going to be kept.
+        if self.saveError == 'out_of_date' then self:clearPending() end
+      end
       return true
     end
     return false
   end
 
-  -- Sends a save to the server, after the game wrote it here.
+  function s:sendText(text)
+    self.sent = self.sent + 1
+    if self.pending then self.pending.sentAt = self.now end
+    for _, frame in ipairs(M.frames(self.sent, text)) do deps.send('wwtcSave', frame) end
+  end
+
+  function s:clearPending()
+    self.pending = nil
+    if self.dir and io.remove then pcall(io.remove, self.dir .. M.UNCONFIRMED) end
+  end
+
+  -- Sends a save to the server, after the game wrote it here. Until the server says it kept it, it is pending: noted
+  -- on this PC (see UNCONFIRMED) and sent again now and then.
   function s:push(save)
     if self.state ~= 'server' then return false end
     local ok, text = pcall(deps.encode, save)
     if not ok or type(text) ~= 'string' then return false end
-    self.sent = self.sent + 1
-    for _, frame in ipairs(M.frames(self.sent, text)) do deps.send('wwtcSave', frame) end
+    local balance = type(save.progression) == 'table' and save.progression.balance or nil
+    self.pending = { generation = save.generation, balance = balance, text = text,
+      since = self.pending and self.pending.since or self.now }
+    if self.dir then pcall(io.write, self.dir .. M.UNCONFIRMED, { generation = save.generation, balance = balance }) end
+    self:sendText(text)
     return true
+  end
+
+  -- Sends a pending save again every RESEND_EVERY seconds.
+  function s:resend(clock)
+    local p = self.pending
+    if not p then return end
+    p.since, p.sentAt = p.since or clock, p.sentAt or clock
+    if clock - p.sentAt >= M.RESEND_EVERY then self:sendText(p.text) end
+  end
+
+  -- Asks the server to take this player back, at most every RESEND_EVERY seconds.
+  function s:rejoin()
+    local now = self.now or 0
+    if self.rejoinAskedAt and now - self.rejoinAskedAt < M.RESEND_EVERY then return end
+    self.rejoinAskedAt = now
+    deps.send('wwtcJoin', deps.encode({ v = M.PROTO, key = self.key, build = M.BUILD, again = true }))
+  end
+
+  -- When the server hasn't confirmed a save for CONFIRM_SECONDS: { balance = the money in its last confirmed save
+  -- (nil for none), seconds = how long }. Otherwise nil.
+  function s:unconfirmed(clock)
+    local p = self.pending
+    clock = clock or self.now
+    if not p or not p.since or not clock or clock - p.since < M.CONFIRM_SECONDS then return nil end
+    return { balance = self.confirmedBalance, seconds = clock - p.since }
   end
 
   -- Ship Day: asks for a container, gives one back (an abandoned job), and says one was delivered.
@@ -319,7 +415,7 @@ function M.game()
   function g.listen(handler)
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
     for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow',
-        'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission' }) do
+        'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission', 'wwtcRejoined' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true

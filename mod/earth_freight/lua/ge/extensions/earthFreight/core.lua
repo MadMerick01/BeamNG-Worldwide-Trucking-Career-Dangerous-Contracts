@@ -242,6 +242,14 @@ function M.new(deps)
     if self.mp and self.mp.state == 'server' then
       self.feedback = self.loadStatus == 'loaded' and 'Loaded your career from this server.'
         or self.loadStatus == 'missing' and 'A new career on this server. Every Save is kept on the server.' or self.feedback
+      -- Saves made on this PC that never reached the server were kept, and are being sent to it.
+      local recovered = self.mp.recovered
+      if recovered and self.loadStatus == 'loaded' then
+        self.feedback = 'Your last saves never reached the server, so they were kept on this PC and sent to it now: '
+          .. pricing.dollars(recovered.balance) .. '.'
+        self.diag:event('multiplayer_unsent_kept', tostring(recovered.balance), 'W')
+      end
+      self.mp.recovered = nil
     elseif self.mp and self.mp.state == 'local' then
       self.feedback = 'This server does not keep trucking careers, so your career here is saved on your PC,'
         .. ' apart from your single-player one. ' .. self.feedback
@@ -2327,12 +2335,20 @@ function M.new(deps)
         latitude = self.stranded.latitude, longitude = self.stranded.longitude,
         distanceMetres = location.distance(current, self.stranded),
       } or nil,
-      saveFeedback = self.feedback,
+      saveFeedback = self:serverSaveWarning() or self.feedback,
       puncture = self.punctureDamage > 0 and {
         tyreCost = math.floor(self.punctureDamage / PUNCTURE_DAMAGE + 0.5)
           * math.floor(PUNCTURE_DAMAGE * pricing.repairRate(self:carValueOf(self.ownedParts and self.ownedParts.id)) + 0.5),
       } or nil,
     }
+  end
+
+  -- On a server, while it hasn't confirmed the last save: what to tell the player, in place of the save line.
+  function c:serverSaveWarning()
+    local late = self.mp and self.mp.state == 'server' and self.mp:unconfirmed(self.clock)
+    if not late then return nil end
+    return 'The server hasn\'t got your saves since ' .. (late.balance and pricing.dollars(late.balance) or 'you joined')
+      .. '. They\'re kept on this PC: join the server again from this PC to send them.'
   end
 
   -- The recent deliveries Save keeps, as a list; nil when there are none.

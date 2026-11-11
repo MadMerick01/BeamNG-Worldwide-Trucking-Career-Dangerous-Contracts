@@ -914,4 +914,96 @@ do
   T.check(#W2.ANNOUNCE == 3 and W2.ANNOUNCE[1]:find('HUD', 1, true) and W2.ANNOUNCE[2]:find('discord.gg/', 1, true)
     and W2.ANNOUNCE[3]:find('github.io', 1, true), 'the server comes with the HUD, Discord and live page lines')
 end
+-- A "ghost" connection: BeamMP lost the player while their game kept running. Their saves never reach the server, the
+-- HUD says so, and joining again keeps the newer career on their PC and sends it, instead of the server's older one.
+do
+  local W, env = server()
+  local io = F.io()
+  local s, pump = session(W, env, 1, io)
+  s:start(0); pump()
+  local store = MPC.store(s, io); store:load()
+  local save = F.save(); save.progression.balance = 56000
+  store:save(save); pump()
+  T.eq(s.pending, nil, 'a save the server kept is not pending')
+  T.eq(io.files[s:directory() .. MPC.UNCONFIRMED], nil, 'and nothing is noted on the PC')
+  -- The server lets them go; what the game sends from now on goes nowhere.
+  W.onLeave(1)
+  local onSave = W.onSave
+  W.onSave = function() end
+  s:tick(100)
+  save = store:save((function() local x = F.save(); x.progression.balance = 270000; return x end)())
+  pump()
+  T.check(s.pending ~= nil, 'a save the server never answered is pending')
+  T.eq(s:unconfirmed(110), nil, 'not shown straight away')
+  local late = s:unconfirmed(100 + MPC.CONFIRM_SECONDS)
+  T.eq(late and late.balance, 56000, 'after a while the game says the server has nothing since $56,000')
+  local sent = 0
+  local send = s.sendText
+  s.sendText = function(self, text) sent = sent + 1; return send(self, text) end
+  s:tick(100 + MPC.RESEND_EVERY); pump()
+  T.eq(sent, 1, 'and sends it again')
+  -- Through Core: the save line says so.
+  local c = F.controller({ io = F.io({ [F.CONFIG] = F.config() }) })
+  c.mp, c.clock = s, 100 + MPC.CONFIRM_SECONDS
+  local warning = c:serverSaveWarning()
+  T.check(warning and warning:find('since $56,000', 1, true) and warning:find('join the server again', 1, true),
+    'the HUD says the server has not got the saves since $56,000')
+  -- They join again (a new game session, the same PC).
+  W.onSave = onSave
+  local s2, pump2 = session(W, env, 2, io)
+  s2:start(0); pump2()
+  local loaded = MPC.store(s2, io):load()
+  T.eq(loaded.progression.balance, 270000, 'the newer career on the PC is kept')
+  T.eq(J.decode(env.files[W.careerPath(s.key)]).progression.balance, 270000, 'and the server now has it')
+  T.eq(s2.pending, nil, 'confirmed')
+  T.eq(io.files[s2:directory() .. MPC.UNCONFIRMED], nil, 'so nothing is noted any more')
+  T.eq(s2.recovered.balance, 270000, 'the game can tell the player')
+end
+
+-- A copy the game never sent (edited by hand, or noted for an older save) still loses to the server's.
+do
+  local W, env = server()
+  local io = F.io()
+  local s, pump = session(W, env, 1, io)
+  s:start(0); pump()
+  local store = MPC.store(s, io); store:load()
+  local save = F.save(); save.progression.balance = 6000
+  store:save(save); pump()
+  local dir = s:directory()
+  local edited = io.files[dir .. 'save-a.json']
+  edited.generation, edited.progression.balance = edited.generation + 5, 999999
+  io.files[dir .. MPC.UNCONFIRMED] = { generation = edited.generation, balance = 6000 }
+  local s2, pump2 = session(W, env, 2, io)
+  s2:start(0); pump2()
+  T.eq(MPC.store(s2, io):load().progression.balance, 6000, 'money that does not match what was sent is not kept')
+end
+
+-- The server lost track of a player still in the game (its plugin reloaded): it asks them to join again, and keeps
+-- the save they send again. The same save sent twice is answered ok.
+do
+  local W, env = server()
+  local io = F.io()
+  local s
+  local handler = function(event, data) s:receive(event, data) end
+  local send, pump = link(W, env, 1, handler)
+  s = MPC.new({ send = send, encode = J.encode, decode = J.decode, io = io })
+  s:start(0); pump()
+  local store = MPC.store(s, io); store:load()
+  store:save(F.save()); pump()
+  W.players = {}
+  local save = F.save(); save.progression.balance = 42000
+  store:save(save); pump()
+  T.eq(s.saveError, nil, 'being lost is not shown as a refused save')
+  T.eq(J.decode(env.files[W.careerPath(s.key)]).progression.balance, 42000, 'the save is kept after joining back')
+  T.eq(W.players[1].key, s.key, 'with the same career')
+  T.eq(s.pending, nil, 'and confirmed')
+  local careers = 0
+  for _, line in ipairs(env.printed) do if line:find('joined back', 1, true) then careers = careers + 1 end end
+  T.eq(careers, 1, 'the server log says so')
+  -- The same save again, as a game that never heard back would send it.
+  local text = env.files[W.careerPath(s.key)]
+  for _, frame in ipairs(W.frames(99, text)) do W.onSave(1, frame) end
+  local last = J.decode(env.sent[#env.sent].data)
+  T.eq(last.ok, true, 'the same save sent again is answered ok')
+end
 T.done('multiplayer careers')

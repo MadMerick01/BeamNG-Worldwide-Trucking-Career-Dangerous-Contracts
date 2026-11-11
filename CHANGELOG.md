@@ -7,6 +7,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **Trucking servers now post three reminders in chat, in colour, taking turns every 10 minutes while anyone is on:** how to turn on the trucking HUD (in yellow), the Discord address (in blue) and the address of the live trucking career page (in gold). Server hosts can change the lines, add more, change how often or turn them off at the top of the server plugin, and the update script keeps those changes. To get this, update the server as usual. Careers are unaffected.
+- **On a trucking server, your saves can no longer be lost when the connection drops quietly.** Sometimes the server loses you while your game keeps running, and your saves stop reaching it. Before, the HUD still said "Saved", and when you joined again the server's older career replaced the newer one on your PC. Now the game waits for the server to confirm each save and keeps sending it until it does. If the server hasn't had your saves for half a minute, the line under Save says so, with the money in the last save it got, such as "The server hasn't got your saves since $56,000". Those saves are kept on your PC. Join the server again from the same PC and they're sent to it, and your career carries on where you left off.
+- If the server itself has lost track of you while you're still playing, your game now joins back on its own and sends the save again, so you won't notice anything.
+- To get this, update the server as usual, and players need the new download. Careers and saves still work. A career copy changed by hand on a PC still loses to the server's.
 - No changes in the game. The server page now shows the server's new name, **A WW Trucking Career | MadMerick**, while it's loading and in its sample data.
 
 ## Build 179 · 11 Nov 2026
