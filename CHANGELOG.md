@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 183 · 11 Nov 2026
+
 - **The HUD now always shows whose turf you're in.** Under the town name, an orange line such as "HybridLWB's turf · 20% toll on deliveries here" stays on screen while you're in another trucker's turf, and a green "Your turf · +0.4 bonus" while you're in your own. Outside every turf there's no line. It changes when you cross a border, at the same moment as the pop-up message. Saves still work.
 
 ## Build 182 · 11 Nov 2026
