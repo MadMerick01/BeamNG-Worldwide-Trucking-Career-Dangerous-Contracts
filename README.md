@@ -19,7 +19,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 - **178,700 real earth towns, each with a job board.** Move parts, bricks, water and fuel.
 - **Garage - Build your Rig.** Upgrade parts, buy and sell **new** and **second hand** vehicles.
-- **Trailers.** Buy one of 16 trailers, from a small box trailer to a 34,000 L tanker, with cargo boxes or fluid tanks fitted. Hitch it for extra cargo space, or keep it in your garage, which goes everywhere with you.
+- **Trailers.** Buy one of 16 trailers, from a small box trailer to a 34,000 L tanker, with cargo boxes or fluid tanks fitted. Hitch it for extra cargo space. Your base of operations has a spot for one trailer, so with a base you can own two; without one, a depot keeps your trailer for a fee.
 - **Real businesses.** Many town jobs end at a real shop, yard or warehouse in that town, found on OpenStreetMap. Pull up within 25 m of it to deliver; with Street View open you see the real place.
 - **Off-road drops.** No GPS route: follow the arrow on the Route tab to a spot off the road.
 - **Dangerous highly paid contracts.** Death Road, Carhuaz, Anta, Marcará, Zoji La, Ravin de Piquet, Sani Pass and Grimsel, for up to **8x the pay**. They stay in rotation after you deliver them, so you can drive your favourites again.

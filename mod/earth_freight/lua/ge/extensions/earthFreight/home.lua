@@ -51,7 +51,7 @@ function M.attach(c)
   end
 
   -- What the player is worth: cash, plus what their truck is worth, plus what they paid for their
-  -- trailer (and its parts) and their base.
+  -- trailers (and their parts) and their base.
   function c:wealth()
     local progression = self.profile and self.profile.progression
     if not progression then return 0 end
