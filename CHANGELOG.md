@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 174 · 11 Nov 2026
+
 - **Buy new trailer now offers 16 trailers instead of two**, from the $6,000 box utility trailer up to semi trailers: tilt decks, an enclosed cargo trailer, flatbeds, dry vans, and short, long and EU tankers holding up to 34,000 L. Each trailer has its own card with its picture, what it holds and the most it can carry.
 - Trailers come ready to work, with XL cargo boxes fitted. The box utility trailer can also be bought with XL fluid tanks instead: press **Boxes** or **Tanks** on its card. The tankers' own tanks start empty.
 - Each card says which hitch the trailer needs (a ball hitch, a gooseneck hitch or a fifth wheel) and whether your car has one. Small trailers take a ball hitch, and semi trailers need a truck with a fifth wheel. You can still buy a trailer before fitting the hitch with **Buy parts**.
