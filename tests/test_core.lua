@@ -1557,15 +1557,18 @@ do
   for _ = 1, 3 do c:tick(Home.TURF_SECONDS + 0.1) end
   T.eq(toasts[1], 'You are in your turf around Penrith. Jobs that start or end here pay you +0.4 on the region multiplier.', 'a new base: you are in your turf')
   T.eq(#toasts, 1, 'said once')
+  T.check(c:view().turf and c:view().turf.mine, 'the HUD line says you are in your turf'); T.near(c:view().turf.share, 0.4, 1e-9, 'with its bonus')
   for k in pairs(toasts) do toasts[k] = nil end
   circles = {}
   c:tick(Home.TURF_SECONDS + 0.1)
   T.eq(#toasts, 0, 'a change seen once waits')
   c:tick(Home.TURF_SECONDS + 0.1)
   T.eq(toasts[1], 'You have left your turf. No base bonus out here.', 'leaving your turf')
+  T.eq(c:view().turf, nil, 'and the HUD line goes away outside every turf')
   circles = { { latitude = a.pose.latitude, longitude = a.pose.longitude, radiusKm = 20, name = 'Penrith', owner = 'Belake' } }
   c:tick(Home.TURF_SECONDS + 0.1); c:tick(Home.TURF_SECONDS + 0.1)
   T.eq(toasts[2], "You are in Belake's turf around Penrith. Deliveries here pay 20% of their pay to Belake.", 'entering someone else\'s turf')
+  T.eq(c:view().turf.owner, 'Belake', 'the HUD line names the owner'); T.eq(c:view().turf.toll, 20, 'and the toll')
   circles = {}
   c:tick(Home.TURF_SECONDS + 0.1)
   circles = { { latitude = a.pose.latitude, longitude = a.pose.longitude, radiusKm = 20, name = 'Penrith', owner = 'Belake' } }
