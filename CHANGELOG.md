@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 177 · 11 Nov 2026
+
 - **Every job now pays a quarter less.** Town jobs, off-road drops, dangerous contracts, shortages, jackpots and Ship Day containers all pay 75% of what they did, so a full load of parts in the starter Burnside over 5 km pays $1,500 instead of $2,000. The "don't ask questions" beacon job pays $9,000 instead of $12,000, and on a server the commission from your base's turf is a quarter lower too, because it's a share of the pay.
 - Prices haven't changed: cars, parts, repairs, trailers, fuel, fees and the $250,000 base cost the same as before, so everything takes about a third more driving to afford. Your circle of influence still grows with your wealth in the same way, so it will grow more slowly.
 - Your saves still work, and the money you already have stays as it is. A job you had already taken before updating keeps the pay it showed when you took it.
