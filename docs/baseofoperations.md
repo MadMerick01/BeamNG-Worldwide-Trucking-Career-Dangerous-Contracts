@@ -1,6 +1,6 @@
 # The Magnate update: bases of operations
 
-Status: **steps 1 to 3 built**, 10 Nov 2026; **Magnate 2 built**, 11 Nov 2026 (see below). Built so far: the base replaces the home; its circle and the owner's bonus; on a
+Status: **steps 1 to 3 built**, 10 Nov 2026; **Magnate 2 built**, 11 Nov 2026; **Magnate 3 (corps) built**, 11 Nov 2026 (see below). Built so far: the base replaces the home; its circle and the owner's bonus; on a
 server, bases kept by the server (one a town, 10 km apart), everyone's circles, visitors' bonus, turf pushing, Ship Day
 containers, circles and a Base column on the web page, and commission. Since 11 Nov 2026 the Base tab also opens a
 Base map in the browser (served by the game like Street View, at `/bases`), and the game says when the truck crosses
@@ -268,6 +268,50 @@ circle sizes, the visitors' bonus and the 2.5% commission above.
 - Existing bases keep their town, and their circle is re-sized by the new rule. Bases closer than 300 km stay where
   they are; the spacing only applies to new ones. *Proposed.*
 
+## Magnate 3: corps
+
+Built. On a server, other players can join a base and become a corp. Single player has no corps.
+
+### Joining and leaving
+
+- The player who built the base founds the corp and owns it. Nothing about the base or its toll changes hands.
+- A player without a base presses **Ask to join** next to a base on the Base tab. The owner sees the request on
+  their Base tab and presses **Accept** or **Turn down**. A player has one request out at a time.
+- A corp holds at most 5 truckers: the owner and 4 members.
+- A player is in one corp at a time, and a member can't buy a base while they're in one. A player who owns a base
+  can't join a corp.
+- A member can press **Leave corp**, and the owner can press **Remove** next to a member. Either way that player waits
+  24 hours before they can ask to join any corp again, so nobody hops into whichever corp owns the drop-off town to
+  skip its toll.
+
+### What members get
+
+- **A yard at the base.** A member parks one car and one trailer at the owner's base spot, as the owner does: Swap
+  cars, Park at base, Swap trailers, half-price repairs there, and a second trailer. Relocate lists it as Corp yard.
+  The server only sends the base's exact spot to its members.
+- **No toll in their corp's turf.** Everyone else still pays the 20% toll, and all of it goes to the owner.
+- **+0.2 on the region multiplier** for jobs that start or end in their corp's turf. The owner keeps +0.4.
+- Members don't pay the owner anything. The owner gains a bigger circle and more turf to collect tolls on.
+
+### Circle size
+
+The circle is sized by the owner's best wealth plus half of each member's wealth now, by the Magnate 2 formula.
+Four $250k truckers with one $250k owner reach 1,600 × √3 ≈ 2,770 km instead of 1,600 km. Only the owner's part keeps
+the never-shrinks rule: a member's half goes when they leave.
+
+### Leaving with things in the yard
+
+A member who leaves or is removed has their car in the yard traded in at the usual trade-in price (half its worth,
+less the repair it needs) and their trailers there sent to the depot for free. The Leave corp button says so before
+it goes ahead.
+
+### The server
+
+`bases.json` gains each base's `id`, its owner's exact `spot` (sent to members only), `members` and `requests`
+(by career key, each with a public number the owner's buttons use) and `corps.json` keeps when each player last left.
+`wwtcCorp '{"v","do","base","who"}'` carries ask, cancel, leave, accept, turn down and remove. `wwtcBases` gains
+each base's `id`, `members` (names) and the viewer's own `corp`, `asked`, `yard`, `requests` and `memberList`.
+
 ## Building it in steps
 
 1. **Single player:** the base replaces the home, the circle and its size, and the owner's +0.4. Shown on the Home
@@ -277,7 +321,8 @@ circle sizes, the visitors' bonus and the 2.5% commission above.
 3. **Commission:** the owed ledger, `wwtcCommission`, toasts, the daily limit and the live feed.
 4. **Magnate 2:** world-size circles, the 100 km core and 300 km spacing, no visitors' bonus, and the 20% turf toll
    in place of commission.
-5. **Later:** base upgrades (more car spaces, a fuel pump, a repair bay), and town
+5. **Magnate 3:** corps.
+6. **Later:** base upgrades (more car spaces, a fuel pump, a repair bay), and town
    rivalries.
 
 ## Decisions
@@ -299,3 +344,7 @@ circle sizes, the visitors' bonus and the 2.5% commission above.
 | B13 | Delivering in someone else's turf (Magnate 2) | **Decided:** 20% of the payout goes to the turf's owner, replacing commission and the visitors' +0.2 |
 | B14 | Core and spacing (Magnate 2) | *Proposed:* 100 km core, bases 300 km apart |
 | B15 | Which end the toll counts at, and any daily limit | *Proposed:* the drop-off only, no daily limit |
+| B16 | Corps: who owns the base, and who gets the toll? | **Decided:** the founder owns it and gets every toll from non-members; members pay no toll in their corp's turf |
+| B17 | Corps: what do members get? | **Decided:** a car and trailer yard at the base, and +0.2 in the corp's turf; they pay the owner nothing |
+| B18 | Corps: what sizes the circle? | **Decided:** the owner's best wealth plus half of each member's wealth now |
+| B19 | Corps: limits | **Decided:** 5 truckers a corp, one corp at a time, 24 hours after leaving before joining another |

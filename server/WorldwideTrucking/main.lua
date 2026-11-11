@@ -345,6 +345,31 @@ local function spotOf(t)
   return lat, lon
 end
 
+-- A base's members or join requests as kept: career key -> { name, id, at }. Anything odd is dropped.
+function W.cleanCorpList(list)
+  local out = {}
+  if type(list) ~= 'table' then return out end
+  for key, m in pairs(list) do
+    if W.validKey(key) and type(m) == 'table' and payOf(m.id) then
+      out[key] = { name = clean(m.name, 32) or 'A trucker', id = payOf(m.id), at = tonumber(m.at) }
+    end
+  end
+  return out
+end
+
+-- A { latitude, longitude } checked, or nil.
+function W.spotTable(t)
+  local lat, lon = spotOf(t)
+  return lat and { latitude = lat, longitude = lon } or nil
+end
+
+-- The next free base number.
+function W.newBaseId()
+  local top = 0
+  for _, b in pairs(W.bases or {}) do if b.id and b.id > top then top = b.id end end
+  return top + 1
+end
+
 function W.loadBases()
   local text = W.env.read(basesPath())
   local ok, d = false, nil
@@ -358,9 +383,13 @@ function W.loadBases()
       W.bases[b.key] = { name = clean(b.name, 32) or 'A trucker', town = clean(b.town, 40), latitude = lat, longitude = lon,
         boost = tonumber(b.boost) or 1, peak = payOf(b.peak) or 0, asked = tonumber(b.asked),
         owed = payOf(b.owed) or 0, jobs = payOf(b.jobs) or 0, by = clean(b.by, 32), batch = batch, lastId = payOf(b.lastId) or 0,
-        day = type(b.day) == 'string' and b.day or nil, dayTotal = payOf(b.dayTotal) or 0 }
+        day = type(b.day) == 'string' and b.day or nil, dayTotal = payOf(b.dayTotal) or 0,
+        id = payOf(b.id), spot = W.spotTable(b.spot),
+        members = W.cleanCorpList(b.members), requests = W.cleanCorpList(b.requests), nextMember = payOf(b.nextMember) or 0 }
     end
   end
+  -- Every base has a number, which the corp buttons use (an older bases.json has none).
+  for _, b in pairs(W.bases) do if not b.id or b.id < 1 then b.id = W.newBaseId() end end
 end
 
 local function saveBases()
@@ -368,7 +397,9 @@ local function saveBases()
   for key, b in pairs(W.bases) do
     list[#list + 1] = { key = key, name = b.name, town = b.town, latitude = b.latitude, longitude = b.longitude,
       boost = b.boost, peak = b.peak, asked = b.asked, owed = b.owed, jobs = b.jobs, by = b.by, batch = b.batch,
-      lastId = b.lastId, day = b.day, dayTotal = b.dayTotal }
+      lastId = b.lastId, day = b.day, dayTotal = b.dayTotal, id = b.id, spot = b.spot,
+      members = next(b.members or {}) and b.members or nil, requests = next(b.requests or {}) and b.requests or nil,
+      nextMember = b.nextMember }
   end
   table.sort(list, function(a, b) return a.key < b.key end)
   W.env.write(basesPath(), W.env.encode(list))
@@ -384,16 +415,28 @@ local function dropStaleBases()
   return changed
 end
 
--- Every base, for one player's game: owner, town, centre, radius, and whether it's theirs.
+-- Every base, for one player's game: owner, town, centre, radius, whether it's theirs, and its corp: the members'
+-- names, whether this player is one (then also the base's own spot, its yard) or has asked to join, and for the
+-- owner the requests waiting. corp.wait: the seconds before this player may ask to join a corp again.
 function W.basesMessage(pid)
   local p = W.players[pid]
+  local me = p and p.key
   local list = {}
   for key, b in pairs(W.bases) do
-    list[#list + 1] = { name = b.name, town = b.town, latitude = b.latitude, longitude = b.longitude,
-      radiusKm = W.baseRadius(math.max(b.peak, W.BASE_PRICE), b.boost), mine = p ~= nil and p.key == key }
+    local e = { id = b.id, name = b.name, town = b.town, latitude = b.latitude, longitude = b.longitude,
+      radiusKm = W.circleKm(b), memberWealth = W.membersWealth(b), mine = me ~= nil and me == key,
+      members = W.memberList(b.members), full = W.corpFull(b) or nil, held = b.asked ~= nil or nil }
+    if me and b.members and b.members[me] then
+      e.corp = true
+      e.yard = b.spot or { latitude = b.latitude, longitude = b.longitude }
+    end
+    if me and b.requests and b.requests[me] then e.asked = true end
+    if e.mine then e.requests = W.memberList(b.requests) end
+    list[#list + 1] = e
   end
   table.sort(list, function(a, b) return a.name < b.name end)
-  return W.env.encode({ v = W.PROTO, bases = list })
+  local wait = me and W.corpWait(me)
+  return W.env.encode({ v = W.PROTO, bases = list, corp = wait and { wait = wait } or nil })
 end
 
 function W.sendBases(pid)
@@ -419,6 +462,7 @@ function W.onBaseClaim(pid, data)
   local why, by, near
   local mine = W.bases[p.key]
   if mine and not mine.asked then why = 'have_one' end
+  if not why and W.corpOf(p.key) then why = 'in_corp' end
   if not why then
     for key, b in pairs(W.bases) do
       if key ~= p.key and W.km(b, { latitude = lat, longitude = lon }) < W.BASE_APART_KM then why, by, near = 'too_close', b.name, b.town end
@@ -427,7 +471,9 @@ function W.onBaseClaim(pid, data)
   if not why then
     local boost = tonumber(d.boost) or 1
     W.bases[p.key] = { name = clean(p.name, 32) or 'A trucker', town = town, latitude = lat, longitude = lon,
-      boost = math.max(1, math.min(3, boost)), peak = 0, asked = W.env.clock() }
+      boost = math.max(1, math.min(3, boost)), peak = 0, asked = W.env.clock(), id = (mine and mine.id) or W.newBaseId(),
+      members = {}, requests = {}, nextMember = 0 }
+    W.dropRequests(p.key)
     saveBases()
   end
   W.env.send(pid, 'wwtcBaseClaimed', W.env.encode({ v = W.PROTO, ok = why == nil, why = why, by = by, town = near or town }))
@@ -454,6 +500,15 @@ function W.baseCareer(p, save)
     end
     b.name, b.asked = clean(p.name, 32) or b.name or 'A trucker', nil
     b.peak = math.max(b.peak or 0, payOf(property.peak) or 0)
+    -- The spot the owner parks on: the corp's yard, sent to its members only.
+    local spotLat, spotLon = spotOf(property)
+    b.spot = spotLat and { latitude = spotLat, longitude = spotLon } or b.spot
+    b.id = b.id or W.newBaseId()
+    b.members, b.requests, b.nextMember = b.members or {}, b.requests or {}, b.nextMember or 0
+    if W.corpOf(p.key) then
+      -- A base can't be in a corp: a member who has one (an old save) leaves the corp.
+      W.corpLeave(p.key, false)
+    end
     -- Commission the game has added to the money in this save is paid.
     if b.batch and (payOf(save.commissionId) or 0) >= b.batch.id then b.batch = nil end
     W.bases[p.key] = b
@@ -463,6 +518,11 @@ function W.baseCareer(p, save)
   elseif had and not had.asked and not property then
     W.bases[p.key] = nil
     saveBases()
+    W.sendBasesToAll()
+  elseif W.corpOf(p.key) then
+    -- A member's wealth sizes their corp's circle: every save can change it.
+    local b = W.corpOf(p.key)
+    b.members[p.key].name = clean(p.name, 32) or b.members[p.key].name
     W.sendBasesToAll()
   end
 end
@@ -482,7 +542,7 @@ function W.turfAt(spot)
   local best, bestScore
   for key, b in pairs(W.bases or {}) do
     if not b.asked then
-      local km, r = W.km(b, spot), W.baseRadius(math.max(b.peak, W.BASE_PRICE), b.boost)
+      local km, r = W.km(b, spot), W.circleKm(b)
       if km <= W.BASE_CORE_KM then return key end
       if km <= r and (not bestScore or km / r < bestScore) then best, bestScore = key, km / r end
     end
@@ -521,10 +581,197 @@ function W.commission(p, pay, ends, toll)
   local key = lat and W.turfAt({ latitude = lat, longitude = lon })
   if not key or key == p.key then return end
   local b = W.bases[key]
+  if b.members and b.members[p.key] then return end
   b.owed, b.jobs, b.by = (b.owed or 0) + toll, (b.jobs or 0) + 1, clean(p.name, 32) or 'A trucker'
   W.feed('commission', string.format("%s paid %s a %s turf toll.", clean(p.name, 32) or 'A trucker', b.name, dollars(toll)))
   saveBases()
   W.sendCommission(key)
+end
+
+-- ----- Corps (Magnate 3) --------------------------------------------------------------------------------------------
+-- Other players join a base as members of its corp. The owner (who built it) keeps it and every toll from
+-- non-members; members pay no toll in its turf, get the owner's spot as a yard for a car and a trailer, and +0.2 in
+-- its turf (the game works that out). Half of each member's wealth now adds to the owner's best wealth in sizing the
+-- circle. A corp holds CORP_MAX truckers (the owner too); a player is in one at a time and can't own a base while
+-- they are; after leaving or being removed they wait CORP_WAIT_SECONDS before asking to join again.
+--   game -> server  wwtcCorp '{"v","do","base","who"}'  do: ask (base id), cancel, leave, accept / refuse / remove (who:
+--                   the member or request number, owner only); answered by
+--   server -> game  wwtcCorpDone '{"v","do","ok","why","wait"}'  and everyone's wwtcBases again on a change
+-- corps.json keeps when each player last left one: { left = { key = time } }.
+W.CORP_MAX = 5
+W.CORP_WAIT_SECONDS = 24 * 3600
+W.CORP_MEMBER_SHARE = 0.5   -- the share of a member's wealth that sizes the circle
+W.CORP_REQUESTS_MAX = 20
+
+local function corpsPath() return W.seasonDir() .. '/corps.json' end
+
+function W.loadCorps()
+  local text = W.env.read(corpsPath())
+  local ok, d = false, nil
+  if text and text ~= '' then ok, d = pcall(W.env.decode, text) end
+  W.corpLeft = {}
+  for key, at in pairs(ok and type(d) == 'table' and type(d.left) == 'table' and d.left or {}) do
+    if W.validKey(key) and tonumber(at) then W.corpLeft[key] = tonumber(at) end
+  end
+end
+
+local function saveCorps()
+  W.env.write(corpsPath(), W.env.encode({ left = next(W.corpLeft or {}) and W.corpLeft or nil }))
+end
+
+-- The corp (base) a player is a member of, and its owner's key, or nil.
+function W.corpOf(key)
+  for owner, b in pairs(W.bases or {}) do
+    if b.members and b.members[key] then return b, owner end
+  end
+  return nil
+end
+
+function W.corpSize(b)
+  local n = 1
+  for _ in pairs(b.members or {}) do n = n + 1 end
+  return n
+end
+function W.corpFull(b) return W.corpSize(b) >= W.CORP_MAX end
+
+-- What a player is worth now, as the leaderboard has it: cash, truck, trailers and base.
+function W.wealthOf(key)
+  local e = W.stats and W.stats.board and W.stats.board[key]
+  if not e then return 0 end
+  return (e.balance or 0) + (e.truckValue or 0) + (e.trailerValue or 0) + (e.baseValue or 0)
+end
+
+-- Half of every member's wealth now, which adds to the owner's best wealth in sizing the circle.
+function W.membersWealth(b)
+  local sum = 0
+  for key in pairs(b.members or {}) do sum = sum + W.wealthOf(key) end
+  return math.floor(sum * W.CORP_MEMBER_SHARE)
+end
+
+-- The circle's radius in km: the owner's best wealth (at least the base's price) and half of each member's.
+function W.circleKm(b)
+  return W.baseRadius(math.max(b.peak or 0, W.BASE_PRICE) + W.membersWealth(b), b.boost)
+end
+
+-- Members or requests, for the games and the page: { id, name }, by number.
+function W.memberList(list)
+  local out = {}
+  for _, m in pairs(list or {}) do out[#out + 1] = { id = m.id, name = m.name } end
+  table.sort(out, function(a, b) return a.id < b.id end)
+  return out
+end
+function W.memberNames(b)
+  local out = {}
+  for _, m in ipairs(W.memberList(b.members)) do out[#out + 1] = m.name end
+  return #out > 0 and out or nil
+end
+
+-- Seconds before this player may ask to join a corp again, or nil.
+function W.corpWait(key)
+  local at = W.corpLeft and W.corpLeft[key]
+  if not at then return nil end
+  local left = at + W.CORP_WAIT_SECONDS - W.env.clock()
+  if left <= 0 then W.corpLeft[key] = nil; return nil end
+  return math.ceil(left)
+end
+
+-- Takes back every request this player has out.
+function W.dropRequests(key)
+  for _, b in pairs(W.bases or {}) do if b.requests then b.requests[key] = nil end end
+end
+
+-- Takes a player out of their corp; counted (true) starts their wait before joining another.
+function W.corpLeave(key, counted)
+  local b = W.corpOf(key)
+  if not b then return nil end
+  local m = b.members[key]
+  b.members[key] = nil
+  if counted then
+    W.corpLeft = W.corpLeft or {}
+    W.corpLeft[key] = W.env.clock()
+    saveCorps()
+  end
+  saveBases()
+  return b, m
+end
+
+local function numbered(list, id)
+  for key, m in pairs(list or {}) do if m.id == id then return key, m end end
+  return nil
+end
+
+function W.onCorp(pid, data)
+  local p = W.players[pid]
+  if not p or not p.key then return end
+  local ok, d = pcall(W.env.decode, data or '')
+  if not ok or type(d) ~= 'table' or type(d['do']) ~= 'string' then return end
+  local what = d['do']
+  local name = clean(p.name, 32) or 'A trucker'
+  local why, wait, changed
+  local mine = W.bases[p.key]
+  if what == 'ask' then
+    local b
+    for _, x in pairs(W.bases) do if not x.asked and x.id == payOf(d.base) then b = x end end
+    if not b then why = 'no_base'
+    elseif mine then why = 'have_base'
+    elseif W.corpOf(p.key) then why = 'in_corp'
+    elseif W.corpWait(p.key) then why, wait = 'wait', W.corpWait(p.key)
+    elseif W.corpFull(b) then why = 'full'
+    else
+      local n = 0
+      for _ in pairs(b.requests) do n = n + 1 end
+      if n >= W.CORP_REQUESTS_MAX and not b.requests[p.key] then why = 'busy' end
+    end
+    if not why then
+      W.dropRequests(p.key)
+      b.nextMember = (b.nextMember or 0) + 1
+      b.requests[p.key] = { name = name, id = b.nextMember, at = W.env.clock() }
+      saveBases()
+      changed = true
+    end
+  elseif what == 'cancel' then
+    W.dropRequests(p.key)
+    saveBases()
+    changed = true
+  elseif what == 'leave' then
+    local b = W.corpLeave(p.key, true)
+    if not b then why = 'not_in_corp' else
+      W.feed('corp', string.format('%s left %s\'s corp.', name, b.name))
+      changed = true
+    end
+  elseif what == 'accept' or what == 'refuse' or what == 'remove' then
+    local id = payOf(d.who)
+    if not mine or mine.asked then why = 'not_owner'
+    elseif what == 'remove' then
+      local key, m = numbered(mine.members, id)
+      if not key then why = 'gone' else
+        W.corpLeave(key, true)
+        W.feed('corp', string.format('%s removed %s from their corp.', mine.name, m.name))
+        changed = true
+      end
+    else
+      local key, m = numbered(mine.requests, id)
+      if not key then why = 'gone'
+      elseif what == 'refuse' then
+        mine.requests[key] = nil
+        saveBases()
+        changed = true
+      elseif W.bases[key] then why = 'have_base'; mine.requests[key] = nil; changed = true
+      elseif W.corpOf(key) then why = 'in_corp'; mine.requests[key] = nil; changed = true
+      elseif W.corpFull(mine) then why = 'full'
+      else
+        W.dropRequests(key)
+        mine.members[key] = { name = m.name, id = m.id, at = W.env.clock() }
+        saveBases()
+        W.feed('corp', string.format('%s joined %s\'s corp.', m.name, mine.name))
+        changed = true
+      end
+    end
+  else
+    return
+  end
+  W.env.send(pid, 'wwtcCorpDone', W.env.encode({ v = W.PROTO, ['do'] = what, ok = why == nil, why = why, wait = wait }))
+  if changed then W.sendBasesToAll() end
 end
 
 -- The stats file the page reads.
@@ -554,7 +801,7 @@ function W.status()
   local bases = {}
   for _, b in pairs(W.bases or {}) do
     bases[#bases + 1] = { name = b.name, town = b.town, latitude = math.floor(b.latitude * 100 + 0.5) / 100,
-      longitude = math.floor(b.longitude * 100 + 0.5) / 100, radiusKm = math.floor(W.baseRadius(math.max(b.peak, W.BASE_PRICE), b.boost) * 10 + 0.5) / 10 }
+      longitude = math.floor(b.longitude * 100 + 0.5) / 100, radiusKm = math.floor(W.circleKm(b) * 10 + 0.5) / 10, members = W.memberNames(b) }
   end
   table.sort(bases, function(a, b) return a.name < b.name end)
   local t = today()
@@ -690,6 +937,7 @@ function W.start(env)
   W.loadClaims()
   W.loadStats()
   W.loadBases()
+  W.loadCorps()
   local accountsText = env.read(W.DIR .. '/accounts.json')
   local okA, accounts = false, nil
   if accountsText and accountsText ~= '' then okA, accounts = pcall(env.decode, accountsText) end
@@ -1284,6 +1532,7 @@ if MP and MP.RegisterEvent then
   WWTC_onFind = guarded('find', W.onFind)
   WWTC_onHere = guarded('here', W.onHere)
   WWTC_onBaseClaim = guarded('base claim', W.onBaseClaim)
+  WWTC_onCorp = guarded('corp', W.onCorp)
   WWTC_onChat = function(pid, name, message)
     local ok, hide = pcall(W.onChat, pid, message)
     if ok and hide then return 1 end
@@ -1304,6 +1553,7 @@ if MP and MP.RegisterEvent then
   MP.RegisterEvent('wwtcFind', 'WWTC_onFind')
   MP.RegisterEvent('wwtcHere', 'WWTC_onHere')
   MP.RegisterEvent('wwtcBaseClaim', 'WWTC_onBaseClaim')
+  MP.RegisterEvent('wwtcCorp', 'WWTC_onCorp')
   MP.RegisterEvent('WWTC_shipTimer', 'WWTC_onShipTimer')
   if MP.CreateEventTimer then MP.CreateEventTimer('WWTC_shipTimer', 15000) end
   WWTC_onShipTimer()

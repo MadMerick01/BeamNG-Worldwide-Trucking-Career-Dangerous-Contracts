@@ -57,16 +57,42 @@ function M.cleanPlayers(list)
   return out
 end
 
+-- A { latitude, longitude } from the server, checked, or nil.
+local function spotOf(t)
+  local lat, lon = type(t) == 'table' and tonumber(t.latitude), type(t) == 'table' and tonumber(t.longitude)
+  if not lat or not lon or math.abs(lat) > 90 or math.abs(lon) > 180 then return nil end
+  return { latitude = lat, longitude = lon }
+end
+
+-- A corp's members or join requests from the server: { id, name } each.
+local function people(list)
+  local out = {}
+  for _, m in ipairs(type(list) == 'table' and list or {}) do
+    local id = type(m) == 'table' and tonumber(m.id)
+    if id and id >= 1 and id == math.floor(id) and #out < 32 then out[#out + 1] = { id = id, name = M.cleanText(m.name, 32) or 'A trucker' } end
+  end
+  return out
+end
+
 -- The server's bases of operations, checked: each owner's name, the town, its centre and the circle's radius in km,
--- and whether it is this player's own.
+-- and whether it is this player's own. Since corps (Magnate 3) also its number, its members, whether it is full,
+-- half its members' wealth (which grows the circle), and for this player: whether they are a member (then the yard,
+-- the owner's spot) or have asked to join, and for the owner the requests waiting.
 function M.cleanBases(list)
   local out = {}
   for _, b in ipairs(type(list) == 'table' and list or {}) do
     local lat, lon, r = type(b) == 'table' and tonumber(b.latitude), type(b) == 'table' and tonumber(b.longitude),
       type(b) == 'table' and tonumber(b.radiusKm)
     if lat and lon and r and math.abs(lat) <= 90 and math.abs(lon) <= 180 and r > 0 and r <= 20000 and #out < 256 then
+      local id, extra = tonumber(b.id), tonumber(b.memberWealth)
+      local corp = b.corp == true and b.mine ~= true
       out[#out + 1] = { name = M.cleanText(b.name, 32) or 'A trucker', town = M.cleanText(b.town, 40),
-        latitude = lat, longitude = lon, radiusKm = r, mine = b.mine == true }
+        latitude = lat, longitude = lon, radiusKm = r, mine = b.mine == true,
+        id = id and id >= 1 and id == math.floor(id) and id or nil,
+        memberWealth = extra and extra >= 0 and extra < 1e15 and math.floor(extra) or 0,
+        members = people(b.members), full = b.full == true, held = b.held == true,
+        corp = corp, asked = b.asked == true and not corp, yard = corp and spotOf(b.yard) or nil,
+        requests = b.mine == true and people(b.requests) or nil }
     end
   end
   return out
@@ -243,6 +269,15 @@ function M.new(deps)
       local d = decode(data)
       if not d or type(d.bases) ~= 'table' then return false end
       self.bases = M.cleanBases(d.bases)
+      local wait = type(d.corp) == 'table' and tonumber(d.corp.wait) or nil
+      self.corpWait = wait and wait > 0 and { seconds = math.min(wait, 7 * 86400), at = self.now or 0 } or nil
+      return true
+    elseif event == 'wwtcCorpDone' then
+      -- The answer to corp(): { do, ok, why, wait }.
+      local d = decode(data)
+      if not d then return false end
+      self.corpDone = { what = M.cleanText(d['do'], 10), ok = d.ok == true, why = M.cleanText(d.why, 20),
+        wait = tonumber(d.wait) }
       return true
     elseif event == 'wwtcBaseClaimed' then
       -- The answer to claimBase(): { ok, why, by, town }.
@@ -372,6 +407,12 @@ function M.new(deps)
   end
   -- A base of operations: asks the server whether this town is free (one base a town, 10 km apart).
   function s:claimBase(t) return shipEvent('wwtcBaseClaim', t) end
+  -- Corps: ask to join a base (base = its number), cancel, leave, or as its owner accept, refuse or remove (who).
+  function s:corp(what, t)
+    t = t or {}
+    t['do'] = what
+    return shipEvent('wwtcCorp', t)
+  end
   function s:shipDelivered(ship, n, town, pay, ends, toll) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay, ends = ends, toll = toll }) end
   return s
 end
@@ -415,7 +456,8 @@ function M.game()
   function g.listen(handler)
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
     for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow',
-        'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission', 'wwtcRejoined' }) do
+        'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission', 'wwtcRejoined',
+        'wwtcCorpDone' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true

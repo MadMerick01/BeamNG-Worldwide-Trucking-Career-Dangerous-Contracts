@@ -204,7 +204,7 @@ function M.attach(c)
 
   -- Whether the base's trailer spot is free: a base is owned and no trailer is stored there.
   function c:trailerSpotFree()
-    if not self.property then return false end
+    if not self:homeSpot() then return false end
     for _, t in ipairs({ self.trailer, self.spareTrailer }) do
       if t and t.stored and t.at == 'base' then return false end
     end
@@ -221,7 +221,7 @@ function M.attach(c)
 
   -- How many trailers the player may own: one, or two with a base.
   function c:trailersAllowed()
-    return self.property and 2 or 1
+    return self:homeSpot() and 2 or 1
   end
 
   -- A trailer stored before trailers had a place (the garage that went everywhere) is at the base
@@ -419,7 +419,7 @@ function M.attach(c)
   function c:trailerBuyProblem()
     if not self.trailer then return nil end
     if self.spareTrailer then return 'You already own two trailers. Sell one first.' end
-    if not self.property then return 'You already own a trailer. A base of operations keeps a second one, or sell this one first.' end
+    if not self:homeSpot() then return 'You already own a trailer. A base of operations (or a corp\'s yard) keeps a second one, or sell this one first.' end
     if not self.trailer.stored then return 'Store your trailer first: the new one comes out behind your car.' end
     return nil
   end
@@ -488,7 +488,7 @@ function M.attach(c)
     if not self.trailer or not self.trailerOut or not self.profile or self.error then return 'Your trailer is not out.' end
     if self.hire then return self:awayText() end
     if self.trailerShop then return 'Pay for or undo your trailer parts first.' end
-    if place == 'base' and not self.property then return 'You need a base of operations for that.' end
+    if place == 'base' and not self:homeSpot() then return 'You need a base of operations (or a corp\'s yard) for that.' end
     if place == 'base' and not self:trailerSpotFree() then return 'Your base already has a trailer in its spot.' end
     if place ~= 'base' and place ~= 'depot' then return 'Store it at your base or the depot.' end
     local fee = self:trailerMoveFee(place)
@@ -783,9 +783,9 @@ function M.attach(c)
     local balance = self.profile and self.profile.progression.balance or 0
     local view = { feedback = self.trailerFeedback, problem = problem, open = self.trailersOpen == true,
       foreign = self.foreignTrailer ~= nil and not (out and out.id == self.foreignTrailer),
-      base = self.property ~= nil, atBase = self.property ~= nil and self:atHome() or false,
+      base = self:homeSpot() ~= nil, atBase = self:homeSpot() ~= nil and self:atHome() or false,
       spotFree = self:trailerSpotFree(), depotFee = M.DEPOT_FEE, allowed = self:trailersAllowed() }
-    if self.property and not view.atBase then view.haulFee = self:trailerMoveFee('base') end
+    if self:homeSpot() and not view.atBase then view.haulFee = self:trailerMoveFee('base') end
     if t then
       local repair = self:trailerRepairCost()
       view.owned = {

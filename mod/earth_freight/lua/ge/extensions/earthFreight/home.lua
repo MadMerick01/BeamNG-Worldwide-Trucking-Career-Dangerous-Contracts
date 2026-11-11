@@ -21,6 +21,10 @@ M.SPACES = persistence.HOME_SPACES
 M.ASK_SECONDS = 15
 -- How often the game checks whose turf the truck is in, for the messages when it changes.
 M.TURF_SECONDS = 3
+-- Corps (Magnate 3, server only): at most this many truckers a corp, the owner too, and how long after leaving
+-- one before asking to join again. The server decides both; these are for the HUD's words.
+M.CORP_MAX = 5
+M.CORP_WAIT_HOURS = 24
 
 local MAX_INTEGER = 9007199254740991
 local dollars = pricing.dollars
@@ -33,18 +37,26 @@ function M.attach(c)
   --   self.property: the home owned, as saved, or nil
   --   self.storedCars: the cars kept there, a list of at most SPACES
 
+  --   self.corp: on a server, the corp the player is a member of (Magnate 3), as saved:
+  --     { owner, town, latitude, longitude }, the yard being the owner's spot. Kept in step with the server.
+
   function c:storedCar() return self.storedCars and self.storedCars[1] or nil end
 
-  -- Whether a car bill can send the old car home: a home is owned and has room.
+  -- Where the player keeps a second car and trailer: their base's spot, or as a corp member its yard.
+  function c:homeSpot()
+    return self.property or self.corp or nil
+  end
+
+  -- Whether a car bill can send the old car home: a home (or corp yard) is there and has room.
   function c:homeSpaceFree()
-    return self.property ~= nil and #(self.storedCars or {}) < M.SPACES
+    return self:homeSpot() ~= nil and #(self.storedCars or {}) < M.SPACES
   end
 
   -- How far the player is from home, or nil.
   function c:homeDistance()
-    local here = self.lastSample
-    if not self.property or not here or not here.valid then return nil end
-    return location.distance(here, self.property)
+    local here, spot = self.lastSample, self:homeSpot()
+    if not spot or not here or not here.valid then return nil end
+    return location.distance(here, spot)
   end
 
   function c:atHome()
@@ -93,8 +105,13 @@ function M.attach(c)
     if not town then return nil end
     local wealth = math.floor(self:wealth())
     if wealth > (p.peak or 0) then p.peak = wealth end
+    -- On a server, half of each corp member's wealth grows it too (the server sends the sum).
+    local extra = 0
+    for _, b in ipairs(self.mp and self.mp.state == 'server' and self.mp.bases or {}) do
+      if b.mine then extra = b.memberWealth or 0 end
+    end
     return { latitude = town.latitude, longitude = town.longitude, name = town.name, boost = town.boost,
-      radiusKm = magnate.radiusKm(p.peak, town.boost), peak = p.peak, mine = true }
+      radiusKm = magnate.radiusKm(p.peak + extra, town.boost), peak = p.peak, memberWealth = extra, mine = true }
   end
 
   -- Every circle that counts for this player: their own, and on a server everyone else's.
@@ -105,7 +122,8 @@ function M.attach(c)
     local others = self.mp and self.mp.state == 'server' and self.mp.bases or nil
     for _, b in ipairs(others or {}) do
       if not b.mine then
-        list[#list + 1] = { latitude = b.latitude, longitude = b.longitude, radiusKm = b.radiusKm, name = b.town, owner = b.name }
+        list[#list + 1] = { latitude = b.latitude, longitude = b.longitude, radiusKm = b.radiusKm, name = b.town, owner = b.name,
+          corp = b.corp or nil }
       end
     end
     return list
@@ -129,6 +147,7 @@ function M.attach(c)
     local t = point and location.valid(point) and magnate.turf(circles, point)
     if not t then return nil end
     if t.mine then return { town = t.name, mine = true, share = magnate.OWNER_SHARE } end
+    if t.corp then return { town = t.name, owner = t.owner, corp = true, share = magnate.MEMBER_SHARE } end
     return { town = t.name, owner = t.owner, toll = math.floor(magnate.TOLL * 100 + 0.5) }
   end
 
@@ -146,7 +165,7 @@ function M.attach(c)
     local out = { ok = true, coreKm = magnate.CORE_KM, circles = {} }
     for _, b in ipairs(circles) do
       out.circles[#out.circles + 1] = { latitude = round(b.latitude, 5), longitude = round(b.longitude, 5),
-        radiusKm = round(b.radiusKm, 1), town = b.name, owner = b.owner, mine = b.mine or nil }
+        radiusKm = round(b.radiusKm, 1), town = b.name, owner = b.owner, mine = b.mine or nil, corp = b.corp or nil }
     end
     local sample = self.lastSample
     if sample and sample.valid and location.valid(sample) then
@@ -165,7 +184,7 @@ function M.attach(c)
       local function pin(p, name, bonus, toll)
         if not p or not location.valid(p) then return nil end
         local t = turfInfo(circles, p)
-        if t then t.counts = (t.mine and bonus or (not t.mine and toll)) or nil end
+        if t then t.counts = ((t.mine or t.corp) and bonus or (not t.mine and not t.corp and toll)) or nil end
         return { latitude = p.latitude, longitude = p.longitude, name = name, turf = t }
       end
       local fromTown, toTown = places.get(load.from), places.get(load.to)
@@ -187,7 +206,7 @@ function M.attach(c)
     local sample = self.lastSample
     if not sample or not sample.valid or not location.valid(sample) then return end
     local t = turfInfo(self:baseCircles(), sample)
-    local key = t and ((t.mine and 'mine' or (t.owner or '?')) .. '@' .. (t.town or '')) or ''
+    local key = t and ((t.mine and 'mine' or t.corp and 'corp' or (t.owner or '?')) .. '@' .. (t.town or '')) or ''
     if self.turf == nil then self.turf, self.turfKey = t or false, key; return end -- where you start says nothing
     if key == self.turfKey then self.turfPending = nil; return end
     if self.turfPending ~= key then self.turfPending = key; return end
@@ -196,11 +215,15 @@ function M.attach(c)
     local where = function(x) return x.town and (' around ' .. x.town) or '' end
     if t and t.mine then
       self:toast('info', 'Your turf', string.format('You are in your turf%s. Jobs that start or end here pay you +%.1f on the region multiplier.', where(t), t.share))
+    elseif t and t.corp then
+      self:toast('info', 'Your corp\'s turf', string.format('You are in your corp\'s turf%s. Jobs that start or end here pay you +%.1f on the region multiplier, and you pay %s no toll.',
+        where(t), t.share, t.owner or 'the owner'))
     elseif t then
       self:toast('info', 'Base turf', string.format('You are in %s\'s turf%s. Deliveries here pay %d%% of their pay to %s.',
         t.owner or 'another trucker', where(t), t.toll, t.owner or 'them'))
     elseif was then
       self:toast('info', 'Base turf', was.mine and 'You have left your turf. No base bonus out here.'
+        or was.corp and 'You have left your corp\'s turf. No base bonus out here.'
         or string.format('You have left %s\'s turf. No base bonus out here.', was.owner or 'another trucker'))
     end
   end
@@ -224,7 +247,12 @@ function M.attach(c)
   -- The base as a Relocate destination.
   function c:homeDestination()
     local p = self.property
-    if not p then return nil end
+    if not p then
+      local y = self.corp
+      if not y then return nil end
+      return { id = 'home', name = 'Corp yard', region = (y.owner or 'Your corp') .. '\'s base' .. (y.town and (', ' .. y.town) or ''),
+        latitude = y.latitude, longitude = y.longitude }
+    end
     return { id = 'home', name = 'Base', region = p.name or string.format('%.5f, %.5f', p.latitude, p.longitude),
       latitude = p.latitude, longitude = p.longitude }
   end
@@ -250,6 +278,7 @@ function M.attach(c)
   -- Why Buy this spot cannot be pressed now, or nil.
   function c:claimProblem()
     if self.property then return 'You already own a base.' end
+    if self.corp then return 'You are in ' .. (self.corp.owner or 'a') .. '\'s corp. Leave it first: a corp member can\'t own a base.' end
     local problem = busy(self)
     if problem then return problem end
     if not self:canAfford(M.PRICE) then
@@ -296,6 +325,7 @@ function M.attach(c)
       self.homeFeedback = d.why == 'too_close'
         and string.format('Too close to %s\'s base in %s. Bases must be %d km apart.', d.by or 'another trucker', d.town or 'a town nearby', magnate.MIN_APART_KM)
         or d.why == 'have_one' and 'The server already has a base for you.'
+        or d.why == 'in_corp' and 'You are in a corp. Leave it first: a corp member can\'t own a base.'
         or 'The server said no. Try again in a moment.'
       return
     end
@@ -343,7 +373,7 @@ function M.attach(c)
 
   -- Why Swap cars cannot be pressed now, or nil.
   function c:swapProblem()
-    if not self.property then return 'Buy a base first.' end
+    if not self:homeSpot() then return 'Buy a base first.' end
     if not self:storedCar() then return 'No car is stored at your base yet.' end
     local problem = busy(self)
     if problem then return problem end
@@ -351,7 +381,7 @@ function M.attach(c)
     if self:towDebtProblem() then return self:towDebtProblem() end
     if not self:atHome() then
       local d = self:homeDistance()
-      return 'Drive to your base to swap cars' .. (d and (': it is ' .. string.format('%.1f', d / 1000) .. ' km away.') or '.')
+      return 'Drive to your ' .. (self.property and 'base' or 'corp yard') .. ' to swap cars' .. (d and (': it is ' .. string.format('%.1f', d / 1000) .. ' km away.') or '.')
     end
     return nil
   end
@@ -405,7 +435,7 @@ function M.attach(c)
     end
     self.photoModel, self.photoStamp, self.homeCard = nil, nil, nil
     self:photoSoon()
-    self.homeFeedback = 'Swapped. Your ' .. tostring(outgoing.name or oldModel) .. ' is stored at your base.'
+    self.homeFeedback = 'Swapped. Your ' .. tostring(outgoing.name or oldModel) .. ' is stored at your ' .. (self.property and 'base.' or 'corp yard.')
     self.diag:event('cars_swapped', tostring(oldModel) .. ' -> ' .. tostring(model))
     self:autoSaveSoon('swapping cars')
     return true
@@ -437,6 +467,175 @@ function M.attach(c)
     return { name = known.name, value = known.value, preview = known.preview, km = known.km, repair = known.repair }
   end
 
+  -- ----- Corps (Magnate 3) -----------------------------------------------------------------------------------------
+  -- On a server, a player without a base can join someone else's: the owner accepts them on the Base tab. Members
+  -- keep a car and a trailer at the owner's spot (the yard), get MEMBER_SHARE in its turf and pay no toll there.
+
+  -- The base whose corp the server says this player is in, or nil.
+  function c:corpBase()
+    for _, b in ipairs(self.mp and self.mp.state == 'server' and self.mp.bases or {}) do
+      if b.corp then return b end
+    end
+    return nil
+  end
+
+  -- Leaving a corp, or being removed: the car in the yard is traded in (as a car bill would), and trailers there go
+  -- to the depot for free.
+  local function tradeInStored(self)
+    local card = self:storedCarCard()
+    if not card then return nil end
+    local pay = math.max(0, math.floor((card.value or 0) * pricing.CAR_TRADE_IN_SHARE - (card.repair or 0) + 0.5))
+    return pay, card.name
+  end
+
+  function c:corpGone(was)
+    self.corp, self.leaveArmed = nil, nil
+    local lines = {}
+    local pay, name = tradeInStored(self)
+    if pay then
+      self.storedCars, self.homeCard = {}, nil
+      if pay > 0 then self:addMoney(pay) end
+      lines[#lines + 1] = string.format('Your %s in the yard was traded in for %s.', name or 'car', dollars(pay))
+    end
+    local moved = false
+    for _, t in ipairs({ self.trailer, self.spareTrailer }) do
+      if t and t.stored and t.at == 'base' then t.at, moved = 'depot', true end
+    end
+    if moved then lines[#lines + 1] = 'Your trailer there went to the depot for free.' end
+    self:showFlash('cancelled', 'OUT OF THE CORP', string.format('You are no longer in %s\'s corp.', was.owner or 'that')
+      .. (#lines > 0 and (' ' .. table.concat(lines, ' ')) or ''))
+    self.diag:event('corp_left', tostring(was.owner))
+    self:autoSaveSoon('leaving the corp')
+  end
+
+  -- Keeps self.corp in step with the server's list of bases: joining, the yard moving, and leaving or being removed.
+  function c:watchCorp()
+    local mp = self.mp
+    if not mp or mp.state ~= 'server' or not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return end
+    local done = mp.corpDone
+    if done then
+      mp.corpDone = nil
+      self:corpAnswered(done)
+    end
+    if not mp.bases or mp.bases == self.corpSeen then return end
+    self.corpSeen = mp.bases
+    local b, was = self:corpBase(), self.corp
+    if b and not self.property then
+      local yard = b.yard or { latitude = b.latitude, longitude = b.longitude }
+      local now = { latitude = yard.latitude, longitude = yard.longitude, owner = b.name, town = b.town }
+      self.corp = now
+      if not was then
+        self:showFlash('delivered', 'YOU JOINED A CORP', string.format('You are in %s\'s corp. Jobs that start or end in its turf pay you +%.1f, you pay no toll there, and its base keeps a car and a trailer for you.',
+          b.name or 'their', magnate.MEMBER_SHARE))
+        self.diag:event('corp_joined', tostring(b.name))
+        self:autoSaveSoon('joining the corp')
+      elseif was.latitude ~= now.latitude or was.longitude ~= now.longitude or was.owner ~= now.owner then
+        self:autoSaveSoon('your corp')
+      end
+    elseif was then
+      self:corpGone(was)
+    end
+  end
+
+  local function corpSend(self, what, t, waiting)
+    if not self.mp or self.mp.state ~= 'server' then
+      self.homeFeedback = 'Corps are only on a trucking server.'
+      return false
+    end
+    if self.corpAskedAt and self.clock - self.corpAskedAt < M.ASK_SECONDS then
+      self.homeFeedback = 'Asking the server...'
+      return false
+    end
+    self.corpAskedAt = self.clock
+    self.mp:corp(what, t)
+    self.homeFeedback = waiting
+    return true
+  end
+
+  -- Hours until the player may ask to join a corp again, or nil.
+  function c:corpWaitHours()
+    local w = self.mp and self.mp.corpWait
+    if not w then return nil end
+    local left = w.seconds - ((self.mp.now or 0) - (w.at or 0))
+    if left <= 0 then return nil end
+    return math.max(1, math.ceil(left / 3600))
+  end
+
+  -- Why this player can't ask to join a corp now, or nil.
+  function c:joinProblem()
+    if not self.mp or self.mp.state ~= 'server' then return 'Corps are only on a trucking server.' end
+    if self.property then return 'You own a base, so you can\'t join a corp.' end
+    if self.corp then return 'You are already in a corp.' end
+    local hours = self:corpWaitHours()
+    if hours then return string.format('You left a corp recently. You can ask to join one again in %d hour%s.', hours, hours == 1 and '' or 's') end
+    return nil
+  end
+
+  function c:askToJoin(id)
+    local problem = self:joinProblem()
+    local base
+    for _, b in ipairs(self.mp and self.mp.bases or {}) do if b.id == id and not b.mine then base = b end end
+    if not problem and not base then problem = 'That base is gone.' end
+    if not problem and base.full then problem = string.format('%s\'s corp is full: %d truckers at most.', base.name, M.CORP_MAX) end
+    if problem then
+      self.homeFeedback = problem
+      return false
+    end
+    return corpSend(self, 'ask', { base = id }, 'Asking to join ' .. base.name .. '\'s corp...')
+  end
+
+  function c:cancelJoin() return corpSend(self, 'cancel', {}, 'Taking your request back...') end
+
+  -- Leave corp asks once first, saying what happens to what's in the yard.
+  function c:leaveCorp()
+    if not self.corp then
+      self.homeFeedback = 'You are not in a corp.'
+      return false
+    end
+    if not self.leaveArmed then
+      self.leaveArmed = true
+      local pay, name = tradeInStored(self)
+      self.homeFeedback = string.format('Leave %s\'s corp? You can\'t join another for %d hours.', self.corp.owner or 'the', M.CORP_WAIT_HOURS)
+        .. (pay and string.format(' Your %s in the yard is traded in for %s.', name or 'car', dollars(pay)) or '')
+        .. ' Press Yes, leave to go ahead.'
+      return false
+    end
+    self.leaveArmed = nil
+    return corpSend(self, 'leave', {}, 'Leaving the corp...')
+  end
+
+  function c:cancelLeaveCorp()
+    self.leaveArmed, self.homeFeedback = nil, nil
+    return true
+  end
+
+  function c:corpAccept(id) return corpSend(self, 'accept', { who = id }, 'Accepting...') end
+  function c:corpRefuse(id) return corpSend(self, 'refuse', { who = id }, 'Turning them down...') end
+  function c:corpRemove(id) return corpSend(self, 'remove', { who = id }, 'Removing them from your corp...') end
+
+  -- The server's answer to a corp button.
+  function c:corpAnswered(d)
+    self.corpAskedAt = nil
+    if d.ok then
+      self.homeFeedback = d.what == 'ask' and 'Asked to join. The owner sees your request on their Base tab.'
+        or d.what == 'cancel' and 'Request taken back.'
+        or d.what == 'leave' and 'You left the corp.'
+        or d.what == 'accept' and 'Accepted. They are in your corp now.'
+        or d.what == 'refuse' and 'Turned down.'
+        or d.what == 'remove' and string.format('Removed from your corp. They can\'t join another for %d hours.', M.CORP_WAIT_HOURS)
+        or nil
+      return
+    end
+    local hours = d.wait and math.max(1, math.ceil(d.wait / 3600))
+    self.homeFeedback = d.why == 'have_base' and (d.what == 'accept' and 'They own a base now, so they can\'t join.' or 'You own a base, so you can\'t join a corp.')
+      or d.why == 'in_corp' and (d.what == 'accept' and 'They joined another corp.' or 'You are already in a corp.')
+      or d.why == 'wait' and string.format('You left a corp recently. You can ask to join one again in %d hour%s.', hours or M.CORP_WAIT_HOURS, hours == 1 and '' or 's')
+      or d.why == 'full' and string.format('That corp is full: %d truckers at most.', M.CORP_MAX)
+      or d.why == 'gone' and 'They are no longer there.'
+      or d.why == 'busy' and 'That base has too many requests waiting. Try again later.'
+      or 'The server said no. Try again in a moment.'
+  end
+
   -- The Home tab.
   function c:homeView(current)
     if self.state ~= 'READY' or not self.arrived or not self.profile or self.error then return nil end
@@ -444,23 +643,49 @@ function M.attach(c)
       spaces = M.SPACES, feedback = self.homeFeedback }
     -- On a server, everyone else's bases, nearest first.
     local others = {}
+    local joinProblem = self:joinProblem()
+    local canAsk = not self.property and not self.corp
     for _, b in ipairs(self.mp and self.mp.state == 'server' and self.mp.bases or {}) do
       if not b.mine then
-        others[#others + 1] = { name = b.name, town = b.town, radiusKm = math.floor(b.radiusKm + 0.5),
+        local names = {}
+        for _, m in ipairs(b.members or {}) do names[#names + 1] = m.name end
+        others[#others + 1] = { id = b.id, name = b.name, town = b.town, radiusKm = math.floor(b.radiusKm + 0.5),
           distanceMetres = current and location.distance(current, b) or nil,
-          inside = current and location.distance(current, b) <= b.radiusKm * 1000 or false }
+          inside = current and location.distance(current, b) <= b.radiusKm * 1000 or false,
+          members = #names > 0 and table.concat(names, ', ') or nil, corp = b.corp or nil, asked = b.asked or nil,
+          full = b.full or nil, canAsk = canAsk and b.id ~= nil and not b.held and not b.asked or nil,
+          askAllowed = joinProblem == nil and b.id ~= nil and not b.held and not b.full and not b.asked or nil }
       end
     end
     table.sort(others, function(a, b) return (a.distanceMetres or math.huge) < (b.distanceMetres or math.huge) end)
     while #others > 5 do table.remove(others) end
     view.others = #others > 0 and others or nil
     view.tollPercent = math.floor(magnate.TOLL * 100 + 0.5)
+    view.corpMax, view.memberBonus = M.CORP_MAX, magnate.MEMBER_SHARE
+    view.joinProblem = canAsk and joinProblem or nil
+    view.online = self.mp ~= nil and self.mp.state == 'server' or nil
     local p = self.property
     if not p then
       local problem = self:claimProblem()
       view.claimAllowed, view.claimProblem = problem == nil, problem
       local balance = self.profile.progression.balance
       view.short = balance < M.PRICE and M.PRICE - balance or nil
+      local y = self.corp
+      if y then
+        local base = self:corpBase()
+        local names = {}
+        for _, m in ipairs(base and base.members or {}) do names[#names + 1] = m.name end
+        local d = current and location.distance(current, y) or nil
+        view.corp = { owner = y.owner, town = y.town, latitude = y.latitude, longitude = y.longitude,
+          members = #names > 0 and table.concat(names, ', ') or nil, radiusKm = base and math.floor(base.radiusKm + 0.5) or nil,
+          share = magnate.MEMBER_SHARE, distanceMetres = d, here = d ~= nil and d <= M.HOME_METRES,
+          leaveArmed = self.leaveArmed or nil }
+        local owned = self.ownedParts
+        view.active = owned and { name = owned.name or owned.model, value = self:carWorth() } or nil
+        view.stored = self:storedCarCard()
+        local swap = self:swapProblem()
+        view.swapAllowed, view.swapProblem = swap == nil, view.stored and swap or nil
+      end
       return view
     end
     local d = current and location.distance(current, p) or nil
@@ -469,13 +694,20 @@ function M.attach(c)
     local owned = self.ownedParts
     view.active = owned and { name = owned.name or owned.model, value = self:carWorth() } or nil
     view.stored = self:storedCarCard()
+    if self.mp and self.mp.state == 'server' then
+      local mine
+      for _, b in ipairs(self.mp.bases or {}) do if b.mine then mine = b end end
+      view.owned.corp = { members = mine and mine.members or {}, requests = mine and mine.requests or {},
+        size = 1 + #(mine and mine.members or {}), max = M.CORP_MAX, share = magnate.MEMBER_SHARE }
+    end
     local circle = self:baseCircle()
     if circle then
       local radius = math.floor(circle.radiusKm + 0.5)
       local next = radius < magnate.MAX_KM and math.min(magnate.MAX_KM, (math.floor(radius / 500) + 1) * 500) or nil
       view.circle = { town = circle.name, radiusKm = radius, boost = circle.boost, wealth = math.floor(self:wealth()),
+        memberWealth = circle.memberWealth and circle.memberWealth > 0 and circle.memberWealth or nil,
         peak = circle.peak, share = magnate.OWNER_SHARE, bonus = math.floor(magnate.OWNER_SHARE * circle.boost * 10 + 0.5) / 10,
-        nextKm = next, nextWealth = next and math.ceil(magnate.wealthFor(next, circle.boost) / 1000) * 1000 or nil,
+        nextKm = next, nextWealth = next and math.ceil((magnate.wealthFor(next, circle.boost) - (circle.memberWealth or 0)) / 1000) * 1000 or nil,
         maxKm = magnate.MAX_KM, commission = self.mp ~= nil and self.mp.state == 'server' or nil, inside = current and location.distance(current, circle) <= circle.radiusKm * 1000 or false }
     end
     local problem = self:swapProblem()

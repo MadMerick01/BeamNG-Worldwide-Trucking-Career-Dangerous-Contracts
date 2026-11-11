@@ -569,6 +569,17 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // Home: Buy this spot asks to confirm on the HUD first; Swap cars needs no confirm.
       scope.claimHome = function () { if (scope.data.home && scope.data.home.claimAllowed) core('claimHome()') }
       scope.swapCars = function () { if (scope.data.home && scope.data.home.swapAllowed) core('swapCars()') }
+      // Corps: base and who are numbers from the server.
+      var num = function (n) { n = Number(n); return isFinite(n) && n > 0 ? String(Math.floor(n)) : null }
+      scope.askToJoin = function (id) { if (num(id)) core('askToJoin(' + num(id) + ')') }
+      scope.cancelJoin = function () { core('cancelJoin()') }
+      scope.leaveCorp = function () { core('leaveCorp()') }
+      scope.cancelLeaveCorp = function () { core('cancelLeaveCorp()') }
+      scope.corpAccept = function (id) { if (num(id)) core('corpAccept(' + num(id) + ')') }
+      scope.corpRefuse = function (id) { if (num(id)) core('corpRefuse(' + num(id) + ')') }
+      scope.corpRemove = function (id) { if (num(id)) core('corpRemove(' + num(id) + ')') }
+      scope.removing = null
+      scope.setRemoving = function (id) { scope.removing = id }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
       // Buy second hand: opens or closes the town's list; a car is picked by its place in it.
       scope.openUsedCars = function (open) { core('openUsedCars(' + (open ? 'true' : 'false') + ')') }
