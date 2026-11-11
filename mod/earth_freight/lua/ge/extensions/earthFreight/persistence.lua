@@ -189,6 +189,14 @@ local function property(p)
   return { latitude = p.latitude, longitude = p.longitude, paid = p.paid, name = p.name, town = town, peak = p.peak }
 end
 
+-- The corp the player is a member of, on a server (Magnate 3): its owner's name, town and the yard,
+-- the owner's spot where members keep a car and a trailer. Returns a clean copy, or nil.
+local function corp(c)
+  if type(c) ~= 'table' or not location.valid(c) or not optionalString(c.owner) or not optionalString(c.town) then return nil end
+  return { latitude = c.latitude, longitude = c.longitude, owner = c.owner, town = c.town }
+end
+M.cleanCorp = corp
+
 -- A car stored at home, kept as the active car is: its config, name, the damage it owes, its fuel,
 -- and for a second-hand car what was paid for it and its kilometres. Returns a clean copy, or nil.
 function M.storedCar(car)
@@ -293,8 +301,15 @@ function M.validate(s)
   end
   if s.storedCars ~= nil then
     stored = storedCars(s.storedCars)
-    if not stored or (#stored > 0 and not home) then return nil, 'invalid_home' end
+    if not stored then return nil, 'invalid_home' end
   end
+  -- A member's yard: a car can be stored there instead of at a base of their own.
+  local member = nil
+  if s.corp ~= nil then
+    member = corp(s.corp)
+    if not member or home then return nil, 'invalid_corp' end
+  end
+  if stored and #stored > 0 and not home and not member then return nil, 'invalid_home' end
   return {
     schemaVersion = M.SCHEMA, profileId = 'default', generation = s.generation,
     base = location.copy(s.base), resume = resume, progression = p,
@@ -303,6 +318,7 @@ function M.validate(s)
       worth = s.vehicle.worth },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
     trailer = trailer, spareTrailer = spareTrailer, property = home, storedCars = stored, commissionId = s.commissionId,
+    corp = member,
   }
 end
 
@@ -372,6 +388,7 @@ function M.new(io, directory)
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
       trailer = candidate.trailer, spareTrailer = candidate.spareTrailer, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId,
+      corp = candidate.corp,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

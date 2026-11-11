@@ -6,6 +6,13 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **On a trucking server, you can now join another trucker's base as part of their corp.** If you don't own a base, press **Ask to join** next to one under Other truckers' bases on the Base tab. The owner sees your request on their Base tab and presses **Accept** or **Turn down**. A corp holds up to 5 truckers, owner included, and you can be in one corp at a time.
+- As a corp member, you pay no toll on deliveries in your corp's turf, and jobs that start or end there pay you +0.2 on the region multiplier. The owner keeps +0.4, and every toll from truckers outside the corp still goes to the owner. Members don't pay the owner anything.
+- Corp members get a yard at the owner's base. It keeps one car and one trailer for you, just like owning a base: **Swap cars**, Park at base, Swap trailers, a second trailer and half-price repairs there. Relocate lists it as **Corp yard**. Only members are told where the yard is.
+- A corp's circle now grows with its members. Half of what each member is worth adds to the owner's wealth when sizing it, and that part goes again if they leave. The Base tab, the Base map and the live server page show who is in each corp, and the HUD line says "Your corp's turf · +0.2 bonus" in green inside it.
+- You can leave with **Leave corp**, and the owner can remove a member with **Remove**. Either way, that trucker must wait 24 hours before asking to join any corp again, and a car left in the yard is traded in at the usual trade-in price (half its worth, less any repair it needs). A trailer left there goes to the depot for free. Members can't buy a base while they're in a corp, and base owners can't join one.
+- Server hosts need to update the server plugin as usual to get corps. Careers and saves still work.
+
 - **The HUD now always shows whose turf you're in.** Under the town name, an orange line such as "HybridLWB's turf · 20% toll on deliveries here" stays on screen while you're in another trucker's turf, and a green "Your turf · +0.4 bonus" while you're in your own. Outside every turf there's no line. It changes when you cross a border, at the same moment as the pop-up message. Saves still work.
 
 ## Build 182 · 11 Nov 2026

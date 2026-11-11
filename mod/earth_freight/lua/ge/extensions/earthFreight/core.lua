@@ -229,7 +229,9 @@ function M.new(deps)
     -- The home owned and the car stored there; like money, a home bought since the last Save is not kept.
     self.property = self.profile and copy(self.profile.property) or nil
     self.storedCars = self.profile and copy(self.profile.storedCars) or nil
-    self.homeFeedback, self.homeCard = nil, nil
+    -- On a server, the corp the player is a member of (its yard keeps their second car and trailer).
+    self.corp = self.profile and copy(self.profile.corp) or nil
+    self.homeFeedback, self.homeCard, self.corpSeen, self.leaveArmed, self.corpAskedAt = nil, nil, nil, nil, nil
     -- A trailer stored before trailers had a place (the garage that went everywhere) is at the base,
     -- or the depot without one.
     self:placeStoredTrailers()
@@ -1862,6 +1864,7 @@ function M.new(deps)
     self:watchClaim()
     self:watchFind()
     self:watchCommission()
+    self:watchCorp()
     self:watchTurf()
     self:reportWhere(sample)
     self:provideVehicle()
@@ -2317,7 +2320,7 @@ function M.new(deps)
         tradeIn = self.pendingCar.tradeIn, repair = self.pendingCar.repair, cost = self.pendingCar.cost,
         -- With a home: what keeping the old car costs, or that home is full.
         keepCost = self:homeSpaceFree() and self.pendingCar.keepCost or nil,
-        homeFull = self.property ~= nil and not self:homeSpaceFree() or nil,
+        homeFull = self:homeSpot() ~= nil and not self:homeSpaceFree() or nil,
         oldName = self.ownedParts and self.ownedParts.name or nil,
         used = self.pendingCar.used and { km = self.pendingCar.used.km, newPrice = self.pendingCar.used.newPrice } or nil,
       } or nil,
@@ -2332,7 +2335,7 @@ function M.new(deps)
       shipping = self:shippingView(current),
       shipDay = self:shipView(current),
       home = self:homeView(current),
-      repairAtHome = self.property ~= nil and self:atHome() or nil,
+      repairAtHome = self:homeSpot() ~= nil and self:atHome() or nil,
       stranded = self.stranded and current and {
         latitude = self.stranded.latitude, longitude = self.stranded.longitude,
         distanceMetres = location.distance(current, self.stranded),
@@ -2441,7 +2444,7 @@ function M.new(deps)
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId,
       trailer = self:savedTrailer(), spareTrailer = self:savedSpareTrailer(),
-      property = copy(self.property),
+      property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
       beacon = self.beacon and { pickup = location.copy(self.beacon.pickup), drop = location.copy(self.beacon.drop),
         line = self.beacon.line, left = math.ceil(self.beacon.left) } or nil,
@@ -2725,6 +2728,14 @@ function M.payTrailerParts() return safely(function() return ensure():payTrailer
 function M.undoTrailerParts() return safely(function() return ensure():undoTrailerParts() end) end
 function M.claimHome() return safely(function() return ensure():claimHome() end) end
 function M.swapCars() return safely(function() return ensure():swapCars() end) end
+-- Corps (home.lua): base is a base's number, who a member's or request's.
+function M.askToJoin(base) return safely(function() return ensure():askToJoin(tonumber(base)) end) end
+function M.cancelJoin() return safely(function() return ensure():cancelJoin() end) end
+function M.leaveCorp() return safely(function() return ensure():leaveCorp() end) end
+function M.cancelLeaveCorp() return safely(function() return ensure():cancelLeaveCorp() end) end
+function M.corpAccept(who) return safely(function() return ensure():corpAccept(tonumber(who)) end) end
+function M.corpRefuse(who) return safely(function() return ensure():corpRefuse(tonumber(who)) end) end
+function M.corpRemove(who) return safely(function() return ensure():corpRemove(tonumber(who)) end) end
 function M.repairTrailer() return safely(function() return ensure():repairTrailer() end) end
 -- The game calls these when two vehicles couple or uncouple, such as a car and its trailer.
 function M.onCouplerAttached(a, b) return safely(function() if active then active:couplerChanged(a, b, true) end end) end

@@ -12,6 +12,8 @@ local M = {}
 -- the world, past which a circle covers the whole planet anyway.
 M.START_WEALTH, M.START_KM, M.MAX_KM = 250000, 1600, 20000
 M.OWNER_SHARE = 0.4
+-- On a server, the members of a base's corp get this much in its turf, and pay no toll there (Magnate 3).
+M.MEMBER_SHARE = 0.2
 -- The share of a delivery's pay that goes to the owner of the turf its drop-off is in, when that's not you.
 M.TOLL = 0.2
 M.CORE_KM = 100
@@ -48,17 +50,20 @@ function M.turf(circles, point)
   return best
 end
 
--- The share of the region multiplier a point adds for this player: OWNER_SHARE in their own turf, 0
--- anywhere else.
+-- The share of the region multiplier a point adds for this player: OWNER_SHARE in their own turf,
+-- MEMBER_SHARE in their corp's (a circle marked corp), 0 anywhere else.
 function M.shareAt(circles, point)
   local owner = M.turf(circles, point)
-  return owner and owner.mine and M.OWNER_SHARE or 0
+  if owner and owner.mine then return M.OWNER_SHARE end
+  if owner and owner.corp then return M.MEMBER_SHARE end
+  return 0
 end
 
--- The circle a delivery to this point pays the toll to: someone else's turf, or nil (your own, or none).
+-- The circle a delivery to this point pays the toll to: someone else's turf, or nil (your own, your
+-- corp's, or none).
 function M.tollAt(circles, point)
   local owner = M.turf(circles, point)
-  if owner and not owner.mine then return owner end
+  if owner and not owner.mine and not owner.corp then return owner end
   return nil
 end
 

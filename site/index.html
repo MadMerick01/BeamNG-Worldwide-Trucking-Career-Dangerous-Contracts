@@ -413,6 +413,7 @@ function renderMap() {
   if (bases.length) turfLayer(bases).addTo(layer)
   bases.forEach(function (b, i) {
     var pop = el('div'); pop.appendChild(el('b', '', text(b.name) + "'s base")); pop.appendChild(el('div', '', (text(b.town) || 'A town') + ', ' + Math.round(b.radiusKm).toLocaleString('en') + ' km circle'))
+    if (Array.isArray(b.members) && b.members.length) pop.appendChild(el('div', '', 'Corp: ' + b.members.map(text).join(', ')))
     L.circle([b.latitude, b.longitude], { radius: baseKm(b) * 1000, color: turfColour(i), weight: 2, fill: false, className: 'turf' }).bindPopup(pop).addTo(layer)
     L.circle([b.latitude, b.longitude], { radius: CORE_KM * 1000, stroke: false, fillColor: turfColour(i), fillOpacity: 0.3 }).bindPopup(pop).addTo(layer)
     // A dark tag with a gold edge over each base: "Sam's base · 41 km", as on the Magnate update banner.

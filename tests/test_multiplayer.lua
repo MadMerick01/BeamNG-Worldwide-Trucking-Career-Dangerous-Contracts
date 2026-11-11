@@ -49,7 +49,8 @@ local function link(W, env, pid, deliver)
         elseif m.event == 'wwtcDelivered' then W.onDelivered(pid, m.data)
         elseif m.event == 'wwtcFind' then W.onFind(pid, m.data)
         elseif m.event == 'wwtcHere' then W.onHere(pid, m.data)
-        elseif m.event == 'wwtcBaseClaim' then W.onBaseClaim(pid, m.data) end
+        elseif m.event == 'wwtcBaseClaim' then W.onBaseClaim(pid, m.data)
+        elseif m.event == 'wwtcCorp' then W.onCorp(pid, m.data) end
       else
         local found
         for i, m in ipairs(env.sent) do if m.pid == pid then found = i; break end end
@@ -789,6 +790,137 @@ do
   env.time = env.time + W.BASE_ASK_SECONDS + 1
   W.onBaseClaim(1, J.encode({ v = 1, town = 'Nowhere', latitude = 10, longitude = 10, boost = 1 }))
   T.eq(W.bases[c2.mp.key], nil, 'and let go when no save ever has it')
+end
+
+-- Corps (Magnate 3): a player without a base asks to join one, the owner accepts; members pay no toll in its turf,
+-- get +0.2 there and a yard at the owner's spot, half their wealth grows the circle, and leaving or being removed
+-- trades in the car in the yard and makes them wait before joining another.
+do
+  local W, env = server()
+  W.SHIP_CONTAINERS = 0
+  local function game(pid, pose)
+    local io = F.io({ [F.CONFIG] = F.config() })
+    local handler
+    local send, pump = link(W, env, pid, function(event, data) handler(event, data) end)
+    local mp = { inSession = function() return true end, send = send, encode = J.encode, decode = J.decode,
+      listen = function(h) handler = h; return true end }
+    local c = F.controller({ io = io, multiplayer = mp, adapter = F.adapter(pose) })
+    pump()
+    F.advance(c, 2)
+    if not c.arrived then c:startHere(); F.advance(c, 2) end
+    pump()
+    return c, pump, io
+  end
+  local magnate = require('earthFreight/magnate')
+  local ropes = { latitude = -33.7328, longitude = 150.791 }
+  local c1, pump1 = game(1, F.copy(F.PENRITH))
+  local c2, pump2, io2 = game(2, ropes)
+  local function pump() for _ = 1, 3 do pump1(); pump2() end end
+  local function step() pump(); F.advance(c1, 0.6); F.advance(c2, 0.6); pump() end
+  c1.profile.progression.balance, c2.profile.progression.balance = 400000, 300000
+  F.advance(c1, 0.6); F.advance(c2, 0.6)
+  T.check(c1:claimHome(), 'player 1 asks for a base'); pump()
+  T.check(c1.property ~= nil, 'and buys it')
+  F.advance(c1, 0.6); T.check(c1:manualSave(), 'saved'); pump()
+  local key1, key2 = c1.mp.key, c2.mp.key
+  local base = W.bases[key1]
+  T.check(base.id ~= nil, 'the base has a number')
+  T.eq(base.spot.latitude, c1.property.latitude, 'the server knows the owner\'s spot for the yard')
+  local radiusAlone = W.circleKm(base)
+  -- Player 2's jobs here pay player 1 the toll before joining.
+  local before = {}
+  for _, j in ipairs(c2:view().town.jobs) do before[j.id] = j end
+  local tolled = 0
+  for _, j in pairs(before) do if j.tollTo == 'player1' then tolled = tolled + 1 end end
+  T.check(tolled > 0, 'a toll before joining')
+  -- Asking to join.
+  local other = c2:view().home.others[1]
+  T.check(other.canAsk and other.askAllowed, 'player 2 can ask to join')
+  T.check(c2:askToJoin(other.id), 'asks'); step()
+  T.check(base.requests[key2] ~= nil, 'the server has the request')
+  T.check(c2:view().home.others[1].asked, 'player 2 sees it is asked')
+  local corp = c1:view().home.owned.corp
+  T.eq(#corp.requests, 1, 'the owner sees one request'); T.eq(corp.requests[1].name, 'player2', 'from player 2')
+  T.eq(corp.size, 1, 'just the owner so far')
+  -- The owner accepts. (Player 2 has saved, so the server knows what they're worth.)
+  F.advance(c2, 0.6); T.check(c2:manualSave(), 'player 2 saves'); pump()
+  T.check(c1:corpAccept(corp.requests[1].id), 'the owner accepts'); step()
+  T.check(base.members[key2] ~= nil, 'player 2 is a member'); T.eq(next(base.requests), nil, 'no request left')
+  T.check(c2.corp ~= nil and c2.corp.owner == 'player1', 'player 2\'s game knows it')
+  T.eq(c2.corp.latitude, c1.property.latitude, 'with the yard at the owner\'s spot')
+  T.eq(c2:view().home.corp.owner, 'player1', 'the Base tab shows the corp')
+  T.eq(c1:view().home.owned.corp.size, 2, 'the owner sees two truckers')
+  T.check(W.circleKm(base) > radiusAlone, 'half of player 2\'s wealth grows the circle')
+  T.near(W.circleKm(base), W.baseRadius(math.max(base.peak, W.BASE_PRICE) + math.floor(W.wealthOf(key2) / 2), base.boost), 0.01,
+    'by half their wealth')
+  T.near(c1:baseCircle().radiusKm, W.circleKm(base), 1, 'the owner\'s game draws the same circle')
+  -- No toll for a member, and +0.2 in the corp's turf.
+  for _, j in ipairs(c2:view().town.jobs) do
+    T.eq(j.tollTo, nil, 'no toll for a member on ' .. j.id)
+  end
+  T.eq(c2:baseShareAt(F.copy(F.PENRITH)), magnate.MEMBER_SHARE, 'a member gets +0.2 in the turf')
+  T.eq(c1:baseShareAt(F.copy(F.PENRITH)), magnate.OWNER_SHARE, 'the owner keeps +0.4')
+  local town = { latitude = -33.75, longitude = 150.7 }
+  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 800, toll = 200, ends = { ropes, town } }))
+  T.eq(base.batch, nil, 'the server takes no toll from a member either'); T.eq(base.owed or 0, 0, 'none owed')
+  -- A member can't buy a base, and the server agrees.
+  T.check(c2:claimProblem():find('corp', 1, true) ~= nil, 'a member can\'t buy a base')
+  W.onBaseClaim(2, J.encode({ v = 1, town = 'Faraway', latitude = -31.95, longitude = 115.86, boost = 1 }))
+  T.eq(J.decode(env.sent[#env.sent].data).why, 'in_corp', 'the server refuses too'); pump()
+  -- The yard: a member stores a car there and the save keeps the corp.
+  T.eq(c2:homeSpot(), c2.corp, 'the yard is the member\'s home spot')
+  T.eq(c2:trailersAllowed(), 2, 'a member may own two trailers')
+  c2.storedCars = { c2:activeCarRecord() }
+  T.check(c2.storedCars[1] ~= nil, 'a car in the yard')
+  F.advance(c2, 0.6); T.check(c2:manualSave(), 'the member saves'); pump()
+  local saved = J.decode(env.files[W.careerPath(key2)])
+  T.eq(saved.corp.owner, 'player1', 'the save keeps the corp'); T.eq(#saved.storedCars, 1, 'and the car in the yard')
+  T.check(P.validate(saved) ~= nil, 'a member\'s save with a car in the yard is valid')
+  -- The owner removes them: the car in the yard is traded in, and they wait before asking again.
+  local money = c2.profile.progression.balance
+  local card = c2:storedCarCard()
+  local members = c1:view().home.owned.corp.members
+  T.check(c1:corpRemove(members[1].id), 'the owner removes player 2'); step()
+  T.eq(base.members[key2], nil, 'player 2 is out')
+  T.eq(c2.corp, nil, 'player 2\'s game knows it'); T.eq(#c2.storedCars, 0, 'the car in the yard is gone')
+  local pricing = require('earthFreight/pricing')
+  T.eq(c2.profile.progression.balance, money + math.max(0, math.floor((card.value or 0) * pricing.CAR_TRADE_IN_SHARE - (card.repair or 0) + 0.5)),
+    'traded in at the usual price')
+  T.check(c2:joinProblem():find('24 hours', 1, true) ~= nil, 'and must wait 24 hours to ask again')
+  W.onCorp(2, J.encode({ v = 1, ['do'] = 'ask', base = base.id }))
+  T.eq(J.decode(env.sent[#env.sent].data).why, 'wait', 'the server says wait too'); pump()
+  local tollAgain = false
+  for _, j in ipairs(c2:view().town.jobs) do if j.tollTo == 'player1' then tollAgain = true end end
+  T.check(tollAgain, 'the toll is back')
+  -- After the wait, asking again, then leaving.
+  env.time = env.time + W.CORP_WAIT_SECONDS + 1
+  W.sendBasesToAll(); step()
+  T.eq(c2:joinProblem(), nil, 'after 24 hours they can ask again')
+  T.check(c2:askToJoin(base.id), 'asks again'); step()
+  T.check(c2:cancelJoin(), 'and takes it back'); step()
+  T.eq(next(base.requests), nil, 'no request left')
+  -- A full corp says so.
+  W.CORP_MAX = 1
+  W.onCorp(2, J.encode({ v = 1, ['do'] = 'ask', base = base.id }))
+  T.eq(J.decode(env.sent[#env.sent].data).why, 'full', 'a full corp takes no more'); pump()
+  W.CORP_MAX = 5
+  W.onCorp(2, J.encode({ v = 1, ['do'] = 'ask', base = base.id })); pump()
+  W.onCorp(1, J.encode({ v = 1, ['do'] = 'accept', who = base.requests[key2].id })); step()
+  T.check(c2.corp ~= nil, 'back in')
+  T.check(not c2:leaveCorp(), 'Leave corp asks first'); T.check(c2.homeFeedback:find('24 hours', 1, true) ~= nil, 'saying what happens')
+  T.check(c2:leaveCorp(), 'then leaves'); step()
+  T.eq(base.members[key2], nil, 'out of the corp'); T.eq(c2.corp, nil, 'and the game knows')
+  T.check(W.corpLeft[key2] ~= nil, 'the wait starts')
+  -- Only the owner can accept or remove; corps survive a restart.
+  W.onCorp(2, J.encode({ v = 1, ['do'] = 'remove', who = 1 }))
+  T.eq(J.decode(env.sent[#env.sent].data).why, 'not_owner', 'a non-owner can\'t remove anyone'); pump()
+  base.members[key2] = { name = 'player2', id = 9 }
+  W.baseCareer(W.players[1], J.decode(env.files[W.careerPath(key1)]))
+  local W2 = server(env.files)
+  T.eq(W2.bases[key1].members[key2].name, 'player2', 'members are kept'); T.eq(W2.bases[key1].id, base.id, 'and the base\'s number')
+  T.check(W2.corpLeft[key2] ~= nil, 'and the wait')
+  local st = W.status()
+  T.eq(st.bases[1].members[1], 'player2', 'the page lists the members')
 end
 
 -- Restarting for an update: warnings in chat, every game saves itself, everyone is sent off, and the script is told.
