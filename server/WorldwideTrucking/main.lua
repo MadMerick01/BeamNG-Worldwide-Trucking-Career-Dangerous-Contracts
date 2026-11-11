@@ -70,7 +70,7 @@ W.WELCOME = {
   'Welcome to the Worldwide Trucking Career!',
   'No trucking HUD on screen? Press Esc > System > HUD Apps > .Earth (edit layout) > + Add app.',
   'Pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom, press + Add to layout, then Save.',
-  'Your career is kept on this server. Press Save in the HUD to keep your progress. Type !hud to see this again.',
+  'Your career is kept on this server. It saves itself every 5 minutes, or press Save in the HUD. Type !hud to see this again.',
 }
 -- The server page (GitHub Pages): every STATS_EVERY_SECONDS the server sends its stats (who's on and in which town,
 -- Ship Day, the live feed, today's totals and the leaderboard) to status.json in STATS_REPO on GitHub. Make STATS_REPO
@@ -231,7 +231,7 @@ local function payOf(value)
   return math.floor(n)
 end
 
--- A player's career came in (join) or was saved: their money, truck's and base's worth and jobs done on the leaderboard.
+-- A player's career came in (join) or was saved: their money, truck's, trailer's and base's worth and jobs done on the leaderboard.
 function W.boardCareer(p, save)
   if not p or not p.key or type(save) ~= 'table' or type(save.progression) ~= 'table' then return end
   local e = boardEntry(p)
@@ -241,6 +241,10 @@ function W.boardCareer(p, save)
   local car = type(save.vehicle) == 'table' and save.vehicle or {}
   local worth = payOf(car.worth) or payOf(car.value)
   if worth then e.truckValue = worth end
+  -- What they paid for their trailers and their parts: the one in use and a second one kept stored.
+  local trailer = type(save.trailer) == 'table' and payOf(save.trailer.paid) or nil
+  local spare = type(save.spareTrailer) == 'table' and payOf(save.spareTrailer.paid) or nil
+  e.trailerValue = (trailer or spare) and ((trailer or 0) + (spare or 0)) or nil
   -- What they paid for their base of operations, if they have one.
   e.baseValue = type(save.property) == 'table' and payOf(save.property.paid) or nil
   local town = e.baseValue and type(save.property.town) == 'table' and save.property.town.name or (e.baseValue and save.property.name)
@@ -289,16 +293,16 @@ function W.onDelivered(pid, data)
   end
   counted(p, pay, false)
   W.feed('delivery', text)
-  if d.kind == 'job' or d.kind == 'drop' then W.commission(p, pay, d.ends) end
+  if d.kind == 'job' or d.kind == 'drop' then W.commission(p, pay, d.ends, d.toll) end
 end
 
 -- ----- Bases of operations (the Magnate update) ---------------------------------------------------------------------
 -- Kept in careers/season-N/bases.json, by career key: { name, town, latitude, longitude, boost, peak, asked }. A base sits
 -- at its town's centre (public), never at the spot its owner parked on. The game sizes and draws the circles the same
--- way (mod magnate.lua): 20 km at $350,000 in a flat region, area in line with wealth, × √(region multiplier), at most
--- 100 km. One base a town, at least BASE_APART_KM apart.
-W.BASE_APART_KM = 10
-W.BASE_START_WEALTH, W.BASE_START_KM, W.BASE_MAX_KM = 350000, 20, 100
+-- way (mod magnate.lua): 1,600 km at $250,000 in a flat region, area in line with wealth, × √(region multiplier), with
+-- no cap (BASE_MAX_KM is half way round the world). One base a town, at least BASE_APART_KM apart.
+W.BASE_APART_KM = 300
+W.BASE_START_WEALTH, W.BASE_START_KM, W.BASE_MAX_KM = 250000, 1600, 20000
 W.BASE_PRICE = 250000
 W.BASE_ASK_SECONDS = 600   -- a base asked for, but not yet in a save, is held this long
 
@@ -447,16 +451,17 @@ function W.baseCareer(p, save)
   end
 end
 
--- ----- Commission ---------------------------------------------------------------------------------------------------
--- A delivery by someone else with an end in a base's turf pays that base's owner COMMISSION_SHARE of the pay for each
--- such end (5% for both), as new money: the driver keeps all of theirs. At most COMMISSION_DAY_MAX a base a day. It
--- builds up while the owner is away and goes to their game as a batch (wwtcCommission { id, amount, jobs, by }); the
--- game adds it to their money and saves with commissionId = id, and that save is what marks the batch paid.
-W.COMMISSION_SHARE = 0.025
-W.COMMISSION_DAY_MAX = 20000
-W.BASE_CORE_KM = 5
+-- ----- The turf toll (Magnate 2) -------------------------------------------------------------------------------------
+-- A delivery by someone else whose drop-off is in a base's turf pays TOLL of its pay to that base's owner. The driver's
+-- game takes it off their pay (so the job board already shows the pay after it) and says how much it took; the server
+-- pays the owner that, at most what TOLL of the pay could be. It builds up while the owner is away and goes to their
+-- game as a batch (wwtcCommission { id, amount, jobs, by }); the game adds it to their money and saves with
+-- commissionId = id, and that save is what marks the batch paid. There is no daily limit: it's money moving between
+-- players, not new money.
+W.TOLL = 0.2
+W.BASE_CORE_KM = 100
 
--- Whose turf a spot is: a base's own 5 km core first, else the circle with the smallest distance ÷ radius.
+-- Whose turf a spot is: a base's own core first, else the circle with the smallest distance ÷ radius.
 function W.turfAt(spot)
   local best, bestScore
   for key, b in pairs(W.bases or {}) do
@@ -488,28 +493,22 @@ function W.sendCommission(key)
   end
 end
 
--- A delivery's commission: ends are the town centres { latitude, longitude } at each end.
-function W.commission(p, pay, ends)
-  if not p or not p.key or not pay or pay <= 0 or type(ends) ~= 'table' or not W.bases then return end
-  local paid = {}
-  for i = 1, 2 do
-    local lat, lon = spotOf(ends[i])
-    local key = lat and W.turfAt({ latitude = lat, longitude = lon })
-    if key and key ~= p.key then paid[key] = (paid[key] or 0) + pay * W.COMMISSION_SHARE end
-  end
-  local date = W.env.date and W.env.date() or ''
-  for key, amount in pairs(paid) do
-    local b = W.bases[key]
-    if b.day ~= date then b.day, b.dayTotal = date, 0 end
-    amount = math.min(math.floor(amount + 0.5), W.COMMISSION_DAY_MAX - b.dayTotal)
-    if amount > 0 then
-      b.dayTotal = b.dayTotal + amount
-      b.owed, b.jobs, b.by = (b.owed or 0) + amount, (b.jobs or 0) + 1, clean(p.name, 32) or 'A trucker'
-      W.feed('commission', string.format("%s's delivery paid %s %s commission.", clean(p.name, 32) or 'A trucker', b.name, dollars(amount)))
-    end
-  end
-  if next(paid) then saveBases() end
-  for key in pairs(paid) do W.sendCommission(key) end
+-- A delivery's turf toll: ends are the town centres { latitude, longitude } at each end, the second the drop-off. pay
+-- is what the driver was paid after the toll, and toll what their game took.
+function W.commission(p, pay, ends, toll)
+  if not p or not p.key or not pay or pay < 0 or type(ends) ~= 'table' or not W.bases then return end
+  toll = type(toll) == 'number' and toll == toll and math.floor(toll) or 0
+  -- No more than TOLL of the whole pay (pay + toll), with a little room for rounding.
+  toll = math.min(toll, math.floor(pay * W.TOLL / (1 - W.TOLL)) + 10)
+  if toll <= 0 then return end
+  local lat, lon = spotOf(ends[2])
+  local key = lat and W.turfAt({ latitude = lat, longitude = lon })
+  if not key or key == p.key then return end
+  local b = W.bases[key]
+  b.owed, b.jobs, b.by = (b.owed or 0) + toll, (b.jobs or 0) + 1, clean(p.name, 32) or 'A trucker'
+  W.feed('commission', string.format("%s paid %s a %s turf toll.", clean(p.name, 32) or 'A trucker', b.name, dollars(toll)))
+  saveBases()
+  W.sendCommission(key)
 end
 
 -- The stats file the page reads.
@@ -527,12 +526,12 @@ function W.status()
   local board, truckers = {}, 0
   for _, e in pairs(W.stats.board) do
     truckers = truckers + 1
-    local balance, truck, base = e.balance or 0, e.truckValue or 0, e.baseValue or 0
-    board[#board + 1] = { name = e.name, balance = balance, truckValue = truck, baseValue = base, baseTown = e.baseTown,
-      wealth = balance + truck + base,
+    local balance, truck, trailer, base = e.balance or 0, e.truckValue or 0, e.trailerValue or 0, e.baseValue or 0
+    board[#board + 1] = { name = e.name, balance = balance, truckValue = truck, trailerValue = trailer, baseValue = base,
+      baseTown = e.baseTown, wealth = balance + truck + trailer + base,
       deliveries = e.deliveries or 0, containers = e.containers or 0 }
   end
-  -- Ranked by wealth: money plus what the truck and base are worth, so buying either doesn't drop you down.
+  -- Ranked by wealth: money plus what the truck, trailer and base are worth, so buying one doesn't drop you down.
   table.sort(board, function(a, b) if a.wealth ~= b.wealth then return a.wealth > b.wealth end return a.name < b.name end)
   while #board > 20 do table.remove(board) end
   -- Every base's town and circle, for the map (town centres only).
@@ -965,7 +964,7 @@ function W.onShipDone(pid, data)
     counted(p, pay, true)
     W.feed('delivery', string.format('%s delivered container %d from %s to %s%s.', clean(p.name, 32) or 'A trucker',
       math.floor(d.n), from, town, pay and (' for ' .. dollars(pay)) or ''))
-    W.commission(p, pay, d.ends)
+    W.commission(p, pay, d.ends, d.toll)
   end
 end
 

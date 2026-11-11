@@ -178,6 +178,26 @@ do
   T.check(not c4:openStreetView(), 'busy port fails')
   T.check(c4:view().streetView.feedback:find('47170', 1, true) ~= nil, 'and says which port')
   T.eq(F.controller():view().streetView, nil, 'no server, no button')
+
+  -- The Base map: the same server, at /bases, with its data at /basemap.
+  local libB = fakeSocket()
+  local opened2 = {}
+  local cb = F.controller({ streetView = SV.new({ socket = libB }), openUrl = function(url) opened2[#opened2 + 1] = url; return true end })
+  cb:tick(0.1)
+  T.check(cb:view().baseMap ~= nil, 'HUD offers the base map')
+  T.check(cb:openBaseMap(), 'base map opens')
+  T.eq(opened2[1], 'http://127.0.0.1:47170/bases', 'its page opened in the browser')
+  T.eq(cb:view().baseMap.url, 'http://127.0.0.1:47170/bases', 'HUD has its address')
+  T.check(cb:view().baseMap.feedback:find('copy the address below', 1, true) ~= nil, 'HUD points to the Copy button')
+  local pageReq, dataReq = libB.client(get('/bases')), libB.client(get('/basemap'))
+  libB.queue = { pageReq, dataReq }
+  cb:tick(0.1); cb:tick(0.1)
+  T.eq(body(pageReq), require('earthFreight/baseMapPage').html, 'the base map page')
+  T.check(body(dataReq):find('"circles":', 1, true) ~= nil and body(dataReq):find('"ok":true', 1, true) ~= nil, 'and its data')
+  local busyB = fakeSocket(); busyB.busy = true
+  local cb2 = F.controller({ streetView = SV.new({ socket = busyB }) })
+  T.check(not cb2:openBaseMap(), 'busy port fails')
+  T.check(cb2:view().baseMap.feedback == nil, 'nothing claimed while off')
 end
 
 T.done('street view')

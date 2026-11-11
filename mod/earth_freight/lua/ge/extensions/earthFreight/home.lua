@@ -19,6 +19,8 @@ M.REPAIR_SHARE = 0.5
 M.SPACES = persistence.HOME_SPACES
 -- How long the game waits for the server's answer before Buy can be pressed again.
 M.ASK_SECONDS = 15
+-- How often the game checks whose turf the truck is in, for the messages when it changes.
+M.TURF_SECONDS = 3
 
 local MAX_INTEGER = 9007199254740991
 local dollars = pricing.dollars
@@ -50,16 +52,18 @@ function M.attach(c)
     return d ~= nil and d <= M.HOME_METRES
   end
 
-  -- What the player is worth: cash, plus what their truck is worth, plus what they paid for their base.
+  -- What the player is worth: cash, plus what their truck is worth, plus what they paid for their
+  -- trailers (and their parts) and their base.
   function c:wealth()
     local progression = self.profile and self.profile.progression
     if not progression then return 0 end
-    local truck = self.ownedParts and self.ownedParts.value
+    local truck = self:carWorth()
     if type(truck) ~= 'number' then
       local saved = self.profile.vehicle
       truck = type(saved) == 'table' and (saved.worth or saved.value) or 0
     end
-    return progression.balance + math.max(0, truck) + (self.property and self.property.paid or 0)
+    local trailer = self.trailerWorth and self:trailerWorth() or 0
+    return progression.balance + math.max(0, truck) + trailer + (self.property and self.property.paid or 0)
   end
 
   -- The town a spot belongs to, for a base's circle: { latitude, longitude, name, boost }, or nil until
@@ -117,6 +121,88 @@ function M.attach(c)
   function c:baseShareFunction()
     if #self:baseCircles() == 0 then return nil end
     return function(point) return self:baseShareAt(point) end
+  end
+
+  -- Whose turf a point is in, for this player: { town, owner, mine, share } in their own (the bonus there), or
+  -- { town, owner, toll } in someone else's (the percent of a delivery's pay that goes to them), or nil outside.
+  local function turfInfo(circles, point)
+    local t = point and location.valid(point) and magnate.turf(circles, point)
+    if not t then return nil end
+    if t.mine then return { town = t.name, mine = true, share = magnate.OWNER_SHARE } end
+    return { town = t.name, owner = t.owner, toll = math.floor(magnate.TOLL * 100 + 0.5) }
+  end
+
+  -- Who a delivery to this point pays the turf toll to: the owner's name (or 'another trucker'), or nil.
+  function c:baseTollAt(point)
+    local t = point and location.valid(point) and magnate.tollAt(self:baseCircles(), point)
+    return t and (t.owner or 'another trucker') or nil
+  end
+  local function round(n, places_) local m = 10 ^ places_; return math.floor(n * m + 0.5) / m end
+
+  -- What the Base map page draws, built only when it asks: every base's circle (town centres only),
+  -- the truck, whose turf it is in, and the current job's two ends with whose turf each is in.
+  function c:baseMapData()
+    local circles = self:baseCircles()
+    local out = { ok = true, coreKm = magnate.CORE_KM, circles = {} }
+    for _, b in ipairs(circles) do
+      out.circles[#out.circles + 1] = { latitude = round(b.latitude, 5), longitude = round(b.longitude, 5),
+        radiusKm = round(b.radiusKm, 1), town = b.name, owner = b.owner, mine = b.mine or nil }
+    end
+    local sample = self.lastSample
+    if sample and sample.valid and location.valid(sample) then
+      out.truck = { latitude = sample.latitude, longitude = sample.longitude,
+        heading = location.finite(sample.heading) and math.floor(sample.heading + 0.5) or nil }
+      out.turf = turfInfo(circles, sample)
+    else
+      out.waiting = sample and sample.reason or 'earth_starting'
+    end
+    local load = self.load
+    if load then
+      local from, to = load.pickup or places.get(load.from), load.drop or load.business or places.get(load.to)
+      -- Contracts and beacon packages never get the base bonus or pay the toll. The bonus counts at the pickup
+      -- (not on an off-road drop) and the drop-off; the toll only at the drop-off, and is what the job took.
+      local counts = not load.contract and not load.beacon
+      local function pin(p, name, bonus, toll)
+        if not p or not location.valid(p) then return nil end
+        local t = turfInfo(circles, p)
+        if t then t.counts = (t.mine and bonus or (not t.mine and toll)) or nil end
+        return { latitude = p.latitude, longitude = p.longitude, name = name, turf = t }
+      end
+      local fromTown, toTown = places.get(load.from), places.get(load.to)
+      out.job = {
+        pickup = pin(from, fromTown and fromTown.name, counts and not load.drop, false),
+        dropoff = pin(to, load.drop and 'Off-road drop' or (load.business and load.business.name) or (toTown and toTown.name), counts, counts),
+        toll = load.toll and { owner = load.toll.owner, amount = load.toll.amount } or nil,
+      }
+    end
+    return out
+  end
+
+  -- Tells the player when they cross into or out of a turf, checked every TURF_SECONDS. A change only
+  -- counts once it is seen twice in a row, so driving along a border doesn't keep sending messages.
+  function c:watchTurf()
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return end
+    if self.turfCheckedAt and self.clock - self.turfCheckedAt < M.TURF_SECONDS then return end
+    self.turfCheckedAt = self.clock
+    local sample = self.lastSample
+    if not sample or not sample.valid or not location.valid(sample) then return end
+    local t = turfInfo(self:baseCircles(), sample)
+    local key = t and ((t.mine and 'mine' or (t.owner or '?')) .. '@' .. (t.town or '')) or ''
+    if self.turf == nil then self.turf, self.turfKey = t or false, key; return end -- where you start says nothing
+    if key == self.turfKey then self.turfPending = nil; return end
+    if self.turfPending ~= key then self.turfPending = key; return end
+    local was = self.turf
+    self.turf, self.turfKey, self.turfPending = t or false, key, nil
+    local where = function(x) return x.town and (' around ' .. x.town) or '' end
+    if t and t.mine then
+      self:toast('info', 'Your turf', string.format('You are in your turf%s. Jobs that start or end here pay you +%.1f on the region multiplier.', where(t), t.share))
+    elseif t then
+      self:toast('info', 'Base turf', string.format('You are in %s\'s turf%s. Deliveries here pay %d%% of their pay to %s.',
+        t.owner or 'another trucker', where(t), t.toll, t.owner or 'them'))
+    elseif was then
+      self:toast('info', 'Base turf', was.mine and 'You have left your turf. No base bonus out here.'
+        or string.format('You have left %s\'s turf. No base bonus out here.', was.owner or 'another trucker'))
+    end
   end
 
   -- Another player's base too close to this town for a new one, or nil (magnate.MIN_APART_KM).
@@ -252,7 +338,7 @@ function M.attach(c)
     local fuelLitres = self.fuel and self.fuel.vehicleId == owned.id and self.fuel.litres or nil
     local used = self:savedVehicleUsed()
     return M.cleanCar({ config = self:savedVehicleConfig(), name = self:savedVehicleName(), damage = self:savedVehicleDamage(),
-      fuelLitres = fuelLitres, value = used and owned.value or nil, km = used and owned.km or nil })
+      fuelLitres = fuelLitres, value = used and owned.value or nil, km = used and owned.km or nil, worth = self:carWorth() })
   end
 
   -- Why Swap cars cannot be pressed now, or nil.
@@ -342,7 +428,8 @@ function M.attach(c)
         local ok, found = pcall(self.garage.preview, self.garage, model, configFile)
         if ok and type(found) == 'string' then preview = found end
       end
-      value = car.value or value
+      -- What it was worth with its parts when it was parked, else its price.
+      value = car.worth or car.value or value
       known = { from = car, name = car.name or name or model, value = value, preview = preview, km = car.km,
         repair = car.damage and pricing.repairCost(car.damage, value) or 0 }
       self.homeCard = known
@@ -367,7 +454,7 @@ function M.attach(c)
     table.sort(others, function(a, b) return (a.distanceMetres or math.huge) < (b.distanceMetres or math.huge) end)
     while #others > 5 do table.remove(others) end
     view.others = #others > 0 and others or nil
-    view.visitorBonus = magnate.VISITOR_SHARE
+    view.tollPercent = math.floor(magnate.TOLL * 100 + 0.5)
     local p = self.property
     if not p then
       local problem = self:claimProblem()
@@ -380,12 +467,12 @@ function M.attach(c)
     view.owned = { latitude = p.latitude, longitude = p.longitude, name = p.name, paid = p.paid, distanceMetres = d,
       here = d ~= nil and d <= M.HOME_METRES }
     local owned = self.ownedParts
-    view.active = owned and { name = owned.name or owned.model, value = owned.value } or nil
+    view.active = owned and { name = owned.name or owned.model, value = self:carWorth() } or nil
     view.stored = self:storedCarCard()
     local circle = self:baseCircle()
     if circle then
       local radius = math.floor(circle.radiusKm + 0.5)
-      local next = radius < magnate.MAX_KM and math.min(magnate.MAX_KM, radius + 10) or nil
+      local next = radius < magnate.MAX_KM and math.min(magnate.MAX_KM, (math.floor(radius / 500) + 1) * 500) or nil
       view.circle = { town = circle.name, radiusKm = radius, boost = circle.boost, wealth = math.floor(self:wealth()),
         peak = circle.peak, share = magnate.OWNER_SHARE, bonus = math.floor(magnate.OWNER_SHARE * circle.boost * 10 + 0.5) / 10,
         nextKm = next, nextWealth = next and math.ceil(magnate.wealthFor(next, circle.boost) / 1000) * 1000 or nil,

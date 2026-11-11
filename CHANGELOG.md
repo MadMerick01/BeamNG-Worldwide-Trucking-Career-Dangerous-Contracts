@@ -6,7 +6,61 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Fixed: the Store at depot, Send to base and Park at base buttons did nothing.** Swap trailers and Use this trailer didn't work either. All five buttons now work. Your save still works.
 - **A booked relocation no longer leaves you stranded.** Sometimes, while BeamNG.Earth loaded the terrain after a relocation you had booked and paid for on the **Relocate** tab, your car was picked up for a moment a few km short of the destination. The HUD then said "You teleported without booking a relocation. Go back to where you left from", and stayed that way even once you were there. Now arriving at your booking always counts as relocating: the booking is used up, the warning clears and jobs, driving and Save work again. If you're stuck with that warning right now, press **Cancel booking** on the **Relocate** tab to get the fee back, then load this build: you carry on from your last save as usual. Your saves still work.
+
+## Build 178 · 11 Nov 2026
+
+- **Magnate 2: base circles are now sized for the whole world.** A new base reaches 1,600 km at $250,000 of wealth (cash, truck, trailer and base) and keeps growing as you get richer, with no limit: about 2,550 km at $637,500, 3,200 km at $1 million and 6,400 km at $4 million. Ten players worth a million or two each can split the planet between them. Circles still never shrink, steep regions still reach further, and a bigger neighbour still pushes the border towards a smaller one.
+- **Delivering in someone else's turf now costs a 20% turf toll, paid to that turf's owner.** If a job's drop-off is in another trucker's turf, 20% of its pay goes to them. The job board shows "drop-off in Belake's turf: 20% toll" and the pay after the toll before you take the job, and the delivery message says how much was taken. An off-road drop counts for the town you took it in. Dangerous contracts and beacon packages pay no toll, and there's none in your own turf, outside every turf or in single player. Base owners get each toll as it happens, or in one go the next time they join, and there's no daily limit.
+- **Visitors no longer get a bonus in someone else's circle, and commission is gone.** The turf toll replaces both. Your own turf still pays you +0.4 on the region multiplier.
+- Every base now keeps the 100 km around its town however rich its neighbours get, and new bases must be at least 300 km apart. Existing bases stay where they are and simply grow to the new size.
+- The "you are in someone's turf" message, the Base tab and the Base map now talk about the toll, and the server's web page shades each base's turf in its own colour.
+- Saves still work. Server hosts: run the server updater to get the new sizes and the toll.
+
+## Build 177 · 11 Nov 2026
+
+- **Every job now pays a quarter less.** Town jobs, off-road drops, dangerous contracts, shortages, jackpots and Ship Day containers all pay 75% of what they did, so a full load of parts in the starter Burnside over 5 km pays $1,500 instead of $2,000. The "don't ask questions" beacon job pays $9,000 instead of $12,000, and on a server the commission from your base's turf is a quarter lower too, because it's a share of the pay.
+- Prices haven't changed: cars, parts, repairs, trailers, fuel, fees and the $250,000 base cost the same as before, so everything takes about a third more driving to afford. Your circle of influence still grows with your wealth in the same way, so it will grow more slowly.
+- Your saves still work, and the money you already have stays as it is. A job you had already taken before updating keeps the pay it showed when you took it.
+
+## Build 176 · 11 Nov 2026
+
+- **New Base map: see every base's circle on a real map.** Press **Open base map** on the **Base** tab and an overhead map opens in your web browser, like Street View does. It shows your circle, every other trucker's circle on a server, the borders where circles overlap (each turf is shaded in its owner's colour), your truck as it moves, and your job's pickup and drop-off. The top of the page says whose turf you are in and what it's worth, and the bottom says whether each end of your job gets the base bonus. **Follow truck** keeps you in the middle, and **Pop out** opens it in its own small window for a second screen. The map pictures need the internet.
+- **The game now tells you when you cross into or out of a turf.** A short message says "You are in your turf around Penrith" or "You are in Belake's turf", with the bonus jobs pay there, and another says when you have left. Driving along a border doesn't keep sending messages. Saves still work as before.
+
+## Build 174 · 11 Nov 2026
+
+- **Buy new trailer now offers 16 trailers instead of two**, from the $6,000 box utility trailer up to semi trailers: tilt decks, an enclosed cargo trailer, flatbeds, dry vans, and short, long and EU tankers holding up to 34,000 L. Each trailer has its own card with its picture, what it holds and the most it can carry.
+- Trailers come ready to work, with XL cargo boxes fitted. The box utility trailer can also be bought with XL fluid tanks instead: press **Boxes** or **Tanks** on its card. The tankers' own tanks start empty.
+- Each card says which hitch the trailer needs (a ball hitch, a gooseneck hitch or a fifth wheel) and whether your car has one. Small trailers take a ball hitch, and semi trailers need a truck with a fifth wheel. You can still buy a trailer before fitting the hitch with **Buy parts**.
+- **Every trailer now has a weight limit.** A job fills your trailer first, up to the most that trailer can carry, and the rest goes in your car. Before, a trailer could take as much as its boxes held, which on the biggest trailers would have been far more than they're built for. The limits are BeamNG's own, such as 600 kg for the box utility trailer and 22,400 kg for the 53 ft dry van.
+- **Your trailer now counts towards your wealth**, at what you paid for it and its parts. That includes the circle around your base, and the leaderboard on a multiplayer server. Buying a trailer no longer looks like losing money. Trailer parts you pay for add to what the trailer is worth, so they also count when you sell it.
+- **Your base of operations now has a spot for a trailer.** Within 200 m of your base, **Park at base** and **Hitch from base** are free. Away from it, **Send to base** and **Have it delivered** cost $100 plus 2 cents a km from your base, so a trailer 500 km away costs $110 to move.
+- **With a base you can own two trailers.** One parks in the spot at your base while you use the other. At your base, **Swap trailers** parks the one you are towing and brings out the other, for free. **Use this trailer** picks which one to bring out next. Without a base you can own one trailer.
+- **Your trailer no longer goes everywhere with you.** If you have no base, or its spot is taken, **Store at depot** keeps your trailer for $250, and bringing it out again costs $250 too, wherever you are.
+- Trailer repairs cost half at your base, as for cars. Both trailers count towards your wealth and on the multiplayer leaderboard.
+- Your save still works. A trailer you had stored moves to your base if it has a free spot, or to the depot if not, with nothing to pay. A trailer that gets lost or left behind by a teleport goes there too, for free.
+- Your saves still work, and a trailer you already own keeps working. A box utility trailer bought before this update gets its 600 kg limit too.
+
+## Build 173 · 10 Nov 2026
+
+- **Your progress now saves itself every 5 minutes.** If you've driven, earned or spent anything since your last save, the game saves on its own once five minutes have passed. It never saves while you're moving: it waits until you next stop for a few seconds, the same way it already saves after a delivery, so there's no hitch on the road. The Save line in the HUD says "Saved automatically." when it happens.
+- It works partway through a job (your load and the distance you've driven with it are kept, just as when you press Save), and it waits while a relocation is booked, while you're away from your car, in a helicopter or on foot, and while a dangerous contract teleport is still loading. Sitting parked with nothing new doesn't save again and again.
+- It works the same on a multiplayer server: each auto save goes to the server, like pressing Save. Pressing Save yourself, or any other save, starts the five minutes again.
+- Nothing to do to get it, and your saves still work.
+
+## Build 172 · 10 Nov 2026
+
+- **The start page now has a Play online card.** It shows whether the multiplayer server is up and how many truckers are on it right now, with the season and day, and checks again every minute while the page is open. Press **Play online** to see how to join, plus buttons that open the live map and leaderboard page and the Discord in your browser (the link is copied too, in case your browser doesn't open).
+- Your career on the start page is now labelled **Offline career**, because it's kept on this PC. A server keeps a separate career for you, and the start page calls that one "Your career on this server". The card explains that other truckers' bases with their turf and commission, Ship Day and the season leaderboard are online only.
+- Nothing to do to get it, and your saves still work.
+
+## Build 171 · 10 Nov 2026
+
+- **Parts you fit now count in what your truck is worth.** Before, a truck was always worth the price of the version it came as, so a Burnside starter stayed at $3,500 however much you spent on it. Now every part that differs from how the truck came adds its price, and parts you take off without replacing take theirs away. You'll see the new worth on the Your truck card, on the Rust Bucket to Rig line, in your wealth (and so your base's circle) and on the server's leaderboard.
+- Because a truck with better parts is worth more, its repairs cost a bit more and it trades in for more when you buy another car.
+- Your saves still work, and parts already on your truck count straight away, with nothing to do. A car parked at your base shows the worth it had when you parked it.
 
 ## Build 170 · 10 Nov 2026
 

@@ -135,10 +135,16 @@ local function load(l)
         or type(b.kind) ~= 'string' or not optionalString(b.kind) then return nil end
     shop = { name = b.name, kind = b.kind, latitude = b.latitude, longitude = b.longitude }
   end
+  -- The turf toll the job's pay already had taken off (Magnate 2): who it goes to and how much. Dropped if odd.
+  local toll
+  if type(l.toll) == 'table' and type(l.toll.owner) == 'string' and optionalString(l.toll.owner) and integer(l.toll.amount, 0) then
+    toll = { owner = l.toll.owner:sub(1, 32), amount = l.toll.amount }
+  end
   return { good = l.good, units = l.units, slots = l.slots, kg = l.kg or 0, pay = l.pay, paid = l.paid,
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
-    pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop, ship = container }
+    pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop, ship = container,
+    toll = toll }
 end
 
 -- A "don't ask questions" job found and not yet picked up: its pickup and drop spots, which line
@@ -189,8 +195,10 @@ function M.storedCar(car)
   if type(car) ~= 'table' then return nil end
   local config = plainConfig(car.config)
   if not config or not optionalString(car.name) or not amount(car.damage) or not amount(car.fuelLitres)
-      or not amount(car.value) or not amount(car.km) then return nil end
-  return { config = config, name = car.name, damage = car.damage, fuelLitres = car.fuelLitres, value = car.value, km = car.km }
+      or not amount(car.value) or not amount(car.km) or not amount(car.worth) then return nil end
+  -- worth: what it was worth with its parts when it was parked, for its card at home.
+  return { config = config, name = car.name, damage = car.damage, fuelLitres = car.fuelLitres, value = car.value, km = car.km,
+    worth = car.worth }
 end
 
 -- How many cars home keeps besides the one the player drives.
@@ -250,18 +258,27 @@ function M.validate(s)
     found = beacon(s.beacon)
     if not found then return nil, 'invalid_beacon' end
   end
-  -- The trailer owned, out (hitched) or stored in the garage.
-  local trailer = nil
-  if s.trailer ~= nil then
-    local raw = s.trailer
+  -- The trailers owned: the one in use (out, hitched, or stored at the base or the depot) and, with a
+  -- base, a second one stored.
+  local function trailerOf(raw)
     -- A trailer with parts fitted keeps its whole config, checked like the car's.
     if type(raw) == 'table' and type(raw.config) == 'table' then
       local config = plainConfig(raw.config)
-      if not config then return nil, 'invalid_trailer' end
-      raw = { model = raw.model, config = config, name = raw.name, paid = raw.paid, damage = raw.damage, stored = raw.stored }
+      if not config then return nil end
+      raw = { model = raw.model, config = config, name = raw.name, paid = raw.paid, maxKg = raw.maxKg, damage = raw.damage,
+        stored = raw.stored, at = raw.at }
     end
-    trailer = trailers.clean(raw)
+    return trailers.clean(raw)
+  end
+  local trailer, spareTrailer = nil, nil
+  if s.trailer ~= nil then
+    trailer = trailerOf(s.trailer)
     if not trailer then return nil, 'invalid_trailer' end
+  end
+  if s.spareTrailer ~= nil then
+    spareTrailer = trailerOf(s.spareTrailer)
+    -- The second trailer is never out, and only kept beside a first one.
+    if not spareTrailer or not spareTrailer.stored or not trailer then return nil, 'invalid_trailer' end
   end
   local recent = nil
   if s.needs ~= nil then
@@ -285,7 +302,7 @@ function M.validate(s)
       damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres, value = s.vehicle.value, km = s.vehicle.km,
       worth = s.vehicle.worth },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
-    trailer = trailer, property = home, storedCars = stored, commissionId = s.commissionId,
+    trailer = trailer, spareTrailer = spareTrailer, property = home, storedCars = stored, commissionId = s.commissionId,
   }
 end
 
@@ -354,7 +371,7 @@ function M.new(io, directory)
       progression = candidate.progression, vehicle = candidate.vehicle,
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
-      trailer = candidate.trailer, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId,
+      trailer = candidate.trailer, spareTrailer = candidate.spareTrailer, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

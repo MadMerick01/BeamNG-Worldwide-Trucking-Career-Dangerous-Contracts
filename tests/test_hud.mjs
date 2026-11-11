@@ -90,7 +90,8 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
   assert.equal(a.commands.length, count, 'refused unless allowed, with a whole index')
   a.scope.buyTrailer({ index: 3, allowed: true }); assert.equal(a.commands.at(-1), fixed('buyTrailer(3)'))
   const buttons = {
-    storeTrailer: ['storeAllowed', 'storeTrailer()'], cancelStoreTrailer: ['storeArmed', 'cancelStoreTrailer()'],
+    cancelStoreTrailer: ['storeArmed', 'cancelStoreTrailer()'], swapTrailers: ['swapAllowed', 'swapTrailers()'],
+    switchTrailer: ['switchAllowed', 'switchTrailer()'],
     bringOutTrailer: ['bringOutAllowed', 'bringOutTrailer()'], sellTrailer: ['sellAllowed', 'sellTrailer()'],
     repairTrailer: ['repairAllowed', 'repairTrailer()'], buyTrailerParts: ['partsAllowed', 'buyTrailerParts()']
   }
@@ -101,6 +102,16 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
     a.state({ state: 'READY', trailer: { [flag]: true } }); a.scope[name]()
     assert.equal(a.commands.at(-1), fixed(body), name)
   }
+  // Storing goes to a place: the base (Park at base or Send to base) or the depot, each when allowed.
+  count = a.commands.length
+  a.state({ state: 'READY', trailer: {} }); a.scope.storeTrailer('base'); a.scope.storeTrailer('depot')
+  a.state({ state: 'READY', trailer: { parkAllowed: true, depotAllowed: true } }); a.scope.storeTrailer('garage')
+  assert.equal(a.commands.length, count, 'refused unless allowed, and only to the base or the depot')
+  a.scope.storeTrailer('base'); assert.equal(a.commands.at(-1), fixed("storeTrailer('base')"))
+  a.state({ state: 'READY', trailer: { sendAllowed: true } }); a.scope.storeTrailer('base'); assert.equal(a.commands.at(-1), fixed("storeTrailer('base')"), 'Send to base')
+  a.state({ state: 'READY', trailer: { depotAllowed: true } }); a.scope.storeTrailer('depot'); assert.equal(a.commands.at(-1), fixed("storeTrailer('depot')"))
+  a.state({ state: 'READY', trailer: { storeArmed: 'depot' } }); a.scope.storeTrailer('depot'); assert.equal(a.commands.at(-1), fixed("storeTrailer('depot')"), 'confirm after the warning')
+  a.state({ state: 'READY', trailer: { storeArmed: 'swap' } }); a.scope.swapTrailers(); assert.equal(a.commands.at(-1), fixed('swapTrailers()'), 'confirm a swap')
 })
 
 test('trailer parts: Pay and Undo only while in the trailer, and Pay only when Lua allows it', () => {
@@ -991,4 +1002,40 @@ test('Relocate to a player: a Join button for each player, sent by number only, 
   a.scope.setFindable(false)
   assert.deepEqual(a.commands.map(c => c.replace(/^if earthFreight_core then earthFreight_core\.| end$/g, '')),
     ['findPlayer(0)', 'setFindable(false)'])
+})
+test('Play online shows whether the server is up and how many are on it, from its stats', async () => {
+  const asked = []
+  let answer = { ok: true, json: async () => ({ updated: '2026-11-10T18:44:23Z', server: { name: 'WW Trucking Career | MadMerick', online: true, maxPlayers: 20 },
+    players: [{ name: 'A' }, { name: 'B' }], season: { number: 1, day: 2, truckers: 10 } }) }
+  const now = Date.parse('2026-11-10T18:50:00Z')
+  const a = app(null, null, { fetch: url => { asked.push(url); return Promise.resolve(answer) }, Date: { now: () => now, parse: Date.parse } })
+  assert.equal(a.scope.server.status, 'checking')
+  a.scope.openIntro()
+  await new Promise(r => setImmediate(r))
+  assert.deepEqual(asked, ['https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json'])
+  assert.equal(a.scope.server.status, 'online')
+  assert.equal(a.scope.server.players, 2); assert.equal(a.scope.server.max, 20); assert.equal(a.scope.server.season, 1)
+  assert.equal(a.scope.server.name, 'WW Trucking Career | MadMerick')
+  a.scope.toggleOnline()
+  assert.equal(asked.length, 1, 'asked at most once a minute')
+  const read = a.scope.readServer
+  assert.equal(read({ updated: '2026-11-10T18:20:00Z', server: { online: true } }, now).status, 'offline', 'stats older than 15 minutes')
+  assert.equal(read({ updated: '2026-11-10T18:49:00Z', server: { online: true }, sample: true }, now).status, 'offline', 'the sample is not the server')
+  assert.equal(read(null, now).status, 'offline')
+  assert.equal(read({ server: { name: 'x'.repeat(200), maxPlayers: -3 } }, now).name.length, 60)
+})
+test('Play online says when the status cannot be reached, and opens its two links', async () => {
+  const a = app(null, null, { fetch: () => Promise.reject(new Error('offline')) })
+  a.scope.openIntro()
+  await new Promise(r => setImmediate(r))
+  assert.equal(a.scope.server.status, 'unknown')
+  a.scope.openLink('server')
+  assert.equal(a.commands.at(-1), 'if openWebBrowser then openWebBrowser("https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/") end setClipboard("https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/")')
+  a.scope.openLink('discord')
+  assert.match(a.commands.at(-1), /openWebBrowser\("https:\/\/discord\.gg\/eYJCfXNGbP"\)/)
+  const count = a.commands.length
+  a.scope.openLink('");x("')
+  assert.equal(a.commands.length, count, 'only the two fixed links')
+  const page = html.slice(html.indexOf('class="ef-start"'), html.indexOf('<div ng-if="!hud.minimised && !intro.open">'))
+  for (const part of ['PLAY ONLINE', 'OFFLINE CAREER', 'ng-click="toggleOnline()"', "openLink('server')", "openLink('discord')", 'ng-if="!data.online"']) assert.ok(page.includes(part), part)
 })

@@ -2,9 +2,12 @@
 -- show Google Street View of where the car is. It serves the page itself and the car's latest
 -- position as JSON; the page asks for the position every 6, 10 or 20 seconds. Nothing is sent anywhere by
 -- the game: the browser fetches the pictures from Google.
+-- The same server serves the Base map (/bases, baseMapPage.lua): an overhead map of the bases' circles
+-- and the truck, whose data (/basemap) the page asks for every few seconds.
 -- Driven from the game's frame: every call is non-blocking (timeouts of 0), so a slow or stuck
 -- browser never holds the game up. The socket library is injected so tests can fake it.
 local page = require('earthFreight/streetViewPage')
+local baseMapPage = require('earthFreight/baseMapPage')
 local M = { HOST = '127.0.0.1', PORT = 47170, MAX_CLIENTS = 8, MAX_REQUEST = 8192, CLIENT_SECONDS = 5 }
 
 local function encode(value)
@@ -95,7 +98,13 @@ function M.new(env)
     return host == M.HOST .. ':' .. port or host == 'localhost:' .. port
   end
 
-  local function answer(head, position)
+  local function json(build)
+    local ok, value = pcall(build or error)
+    if not ok or type(value) ~= 'table' then value = { ok = false, reason = 'internal_error' } end
+    return response('200 OK', 'application/json; charset=utf-8', encode(value))
+  end
+
+  local function answer(head, position, baseMap)
     local method, path = head:match('^(%u+) (%S+) HTTP/1%.%d\r\n')
     if not method then return response('400 Bad Request', 'text/plain', 'Bad request') end
     if not allowedHost(head) then return response('403 Forbidden', 'text/plain', 'Forbidden') end
@@ -104,9 +113,11 @@ function M.new(env)
     if path == '/' or path == '/index.html' then
       return response('200 OK', 'text/html; charset=utf-8', page.html)
     elseif path == '/position' then
-      local ok, value = pcall(position)
-      if not ok or type(value) ~= 'table' then value = { ok = false, reason = 'internal_error' } end
-      return response('200 OK', 'application/json; charset=utf-8', encode(value))
+      return json(position)
+    elseif path == '/bases' then
+      return response('200 OK', 'text/html; charset=utf-8', baseMapPage.html)
+    elseif path == '/basemap' then
+      return json(baseMap)
     end
     return response('404 Not Found', 'text/plain', 'Not found')
   end
@@ -116,8 +127,8 @@ function M.new(env)
     if c then pcall(function() c.sock:close() end) end
   end
 
-  -- Called every frame. position() builds the JSON body; it is only called when a page asks.
-  function s:poll(now, position)
+  -- Called every frame. position() and baseMap() build the JSON bodies; each is only called when a page asks.
+  function s:poll(now, position, baseMap)
     if not server then return end
     for _ = 1, M.MAX_CLIENTS do
       if #self.clients >= M.MAX_CLIENTS then break end
@@ -134,7 +145,7 @@ function M.new(env)
         local got = ok and (data or partial) or nil
         if got and got ~= '' then c.buffer = c.buffer .. got end
         if not ok or why == 'closed' then finished = true
-        elseif c.buffer:find('\r\n\r\n', 1, true) then c.reply, c.sent = answer(c.buffer, position), 0
+        elseif c.buffer:find('\r\n\r\n', 1, true) then c.reply, c.sent = answer(c.buffer, position, baseMap), 0
         elseif #c.buffer >= M.MAX_REQUEST then c.reply, c.sent = response('431 Request Header Fields Too Large', 'text/plain', 'Too large'), 0 end
       end
       if c.reply and not finished then

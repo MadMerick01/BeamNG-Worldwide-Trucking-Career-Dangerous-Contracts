@@ -46,6 +46,9 @@ do
   T.eq(v.load.good,'food','good kept'); T.eq(v.load.to,'gn2','drop-off kept'); T.eq(v.load.condition,nil,'an old cargo condition is dropped')
   T.eq(v.load.drivenKm,3.5,'distance kept'); T.check(v.load~=s.load,'load copied')
   T.eq(P.validate(F.save()).load,nil,'no load is fine')
+  s=F.save(); s.load={ good='food', slots=2, kg=50, pay=800, from='gn1', to='gn2', drivenKm=0, toll={ owner='Belake', amount=200 } }
+  v=P.validate(s); T.eq(v.load.toll.owner,'Belake','the turf toll\'s owner kept'); T.eq(v.load.toll.amount,200,'and its amount')
+  s.load.toll={ owner=5, amount=-1 }; v=P.validate(s); T.check(v.load~=nil and v.load.toll==nil,'an odd toll is dropped, the job kept')
   s=F.save(); s.vehicle.fuelLitres=31.5; T.eq(P.validate(s).vehicle.fuelLitres,31.5,'fuel kept')
   s=F.save(); s.vehicle.worth=42000; T.eq(P.validate(s).vehicle.worth,42000,'the truck\'s worth kept for the leaderboard')
 end

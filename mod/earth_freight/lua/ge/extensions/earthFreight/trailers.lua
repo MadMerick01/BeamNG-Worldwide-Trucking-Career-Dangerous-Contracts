@@ -1,10 +1,15 @@
--- Trailers: the player can own one trailer at a time, bought new with Buy new trailer on the Garage
--- tab from the trailers in FOR_SALE. It is either out (spawned behind the car, hitched or
--- not) or stored in the garage, which goes everywhere with the player: Bring out puts it behind the
--- car in any town, any time, for free. While it is hitched its cargo space adds to the car's, and a
--- job loads the trailer first, then the car. Storing it with part of a job in it loses the whole job
--- and costs the abandon fee. A stored trailer keeps the damage it had, which Repair trailer mends
--- and a sale takes off its price. Sell (stored only) pays SELL_SHARE of what was paid.
+-- Trailers: bought new with Buy new trailer on the Garage tab from the trailers in FOR_SALE. The
+-- player owns one, or two with a base of operations: the one in use (self.trailer) and a second one
+-- kept stored (self.spareTrailer). The one in use is either out (spawned behind the car, hitched or
+-- not) or stored; a stored trailer is at the base (its trailer spot holds one) or at the depot.
+-- At the base (within its radius) a trailer parks and comes out for free, and Swap trailers
+-- parks the one out and hitches the other. Away from the base a haulier takes it there or brings it
+-- out for HAUL_FEE plus HAUL_PER_KM a km from the base; the depot, for players without a base or
+-- with its spot taken, costs DEPOT_FEE each way. While it is hitched its cargo space adds to the
+-- car's, and a job loads the trailer first, then the car. Storing it with part of a job in it loses
+-- the whole job and costs the abandon fee. A stored trailer keeps the damage it had, which Repair
+-- trailer mends (at half price at the base, as for cars) and a sale takes off its price. Sell
+-- (stored only) pays SELL_SHARE of what was paid.
 -- The maths at the top needs no game; attach(c) adds the controller's side, which reaches the game
 -- only through the garage (spawn, remove, read containers) and the cargo weight.
 local pricing = require('earthFreight/pricing')
@@ -22,18 +27,71 @@ M.PARCEL_KG_PER_SLOT = 20
 M.CHECK_SECONDS = 1
 -- How long a trailer has to spawn after Buy or Bring out before it counts as failed.
 M.SPAWN_SECONDS = 5
+-- A haulier taking the trailer to the base, or bringing it out from there, away from the base: a
+-- flat fee plus a little per km between the player and the base (the same as Shipping).
+M.HAUL_FEE, M.HAUL_PER_KM = 100, 0.02
+-- Storing a trailer at the depot, or bringing it out from there, anywhere.
+M.DEPOT_FEE = 250
+-- What a haulier charges for this many metres between the player and the base.
+function M.haulFee(metres)
+  return M.HAUL_FEE + math.floor(math.max(0, metres or 0) / 1000 * M.HAUL_PER_KM + 0.5)
+end
 
 local dollars = pricing.dollars
 
--- The trailers for sale, as model/config key: our own configs, shipped in the mod's vehicles
--- folder next to the starter car, picked to carry the goods jobs pay for. Add more here, with
--- their .pc, info json (its Value is the price) and picture.
+-- The trailers for sale, cheapest first on the card. Each is a model/config key (our own empty
+-- setups in the mod's vehicles folder, with a .pc, info json whose Value is the price, and picture,
+-- or a vanilla tanker whose tank is already empty), the name the card shows, the cargo fitted
+-- (fit: Boxes or Tanks, or nil when the tank is part of the trailer), the hitch it needs, what it
+-- holds (room) and maxKg: the most a job puts on it, BeamNG's own payload for that trailer (its
+-- heaviest loaded setup less the empty one), so 32 XL boxes don't take 80 t. The trailer fills
+-- first, up to maxKg, and the rest goes in the car. Prices are the game's own for the empty trailer.
 M.FOR_SALE = {
-  'boxutility/earth_freight_trailer_boxes', -- two Cargo Load boxes XL
-  'boxutility/earth_freight_trailer_fluid', -- two Cargo Load fluid tanks XL
+  { id = 'boxutility/earth_freight_trailer_boxes', name = 'Box utility trailer', fit = 'Boxes', hitch = 'ball', room = '2 XL boxes', maxKg = 600 },
+  { id = 'boxutility/earth_freight_trailer_fluid', name = 'Box utility trailer', fit = 'Tanks', hitch = 'ball', room = '2 XL tanks', maxKg = 600 },
+  { id = 'boxutility_large/earth_freight_large_boxes', name = 'Large box utility trailer', fit = 'Boxes', hitch = 'ball', room = '3 XL boxes', maxKg = 800 },
+  { id = 'tiltdeck/earth_freight_22ft_boxes', name = 'Tilt deck 22 ft', fit = 'Boxes', hitch = 'ball', room = '4 XL boxes', maxKg = 2900 },
+  { id = 'tiltdeck/earth_freight_30ft_boxes', name = 'Tilt deck 30 ft', fit = 'Boxes', hitch = 'ball', room = '7 XL boxes', maxKg = 3800 },
+  { id = 'cargotrailer/earth_freight_enclosed_boxes', name = 'Enclosed cargo trailer', fit = 'Boxes', hitch = 'ball', room = '4 XL boxes', maxKg = 2100 },
+  { id = 'tiltdeck/earth_freight_40ft_boxes', name = 'Tilt deck 40 ft', fit = 'Boxes', hitch = 'ball', room = '9 XL boxes', maxKg = 7000 },
+  { id = 'tiltdeck/earth_freight_30ft_gooseneck_boxes', name = 'Tilt deck 30 ft gooseneck', fit = 'Boxes', hitch = 'gooseneck', room = '7 XL boxes', maxKg = 5600 },
+  { id = 'tiltdeck/earth_freight_40ft_gooseneck_boxes', name = 'Tilt deck 40 ft gooseneck', fit = 'Boxes', hitch = 'gooseneck', room = '9 XL boxes', maxKg = 9600 },
+  { id = 'tanker/empty_short', name = 'Short tanker', hitch = 'fifthwheel', room = '17,700 L tank', maxKg = 17700 },
+  { id = 'tanker/empty', name = 'Long tanker', hitch = 'fifthwheel', room = '34,000 L tank', maxKg = 34000 },
+  { id = 'flatbed/earth_freight_28ft_boxes', name = 'Flatbed 28 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '10 XL boxes', maxKg = 8400 },
+  { id = 'dryvan/earth_freight_28ft_boxes', name = 'Dry van 28 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '8 XL boxes', maxKg = 9600 },
+  { id = 'flatbed/earth_freight_53ft_boxes', name = 'Flatbed 53 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '32 XL boxes', maxKg = 19700 },
+  { id = 'dryvan/earth_freight_53ft_boxes', name = 'Dry van 53 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '32 XL boxes', maxKg = 22400 },
+  { id = 'eu_trailers/tanker3a', name = 'EU tanker, 3 axle', hitch = 'fifthwheel', room = '22,500 L tank', maxKg = 22500 },
 }
 local forSale = {}
-for _, id in ipairs(M.FOR_SALE) do forSale[id] = true end
+for _, entry in ipairs(M.FOR_SALE) do forSale[entry.id] = entry end
+
+-- What each hitch is called on a card.
+M.HITCHES = { ball = 'ball hitch', gooseneck = 'gooseneck hitch', fifthwheel = 'fifth wheel' }
+
+-- The hitches a car has, from its fitted parts (a parts snapshot): a set of ball, gooseneck,
+-- fifthwheel. Read from the part names, so a car with an oddly named hitch may show none.
+function M.hitches(snapshot)
+  local found = {}
+  for _, part in pairs(type(snapshot) == 'table' and type(snapshot.parts) == 'table' and snapshot.parts or {}) do
+    local text = type(part) == 'string' and part:lower() or ''
+    if text:find('fifthwheel', 1, true) or text:find('fifth_wheel', 1, true) then found.fifthwheel = true
+    elseif text:find('gooseneck', 1, true) then found.gooseneck = true
+    elseif text:find('hitch', 1, true) and not text:find('pintle', 1, true) then found.ball = true end
+  end
+  return found
+end
+
+-- The most a job puts on a trailer, from the list, by its model and .pc path; nil when not listed.
+function M.limitOf(model, config)
+  -- A trailer with parts fitted keeps its whole config, which still names the .pc it came from.
+  if type(config) == 'table' then config = config.partConfigFilename end
+  if type(model) ~= 'string' or type(config) ~= 'string' then return nil end
+  local key = config:match('([^/\\]+)%.pc$')
+  local entry = key and forSale[model .. '/' .. key]
+  return entry and entry.maxKg or nil
+end
 
 -- Whether a config from the game's list is one of the trailers for sale, with a price.
 function M.sellable(info)
@@ -43,20 +101,29 @@ function M.sellable(info)
   return value ~= nil and value == value and value > 0 and value ~= math.huge
 end
 
--- Every trailer for sale, cheapest first, then by name: { model, key, config, name, preview, price }.
+-- Every trailer for sale, cheapest first, then in list order:
+-- { model, key, config, name, fit, hitch, room, maxKg, preview, price }.
 function M.catalogue(list)
-  local out = {}
+  local out, order = {}, {}
+  for i, entry in ipairs(M.FOR_SALE) do order[entry.id] = i end
   for _, info in ipairs(list or {}) do
     if M.sellable(info) then
-      out[#out + 1] = { model = info.model, key = info.key, config = info.config, name = info.name or info.model,
-        preview = info.preview, price = math.floor(tonumber(info.value) + 0.5) }
+      local entry = forSale[info.model .. '/' .. info.key]
+      out[#out + 1] = { model = info.model, key = info.key, config = info.config, name = entry.name, fit = entry.fit,
+        hitch = entry.hitch, room = entry.room, maxKg = entry.maxKg, preview = info.preview,
+        price = math.floor(tonumber(info.value) + 0.5), order = order[entry.id] }
     end
   end
   table.sort(out, function(a, b)
     if a.price ~= b.price then return a.price < b.price end
-    return a.model .. '/' .. a.key < b.model .. '/' .. b.key
+    return a.order < b.order
   end)
   return out
+end
+
+-- The name a bought trailer goes by: its card's name, with what is fitted.
+function M.offerName(offer)
+  return offer.fit and (offer.name .. ' with ' .. offer.fit:lower()) or offer.name
 end
 
 -- What a trailer sells for: SELL_SHARE of what was paid, less the repair it needs, never below $0.
@@ -75,13 +142,17 @@ function M.space(storage)
 end
 
 -- A trailer's space from its containers, or, when they give none, from the cargo boxes and fluid
--- tanks fitted to it, as for a car (a parts snapshot; a trailer has no boot).
-function M.spaceWith(storage, snapshot)
+-- tanks fitted to it, as for a car (a parts snapshot; a trailer has no boot). With maxKg, no job
+-- puts more than that many kg on it, however much room its boxes or tank have.
+function M.spaceWith(storage, snapshot, maxKg)
   local space = M.space(storage)
   if snapshot then
     local fitted = cargo.capacity(snapshot)
     if space.slots == 0 and not fitted.boot then space.slots, space.kg = fitted.slots, fitted.kg end
     if space.litres == 0 and fitted.litres > 0 then space.litres, space.tankKg = fitted.litres, fitted.tankKg end
+  end
+  if type(maxKg) == 'number' and maxKg > 0 then
+    space.kg, space.tankKg, space.maxKg = math.min(space.kg, maxKg), math.min(space.tankKg, maxKg), maxKg
   end
   return space
 end
@@ -111,6 +182,54 @@ function M.attach(c)
       return list
     end
     return self.trailerList or {}
+  end
+
+  -- The most a job puts on the trailer owned, or nil for no limit (a trailer no longer for sale).
+  function c:trailerLimit()
+    local t = self.trailer
+    if not t then return nil end
+    return t.maxKg or M.limitOf(t.model, t.config)
+  end
+
+  -- What the trailers owned are worth for wealth: what was paid for them and their parts.
+  function c:trailerWorth()
+    return (self.trailer and self.trailer.paid or 0) + (self.spareTrailer and self.spareTrailer.paid or 0)
+  end
+
+  -- Where a stored trailer goes when it is not the player's choice (a teleport, or lost): the
+  -- base's spot when it is free, else the depot.
+  local function fallbackPlace(self)
+    return self:trailerSpotFree() and 'base' or 'depot'
+  end
+
+  -- Whether the base's trailer spot is free: a base is owned and no trailer is stored there.
+  function c:trailerSpotFree()
+    if not self.property then return false end
+    for _, t in ipairs({ self.trailer, self.spareTrailer }) do
+      if t and t.stored and t.at == 'base' then return false end
+    end
+    return true
+  end
+
+  -- What moving a trailer to (or from) a place costs now: free at the base when the player is
+  -- there, the haulier's fee by distance away from it, the depot's fee at the depot.
+  function c:trailerMoveFee(place)
+    if place == 'depot' then return M.DEPOT_FEE end
+    if self:atHome() then return 0 end
+    return M.haulFee(self:homeDistance())
+  end
+
+  -- How many trailers the player may own: one, or two with a base.
+  function c:trailersAllowed()
+    return self.property and 2 or 1
+  end
+
+  -- A trailer stored before trailers had a place (the garage that went everywhere) is at the base
+  -- when it has room, else the depot. Called after loading.
+  function c:placeStoredTrailers()
+    for _, t in ipairs({ self.trailer, self.spareTrailer }) do
+      if t and t.stored and t.at == nil then t.at = fallbackPlace(self) end
+    end
   end
 
   -- The trailer's space while it is out and hitched, or nil.
@@ -168,7 +287,7 @@ function M.attach(c)
     end
     self.trailerOut = { id = id, at = self.clock, spawned = true, hitched = false, damage = 0 }
     self:readTrailerSpace()
-    t.stored = false
+    t.stored, t.at = false, nil
     self.appliedWeight = nil
     self.diag:event('trailer_out', t.model .. ' #' .. tostring(id))
     return true
@@ -179,7 +298,7 @@ function M.attach(c)
     local out = self.trailerOut
     if not out then return end
     if not snapshot and self.garage.parts then snapshot = self.garage:parts(out.id) end
-    out.space = M.spaceWith(self.garage.cargoStorage and self.garage:cargoStorage(out.id) or {}, snapshot)
+    out.space = M.spaceWith(self.garage.cargoStorage and self.garage:cargoStorage(out.id) or {}, snapshot, self:trailerLimit())
     self.appliedWeight = nil
   end
 
@@ -269,6 +388,8 @@ function M.attach(c)
     local kept = persistence.plainConfig({ model = config.model or t.model, parts = config.parts, partsTree = config.partsTree,
       partConfigFilename = config.partConfigFilename, vars = config.vars, paints = config.paints })
     if kept then t.config = kept else self.diag:event('trailer_config_unsaved', t.model, 'W') end
+    -- The parts are part of what the trailer is worth: its sale, repairs and the player's wealth.
+    t.paid = math.max(0, t.paid + bill.cost)
     backToCar(self)
     self.trailerFeedback = 'Trailer parts paid: ' .. dollars(bill.cost) .. '. Back up to your trailer to hitch it again.'
     self:autoSaveSoon('your trailer parts')
@@ -293,7 +414,18 @@ function M.attach(c)
     return true
   end
 
-  -- Buys trailer number index of the list (cheapest first) and puts it behind the car.
+  -- Why another trailer cannot be bought now, or nil: one is owned, or two with a base, and the
+  -- one in use must be stored first, as the new one comes out behind the car.
+  function c:trailerBuyProblem()
+    if not self.trailer then return nil end
+    if self.spareTrailer then return 'You already own two trailers. Sell one first.' end
+    if not self.property then return 'You already own a trailer. A base of operations keeps a second one, or sell this one first.' end
+    if not self.trailer.stored then return 'Store your trailer first: the new one comes out behind your car.' end
+    return nil
+  end
+
+  -- Buys trailer number index of the list (cheapest first) and puts it behind the car. A trailer
+  -- already owned (stored) is kept as the second one.
   function c:buyTrailer(index)
     local list = self:trailerCatalogue()
     local offer = list[index]
@@ -301,8 +433,7 @@ function M.attach(c)
       self.trailerFeedback = 'That trailer is not for sale.'
       return false
     end
-    local problem = self:trailerProblem()
-    if not problem and self.trailer then problem = 'You already own a trailer. Store it and sell it first.' end
+    local problem = self:trailerProblem() or self:trailerBuyProblem()
     if not problem and not self:canAfford(offer.price) then
       problem = 'Not enough money. You need ' .. dollars(offer.price - self.profile.progression.balance) .. ' more.'
     end
@@ -310,31 +441,41 @@ function M.attach(c)
       self.trailerFeedback = problem
       return false
     end
-    self.trailer = { model = offer.model, config = offer.config, name = offer.name, paid = offer.price, stored = false }
+    local kept = self.trailer
+    self.trailer = { model = offer.model, config = offer.config, name = M.offerName(offer), paid = offer.price,
+      maxKg = offer.maxKg, stored = false }
     if not self:spawnTrailer() then
-      self.trailer = nil
+      self.trailer = kept
       self.trailerFeedback = 'Could not bring that trailer out. Try again in a moment. You have not been charged.'
       return false
     end
+    self.spareTrailer = kept
     self:spend(offer.price, 'trailer')
     self.trailersOpen = false
-    self.trailerFeedback = 'Bought the ' .. offer.name .. ' for ' .. dollars(offer.price)
+    local need = offer.hitch and not M.hitches(self.ownedParts)[offer.hitch]
+    self.trailerFeedback = 'Bought the ' .. self.trailer.name .. ' for ' .. dollars(offer.price)
       .. '. It is behind your car: back up to it slowly and it hitches itself.'
+      .. (need and (' It needs a ' .. M.HITCHES[offer.hitch] .. ': fit one with Buy parts if your car has none.') or '')
     self:autoSaveSoon('buying your trailer')
     self.diag:event('trailer_bought', offer.model .. '/' .. offer.key .. ' ' .. offer.price)
     return true
   end
 
-  -- Takes the trailer out of the world into the garage, keeping its damage. why says what for.
-  local function stow(self, why)
+  -- Takes the trailer out of the world to place ('base' or 'depot'), keeping its damage. why says what for.
+  local function stow(self, why, place)
     local out, t = self.trailerOut, self.trailer
     if not t or not out then return end
     t.damage = self:trailerDamage()
     if t.damage <= 0 then t.damage = nil end
     if self.garage.removeVehicle then self.garage:removeVehicle(out.id) end
-    self.trailerOut, t.stored, self.storeArmed = nil, true, false
+    self.trailerOut, t.stored, t.at, self.storeArmed = nil, true, place or 'depot', false
     self.appliedWeight = nil
-    self.diag:event('trailer_stored', tostring(why))
+    self.diag:event('trailer_stored', tostring(why) .. ' ' .. tostring(t.at))
+  end
+
+  -- What a place is called in the HUD's sentences.
+  local function placeName(place)
+    return place == 'base' and 'at your base' or 'at the depot'
   end
 
   -- How much of the job is in the trailer: 0 when none.
@@ -342,25 +483,49 @@ function M.attach(c)
     return self.load and self.load.trailerUnits or 0
   end
 
-  -- Store trailer: anywhere, any time. With part of the job in the trailer it asks once first,
-  -- then the whole job is lost and the abandon fee charged.
-  function c:storeTrailer()
-    if not self.trailer or not self.trailerOut or not self.profile or self.error then return false end
-    if self.hire then self.trailerFeedback = self:awayText(); return false end
-    if self.trailerShop then self.trailerFeedback = 'Pay for or undo your trailer parts first.'; return false end
-    if inTrailer(self) > 0 and not self.storeArmed then
-      self.storeArmed = true
+  -- Why the trailer out cannot go to place ('base' or 'depot') now, or nil.
+  function c:trailerStoreProblem(place)
+    if not self.trailer or not self.trailerOut or not self.profile or self.error then return 'Your trailer is not out.' end
+    if self.hire then return self:awayText() end
+    if self.trailerShop then return 'Pay for or undo your trailer parts first.' end
+    if place == 'base' and not self.property then return 'You need a base of operations for that.' end
+    if place == 'base' and not self:trailerSpotFree() then return 'Your base already has a trailer in its spot.' end
+    if place ~= 'base' and place ~= 'depot' then return 'Store it at your base or the depot.' end
+    local fee = self:trailerMoveFee(place)
+    if fee > 0 and not self:canAfford(fee) then
+      return 'Not enough money. You need ' .. dollars(fee - self.profile.progression.balance) .. ' more.'
+    end
+    return nil
+  end
+
+  -- Park at base (free there), Send to base (the haulier's fee away from it) or Store at depot.
+  -- With part of the job in the trailer it asks once first, then the whole job is lost and the
+  -- abandon fee charged.
+  function c:storeTrailer(place)
+    local problem = self:trailerStoreProblem(place)
+    if problem then
+      self.trailerFeedback = problem
+      return false
+    end
+    if inTrailer(self) > 0 and self.storeArmed ~= place then
+      self.storeArmed = place
       self.trailerFeedback = 'Warning: your trailer has part of your job in it. Storing it loses the whole load and costs '
-        .. dollars(jobs.ABANDON_FEE) .. '. Press Confirm store to go ahead.'
+        .. dollars(jobs.ABANDON_FEE) .. '. Press Confirm to go ahead.'
+      return false
+    end
+    local fee = self:trailerMoveFee(place)
+    if fee > 0 and not self:spend(fee, 'trailer_storage') then
+      self.trailerFeedback = 'Not enough money.'
       return false
     end
     local lost = ''
     if inTrailer(self) > 0 then
-      local fee = self:dropJob('trailer_stored')
-      lost = ' Your load is lost' .. (fee > 0 and (' and that cost ' .. dollars(fee)) or '') .. '.'
+      local abandon = self:dropJob('trailer_stored')
+      lost = ' Your load is lost' .. (abandon > 0 and (' and that cost ' .. dollars(abandon)) or '') .. '.'
     end
-    stow(self, 'stored')
-    self.trailerFeedback = 'Your ' .. self.trailer.name .. ' is in the garage. Bring it out any time.' .. lost
+    stow(self, 'stored', place)
+    self.trailerFeedback = 'Your ' .. self.trailer.name .. ' is ' .. placeName(place)
+      .. (fee > 0 and (', for ' .. dollars(fee)) or '') .. '.' .. lost
     self:autoSaveSoon('storing your trailer')
     return true
   end
@@ -371,23 +536,88 @@ function M.attach(c)
     return true
   end
 
-  -- Bring out: puts the stored trailer behind the car, anywhere.
+  -- Hitch from base (free there), Have it delivered (the haulier's fee away from the base) or Bring
+  -- out from the depot: puts the stored trailer behind the car. Paid once it is out.
   function c:bringOutTrailer()
-    if not self.trailer or not self.trailer.stored then return false end
+    local t = self.trailer
+    if not t or not t.stored then return false end
     local problem = self:trailerProblem()
+    local place = t.at or 'depot'
+    local fee = self:trailerMoveFee(place)
+    if not problem and fee > 0 and not self:canAfford(fee) then
+      problem = 'Not enough money. You need ' .. dollars(fee - self.profile.progression.balance) .. ' more.'
+    end
     if problem then
       self.trailerFeedback = problem
       return false
     end
     if not self:spawnTrailer() then
-      self.trailerFeedback = 'Could not bring your trailer out. Try again in a moment.'
+      self.trailerFeedback = 'Could not bring your trailer out. Try again in a moment. You have not been charged.'
       return false
     end
-    self.trailerFeedback = 'Your ' .. self.trailer.name .. ' is behind your car: back up to it slowly and it hitches itself.'
+    if fee > 0 then self:spend(fee, 'trailer_storage') end
+    self.trailerFeedback = 'Your ' .. t.name .. ' is behind your car' .. (fee > 0 and (', for ' .. dollars(fee)) or '')
+      .. ': back up to it slowly and it hitches itself.'
+    self:autoSaveSoon('bringing your trailer out')
+    return true
+  end
+
+  -- Use the other trailer: the second one becomes the one in use, while neither is out.
+  function c:switchTrailer()
+    local spare = self.spareTrailer
+    if not spare or not self.trailer or self.trailerOut or self.trailerShop then return false end
+    self.trailer, self.spareTrailer = spare, self.trailer
+    self.sellArmed, self.storeArmed = false, false
+    self.trailerFeedback = 'Your ' .. spare.name .. ' is ready to bring out.'
+    return true
+  end
+
+  -- Why Swap trailers cannot be pressed now, or nil: at the base, the trailer out parks in the spot
+  -- and the one parked there comes out, both for free.
+  function c:trailerSwapProblem()
+    local spare = self.spareTrailer
+    if not spare or spare.at ~= 'base' then return 'Your other trailer is not at your base.' end
+    if not self.trailerOut then return 'Your trailer is not out.' end
+    if not self:atHome() then return 'Drive to your base to swap trailers.' end
+    if self.trailerShop then return 'Pay for or undo your trailer parts first.' end
+    return self:trailerProblem()
+  end
+
+  function c:swapTrailers()
+    local problem = self:trailerSwapProblem()
+    if problem then
+      self.trailerFeedback = problem
+      return false
+    end
+    if inTrailer(self) > 0 and self.storeArmed ~= 'swap' then
+      self.storeArmed = 'swap'
+      self.trailerFeedback = 'Warning: your trailer has part of your job in it. Swapping it loses the whole load and costs '
+        .. dollars(jobs.ABANDON_FEE) .. '. Press Confirm to go ahead.'
+      return false
+    end
+    local lost = ''
+    if inTrailer(self) > 0 then
+      local abandon = self:dropJob('trailer_stored')
+      lost = ' Your load is lost' .. (abandon > 0 and (' and that cost ' .. dollars(abandon)) or '') .. '.'
+    end
+    local parked = self.trailer
+    -- The spot is the spare's until it comes out: the one parking goes in as it leaves.
+    stow(self, 'swap', 'base')
+    self.trailer, self.spareTrailer = self.spareTrailer, parked
+    if not self:spawnTrailer() then
+      self.trailerFeedback = 'Parked your ' .. parked.name .. ', but could not bring the other one out. Press Hitch from base to try again.' .. lost
+      self.trailer.at = 'base'
+      parked.at = 'base'
+      return false
+    end
+    self.trailerFeedback = 'Parked your ' .. parked.name .. '. Your ' .. self.trailer.name
+      .. ' is behind your car: back up to it slowly and it hitches itself.' .. lost
+    self:autoSaveSoon('swapping trailers')
     return true
   end
 
   -- Sell: a stored trailer only, for SELL_SHARE of what was paid less its repair. Asks once first.
+  -- The second trailer, if any, becomes the one in use.
   function c:sellTrailer()
     local t = self.trailer
     if not t or not t.stored or not self.profile or self.error then return false end
@@ -398,11 +628,18 @@ function M.attach(c)
       return false
     end
     self:addMoney(price)
-    self.trailer, self.sellArmed = nil, false
+    self.trailer, self.spareTrailer, self.sellArmed = self.spareTrailer, nil, false
     self.trailerFeedback = 'Sold your ' .. t.name .. ' for ' .. dollars(price) .. '.'
     self:autoSaveSoon('selling your trailer')
     self.diag:event('trailer_sold', t.model .. ' ' .. price)
     return true
+  end
+
+  -- What repairing the trailer's damage costs now: half at the base, as for cars.
+  function c:trailerRepairPrice()
+    local t = self.trailer
+    if not t then return 0 end
+    return self.repairPrice and self:repairPrice(t.damage or 0, t.paid) or pricing.repairCost(t.damage or 0, t.paid)
   end
 
   -- Repair trailer: pays for the damage it had when stored or saved. Damage it picks up while out
@@ -410,7 +647,7 @@ function M.attach(c)
   function c:repairTrailer()
     local t = self.trailer
     if not t or not self.profile or self.error then return false end
-    local cost = pricing.repairCost(t.damage or 0, t.paid)
+    local cost = self:trailerRepairPrice()
     if cost <= 0 then
       self.trailerFeedback = self.trailerOut and 'Store your trailer to have its damage repaired.' or 'Your trailer needs no repair.'
       return false
@@ -455,9 +692,9 @@ function M.attach(c)
         or self.respawned or self.partsCheckDue or self.hire or self.onFoot then return end
       local vehicle = self.lastSample and self.lastSample.valid and self.lastSample.vehicle
       if not vehicle or vehicle.id ~= self.ownedParts.id then return end
-      -- A trailer saved out comes back behind the car, once; if it cannot, it waits in the garage.
+      -- A trailer saved out comes back behind the car, once; if it cannot, it is stored.
       self.trailerRestored = true
-      if not self:spawnTrailer() then t.stored = true end
+      if not self:spawnTrailer() then t.stored, t.at = true, fallbackPlace(self) end
       return
     end
     if self.clock - (out.checkedAt or -math.huge) < M.CHECK_SECONDS then return end
@@ -470,20 +707,23 @@ function M.attach(c)
         local fee = self:dropJob('trailer_lost')
         lost = ' The load in it is lost' .. (fee > 0 and (', which cost ' .. dollars(fee)) or '') .. '.'
       end
-      stow(self, 'lost')
-      self:showFlash('cancelled', 'TRAILER LOST', 'Your trailer is back in the garage. Bring it out on the Garage tab.' .. lost)
+      local place = fallbackPlace(self)
+      stow(self, 'lost', place)
+      self:showFlash('cancelled', 'TRAILER LOST', 'Your trailer was taken ' .. (place == 'base' and 'to your base' or 'to the depot')
+        .. '. Bring it out on the Garage tab.' .. lost)
       return
     end
     local inspected = self.garage:inspect(out.id)
     if inspected and finite(inspected.damage) then out.damage = inspected.damage end
   end
 
-  -- A teleport leaves the trailer behind, so it goes into the garage. Relocating drops the job
-  -- anyway, and a dangerous contract only ever loads the car.
+  -- A teleport leaves the trailer behind, so it is taken to the base (or the depot), for free.
+  -- Relocating drops the job anyway, and a dangerous contract only ever loads the car.
   function c:trailerTeleported()
     if not self.trailerOut then return '' end
-    stow(self, 'teleport')
-    return ' Your trailer is in the garage: bring it out on the Garage tab.'
+    local place = fallbackPlace(self)
+    stow(self, 'teleport', place)
+    return ' Your trailer was taken ' .. (place == 'base' and 'to your base' or 'to the depot') .. ': bring it out on the Garage tab.'
   end
 
   -- Puts the job's share of the weight on the trailer. Returns the kg left for the car.
@@ -518,13 +758,22 @@ function M.attach(c)
     return nil
   end
 
-  -- The trailer as Save keeps it, or nil.
+  -- The trailer in use as Save keeps it, or nil.
   function c:savedTrailer()
     local t = self.trailer
     if not t then return nil end
     local damage = self:trailerDamage()
-    return { model = t.model, config = t.config, name = t.name, paid = t.paid,
-      damage = damage > 0 and math.min(9007199254740991, damage) or nil, stored = t.stored == true }
+    return { model = t.model, config = t.config, name = t.name, paid = t.paid, maxKg = t.maxKg,
+      damage = damage > 0 and math.min(9007199254740991, damage) or nil, stored = t.stored == true,
+      at = t.stored and t.at or nil }
+  end
+
+  -- The second trailer as Save keeps it, or nil.
+  function c:savedSpareTrailer()
+    local t = self.spareTrailer
+    if not t then return nil end
+    return { model = t.model, config = t.config, name = t.name, paid = t.paid, maxKg = t.maxKg, damage = t.damage,
+      stored = true, at = t.at or 'depot' }
   end
 
   -- The Trailer card on the Garage tab.
@@ -533,16 +782,31 @@ function M.attach(c)
     local problem = self:trailerProblem()
     local balance = self.profile and self.profile.progression.balance or 0
     local view = { feedback = self.trailerFeedback, problem = problem, open = self.trailersOpen == true,
-      foreign = self.foreignTrailer ~= nil and not (out and out.id == self.foreignTrailer) }
+      foreign = self.foreignTrailer ~= nil and not (out and out.id == self.foreignTrailer),
+      base = self.property ~= nil, atBase = self.property ~= nil and self:atHome() or false,
+      spotFree = self:trailerSpotFree(), depotFee = M.DEPOT_FEE, allowed = self:trailersAllowed() }
+    if self.property and not view.atBase then view.haulFee = self:trailerMoveFee('base') end
     if t then
       local repair = self:trailerRepairCost()
       view.owned = {
-        name = t.name, paid = t.paid, stored = t.stored == true, out = out ~= nil, hitched = out and out.hitched or false,
-        repair = repair > 0 and repair or nil, owed = pricing.repairCost(t.damage or 0, t.paid),
+        name = t.name, paid = t.paid, stored = t.stored == true, at = t.stored and (t.at or 'depot') or nil,
+        out = out ~= nil, hitched = out and out.hitched or false,
+        repair = repair > 0 and repair or nil, owed = self:trailerRepairPrice(),
         sale = M.salePrice(t.paid, repair), space = out and out.space or nil,
         loaded = inTrailer(self) > 0,
       }
-      view.storeAllowed = out ~= nil and not self.hire and not self.trailerShop
+      local free = not self.hire and not self.trailerShop
+      if out then
+        view.parkAllowed = free and view.atBase and view.spotFree
+        view.sendAllowed = free and view.base and not view.atBase and view.spotFree and self:trailerStoreProblem('base') == nil
+        view.depotAllowed = free and self:trailerStoreProblem('depot') == nil
+        view.swapShown = self.spareTrailer ~= nil and self.spareTrailer.at == 'base' and view.atBase
+        view.swapAllowed = view.swapShown and self:trailerSwapProblem() == nil
+      else
+        view.bringOutFee = self:trailerMoveFee(view.owned.at)
+        view.bringOutAllowed = problem == nil and view.bringOutFee <= balance
+      end
+      view.storeArmed = self.storeArmed or nil
       view.partsAllowed = self:trailerShopProblem() == nil
       local shop = self.trailerShop
       if shop then
@@ -550,24 +814,40 @@ function M.attach(c)
           cost = shop.bill.cost } or nil }
         view.shop.payAllowed = not shop.due and (not shop.bill or shop.bill.cost <= balance)
       end
-      view.storeArmed = self.storeArmed == true
-      view.bringOutAllowed = t.stored == true and problem == nil
       view.sellAllowed = t.stored == true
       view.sellArmed = self.sellArmed == true
       view.repairAllowed = view.owned.owed > 0 and view.owned.owed <= balance
-    elseif self.trailersOpen then
+      local spare = self.spareTrailer
+      if spare then
+        view.spare = { name = spare.name, paid = spare.paid, at = spare.at or 'depot' }
+        view.switchAllowed = out == nil and not self.trailerShop
+      end
+    end
+    view.buyProblem = self:trailerBuyProblem()
+    view.buyAllowed = view.buyProblem == nil
+    if self.trailersOpen then
+      -- One card per trailer, cheapest first; a trailer sold with boxes or tanks has a button for each.
       view.offers = {}
+      local cards, have = {}, M.hitches(self.ownedParts)
+      local blocked = problem or view.buyProblem
       for i, offer in ipairs(self:trailerCatalogue()) do
-        view.offers[i] = { index = i, name = offer.name, preview = offer.preview, price = offer.price,
+        local card = cards[offer.name]
+        if not card then
+          card = { name = offer.name, preview = offer.preview, hitch = offer.hitch, hitchName = M.HITCHES[offer.hitch],
+            hitchFound = offer.hitch == nil or have[offer.hitch] == true, maxKg = offer.maxKg, room = offer.room, buys = {} }
+          cards[offer.name] = card
+          view.offers[#view.offers + 1] = card
+        end
+        card.buys[#card.buys + 1] = { index = i, fit = offer.fit, room = offer.room, price = offer.price,
           short = offer.price > balance and offer.price - balance or nil,
-          allowed = problem == nil and offer.price <= balance }
+          allowed = blocked == nil and offer.price <= balance }
       end
     end
     return view
   end
 end
 
--- The saved trailer, cleaned: { model, config, name, paid, damage, stored }, or nil when unusable.
+-- A saved trailer, cleaned: { model, config, name, paid, maxKg, damage, stored, at }, or nil when unusable.
 function M.clean(t)
   if type(t) ~= 'table' or type(t.model) ~= 'string' or t.model == '' or #t.model > 128 or t.model:find('%c')
       or not ((type(t.config) == 'string' and t.config ~= '' and #t.config <= 512 and not t.config:find('%c'))
@@ -575,8 +855,12 @@ function M.clean(t)
       or type(t.name) ~= 'string' or t.name == '' or #t.name > 256 or t.name:find('%c')
       or not finite(t.paid) or t.paid < 0 or t.paid ~= math.floor(t.paid) or t.paid > 9007199254740991
       or (t.damage ~= nil and (not finite(t.damage) or t.damage < 0))
-      or (t.stored ~= nil and type(t.stored) ~= 'boolean') then return nil end
-  return { model = t.model, config = t.config, name = t.name, paid = t.paid, damage = t.damage, stored = t.stored == true }
+      or (t.stored ~= nil and type(t.stored) ~= 'boolean')
+      or (t.maxKg ~= nil and (not finite(t.maxKg) or t.maxKg <= 0))
+      or (t.at ~= nil and t.at ~= 'base' and t.at ~= 'depot') then return nil end
+  local stored = t.stored == true
+  return { model = t.model, config = t.config, name = t.name, paid = t.paid, maxKg = t.maxKg, damage = t.damage,
+    stored = stored, at = stored and t.at or nil }
 end
 
 return M

@@ -264,12 +264,14 @@ do
   pump()
   T.eq(c.loadStatus, 'missing', 'a new player gets a new career on the server')
   T.check(c:view().balance ~= 123, 'not the single-player money')
+  T.eq(c:view().online, true, 'the start page calls it the career on this server')
   T.check(c.feedback:find('new career on this server', 1, true) ~= nil, 'the player is told')
   -- Back in single player, the single-player career is there as it was.
   mp.inSession = function() return false end
   c:endMission(); c:reload()
   T.eq(c.profile.progression.balance, 123, 'single player keeps its own career')
   T.eq(c.mp, nil, 'and talks to no server')
+  T.eq(c:view().online, nil, 'and calls it the offline career again')
 end
 
 -- BeamMP drops a joining player in with no car: after a few seconds the starter car is put down for them, once.
@@ -522,6 +524,19 @@ do
   W.boardCareer(W.players[1], { progression = { balance = 50000 }, vehicle = { worth = 30000 }, property = { paid = 250000 } })
   board = W.status().leaderboard
   T.eq(board[1].baseValue, 250000, 'the base at what was paid'); T.eq(board[1].wealth, 330000, 'cash, truck and base')
+  -- So does a trailer, at what was paid for it and its parts.
+  W.boardCareer(W.players[1], { progression = { balance = 50000 }, vehicle = { worth = 30000 }, property = { paid = 250000 },
+    trailer = { paid = 26000 } })
+  board = W.status().leaderboard
+  T.eq(board[1].trailerValue, 26000, 'the trailer at what was paid'); T.eq(board[1].wealth, 356000, 'cash, truck, trailer and base')
+  W.boardCareer(W.players[1], { progression = { balance = 50000 }, vehicle = { worth = 30000 }, property = { paid = 250000 },
+    trailer = { paid = -3 } })
+  T.eq(W.status().leaderboard[1].trailerValue, 0, 'a bad trailer price is ignored')
+  -- A second trailer kept at the base counts too.
+  W.boardCareer(W.players[1], { progression = { balance = 50000 }, vehicle = { worth = 30000 }, property = { paid = 250000 },
+    trailer = { paid = 26000 }, spareTrailer = { paid = 4000 } })
+  board = W.status().leaderboard
+  T.eq(board[1].trailerValue, 30000, 'both trailers at what was paid'); T.eq(board[1].wealth, 360000, 'in wealth')
   -- Kept over a restart.
   local W2 = server(env.files)
   T.eq(#W2.stats.feed, #W.stats.feed, 'the feed survives a restart')
@@ -665,8 +680,8 @@ do
   T.eq(next(W.asks), nil, 'an answer nobody asked for is dropped')
 end
 
--- The Magnate update on a server: a base is asked of the server (one a town, 10 km apart), everyone sees everyone's
--- circles, a visitor's jobs pay more inside someone else's, and the page shows the circles.
+-- The Magnate update on a server: a base is asked of the server (one a town, 300 km apart), everyone sees everyone's
+-- circles, delivering in someone else's turf pays them a 20% toll, and the page shows the circles.
 do
   local W, env = server()
   W.SHIP_CONTAINERS = 0
@@ -698,22 +713,31 @@ do
   pump()
   T.check(c1.property ~= nil, 'bought once the server says yes'); T.eq(c1.property.town.name, 'Penrith', 'in Penrith')
   T.eq(c1:view().balance, 400000 - 250000, 'paid')
-  -- Player 2 sees it, and can't buy within 10 km of it.
+  -- Player 2 sees it, and can't buy within 300 km of it.
   local others = c2:view().home.others
   T.check(others and others[1].name == 'player1' and others[1].town == 'Penrith', 'the other base is listed')
   T.check(others[1].inside, 'and player 2 is inside its circle'); T.eq(others[1].latitude, nil, 'never a spot')
   T.check(c2:claimProblem():find('Too close to player1', 1, true), 'too close to buy')
-  -- Player 2's jobs here pay the visitors' bonus.
-  local town = 0
+  -- Player 2's jobs here drop off in player 1's turf: the board shows the 20% toll, and the pay after it.
+  local magnate = require('earthFreight/magnate')
+  local town, taken = 0, nil
   for _, j in ipairs(c2:view().town.jobs) do
-    if not j.drop and not j.contract and j.units > 0 then
+    if not j.contract and j.units > 0 then
       town = town + 1
-      T.check(j.basePercent and j.basePercent >= 4 and j.basePercent <= 13, 'a visitor gets about +10% on ' .. j.id)
-      T.check(j.pay > before[j.id], 'and is paid more on ' .. j.id)
+      T.eq(j.tollTo, 'player1', 'the toll goes to player 1 on ' .. j.id); T.eq(j.tollPercent, 20, 'and is 20%')
+      T.eq(j.basePercent, nil, 'no visitors\' bonus on ' .. j.id)
+      T.eq(j.pay, (magnate.afterToll(before[j.id])), 'paid 20% less on ' .. j.id)
+      if not taken and not j.drop then taken = j end
     end
   end
-  T.check(town > 0, 'town jobs checked')
-  -- Even if player 2's game didn't know, the server refuses: one base within 10 km.
+  T.check(town > 0, 'jobs checked')
+  T.check(c2:takeJob(taken.id), 'job taken')
+  T.eq(c2.load.toll.owner, 'player1', 'the job keeps who its toll goes to')
+  T.eq(c2.load.toll.amount, select(2, magnate.afterToll(before[taken.id])), 'and how much')
+  c2:abandonJob()
+  -- Player 1's own jobs pay no toll.
+  for _, j in ipairs(c1:view().town.jobs) do T.eq(j.tollTo, nil, 'no toll in your own turf on ' .. j.id) end
+  -- Even if player 2's game didn't know, the server refuses: one base within 300 km.
   W.onBaseClaim(2, J.encode({ v = 1, town = 'Ropes Crossing', latitude = ropes.latitude, longitude = ropes.longitude, boost = 1 }))
   local answer = J.decode(env.sent[#env.sent].data)
   T.check(not answer.ok and answer.why == 'too_close' and answer.by == 'player1', 'the server refuses too')
@@ -723,38 +747,43 @@ do
   T.eq(W.bases[key].asked, nil, 'the base is confirmed by the save'); T.check(W.bases[key].peak >= 400000, 'with the best wealth')
   local st = W.status()
   T.eq(#st.bases, 1, 'one base on the page'); T.eq(st.bases[1].town, 'Penrith', 'at its town')
-  T.check(st.bases[1].radiusKm >= 20, 'with its circle')
+  T.check(st.bases[1].radiusKm >= 1600, 'with its circle')
   T.near(st.bases[1].latitude, 0, 90, 'a town centre'); T.eq(st.leaderboard[1].baseTown, 'Penrith', 'and the leaderboard names it')
-  -- Commission: player 2's delivery from Ropes Crossing to Penrith, both in player 1's turf, pays player 1 5% on top.
+  -- The toll: player 2's delivery from Ropes Crossing to Penrith, in player 1's turf, pays player 1 what player 2's game
+  -- took off the pay.
   local town = { latitude = -33.75, longitude = 150.7 }
   local balance1, balance2 = c1.profile.progression.balance, c2.profile.progression.balance
-  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 1000, from = 'Ropes Crossing', to = 'Penrith', ends = { ropes, town } }))
-  T.eq(W.bases[key].batch.amount, 50, '2.5% for each end in the turf'); T.eq(c2.profile.progression.balance, balance2, 'nothing taken from the driver')
+  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 800, toll = 200, from = 'Ropes Crossing', to = 'Penrith', ends = { ropes, town } }))
+  T.eq(W.bases[key].batch.amount, 200, 'the toll goes to the turf\'s owner'); T.eq(c2.profile.progression.balance, balance2, 'the server takes nothing more from the driver')
   pump(); F.advance(c1, 0.6)
-  T.eq(c1.profile.progression.balance, balance1 + 50, 'paid into the owner\'s money')
+  T.eq(c1.profile.progression.balance, balance1 + 200, 'paid into the owner\'s money')
   T.eq(c1.profile.commissionId, W.bases[key].batch and W.bases[key].batch.id or c1.profile.commissionId, 'once, by its batch')
   F.advance(c1, 4); pump()
   T.eq(W.bases[key].batch, nil, 'the save tells the server it is paid')
   -- Sent again (a lost answer), it isn't paid twice.
-  c1.mp.commission = { id = c1.profile.commissionId, amount = 50, jobs = 1 }; F.advance(c1, 0.6)
-  T.eq(c1.profile.progression.balance, balance1 + 50, 'never paid twice')
-  -- The owner's own deliveries pay them no commission, and nothing is owed outside every circle.
-  W.onDelivered(1, J.encode({ v = 1, kind = 'job', pay = 1000, ends = { town, ropes } }))
-  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 1000, ends = { { latitude = 10, longitude = 10 }, { latitude = 10.1, longitude = 10 } } }))
-  T.eq(W.bases[key].batch, nil, 'nothing for your own jobs or far away')
-  -- At most $20,000 a day for each base.
-  for _ = 1, 30 do W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 20000, ends = { ropes, town } })) end
+  c1.mp.commission = { id = c1.profile.commissionId, amount = 200, jobs = 1 }; F.advance(c1, 0.6)
+  T.eq(c1.profile.progression.balance, balance1 + 200, 'never paid twice')
+  -- No toll on the owner's own deliveries, on a drop-off outside every turf (even from inside one), or with none taken.
+  local far = { latitude = 10, longitude = 10 }
+  W.onDelivered(1, J.encode({ v = 1, kind = 'job', pay = 800, toll = 200, ends = { ropes, town } }))
+  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 800, toll = 200, ends = { town, far } }))
+  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 1000, ends = { ropes, town } }))
+  T.eq(W.bases[key].batch, nil, 'nothing for your own jobs, far away or without a toll')
+  -- A game can't claim a bigger toll than 20% of the pay.
+  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 800, toll = 5000, ends = { ropes, town } }))
+  T.eq(W.bases[key].batch.amount, 210, 'at most 20% of the whole pay')
+  -- No daily limit: it's money moving between players.
+  for _ = 1, 30 do W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 16000, toll = 4000, ends = { ropes, town } })) end
   local b = W.bases[key]
-  T.eq((b.batch and b.batch.amount or 0) + b.owed + 50, W.COMMISSION_DAY_MAX, 'capped for the day')
+  T.eq(b.batch.amount + b.owed, 210 + 30 * 4000, 'no daily limit')
   -- Dangerous contracts pay none.
-  local before = b.dayTotal
-  env.date = function() return '2099-01-01' end
-  W.onDelivered(2, J.encode({ v = 1, kind = 'contract', pay = 5000, ends = { ropes, town } }))
-  T.eq(b.dayTotal, before, 'no commission on a dangerous contract')
+  local owed = b.owed
+  W.onDelivered(2, J.encode({ v = 1, kind = 'contract', pay = 5000, toll = 1000, ends = { ropes, town } }))
+  T.eq(b.owed, owed, 'no toll on a dangerous contract')
   local W2 = server(env.files)
   T.check(W2.bases[key] ~= nil and W2.bases[key].town == 'Penrith', 'bases survive a restart')
   -- A base asked for but never saved is let go after a while, and the town is free again.
-  W.onBaseClaim(2, J.encode({ v = 1, town = 'Faraway', latitude = -34.5, longitude = 150.8, boost = 1 }))
+  W.onBaseClaim(2, J.encode({ v = 1, town = 'Faraway', latitude = -31.95, longitude = 115.86, boost = 1 }))
   local held = W.bases[c2.mp.key]
   T.check(held ~= nil and held.asked ~= nil, 'held while the game buys it')
   env.time = env.time + W.BASE_ASK_SECONDS + 1

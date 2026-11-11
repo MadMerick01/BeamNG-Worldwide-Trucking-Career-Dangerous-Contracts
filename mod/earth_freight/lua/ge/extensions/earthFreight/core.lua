@@ -27,6 +27,7 @@ local streetView = require('earthFreight/streetView')
 local business = require('earthFreight/business')
 local multiplayer = require('earthFreight/multiplayer')
 local shipday = require('earthFreight/shipday')
+local magnate = require('earthFreight/magnate')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -45,11 +46,14 @@ local TELEPORT_WAIT_SECONDS = 30
 -- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
 -- been stopped this long and nothing else is going on.
 local AUTOSAVE_SECONDS = 3
+-- Every this many seconds of play with something new to keep (distance driven, money earned or spent, a new
+-- name), the game also saves itself, in the same way: at the next stop, never while driving.
+local TIMED_SAVE_SECONDS = 5 * 60
 -- Whether the Street View window was on, so it starts again with the game.
 local STREET_VIEW_FILE = '/settings/earthFreight/streetview.json'
 -- The real businesses found for towns, so each town is only looked up once (see business.lua).
 local BUSINESS_FILE = '/settings/earthFreight/businesses.json'
-M.AUTOSAVE_SECONDS = AUTOSAVE_SECONDS
+M.AUTOSAVE_SECONDS, M.TIMED_SAVE_SECONDS = AUTOSAVE_SECONDS, TIMED_SAVE_SECONDS
 -- A puncture's tyre repair, as damage points, so every repair quote and bill includes it. Like
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
 local PUNCTURE_DAMAGE = punctures.TYRE_REPAIR_COST / pricing.REPAIR_COST_PER_DAMAGE
@@ -216,14 +220,19 @@ function M.new(deps)
     end
     self.store = self.mp and multiplayer.store(self.mp, deps.io) or persistence.new(deps.io)
     self.profile, self.loadStatus = self.store:load()
-    -- The trailer owned: one saved out comes back behind the car once it is back (watchTrailer).
+    -- The trailers owned: one saved out comes back behind the car once it is back (watchTrailer). A
+    -- second one is kept stored, with a base.
     self.trailer = self.profile and trailers.clean(self.profile.trailer) or nil
+    self.spareTrailer = self.profile and trailers.clean(self.profile.spareTrailer) or nil
     self.trailerOut, self.trailerRestored, self.foreignTrailer, self.trailersOpen = nil, nil, nil, false
     self.trailerFeedback, self.storeArmed, self.sellArmed = nil, false, false
     -- The home owned and the car stored there; like money, a home bought since the last Save is not kept.
     self.property = self.profile and copy(self.profile.property) or nil
     self.storedCars = self.profile and copy(self.profile.storedCars) or nil
     self.homeFeedback, self.homeCard = nil, nil
+    -- A trailer stored before trailers had a place (the garage that went everywhere) is at the base,
+    -- or the depot without one.
+    self:placeStoredTrailers()
     -- A paid-shipping offer the player shipped in on, paid back by their first delivery near it.
     self.offer = self.profile and copy(self.profile.offer) or nil
     -- The saved load's places are near where the player left off.
@@ -264,6 +273,8 @@ function M.new(deps)
     -- The name typed on the start page; like money, a changed name is kept by Save.
     self.playerName = self.profile and self.profile.playerName or nil
     self.savedName = self.playerName
+    -- The five minutes before the next timed save start again with each load and each save.
+    self.savedAt = self.clock
     self.mode = (self.profile and not self.profile.atStart) and 'resume' or 'start'
     self.creationBase = location.copy(self.profile and self.profile.base or self.unsavedBase
       or (self.configuration and self.configuration.base))
@@ -431,17 +442,32 @@ function M.new(deps)
     if d.amount > 0 then
       self:addMoney(d.amount)
       self:toast('info', 'Commission', d.jobs == 1 and d.by
-        and string.format('%s delivered in your turf: +%s commission.', d.by, dollars(d.amount))
-        or string.format('%d jobs in your turf paid you %s commission.', d.jobs, dollars(d.amount)))
+        and string.format('%s delivered in your turf and paid you a %s turf toll.', d.by, dollars(d.amount))
+        or string.format('%d deliveries in your turf paid you %s in turf tolls.', d.jobs, dollars(d.amount)))
       self.diag:event('commission', string.format('#%d %d from %d jobs', d.id, d.amount, d.jobs))
     end
     self:autoSaveSoon('your commission')
   end
 
   -- Tells the server a delivery happened, for its live feed, today's totals and base owners' commission.
-  function c:reportDelivery(kind, good, units, from, to, pay, ends)
+  function c:reportDelivery(kind, good, units, from, to, pay, ends, toll)
     if not self.mp or self.mp.state ~= 'server' then return end
-    self.mp:delivered({ kind = kind, what = good and amount(good, units) or nil, from = from, to = to, pay = pay, ends = ends })
+    self.mp:delivered({ kind = kind, what = good and amount(good, units) or nil, from = from, to = to, pay = pay, ends = ends,
+      toll = toll and toll.amount or nil })
+  end
+
+  -- The turf toll (magnate.lua): a delivery whose drop-off town is in someone else's turf pays them part of its pay.
+  -- Returns the pay left and the toll { owner, amount }, or the pay and nil.
+  function c:applyToll(pay, point)
+    local owner = pay > 0 and point and self:baseTollAt(point)
+    if not owner then return pay, nil end
+    local left, toll = magnate.afterToll(pay)
+    return left, { owner = owner, amount = toll }
+  end
+
+  -- The line the delivery message adds for a toll.
+  local function tollLine(load)
+    return load.toll and (' ' .. load.toll.owner .. ' took a ' .. dollars(load.toll.amount) .. ' turf toll.') or ''
   end
 
   function c:endMission()
@@ -449,6 +475,7 @@ function M.new(deps)
     self.hudSeen, self.hudHints, self.hudMissingFor = nil, nil, nil
     self.ship, self.shipAt, self.shipClaim, self.shipFeedback = nil, nil, nil, nil
     self.finding = nil
+    self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
     self:interrupt('earth_level_required')
@@ -948,7 +975,8 @@ function M.new(deps)
   function c:containerQuote(box)
     local good = goods.get(shipday.GOOD)
     local units, slots, kg, inTrailer = trailers.fits(self:space(), self:trailerSpace(), good)
-    return { units = units, slots = slots, kg = kg, trailerUnits = inTrailer, pay = shipday.pay(box, units, self:baseShareFunction()) }
+    local pay, toll = self:applyToll(shipday.pay(box, units, self:baseShareFunction()), places.get(box.to))
+    return { units = units, slots = slots, kg = kg, trailerUnits = inTrailer, pay = pay, toll = toll }
   end
 
   -- Why a container can't be taken now, or nil when it can.
@@ -1010,7 +1038,7 @@ function M.new(deps)
     local good = goods.get(shipday.GOOD)
     quote.units, quote.pay = jobs.share(quote.units, quote.pay, claim.share or 100)
     self.load = { good = good.id, units = quote.units, slots = quote.units * good.slots, kg = quote.units * good.kg,
-      pay = quote.pay, from = box.from, to = box.to, drivenKm = 0, ship = { ship = claim.ship, n = claim.n } }
+      pay = quote.pay, from = box.from, to = box.to, drivenKm = 0, ship = { ship = claim.ship, n = claim.n }, toll = quote.toll }
     if (quote.trailerUnits or 0) > 0 then self.load.trailerUnits = math.min(quote.trailerUnits, quote.units) end
     self.abandonArmed = false
     self:applyWeight()
@@ -1043,11 +1071,12 @@ function M.new(deps)
     for _, box in ipairs(shipday.containers(ship)) do
       local st = ship.states[box.n]
       units = units or self:containerQuote(box).units
+      local pay, toll = self:applyToll(shipday.pay(box, units, self:baseShareFunction()), places.get(box.to))
       local state = st and (st.mine and st.state ~= 'delivered' and 'mine' or st.state) or 'free'
       if state == 'free' then free = free + 1 end
       local to = places.get(box.to)
       list[#list + 1] = { n = box.n, to = to and to.name or box.to, region = to and to.region or nil,
-        distanceMetres = box.km * 1000, pay = shipday.pay(box, units), state = state, by = st and st.by or nil,
+        distanceMetres = box.km * 1000, pay = pay, tollTo = toll and toll.owner, state = state, by = st and st.by or nil,
         allowed = state == 'free' and takeProblem == nil and units > 0 }
     end
     local held = self.load and self.load.ship
@@ -1230,6 +1259,11 @@ function M.new(deps)
     -- Ends inside the player's base circle pay more (magnate.lua).
     local quote = jobs.quote(job, units, self.needs, self.now(), self:baseShareFunction())
     quote.units, quote.slots, quote.kg, quote.trailerUnits = units, slots, kg, inTrailer
+    -- Delivering in someone else's turf pays them the toll: at the drop-off town, or for an off-road drop the town it
+    -- was taken in (what the server checks). Dangerous contracts pay none.
+    if not job.contract then
+      quote.pay, quote.toll = self:applyToll(quote.pay, places.get(job.drop and job.from or job.to))
+    end
     return quote
   end
 
@@ -1264,7 +1298,7 @@ function M.new(deps)
     local units, pay = jobs.share(quote.units, quote.pay, share)
     quote.units, quote.slots, quote.kg, quote.pay = units, units * good.slots, units * good.kg, pay
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
-      from = place.id, to = destination.id, drivenKm = 0, drop = location.copy(job.drop) }
+      from = place.id, to = destination.id, drivenKm = 0, drop = location.copy(job.drop), toll = quote.toll }
     -- The trailer is filled first; a part load leaves the car empty before the trailer.
     local inTrailer = math.min(quote.trailerUnits or 0, units)
     if inTrailer > 0 then self.load.trailerUnits = inTrailer end
@@ -1539,7 +1573,7 @@ function M.new(deps)
     -- An off-road drop counts for the turf of the town it was taken in, at both ends.
     local town = not load.beacon and not section and places.get(load.from) or nil
     self:reportDelivery(load.beacon and 'beacon' or (section and 'contract' or 'drop'), not load.beacon and good or nil,
-      load.units, nil, section and section.name or nil, load.pay, townEnds(town, town))
+      load.units, nil, section and section.name or nil, load.pay, townEnds(town, town), load.toll)
     if load.beacon then
       self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), 'Dropped off. Nobody saw a thing, and nobody asked.'
         .. refund)
@@ -1550,7 +1584,7 @@ function M.new(deps)
     end
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units)
       .. (section and (' over ' .. section.name .. '. ' .. self:named('You made it') .. '.') or (' dropped off road. ' .. self:named('Nice driving') .. '.'))
-      .. refund)
+      .. tollLine(load) .. refund)
     self.tradeFeedback = nil
     self:autoSaveSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> drop for %d', good.id, load.units, load.pay))
@@ -1581,9 +1615,10 @@ function M.new(deps)
     jobs.delivered(self.needs, place, good, self.now())
     self:finishJob()
     local from = places.get(load.from)
-    if load.ship and self.mp then self.mp:shipDelivered(load.ship.ship, load.ship.n, place.name, load.pay, townEnds(from, place))
+    if load.ship and self.mp then
+      self.mp:shipDelivered(load.ship.ship, load.ship.n, place.name, load.pay, townEnds(from, place), load.toll and load.toll.amount or nil)
     else
-      self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay, townEnds(from, place))
+      self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay, townEnds(from, place), load.toll)
     end
     local refund = ''
     if self.offer and shipping.offerPays(place, self.offer) then
@@ -1594,7 +1629,7 @@ function M.new(deps)
     end
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' to '
       .. (load.business and (load.business.name .. ', ') or '') .. place.name
-      .. '. ' .. self:named('Nice driving') .. '.' .. refund)
+      .. '. ' .. self:named('Nice driving') .. '.' .. tollLine(load) .. refund)
     self.tradeFeedback = nil
     self:autoSaveSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> %s for %d', good.id, load.units, place.id, load.pay))
@@ -1819,6 +1854,7 @@ function M.new(deps)
     self:watchClaim()
     self:watchFind()
     self:watchCommission()
+    self:watchTurf()
     self:reportWhere(sample)
     self:provideVehicle()
     self:watchHire()
@@ -1830,9 +1866,10 @@ function M.new(deps)
     self:watchFuel()
     self:watchInsurance()
     self:watchTow()
+    self:watchTimedSave()
     self:watchAutoSave()
     if self.streetView then
-      self.streetView:poll(self.clock, function() return self:streetViewPosition() end)
+      self.streetView:poll(self.clock, function() return self:streetViewPosition() end, function() return self:baseMapData() end)
     end
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
@@ -1892,6 +1929,7 @@ function M.new(deps)
         shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road - (q.baseBonus or 0) > 1.005 and q.road - (q.baseBonus or 0) or nil,
         -- What the player's base adds, as a percentage of the pay without it.
         basePercent = q.baseBonus and math.floor(q.baseBonus / (q.road - q.baseBonus) * 100 + 0.5) or nil, outside = job.outside,
+        tollTo = q.toll and q.toll.owner or nil, tollPercent = q.toll and math.floor(magnate.TOLL * 100 + 0.5) or nil,
         allowed = allowed and q.units > 0 and (not section or self:canAfford(contracts.FEE)) }
     end
     return out
@@ -1972,6 +2010,33 @@ function M.new(deps)
       or 'To see Street View, copy the address below into your web browser.'
     self.diag:event('street_view', 'started')
     return true
+  end
+
+  -- The Base map: the same little web server as Street View, at its /bases page, opened in the browser.
+  function c:openBaseMap()
+    if not self.streetView then return false end
+    local ok, why = self.streetView:start()
+    if not ok then
+      self.baseMapFeedback = why == 'port_busy'
+        and 'The base map could not start: something else on your computer is using port ' .. self.streetView.port .. '.'
+        or 'The base map could not start in this version of BeamNG.'
+      self.diag:event('base_map', tostring(why), 'W')
+      return false
+    end
+    self:rememberStreetView(true)
+    local url = self.streetView:url() .. 'bases'
+    local okOpen, opened = false, false
+    if self.openUrl then okOpen, opened = pcall(self.openUrl, url) end
+    self.baseMapFeedback = (okOpen and opened ~= false)
+      and 'The base map is opening in your web browser. If it does not, copy the address below into your browser.'
+      or 'To see the base map, copy the address below into your web browser.'
+    self.diag:event('base_map', 'started')
+    return true
+  end
+
+  function c:baseMapView()
+    if not self.streetView then return nil end
+    return { on = self.streetView.on, url = self.streetView:url() .. 'bases', feedback = self.streetView.on and self.baseMapFeedback or nil }
   end
 
   function c:stopStreetView()
@@ -2185,6 +2250,8 @@ function M.new(deps)
       startTown = startTown,
       startHereAllowed = self:startHereAllowed(),
       startingMoney = STARTING_MONEY,
+      -- On a BeamMP server: the start page then calls the career the server's, not the offline one on this PC.
+      online = self.mp ~= nil or nil,
       playerName = self.playerName,
       nameUnsaved = self.playerName ~= self.savedName,
       newGameAllowed = self:newGameAllowed(),
@@ -2209,6 +2276,7 @@ function M.new(deps)
       here = trade.here, region = trade.region, where = trade.where, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
       shortages = trade.shortages,
       streetView = self:streetViewView(),
+      baseMap = self:baseMapView(),
       sightseeing = self:sightseeingView(current),
       gpsAllowed = self.adapter.setDestination ~= nil and self.state == 'READY' and self.arrived and not self.hire,
       gpsFeedback = self.gpsFeedback,
@@ -2288,6 +2356,7 @@ function M.new(deps)
     self.savedName = saved.playerName
     self.savedDistanceKm = saved.progression.totalDistanceKm
     self.savedBalance = saved.progression.balance
+    self.savedAt = self.clock
     return saved
   end
 
@@ -2348,11 +2417,12 @@ function M.new(deps)
         name = self:savedVehicleName(),
         damage = self:savedVehicleDamage(), fuelLitres = fuelLitres,
         value = self:savedVehicleUsed() and self.ownedParts.value or nil, km = self:savedVehicleUsed() and self.ownedParts.km or nil,
-        -- What the car is worth now (the Your truck card's value), for a server's leaderboard. Never read back.
-        worth = self.ownedParts and type(self.ownedParts.value) == 'number' and math.floor(self.ownedParts.value + 0.5) or nil },
+        -- What the car is worth now with its parts (the Your truck card's value), for a server's
+        -- leaderboard and the card before the car is back. Worked out again once it is.
+        worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId,
-      trailer = self:savedTrailer(),
+      trailer = self:savedTrailer(), spareTrailer = self:savedSpareTrailer(),
       property = copy(self.property),
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
       beacon = self.beacon and { pickup = location.copy(self.beacon.pickup), drop = location.copy(self.beacon.drop),
@@ -2387,6 +2457,23 @@ function M.new(deps)
     if self.profile then self.autoSave = { what = what, since = nil } end
   end
 
+  -- Whether anything Save keeps has changed since the last save: distance driven, money or the name. A player
+  -- parked and away from the keyboard is not saved over and over.
+  function c:unsavedProgress()
+    local p = self.profile and self.profile.progression
+    if not p then return false end
+    return p.totalDistanceKm ~= self.savedDistanceKm or p.balance ~= self.savedBalance or self.playerName ~= self.savedName
+  end
+
+  -- Every TIMED_SAVE_SECONDS since the last save, asks for one, which watchAutoSave makes at the next stop. A save
+  -- already asked for (after a delivery, say) is left as it is: it saves the same progress.
+  function c:watchTimedSave()
+    if self.autoSave or not self.profile or self.error then return end
+    if self.clock - (self.savedAt or self.clock) < TIMED_SAVE_SECONDS then return end
+    if not self:unsavedProgress() then return end
+    self.autoSave = { timed = true, since = nil }
+  end
+
   -- Called every tick: saves the game the player asked for with autoSaveSoon once the car has been
   -- stopped for AUTOSAVE_SECONDS in its own car, with no bill, booking, respawn or claim waiting.
   -- Until then it keeps waiting, so a player who drives straight off is saved at their next stop.
@@ -2399,6 +2486,8 @@ function M.new(deps)
       and not self.pendingParts and not self.pendingCar and not self.insurancePending
       and not self.refuelPending and not self.respawned and not self.partsCheckDue
       and not self:trailerSaveProblem()
+      -- Not while BeamNG.Earth is still taking the car to a dangerous contract's start and loading its terrain.
+      and not (self.contractTeleportAt and self.clock - self.contractTeleportAt < TELEPORT_WAIT_SECONDS)
       and sample and sample.valid and self.odometer:stopped()
     if not settled then due.since = nil; return end
     due.since = due.since or self.clock
@@ -2406,8 +2495,11 @@ function M.new(deps)
     self.autoSave = nil
     -- A save that fails says so, as Save does; the last save is untouched.
     if self:manualSave() then
-      self.feedback = 'Saved automatically after ' .. due.what .. '.'
-      self.diag:event('auto_save', due.what)
+      self.feedback = due.timed and 'Saved automatically.' or ('Saved automatically after ' .. due.what .. '.')
+      self.diag:event('auto_save', due.timed and 'timed' or due.what)
+    elseif due.timed then
+      -- A timed save that could not happen tries again in another five minutes, not every tick.
+      self.savedAt = self.clock
     end
   end
 
@@ -2600,9 +2692,15 @@ function M.buyTrailer(index)
   if type(index) ~= 'number' or index ~= math.floor(index) or index < 1 or index > 999 then return false end
   return safely(function() return ensure():buyTrailer(index) end)
 end
-function M.storeTrailer() return safely(function() return ensure():storeTrailer() end) end
+-- place is where the trailer goes: 'base' or 'depot'.
+function M.storeTrailer(place)
+  if place ~= 'base' and place ~= 'depot' then return false end
+  return safely(function() return ensure():storeTrailer(place) end)
+end
 function M.cancelStoreTrailer() return safely(function() return ensure():cancelStoreTrailer() end) end
 function M.bringOutTrailer() return safely(function() return ensure():bringOutTrailer() end) end
+function M.swapTrailers() return safely(function() return ensure():swapTrailers() end) end
+function M.switchTrailer() return safely(function() return ensure():switchTrailer() end) end
 function M.sellTrailer() return safely(function() return ensure():sellTrailer() end) end
 function M.buyTrailerParts() return safely(function() return ensure():buyTrailerParts() end) end
 function M.payTrailerParts() return safely(function() return ensure():payTrailerParts() end) end
@@ -2720,6 +2818,7 @@ function M.onFilesChanged(files)
 end
 function M.openStreetView() return safely(function() return ensure():openStreetView() end) end
 function M.stopStreetView() return safely(function() return ensure():stopStreetView() end) end
+function M.openBaseMap() return safely(function() return ensure():openBaseMap() end) end
 function M.onExtensionUnloaded()
   -- The web server lets go of its port, so the next load can open it again.
   if active and active.streetView then pcall(function() active.streetView:stop() end) end

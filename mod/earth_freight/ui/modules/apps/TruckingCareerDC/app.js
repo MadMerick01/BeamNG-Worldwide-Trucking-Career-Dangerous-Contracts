@@ -5,12 +5,22 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   var kept = {
     tab: 'route', introShown: false, intro: { open: false, name: '', steps: false }, shares: {},
     ship: { query: '', coords: '', error: null }, last: null, hud: null,
+    // The multiplayer server's status for Play online: 'checking', 'online', 'offline' or 'unknown' (not reachable).
+    server: { status: 'checking', at: null },
     // Towns already looked up for a real business this game, so each is only asked once.
     businessAsked: {}
   }
   // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
   var STORE = 'earthFreight.hudMinimised'
   var KOFI = 'https://ko-fi.com/madmerick'
+  // Play online on the start page. The server sends status.json to its stats repo every few minutes (see the server
+  // page, site/index.html); stats older than STALE_MS mean the server is off. Its two links open in the browser.
+  var STATS_URL = 'https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json'
+  var STATS_EVERY_MS = 60000, STALE_MS = 15 * 60000
+  var LINKS = {
+    server: 'https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/',
+    discord: 'https://discord.gg/eYJCfXNGbP'
+  }
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
   // The Town tab's Distance filter, kept the same way: any, short, medium or long.
@@ -275,6 +285,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         scope.intro.name = ((d || scope.data || {}).playerName) || ''
         scope.intro.open = true
         fit()
+        checkServer()
       }
       // Letters in any alphabet, digits, spaces, dots, apostrophes and hyphens; at most 20 of them.
       var notInName
@@ -536,6 +547,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // Sightseeing: saves, swaps the truck for the free Moonhawk; Return to your job brings it back.
       scope.goSightseeing = function () { if (scope.data.sightseeing && scope.data.sightseeing.allowed) core('goSightseeing()') }
       scope.returnToJob = function () { if (scope.data.sightseeing && scope.data.sightseeing.returnAllowed) core('returnToJob()') }
+      // Opens the Base map (circles, borders and the truck, from the same little web server) in the browser.
+      scope.openBaseMap = function () { if (scope.data.baseMap) core('openBaseMap()') }
       scope.stopStreetView = function () { if (scope.data.streetView && scope.data.streetView.on) core('stopStreetView()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
@@ -567,7 +580,15 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.buyTrailer = function (offer) {
         if (offer && offer.allowed && Number.isInteger(offer.index) && offer.index >= 1 && offer.index <= 999) core('buyTrailer(' + offer.index + ')')
       }
-      scope.storeTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeAllowed) core('storeTrailer()') }
+      // Park at base / Send to base ('base') or Store at depot ('depot'); a confirm after the load warning sends the same place.
+      scope.storeTrailer = function (place) {
+        var t = scope.data.trailer
+        if (!t || (place !== 'base' && place !== 'depot')) return
+        var allowed = place === 'base' ? (t.parkAllowed || t.sendAllowed) : t.depotAllowed
+        if (allowed || t.storeArmed === place) core("storeTrailer('" + place + "')")
+      }
+      scope.swapTrailers = function () { var t = scope.data.trailer; if (t && (t.swapAllowed || t.storeArmed === 'swap')) core('swapTrailers()') }
+      scope.switchTrailer = function () { if (scope.data.trailer && scope.data.trailer.switchAllowed) core('switchTrailer()') }
       scope.cancelStoreTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeArmed) core('cancelStoreTrailer()') }
       scope.bringOutTrailer = function () { if (scope.data.trailer && scope.data.trailer.bringOutAllowed) core('bringOutTrailer()') }
       scope.sellTrailer = function () { if (scope.data.trailer && scope.data.trailer.sellAllowed) core('sellTrailer()') }
@@ -627,10 +648,55 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var url = scope.data && scope.data.streetView && scope.data.streetView.url
         if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/$/.test(url)) call('setClipboard("' + url + '")')
       }
+      scope.copyBaseMap = function () {
+        var url = scope.data && scope.data.baseMap && scope.data.baseMap.url
+        if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/bases$/.test(url)) call('setClipboard("' + url + '")')
+      }
       // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
       scope.openKofi = function () {
         call('if openWebBrowser then openWebBrowser("' + KOFI + '") end setClipboard("' + KOFI + '")')
         scope.intro.kofiOpened = true
+      }
+      // Play online: whether the server is up and how many are trucking on it, from its stats, asked when the start
+      // page opens and every minute while it stays open. Only numbers and short text are kept from the answer.
+      scope.server = kept.server
+      var whole = function (v) { return typeof v === 'number' && isFinite(v) && v >= 0 ? Math.floor(v) : null }
+      var short = function (v, max) { return typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null }
+      scope.readServer = function (stats, now) {
+        var s = stats && typeof stats === 'object' ? stats : {}
+        var updated = typeof s.updated === 'string' && typeof Date.parse === 'function' ? Date.parse(s.updated) : NaN
+        var fresh = isFinite(updated) && now - updated < STALE_MS
+        var info = s.server && typeof s.server === 'object' ? s.server : {}
+        return {
+          status: s.sample !== true && info.online === true && fresh ? 'online' : 'offline', at: now,
+          players: Array.isArray(s.players) ? Math.min(s.players.length, 999) : null, max: whole(info.maxPlayers),
+          name: short(info.name, 60), season: s.season && whole(s.season.number), day: s.season && whole(s.season.day),
+          truckers: s.season && whole(s.season.truckers)
+        }
+      }
+      var checkServer = function () {
+        var now = Date.now()
+        if (kept.server.asking || (kept.server.at !== null && now - kept.server.at < STATS_EVERY_MS)) return
+        var done = function (next) {
+          kept.server.asking = false
+          scope.$evalAsync(function () { for (var k in next) kept.server[k] = next[k] })
+        }
+        if (typeof fetch !== 'function') return done({ status: 'unknown', at: now })
+        kept.server.asking = true
+        fetch(STATS_URL, { cache: 'no-store' })
+          .then(function (r) { if (!r.ok) throw new Error('status ' + r.status); return r.json() })
+          .then(function (stats) { done(scope.readServer(stats, Date.now())) }, function () { done({ status: 'unknown', at: Date.now() }) })
+      }
+      scope.toggleOnline = function () {
+        scope.intro.online = !scope.intro.online
+        if (scope.intro.online) checkServer()
+      }
+      // The live server page or the Discord: opened in the browser where the game can, and copied in case it can't.
+      scope.openLink = function (which) {
+        var url = LINKS[which]
+        if (!url) return
+        call('if openWebBrowser then openWebBrowser("' + url + '") end setClipboard("' + url + '")')
+        scope.intro.linkOpened = which
       }
       // Real businesses as drop-offs: when a town job's town has none yet, the game asks (load.lookup)
       // and the HUD, which can reach the web, asks OpenStreetMap's free Overpass server for one named
@@ -766,6 +832,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var heartbeat = setInterval(function () {
         if (disposed) return
         mount(true)
+        if (scope.intro.open) checkServer()
         if (Date.now() - lastMessage > 6000) {
           scope.$evalAsync(function () {
             if (disposed) return
