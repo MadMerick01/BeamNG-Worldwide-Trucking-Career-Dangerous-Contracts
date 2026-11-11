@@ -172,7 +172,6 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script src="https://unpkg.com/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js" crossorigin=""></script>
 <script>
 'use strict'
 // Where the live stats come from: the server sends status.json to the trucking-server-stats repo (its own repo, so the
@@ -344,49 +343,44 @@ function renderBoard() {
 
 // Turf, the same rule as the game: a spot inside several circles belongs to the base with the smallest distance ÷ radius,
 // so the bigger circle pushes the shared border towards the smaller one, and everything within CORE_KM of a base is
-// always its own. Worked out on a flat km grid around each base, which is close enough at these sizes.
-var CORE_KM = 5
-function baseKm(b) { return Math.min(100, Number(b.radiusKm)) }
-function toKm(p, o) {
-  var dLon = ((p.longitude - o.longitude + 540) % 360) - 180
-  return [dLon * 111.32 * Math.cos(o.latitude * Math.PI / 180), (p.latitude - o.latitude) * 110.574]
+// always its own. Circles reach thousands of km, so the map is shaded square by square with real distances on the globe.
+var CORE_KM = 100
+var TURF_COLOURS = ['#f2c94c', '#56ccf2', '#f2994a', '#bb6bd9', '#6fcf97', '#eb5757', '#9b8cff', '#f78fb3', '#2d9cdb', '#27ae60']
+function baseKm(b) { return Math.min(20000, Number(b.radiusKm)) }
+function kmBetween(a, b) {
+  var r = Math.PI / 180, dLat = (b.latitude - a.latitude) * r, dLon = (b.longitude - a.longitude) * r
+  var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.latitude * r) * Math.cos(b.latitude * r) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)))
 }
-function toLatLng(xy, o) { return [o.latitude + xy[1] / 110.574, o.longitude + xy[0] / (111.32 * Math.cos(o.latitude * Math.PI / 180))] }
-function disc(x, y, r) {
-  var ring = []
-  for (var i = 0; i < 120; i++) { var a = 2 * Math.PI * i / 120; ring.push([x + r * Math.cos(a), y + r * Math.sin(a)]) }
-  ring.push(ring[0])
-  return [ring]
+function turfOf(bases, p) {
+  var best = -1, bestScore = Infinity
+  for (var i = 0; i < bases.length; i++) {
+    var km = kmBetween(bases[i], p), r = baseKm(bases[i])
+    if (km <= CORE_KM) return i
+    if (km <= r && km / r < bestScore) { best = i; bestScore = km / r }
+  }
+  return best
 }
-// The base's turf as Leaflet polygon rings, or null to draw the plain circle (no neighbours, or the clipping library
-// didn't load).
-function turf(b, all) {
-  if (typeof polygonClipping === 'undefined') return null
-  var pc = polygonClipping, rb = baseKm(b), shape = disc(0, 0, rb), pushed = false
-  try {
-    all.forEach(function (o) {
-      if (o === b) return
-      var a = toKm(o, b), ra = baseKm(o), gap = Math.sqrt(a[0] * a[0] + a[1] * a[1])
-      if (gap >= ra + rb || gap === 0) return
-      // Where the neighbour wins: inside its circle and nearer it for its size (|P - a| ÷ ra < |P| ÷ rb). That
-      // boundary is a circle (Apollonius'); with equal sizes it's the straight line halfway between.
-      var k = ra / rb, theirs = disc(a[0], a[1], ra), wins
-      if (Math.abs(k - 1) < 1e-3) {
-        var u = [a[0] / gap, a[1] / gap], v = [-u[1], u[0]], m = [a[0] / 2, a[1] / 2], L2 = 1000
-        var half = [[[m[0] + v[0] * L2, m[1] + v[1] * L2], [m[0] + (v[0] + u[0]) * L2, m[1] + (v[1] + u[1]) * L2],
-          [m[0] + (u[0] - v[0]) * L2, m[1] + (u[1] - v[1]) * L2], [m[0] - v[0] * L2, m[1] - v[1] * L2], [m[0] + v[0] * L2, m[1] + v[1] * L2]]]
-        wins = pc.intersection(theirs, half)
-      } else {
-        var c = 1 / (1 - k * k), apollo = disc(a[0] * c, a[1] * c, Math.abs(k * gap * c))
-        wins = k < 1 ? pc.intersection(theirs, apollo) : pc.difference(theirs, apollo)
+function turfColour(i) { return TURF_COLOURS[i % TURF_COLOURS.length] }
+// A map layer shading every 6 px square in the colour of whose turf its middle is.
+function turfLayer(bases) {
+  var Shade = L.GridLayer.extend({
+    createTile: function (coords) {
+      var tile = document.createElement('canvas'), size = this.getTileSize(), step = 6
+      tile.width = size.x; tile.height = size.y
+      var g = tile.getContext('2d'), origin = coords.scaleBy(size)
+      g.globalAlpha = 0.18
+      for (var y = 0; y < size.y; y += step) {
+        for (var x = 0; x < size.x; x += step) {
+          var ll = map.unproject(origin.add([x + step / 2, y + step / 2]), coords.z)
+          var i = turfOf(bases, { latitude: ll.lat, longitude: ll.lng })
+          if (i >= 0) { g.fillStyle = turfColour(i); g.fillRect(x, y, step, step) }
+        }
       }
-      shape = pc.difference(shape, wins, disc(a[0], a[1], CORE_KM))
-      pushed = true
-    })
-    if (!pushed) return null
-    shape = pc.union(shape, disc(0, 0, CORE_KM))
-  } catch (e) { return null }
-  return shape.map(function (poly) { return poly.map(function (ring) { return ring.map(function (xy) { return toLatLng(xy, b) }) }) })
+      return tile
+    }
+  })
+  return new Shade({ zIndex: 2 })
 }
 
 function renderMap() {
@@ -413,17 +407,16 @@ function renderMap() {
     m.bindPopup(pop).addTo(layer)
     points.push([ship.latitude, ship.longitude])
   }
-  // Bases of operations: each owner's turf, cut off where a bigger neighbour pushes the border, with its 5 km core shaded.
+  // Bases of operations: each owner's turf shaded in their colour (a bigger neighbour pushes the border), with the
+  // circle's edge and its 100 km core.
   var bases = (stats && Array.isArray(stats.bases) ? stats.bases : []).filter(function (b) { return validPoint(b) && Number(b.radiusKm) > 0 })
-  bases.forEach(function (b) {
-    var pop = el('div'); pop.appendChild(el('b', '', text(b.name) + "'s base")); pop.appendChild(el('div', '', (text(b.town) || 'A town') + ', ' + Math.round(b.radiusKm) + ' km circle'))
-    var style = { color: '#f2c94c', weight: 2.5, fillOpacity: 0.14, className: 'turf' }
-    var shape = turf(b, bases)
-    var area = shape ? L.polygon(shape, L.extend({ smoothFactor: 0.5 }, style)) : L.circle([b.latitude, b.longitude], L.extend({ radius: baseKm(b) * 1000 }, style))
-    area.bindPopup(pop).addTo(layer)
-    L.circle([b.latitude, b.longitude], { radius: CORE_KM * 1000, stroke: false, fillColor: '#f2c94c', fillOpacity: 0.3 }).bindPopup(pop).addTo(layer)
+  if (bases.length) turfLayer(bases).addTo(layer)
+  bases.forEach(function (b, i) {
+    var pop = el('div'); pop.appendChild(el('b', '', text(b.name) + "'s base")); pop.appendChild(el('div', '', (text(b.town) || 'A town') + ', ' + Math.round(b.radiusKm).toLocaleString('en') + ' km circle'))
+    L.circle([b.latitude, b.longitude], { radius: baseKm(b) * 1000, color: turfColour(i), weight: 2, fill: false, className: 'turf' }).bindPopup(pop).addTo(layer)
+    L.circle([b.latitude, b.longitude], { radius: CORE_KM * 1000, stroke: false, fillColor: turfColour(i), fillOpacity: 0.3 }).bindPopup(pop).addTo(layer)
     // A dark tag with a gold edge over each base: "Sam's base · 41 km", as on the Magnate update banner.
-    var tag = el('span', '', text(b.name) + "'s base · "); tag.appendChild(el('span', 'gold', Math.round(b.radiusKm) + ' km'))
+    var tag = el('span', '', text(b.name) + "'s base · "); tag.appendChild(el('span', 'gold', Math.round(b.radiusKm).toLocaleString('en') + ' km'))
     L.circleMarker([b.latitude, b.longitude], { radius: 4, stroke: false, fillColor: '#f2c94c', fillOpacity: 1 })
       .bindTooltip(tag, { permanent: true, direction: 'top', offset: [0, -6], className: 'base-tag' }).bindPopup(pop).addTo(layer)
     points.push([b.latitude, b.longitude])

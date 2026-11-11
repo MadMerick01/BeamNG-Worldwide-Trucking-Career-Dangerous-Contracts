@@ -123,12 +123,19 @@ function M.attach(c)
     return function(point) return self:baseShareAt(point) end
   end
 
-  -- Whose turf a point is in, for this player: { town, owner, mine, share }, or nil outside every circle.
+  -- Whose turf a point is in, for this player: { town, owner, mine, share } in their own (the bonus there), or
+  -- { town, owner, toll } in someone else's (the percent of a delivery's pay that goes to them), or nil outside.
   local function turfInfo(circles, point)
     local t = point and location.valid(point) and magnate.turf(circles, point)
     if not t then return nil end
-    return { town = t.name, owner = t.owner, mine = t.mine or nil,
-      share = t.mine and magnate.OWNER_SHARE or magnate.VISITOR_SHARE }
+    if t.mine then return { town = t.name, mine = true, share = magnate.OWNER_SHARE } end
+    return { town = t.name, owner = t.owner, toll = math.floor(magnate.TOLL * 100 + 0.5) }
+  end
+
+  -- Who a delivery to this point pays the turf toll to: the owner's name (or 'another trucker'), or nil.
+  function c:baseTollAt(point)
+    local t = point and location.valid(point) and magnate.tollAt(self:baseCircles(), point)
+    return t and (t.owner or 'another trucker') or nil
   end
   local function round(n, places_) local m = 10 ^ places_; return math.floor(n * m + 0.5) / m end
 
@@ -152,18 +159,20 @@ function M.attach(c)
     local load = self.load
     if load then
       local from, to = load.pickup or places.get(load.from), load.drop or load.business or places.get(load.to)
-      -- Contracts and beacon packages never get the base bonus, and an off-road drop only at the drop spot.
+      -- Contracts and beacon packages never get the base bonus or pay the toll. The bonus counts at the pickup
+      -- (not on an off-road drop) and the drop-off; the toll only at the drop-off, and is what the job took.
       local counts = not load.contract and not load.beacon
-      local function pin(p, name, bonus)
+      local function pin(p, name, bonus, toll)
         if not p or not location.valid(p) then return nil end
         local t = turfInfo(circles, p)
-        if t then t.counts = bonus or nil end
+        if t then t.counts = (t.mine and bonus or (not t.mine and toll)) or nil end
         return { latitude = p.latitude, longitude = p.longitude, name = name, turf = t }
       end
       local fromTown, toTown = places.get(load.from), places.get(load.to)
       out.job = {
-        pickup = pin(from, fromTown and fromTown.name, counts and not load.drop),
-        dropoff = pin(to, load.drop and 'Off-road drop' or (load.business and load.business.name) or (toTown and toTown.name), counts),
+        pickup = pin(from, fromTown and fromTown.name, counts and not load.drop, false),
+        dropoff = pin(to, load.drop and 'Off-road drop' or (load.business and load.business.name) or (toTown and toTown.name), counts, counts),
+        toll = load.toll and { owner = load.toll.owner, amount = load.toll.amount } or nil,
       }
     end
     return out
@@ -188,7 +197,8 @@ function M.attach(c)
     if t and t.mine then
       self:toast('info', 'Your turf', string.format('You are in your turf%s. Jobs that start or end here pay you +%.1f on the region multiplier.', where(t), t.share))
     elseif t then
-      self:toast('info', 'Base turf', string.format('You are in %s\'s turf%s. Jobs that start or end here pay you +%.1f on the region multiplier.', t.owner or 'another trucker', where(t), t.share))
+      self:toast('info', 'Base turf', string.format('You are in %s\'s turf%s. Deliveries here pay %d%% of their pay to %s.',
+        t.owner or 'another trucker', where(t), t.toll, t.owner or 'them'))
     elseif was then
       self:toast('info', 'Base turf', was.mine and 'You have left your turf. No base bonus out here.'
         or string.format('You have left %s\'s turf. No base bonus out here.', was.owner or 'another trucker'))
@@ -444,7 +454,7 @@ function M.attach(c)
     table.sort(others, function(a, b) return (a.distanceMetres or math.huge) < (b.distanceMetres or math.huge) end)
     while #others > 5 do table.remove(others) end
     view.others = #others > 0 and others or nil
-    view.visitorBonus = magnate.VISITOR_SHARE
+    view.tollPercent = math.floor(magnate.TOLL * 100 + 0.5)
     local p = self.property
     if not p then
       local problem = self:claimProblem()
@@ -462,7 +472,7 @@ function M.attach(c)
     local circle = self:baseCircle()
     if circle then
       local radius = math.floor(circle.radiusKm + 0.5)
-      local next = radius < magnate.MAX_KM and math.min(magnate.MAX_KM, radius + 10) or nil
+      local next = radius < magnate.MAX_KM and math.min(magnate.MAX_KM, (math.floor(radius / 500) + 1) * 500) or nil
       view.circle = { town = circle.name, radiusKm = radius, boost = circle.boost, wealth = math.floor(self:wealth()),
         peak = circle.peak, share = magnate.OWNER_SHARE, bonus = math.floor(magnate.OWNER_SHARE * circle.boost * 10 + 0.5) / 10,
         nextKm = next, nextWealth = next and math.ceil(magnate.wealthFor(next, circle.boost) / 1000) * 1000 or nil,

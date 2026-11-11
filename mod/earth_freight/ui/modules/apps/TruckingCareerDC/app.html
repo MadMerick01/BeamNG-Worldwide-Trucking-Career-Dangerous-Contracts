@@ -129,7 +129,7 @@
               </div>
               <button type="button" ng-click="toggleOnline()" aria-expanded="{{!!intro.online}}" style="flex:none;padding:7px 14px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">{{intro.online ? 'Hide' : 'Play online'}}</button>
             </div>
-            <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Online, everyone trucks on the same Earth. Other truckers' bases with their turf and commission, Ship Day and the season leaderboard are online only.</div>
+            <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Online, everyone trucks on the same Earth. Other truckers' bases with their turf and tolls, Ship Day and the season leaderboard are online only.</div>
             <div ng-if="intro.online" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(242,201,76,.35);font-size:13px;">
               <div style="font-weight:bold;color:#f2c94c;">How to join</div>
               <ol style="margin:4px 0 0;padding-left:20px;">
@@ -368,7 +368,7 @@
               <span style="flex:none;">{{containerTaken().units}} units, {{containerTaken().kg | number:0}} kg</span>
             </div>
             <div ng-repeat="b in data.shipDay.containers" style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(86,141,122,.3);font-size:13px;">
-              <div style="flex:1;min-width:0;"><b>#{{b.n}}</b> &rarr; {{b.to}} <span style="color:#7d8b88;font-size:12px;">{{km(b.distanceMetres)}} km</span></div>
+              <div style="flex:1;min-width:0;"><b>#{{b.n}}</b> &rarr; {{b.to}} <span style="color:#7d8b88;font-size:12px;">{{km(b.distanceMetres)}} km</span><span ng-if="b.tollTo" style="color:#f2994a;font-size:12px;"> &middot; {{b.tollTo}}'s turf, 20% toll</span></div>
               <div ng-if="b.state === 'free'" style="flex:none;font-weight:bold;color:#56ccf2;" title="${{b.pay | number:0}} for a full load">${{containerTaken(b).pay | number:0}}</div>
               <button type="button" ng-if="b.state === 'free' && data.shipDay.atPort" ng-click="takeContainer(b)" ng-disabled="!b.allowed" style="flex:none;padding:3px 8px;">Take</button>
               <div ng-if="b.state === 'mine'" style="flex:none;color:#6fcf97;">Yours</div>
@@ -417,7 +417,7 @@
              <div ng-if="jobOpen(j.id)" style="padding:2px 0 2px 18px;font-size:12px;color:#c9d6d2;">
               <div ng-if="j.contract">{{j.contract.region}}. {{j.contract.summary}} Pays {{j.contract.pays}} times a normal job. You pay ${{j.contract.fee | number:0}} to be relocated to the start; a crash ends it, and insurance costs ${{j.contract.insurance | number:0}}.</div>
               <div ng-if="j.drop">No roads: follow the arrow on the Route tab.</div>
-              <div><span ng-if="j.units > 0 && !j.fluid">{{taken(j).units}} {{j.good | lowercase}}, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units > 0 && j.fluid">{{taken(j).units * j.unitLitres | number:0}} L, {{taken(j).kg | number:0}} kg</span><span ng-if="j.shortage" style="color:#f2c94c;"> &middot; shortage &times;2</span><span ng-if="j.jackpot" style="color:#f2c94c;"> &middot; jackpot &times;{{j.jackpot | number:1}}</span><span ng-if="j.road && !j.drop && !j.contract"> &middot; rough road &times;{{j.road | number:1}}</span><span ng-if="j.road && j.drop"> &middot; steep ground &times;{{j.road | number:1}}</span><span ng-if="j.basePercent" style="color:#6fcf97;"> &middot; base bonus +{{j.basePercent}}%</span></div>
+              <div><span ng-if="j.units > 0 && !j.fluid">{{taken(j).units}} {{j.good | lowercase}}, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units > 0 && j.fluid">{{taken(j).units * j.unitLitres | number:0}} L, {{taken(j).kg | number:0}} kg</span><span ng-if="j.shortage" style="color:#f2c94c;"> &middot; shortage &times;2</span><span ng-if="j.jackpot" style="color:#f2c94c;"> &middot; jackpot &times;{{j.jackpot | number:1}}</span><span ng-if="j.road && !j.drop && !j.contract"> &middot; rough road &times;{{j.road | number:1}}</span><span ng-if="j.road && j.drop"> &middot; steep ground &times;{{j.road | number:1}}</span><span ng-if="j.basePercent" style="color:#6fcf97;"> &middot; base bonus +{{j.basePercent}}%</span><span ng-if="j.tollTo" style="color:#f2994a;"> &middot; drop-off in {{j.tollTo}}'s turf: {{j.tollPercent}}% toll</span></div>
               <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
                <span ng-if="j.units > 1" style="flex:none;width:62px;">Load {{shareOf(j)}}%</span>
                <input ng-if="j.units > 1" type="range" min="10" max="100" step="10" ng-model="shares[j.id]" ng-init="shares[j.id] = shareOf(j)" ng-disabled="!j.allowed" aria-label="How much of the {{j.good | lowercase}} to take" style="flex:1;min-width:0;">
@@ -753,10 +753,10 @@
         <div ng-if="data.home && data.home.owned" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
           <div style="font-weight:bold;color:#a7e5c9;">Your base<span ng-if="data.home.owned.name"> near {{data.home.owned.name}}</span></div>
           <div ng-if="data.home.circle" style="margin:6px 0;padding:8px;border:1px solid rgba(167,229,201,.4);border-radius:6px;font-size:13px;">
-            <div><b>Your circle reaches {{data.home.circle.radiusKm}} km</b> around {{data.home.circle.town || 'your base'}}<span ng-if="data.home.circle.boost > 1.05"> (&times;{{data.home.circle.boost | number:1}} region: steep ground makes it bigger)</span>.<span ng-if="data.home.circle.inside" style="color:#6fcf97;"> You are inside it.</span></div>
+            <div><b>Your circle reaches {{data.home.circle.radiusKm | number:0}} km</b> around {{data.home.circle.town || 'your base'}}<span ng-if="data.home.circle.boost > 1.05"> (&times;{{data.home.circle.boost | number:1}} region: steep ground makes it bigger)</span>.<span ng-if="data.home.circle.inside" style="color:#6fcf97;"> You are inside it.</span></div>
             <div style="color:#c9d6d2;">Jobs that start or end inside pay you +{{data.home.circle.bonus | number:1}} on the region multiplier at that end.</div>
-            <div ng-if="data.home.circle.commission" style="color:#c9d6d2;">When another trucker picks up or drops off in your turf, you get 2.5% of their pay for each end, up to $20,000 a day. It's paid to you when you're next on the server.</div>
-            <div style="color:#c9d6d2;">Your wealth: ${{data.home.circle.wealth | number:0}} (cash, truck, trailer and base).<span ng-if="data.home.circle.nextKm"> At ${{data.home.circle.nextWealth | number:0}} your circle reaches {{data.home.circle.nextKm}} km.</span><span ng-if="!data.home.circle.nextKm"> Your circle is as big as it gets.</span> It never shrinks.</div>
+            <div ng-if="data.home.circle.commission" style="color:#c9d6d2;">When another trucker delivers in your turf, {{data.home.tollPercent}}% of their pay is yours as a turf toll. It's paid to you when you're next on the server.</div>
+            <div style="color:#c9d6d2;">Your wealth: ${{data.home.circle.wealth | number:0}} (cash, truck, trailer and base).<span ng-if="data.home.circle.nextKm"> At ${{data.home.circle.nextWealth | number:0}} your circle reaches {{data.home.circle.nextKm | number:0}} km.</span><span ng-if="!data.home.circle.nextKm"> Your circle is as big as it gets.</span> It never shrinks.</div>
           </div>
           <div ng-if="data.home.owned.here" style="font-size:13px;color:#6fcf97;">You are at your base. Repairs here are {{data.home.repairShare}}% off.</div>
           <div ng-if="!data.home.owned.here && data.home.owned.distanceMetres != null" style="font-size:13px;color:#c9d6d2;">{{km(data.home.owned.distanceMetres)}} km away. Within {{data.home.radiusMetres}} m you can swap cars, and repairs are {{data.home.repairShare}}% off. Relocate lists Base at the usual fee.</div>
@@ -783,10 +783,10 @@
         </div>
         <div ng-if="data.home.others" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
           <div style="font-weight:bold;color:#a7e5c9;">Other truckers' bases</div>
-          <div style="font-size:12px;color:#7d8b88;">Jobs that start or end inside someone else's circle pay you +{{data.home.visitorBonus | number:1}} &times; the region multiplier there. Where circles overlap, the bigger one pushes the border towards the smaller one.</div>
+          <div style="font-size:12px;color:#7d8b88;">Deliver in someone else's turf and {{data.home.tollPercent}}% of the pay goes to them as a turf toll. The job board shows it before you take the job. Where circles overlap, the bigger one pushes the border towards the smaller one, and every base keeps the 100 km around its town.</div>
           <div ng-repeat="b in data.home.others" style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);font-size:13px;">
             <span style="flex:1;min-width:0;overflow-wrap:anywhere;"><b>{{b.name}}</b> in {{b.town || 'a town'}}<span ng-if="b.inside" style="color:#6fcf97;"> &middot; you are inside</span></span>
-            <span style="color:#c9d6d2;white-space:nowrap;">{{b.radiusKm}} km circle<span ng-if="b.distanceMetres != null">, {{km(b.distanceMetres)}} km away</span></span>
+            <span style="color:#c9d6d2;white-space:nowrap;">{{b.radiusKm | number:0}} km circle<span ng-if="b.distanceMetres != null">, {{km(b.distanceMetres)}} km away</span></span>
           </div>
         </div>
         <div ng-if="data.home && data.baseMap" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
