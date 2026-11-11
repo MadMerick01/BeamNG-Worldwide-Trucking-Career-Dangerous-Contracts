@@ -1,6 +1,6 @@
 # The Magnate update: bases of operations
 
-Status: **steps 1 to 3 built**, 10 Nov 2026: the base replaces the home; its circle and the owner's bonus; on a
+Status: **steps 1 to 3 built**, 10 Nov 2026; **Magnate 2 planned**, 11 Nov 2026 (see below). Built so far: the base replaces the home; its circle and the owner's bonus; on a
 server, bases kept by the server (one a town, 10 km apart), everyone's circles, visitors' bonus, turf pushing, Ship Day
 containers, circles and a Base column on the web page, and commission. Since 11 Nov 2026 the Base tab also opens a
 Base map in the browser (served by the game like Street View, at `/bases`), and the game says when the truck crosses
@@ -221,6 +221,53 @@ checks it later, in the referee step.
 **Decided (MadMerick, 9 Nov):** wealth becomes cash + truck value + the base's price. Without that, buying a base would drop you
 $250,000 down the leaderboard, which is the same problem we just fixed for trucks.
 
+## Magnate 2: world-size turf (planned)
+
+Decided by MadMerick on 11 Nov 2026, for 20-player servers that cover the whole world. Not built yet. It replaces the
+circle sizes, the visitors' bonus and the 2.5% commission above.
+
+### Circle size
+
+- **1,600 km at $250,000**, growing with the square root of wealth (4× the wealth, twice the reach), with **no cap**:
+  radius = 1,600 km × √(wealth ÷ $250,000) × √(region multiplier).
+- Wealth stays cash + truck + base, and the circle still uses the season's best wealth, so it never shrinks.
+- Examples on flat ground: $350k → 1,890 km, $637,500 → 2,555 km, $1M → 3,200 km, $2M → 4,525 km, $4M → 6,400 km,
+  $10M → 10,100 km, $25M → 16,000 km (most of the world).
+- Ten bases worth about $13.5M together claim most of the world's land, with a big neighbour squeezing a small one but
+  never wiping it out.
+
+### Turf rules
+
+- The border rule stays: inside a base's core it's that base's; elsewhere, the circle with the smallest distance ÷
+  radius wins.
+- **Core: 100 km** (was 5 km), so a rival can't build next door and take your city. *Proposed.*
+- **Bases at least 300 km apart** (was 10 km), so bases spread out instead of crowding around Sydney. *Proposed.*
+
+### Pay
+
+- **Your own turf:** the owner's +0.4 on the region multiplier stays.
+- **Visitors' +0.2 is dropped.** With circles this big almost everything is inside one, so it would just be a pay rise
+  for everyone.
+- **The turf toll (Decided, MadMerick, 11 Nov):** deliver in someone else's turf and **20% of the payout goes to that
+  turf's owner**. This discourages teaming up in one another's turf. It replaces the 2.5% commission. The driver's pay
+  really drops: the toll is a transfer, not new money from the server.
+  - Which end counts: the **drop-off**, where the delivery is made. *Proposed;* the alternative is 10% at each end.
+  - It applies to town jobs, off-road drops (at the drop spot) and Ship Day containers. Dangerous contracts, heli jobs
+    and beacon packages stay out, as now. *Proposed.*
+  - No toll in your own turf, outside every turf, or in single player.
+  - The job board shows it before you take the job: "Drop-off in Belake's turf: 20% toll". The delivery pay line
+    shows "Turf toll to Belake −$1,240".
+  - The owner is paid like commission today: straight away when online, otherwise in one go when they next join,
+    marked paid by their next save.
+  - **Daily limit:** none, since it's money moving between players, not new money. *Proposed.*
+
+### What changes in the game
+
+- The turf messages and the Base map say "Deliveries here pay a 20% toll to Belake" instead of "+0.2".
+- The Base tab and the web page show the new sizes, the 100 km core and the 300 km spacing.
+- Existing bases keep their town, and their circle is re-sized by the new rule. Bases closer than 300 km stay where
+  they are; the spacing only applies to new ones. *Proposed.*
+
 ## Building it in steps
 
 1. **Single player:** the base replaces the home, the circle and its size, and the owner's +0.4. Shown on the Home
@@ -228,7 +275,9 @@ $250,000 down the leaderboard, which is the same problem we just fixed for truck
 2. **Server, bonus only:** bases kept on the server, one per town, the `wwtcBases` list, visitors' +0.2, circles on
    the web page, base price in wealth.
 3. **Commission:** the owed ledger, `wwtcCommission`, toasts, the daily limit and the live feed.
-4. **Later:** base upgrades (more car spaces, a fuel pump, a repair bay), and town
+4. **Magnate 2:** world-size circles, the 100 km core and 300 km spacing, no visitors' bonus, and the 20% turf toll
+   in place of commission.
+5. **Later:** base upgrades (more car spaces, a fuel pump, a repair bay), and town
    rivalries.
 
 ## Decisions
@@ -246,3 +295,7 @@ $250,000 down the leaderboard, which is the same problem we just fixed for truck
 | B9 | How does the circle grow with wealth? | **Decided:** 20 km at $350k, area in line with wealth, at most 100 km |
 | B10 | Do circles push each other? | **Decided:** border by size, 5 km protected core, bases 10 km apart |
 | B11 | How is a base in a steep region rewarded? | **Decided:** bonus × the region multiplier (past the caps), and radius × √(region multiplier) |
+| B12 | Circle size for world servers (Magnate 2) | **Decided:** 1,600 km at $250k, square root of wealth, no cap |
+| B13 | Delivering in someone else's turf (Magnate 2) | **Decided:** 20% of the payout goes to the turf's owner, replacing commission and the visitors' +0.2 |
+| B14 | Core and spacing (Magnate 2) | *Proposed:* 100 km core, bases 300 km apart |
+| B15 | Which end the toll counts at, and any daily limit | *Proposed:* the drop-off only, no daily limit |
