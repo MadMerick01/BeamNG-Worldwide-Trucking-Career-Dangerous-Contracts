@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Fixed: the Store at depot, Send to base and Park at base buttons did nothing.** Swap trailers and Use this trailer didn't work either. All five buttons now work. Your save still works.
+
 ## Build 178 · 11 Nov 2026
 
 - **Magnate 2: base circles are now sized for the whole world.** A new base reaches 1,600 km at $250,000 of wealth (cash, truck, trailer and base) and keeps growing as you get richer, with no limit: about 2,550 km at $637,500, 3,200 km at $1 million and 6,400 km at $4 million. Ten players worth a million or two each can split the planet between them. Circles still never shrink, steep regions still reach further, and a bigger neighbour still pushes the border towards a smaller one.

@@ -2679,9 +2679,15 @@ function M.buyTrailer(index)
   if type(index) ~= 'number' or index ~= math.floor(index) or index < 1 or index > 999 then return false end
   return safely(function() return ensure():buyTrailer(index) end)
 end
-function M.storeTrailer() return safely(function() return ensure():storeTrailer() end) end
+-- place is where the trailer goes: 'base' or 'depot'.
+function M.storeTrailer(place)
+  if place ~= 'base' and place ~= 'depot' then return false end
+  return safely(function() return ensure():storeTrailer(place) end)
+end
 function M.cancelStoreTrailer() return safely(function() return ensure():cancelStoreTrailer() end) end
 function M.bringOutTrailer() return safely(function() return ensure():bringOutTrailer() end) end
+function M.swapTrailers() return safely(function() return ensure():swapTrailers() end) end
+function M.switchTrailer() return safely(function() return ensure():switchTrailer() end) end
 function M.sellTrailer() return safely(function() return ensure():sellTrailer() end) end
 function M.buyTrailerParts() return safely(function() return ensure():buyTrailerParts() end) end
 function M.payTrailerParts() return safely(function() return ensure():payTrailerParts() end) end
