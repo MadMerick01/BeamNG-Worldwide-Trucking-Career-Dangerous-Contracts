@@ -2,7 +2,7 @@
   "version": 1,
   "sample": true,
   "updated": "2026-11-08T19:00:00Z",
-  "server": { "name": "Trucking Career Test | MadMerick", "online": true, "maxPlayers": 8, "earthVersion": "1.9.0" },
+  "server": { "name": "A WW Trucking Career | MadMerick", "online": true, "maxPlayers": 8, "earthVersion": "1.9.0" },
   "season": { "number": 1, "day": 1, "truckers": 7 },
   "today": { "deliveries": 23, "earned": 412800 },
   "ship": {

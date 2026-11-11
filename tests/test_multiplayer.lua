@@ -887,4 +887,31 @@ do
   MPC.BUILD = nil
 end
 
+-- Timed chat messages: one line in turn every ANNOUNCE_EVERY_MINUTES, to everyone, only while someone is on.
+do
+  local W, env = server()
+  local on = {}
+  env.players = function() return on end
+  W.ANNOUNCE_EVERY_MINUTES = 10
+  W.ANNOUNCE = { 'one', 'two' }
+  W.announceTick(); env.time = env.time + 3600; W.announceTick()
+  T.eq(#env.chats, 0, 'nothing while the server is empty')
+  on = { [1] = 'player1' }
+  W.announceTick()
+  T.eq(#env.chats, 0, 'not straight away when someone joins: the welcome comes first')
+  env.time = env.time + 300; W.announceTick()
+  T.eq(#env.chats, 0, 'not before the time')
+  env.time = env.time + 300; W.announceTick()
+  T.eq(env.chats[1].text, 'one', 'the first line after 10 minutes'); T.eq(env.chats[1].pid, -1, 'to everyone')
+  env.time = env.time + 600; W.announceTick()
+  T.eq(env.chats[2].text, 'two', 'then the next')
+  env.time = env.time + 600; W.announceTick()
+  T.eq(env.chats[3].text, 'one', 'and round again')
+  W.ANNOUNCE = {}
+  env.time = env.time + 600; W.announceTick()
+  T.eq(#env.chats, 3, 'none when the list is empty')
+  local W2 = dofile(SERVER)
+  T.check(#W2.ANNOUNCE == 3 and W2.ANNOUNCE[1]:find('HUD', 1, true) and W2.ANNOUNCE[2]:find('discord.gg/', 1, true)
+    and W2.ANNOUNCE[3]:find('github.io', 1, true), 'the server comes with the HUD, Discord and live page lines')
+end
 T.done('multiplayer careers')
