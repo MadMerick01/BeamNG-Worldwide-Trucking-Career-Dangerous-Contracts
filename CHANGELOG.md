@@ -13,6 +13,8 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - You can leave with **Leave corp**, and the owner can remove a member with **Remove**. Either way, that trucker must wait 24 hours before asking to join any corp again, and a car left in the yard is traded in at the usual trade-in price (half its worth, less any repair it needs). A trailer left there goes to the depot for free. Members can't buy a base while they're in a corp, and base owners can't join one.
 - Server hosts need to update the server plugin as usual to get corps. Careers and saves still work.
 
+## Build 183 · 11 Nov 2026
+
 - **The HUD now always shows whose turf you're in.** Under the town name, an orange line such as "HybridLWB's turf · 20% toll on deliveries here" stays on screen while you're in another trucker's turf, and a green "Your turf · +0.4 bonus" while you're in your own. Outside every turf there's no line. It changes when you cross a border, at the same moment as the pop-up message. Saves still work.
 
 ## Build 182 · 11 Nov 2026
