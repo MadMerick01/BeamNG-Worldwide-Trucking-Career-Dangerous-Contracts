@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 179 · 11 Nov 2026
+
 - **Fixed: the Store at depot, Send to base and Park at base buttons did nothing.** Swap trailers and Use this trailer didn't work either. All five buttons now work. Your save still works.
 
 ## Build 178 · 11 Nov 2026
