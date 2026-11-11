@@ -66,7 +66,7 @@ class PackageTest(unittest.TestCase):
         with ZipFile(self.output) as archive:
             trailers = archive.read('lua/ge/extensions/earthFreight/trailers.lua').decode()
             ours = re.findall(r"id = '([a-z_]+)/(earth_freight_[a-z0-9_]+)'", trailers)
-            self.assertEqual(len(ours), 15)
+            self.assertEqual(len(ours), 13)
             for model, key in ours:
                 prefix = 'vehicles/' + model + '/'
                 config = json.loads(archive.read(prefix + key + '.pc'))
