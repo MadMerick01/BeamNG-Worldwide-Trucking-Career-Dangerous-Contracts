@@ -21,6 +21,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - Every base now keeps the 100 km around its town however rich its neighbours get, and new bases must be at least 300 km apart. Existing bases stay where they are and simply grow to the new size.
 - The "you are in someone's turf" message, the Base tab and the Base map now talk about the toll, and the server's web page shades each base's turf in its own colour.
 - Saves still work. Server hosts: run the server updater to get the new sizes and the toll.
+- No changes in the game. The server page now shows the server's new name, **A WW Trucking Career | MadMerick**, while it's loading and in its sample data.
 
 ## Build 177 · 11 Nov 2026
 
