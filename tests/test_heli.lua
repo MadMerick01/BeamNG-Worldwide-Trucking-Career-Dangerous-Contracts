@@ -57,7 +57,7 @@ do
   T.eq(#beacons.LINES, 19, 'nineteen lines')
   for _, line in ipairs(beacons.LINES) do T.check(not line:lower():find('school', 1, true), 'no school bag') end
   T.eq(beacons.line(99), 'A package nobody wants to talk about.', 'a line this version lacks')
-  T.eq(beacons.PAY, 12000, '$12,000'); T.eq(beacons.INSURANCE_FEE, 4000, '$4,000 claims')
+  T.eq(beacons.PAY, 9000, '$9,000'); T.eq(beacons.INSURANCE_FEE, 4000, '$4,000 claims')
 end
 
 local HELI_CONFIG = 'vehicles/bell407/civ.pc'
@@ -160,9 +160,9 @@ do
   F.advance(c, beacons.FIND_SECONDS)
   T.check(c.beacon ~= nil, 'a beacon found'); T.eq(c:view().flash.title, 'SIGNAL BEACON PICKED UP', 'told so')
   local popup = trig[#trig]
-  T.eq(popup.name, 'EarthFreightBeacon', 'the centre-screen box'); T.check(popup.data.text:find('$12,000', 1, true) ~= nil, 'with the pay')
+  T.eq(popup.name, 'EarthFreightBeacon', 'the centre-screen box'); T.check(popup.data.text:find('$9,000', 1, true) ~= nil, 'with the pay')
   local view = c:view().beacon
-  T.check(view ~= nil and view.pickup ~= nil, 'on the HUD'); T.eq(view.pay, 12000, 'paying $12,000')
+  T.check(view ~= nil and view.pickup ~= nil, 'on the HUD'); T.eq(view.pay, 9000, 'paying $9,000')
   T.check(view.distanceMetres <= beacons.SPOT_MAX + 1, 'near the helicopter'); T.check(not view.pickUpAllowed, 'not from the air')
   -- One at a time.
   local first = c.beacon.line
@@ -185,7 +185,7 @@ do
   T.eq(c.beacon, nil, 'gone quiet'); T.eq(c:view().flash.title, 'BEACON WENT QUIET', 'told so')
 end
 
--- The job: drive to the pickup, pick it up, drive it to the drop off road and get $12,000.
+-- The job: drive to the pickup, pick it up, drive it to the drop off road and get $9,000.
 do
   local c, a, g, ac, cargo = game()
   c.beacon = { pickup = location.destination(F.PENRITH, 90, 3000), drop = nil, line = 2, left = 3000 }
@@ -196,7 +196,7 @@ do
   local view = c:view().beacon
   T.check(view.inZone and view.pickUpAllowed, 'at the beacon')
   T.check(c:pickUpBeacon(), 'picked up'); T.eq(c.beacon, nil, 'the beacon is used')
-  T.check(c.load.beacon and c.load.kg == 0, 'a job with no weight'); T.eq(c.load.pay, 12000, 'for $12,000')
+  T.check(c.load.beacon and c.load.kg == 0, 'a job with no weight'); T.eq(c.load.pay, 9000, 'for $9,000')
   T.check(c.tradeFeedback:find('cooler box', 1, true) ~= nil, 'says what it is')
   T.eq(cargo.weights[#cargo.weights].kg, 0, 'no weight on the car')
   local load = c:view().load
@@ -209,8 +209,8 @@ do
   local before = c.profile.progression.balance
   F.drive(c, a, drop)
   T.check(c:view().load.drop.delivery.allowed, 'delivery allowed at the drop')
-  T.check(c:deliver(), 'delivered'); T.eq(c.profile.progression.balance, before + 12000, '$12,000 paid')
-  T.eq(c:view().flash.title, 'DELIVERED: +$12,000', 'told so'); T.eq(c.load, nil, 'job done')
+  T.check(c:deliver(), 'delivered'); T.eq(c.profile.progression.balance, before + 9000, '$9,000 paid')
+  T.eq(c:view().flash.title, 'DELIVERED: +$9,000', 'told so'); T.eq(c.load, nil, 'job done')
 end
 
 -- Picking up needs no other job, a stopped car and no hire; ignoring it is free.
