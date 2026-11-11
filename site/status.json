@@ -33,7 +33,7 @@
     { "name": "Kez", "balance": 23310, "truckValue": 4000, "wealth": 27310, "deliveries": 7 }
   ],
   "bases": [
-    { "name": "Sam", "town": "Katoomba", "latitude": -33.71, "longitude": 150.31, "radiusKm": 34.6 },
-    { "name": "MadMerick", "town": "Parramatta", "latitude": -33.82, "longitude": 151.0, "radiusKm": 28.3 }
+    { "name": "Sam", "town": "Perth", "latitude": -31.95, "longitude": 115.86, "radiusKm": 1893.0 },
+    { "name": "MadMerick", "town": "Parramatta", "latitude": -33.82, "longitude": 151.0, "radiusKm": 2555.0 }
   ]
 }

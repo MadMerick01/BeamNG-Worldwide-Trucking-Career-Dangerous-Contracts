@@ -55,7 +55,7 @@ function M.cleanBases(list)
   for _, b in ipairs(type(list) == 'table' and list or {}) do
     local lat, lon, r = type(b) == 'table' and tonumber(b.latitude), type(b) == 'table' and tonumber(b.longitude),
       type(b) == 'table' and tonumber(b.radiusKm)
-    if lat and lon and r and math.abs(lat) <= 90 and math.abs(lon) <= 180 and r > 0 and r <= 100 and #out < 256 then
+    if lat and lon and r and math.abs(lat) <= 90 and math.abs(lon) <= 180 and r > 0 and r <= 20000 and #out < 256 then
       out[#out + 1] = { name = M.cleanText(b.name, 32) or 'A trucker', town = M.cleanText(b.town, 40),
         latitude = lat, longitude = lon, radiusKm = r, mine = b.mine == true }
     end
@@ -276,7 +276,7 @@ function M.new(deps)
   end
   -- A base of operations: asks the server whether this town is free (one base a town, 10 km apart).
   function s:claimBase(t) return shipEvent('wwtcBaseClaim', t) end
-  function s:shipDelivered(ship, n, town, pay, ends) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay, ends = ends }) end
+  function s:shipDelivered(ship, n, town, pay, ends, toll) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay, ends = ends, toll = toll }) end
   return s
 end
 

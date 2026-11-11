@@ -1479,9 +1479,9 @@ do
   local wealth = 400000 - Home.PRICE + (c.ownedParts.value or 0) + Home.PRICE
   T.eq(v.circle.town, 'Penrith', 'around the town it is in'); T.eq(v.circle.wealth, wealth, 'cash, truck and base')
   T.eq(v.circle.radiusKm, math.floor(magnate.radiusKm(wealth, 1) + 0.5), 'sized by wealth')
-  T.check(v.circle.radiusKm >= 20, 'a big circle from the start'); T.check(v.circle.inside, 'and you are inside it')
+  T.check(v.circle.radiusKm >= 1600, 'a big circle from the start'); T.check(v.circle.inside, 'and you are inside it')
   T.near(v.circle.bonus, 0.4, 1e-9, 'the owner gets +0.4 in a flat region')
-  T.check(v.circle.nextKm == v.circle.radiusKm + 10 and v.circle.nextWealth > wealth, 'and how to grow it')
+  T.check(v.circle.nextKm % 500 == 0 and v.circle.nextKm > v.circle.radiusKm and v.circle.nextKm <= v.circle.radiusKm + 500 and v.circle.nextWealth > wealth, 'and how to grow it')
   -- Town jobs in the circle pay about 20% more on flat ground: the bonus is half of +0.4 at each end.
   local town = 0
   for _, j in ipairs(c:view().town.jobs) do
@@ -1548,7 +1548,7 @@ do
   T.eq(toasts[1], 'You have left your turf. No base bonus out here.', 'leaving your turf')
   circles = { { latitude = a.pose.latitude, longitude = a.pose.longitude, radiusKm = 20, name = 'Penrith', owner = 'Belake' } }
   c:tick(Home.TURF_SECONDS + 0.1); c:tick(Home.TURF_SECONDS + 0.1)
-  T.eq(toasts[2], "You are in Belake's turf around Penrith. Jobs that start or end here pay you +0.2 on the region multiplier.", 'entering someone else\'s turf')
+  T.eq(toasts[2], "You are in Belake's turf around Penrith. Deliveries here pay 20% of their pay to Belake.", 'entering someone else\'s turf')
   circles = {}
   c:tick(Home.TURF_SECONDS + 0.1)
   circles = { { latitude = a.pose.latitude, longitude = a.pose.longitude, radiusKm = 20, name = 'Penrith', owner = 'Belake' } }
@@ -1556,24 +1556,29 @@ do
   T.eq(#toasts, 2, 'a blip along a border says nothing')
 end
 
--- The circle's size: 20 km at $350,000 on flat ground, area in line with wealth, bigger on steep
--- ground, never past 100 km; and whose turf a spot is where circles overlap.
+-- The circle's size (Magnate 2): 1,600 km at $250,000 on flat ground, area in line with wealth, bigger on steep
+-- ground, no cap short of half way round the world; whose turf a spot is where circles overlap; and the turf toll.
 do
   local magnate = require('earthFreight/magnate')
-  T.near(magnate.radiusKm(350000, 1), 20, 1e-9, '20 km at $350,000')
-  T.near(magnate.radiusKm(1400000, 1), 40, 1e-9, 'four times the wealth, twice the radius')
-  T.near(magnate.radiusKm(350000, 3), 20 * math.sqrt(3), 1e-9, 'Death Road reaches further')
-  T.eq(magnate.radiusKm(1e9, 1), 100, 'never past 100 km')
-  T.near(magnate.wealthFor(40, 1), 1400000, 1e-3, 'the wealth for a size')
-  local big = { latitude = 0, longitude = 0, radiusKm = 40, mine = true }
-  local small = { latitude = 0, longitude = 30 / 111.195, radiusKm = 20 }
+  T.near(magnate.radiusKm(250000, 1), 1600, 1e-9, '1,600 km at $250,000')
+  T.near(magnate.radiusKm(637500, 1), 1600 * math.sqrt(2.55), 1e-9, '$637,500 reaches about 2,555 km')
+  T.near(magnate.radiusKm(1000000, 1), 3200, 1e-9, 'four times the wealth, twice the radius')
+  T.near(magnate.radiusKm(250000, 3), 1600 * math.sqrt(3), 1e-9, 'Death Road reaches further')
+  T.eq(magnate.radiusKm(1e12, 1), magnate.MAX_KM, 'past half way round the world it covers everything')
+  T.near(magnate.wealthFor(3200, 1), 1000000, 1e-3, 'the wealth for a size')
+  local big = { latitude = 0, longitude = 0, radiusKm = 4000, mine = true }
+  local small = { latitude = 0, longitude = 3000 / 111.195, radiusKm = 2000, owner = 'Belake' }
   local function at(km) return { latitude = 0, longitude = km / 111.195 } end
-  T.eq(magnate.turf({ big, small }, at(19)), big, 'the bigger circle pushes the border')
-  T.eq(magnate.turf({ big, small }, at(21)), small, 'to 20 km from it, 10 km from the smaller')
-  T.eq(magnate.turf({ big, small }, at(26)), small, 'a base keeps its 5 km core')
+  T.eq(magnate.turf({ big, small }, at(1900)), big, 'the bigger circle pushes the border')
+  T.eq(magnate.turf({ big, small }, at(2100)), small, 'to 2,000 km from it, 1,000 km from the smaller')
+  T.eq(magnate.turf({ big, small }, at(2950)), small, 'a base keeps its 100 km core')
   T.near(magnate.shareAt({ big, small }, at(10)), 0.4, 1e-9, 'the owner in their own turf')
-  T.near(magnate.shareAt({ big, small }, at(25)), 0.2, 1e-9, 'a visitor elsewhere in a circle')
-  T.eq(magnate.shareAt({ big, small }, at(200)), 0, 'nothing outside')
+  T.eq(magnate.shareAt({ big, small }, at(2500)), 0, 'no visitors\' bonus')
+  T.eq(magnate.tollAt({ big, small }, at(2500)), small, 'a toll in someone else\'s turf')
+  T.eq(magnate.tollAt({ big, small }, at(10)), nil, 'none in your own')
+  T.eq(magnate.tollAt({ big, small }, at(9000)), nil, 'or outside every turf')
+  local left, toll = magnate.afterToll(6230)
+  T.eq(toll, 1250, '20% toll, to $10'); T.eq(left, 4980, 'the rest for the driver')
 end
 
 -- A save with a stored car needs a home, and a stored car needs a config.

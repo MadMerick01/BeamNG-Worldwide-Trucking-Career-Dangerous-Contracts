@@ -1,6 +1,6 @@
 # The Magnate update: bases of operations
 
-Status: **steps 1 to 3 built**, 10 Nov 2026; **Magnate 2 planned**, 11 Nov 2026 (see below). Built so far: the base replaces the home; its circle and the owner's bonus; on a
+Status: **steps 1 to 3 built**, 10 Nov 2026; **Magnate 2 built**, 11 Nov 2026 (see below). Built so far: the base replaces the home; its circle and the owner's bonus; on a
 server, bases kept by the server (one a town, 10 km apart), everyone's circles, visitors' bonus, turf pushing, Ship Day
 containers, circles and a Base column on the web page, and commission. Since 11 Nov 2026 the Base tab also opens a
 Base map in the browser (served by the game like Street View, at `/bases`), and the game says when the truck crosses
@@ -221,9 +221,9 @@ checks it later, in the referee step.
 **Decided (MadMerick, 9 Nov):** wealth becomes cash + truck value + the base's price. Without that, buying a base would drop you
 $250,000 down the leaderboard, which is the same problem we just fixed for trucks.
 
-## Magnate 2: world-size turf (planned)
+## Magnate 2: world-size turf
 
-Decided by MadMerick on 11 Nov 2026, for 20-player servers that cover the whole world. Not built yet. It replaces the
+Decided by MadMerick on 11 Nov 2026, for 20-player servers that cover the whole world, and built the same day; the proposals below were accepted as written. It replaces the
 circle sizes, the visitors' bonus and the 2.5% commission above.
 
 ### Circle size

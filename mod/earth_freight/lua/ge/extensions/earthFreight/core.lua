@@ -27,6 +27,7 @@ local streetView = require('earthFreight/streetView')
 local business = require('earthFreight/business')
 local multiplayer = require('earthFreight/multiplayer')
 local shipday = require('earthFreight/shipday')
+local magnate = require('earthFreight/magnate')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -441,17 +442,32 @@ function M.new(deps)
     if d.amount > 0 then
       self:addMoney(d.amount)
       self:toast('info', 'Commission', d.jobs == 1 and d.by
-        and string.format('%s delivered in your turf: +%s commission.', d.by, dollars(d.amount))
-        or string.format('%d jobs in your turf paid you %s commission.', d.jobs, dollars(d.amount)))
+        and string.format('%s delivered in your turf and paid you a %s turf toll.', d.by, dollars(d.amount))
+        or string.format('%d deliveries in your turf paid you %s in turf tolls.', d.jobs, dollars(d.amount)))
       self.diag:event('commission', string.format('#%d %d from %d jobs', d.id, d.amount, d.jobs))
     end
     self:autoSaveSoon('your commission')
   end
 
   -- Tells the server a delivery happened, for its live feed, today's totals and base owners' commission.
-  function c:reportDelivery(kind, good, units, from, to, pay, ends)
+  function c:reportDelivery(kind, good, units, from, to, pay, ends, toll)
     if not self.mp or self.mp.state ~= 'server' then return end
-    self.mp:delivered({ kind = kind, what = good and amount(good, units) or nil, from = from, to = to, pay = pay, ends = ends })
+    self.mp:delivered({ kind = kind, what = good and amount(good, units) or nil, from = from, to = to, pay = pay, ends = ends,
+      toll = toll and toll.amount or nil })
+  end
+
+  -- The turf toll (magnate.lua): a delivery whose drop-off town is in someone else's turf pays them part of its pay.
+  -- Returns the pay left and the toll { owner, amount }, or the pay and nil.
+  function c:applyToll(pay, point)
+    local owner = pay > 0 and point and self:baseTollAt(point)
+    if not owner then return pay, nil end
+    local left, toll = magnate.afterToll(pay)
+    return left, { owner = owner, amount = toll }
+  end
+
+  -- The line the delivery message adds for a toll.
+  local function tollLine(load)
+    return load.toll and (' ' .. load.toll.owner .. ' took a ' .. dollars(load.toll.amount) .. ' turf toll.') or ''
   end
 
   function c:endMission()
@@ -946,7 +962,8 @@ function M.new(deps)
   function c:containerQuote(box)
     local good = goods.get(shipday.GOOD)
     local units, slots, kg, inTrailer = trailers.fits(self:space(), self:trailerSpace(), good)
-    return { units = units, slots = slots, kg = kg, trailerUnits = inTrailer, pay = shipday.pay(box, units, self:baseShareFunction()) }
+    local pay, toll = self:applyToll(shipday.pay(box, units, self:baseShareFunction()), places.get(box.to))
+    return { units = units, slots = slots, kg = kg, trailerUnits = inTrailer, pay = pay, toll = toll }
   end
 
   -- Why a container can't be taken now, or nil when it can.
@@ -1008,7 +1025,7 @@ function M.new(deps)
     local good = goods.get(shipday.GOOD)
     quote.units, quote.pay = jobs.share(quote.units, quote.pay, claim.share or 100)
     self.load = { good = good.id, units = quote.units, slots = quote.units * good.slots, kg = quote.units * good.kg,
-      pay = quote.pay, from = box.from, to = box.to, drivenKm = 0, ship = { ship = claim.ship, n = claim.n } }
+      pay = quote.pay, from = box.from, to = box.to, drivenKm = 0, ship = { ship = claim.ship, n = claim.n }, toll = quote.toll }
     if (quote.trailerUnits or 0) > 0 then self.load.trailerUnits = math.min(quote.trailerUnits, quote.units) end
     self.abandonArmed = false
     self:applyWeight()
@@ -1041,11 +1058,12 @@ function M.new(deps)
     for _, box in ipairs(shipday.containers(ship)) do
       local st = ship.states[box.n]
       units = units or self:containerQuote(box).units
+      local pay, toll = self:applyToll(shipday.pay(box, units, self:baseShareFunction()), places.get(box.to))
       local state = st and (st.mine and st.state ~= 'delivered' and 'mine' or st.state) or 'free'
       if state == 'free' then free = free + 1 end
       local to = places.get(box.to)
       list[#list + 1] = { n = box.n, to = to and to.name or box.to, region = to and to.region or nil,
-        distanceMetres = box.km * 1000, pay = shipday.pay(box, units), state = state, by = st and st.by or nil,
+        distanceMetres = box.km * 1000, pay = pay, tollTo = toll and toll.owner, state = state, by = st and st.by or nil,
         allowed = state == 'free' and takeProblem == nil and units > 0 }
     end
     local held = self.load and self.load.ship
@@ -1228,6 +1246,11 @@ function M.new(deps)
     -- Ends inside the player's base circle pay more (magnate.lua).
     local quote = jobs.quote(job, units, self.needs, self.now(), self:baseShareFunction())
     quote.units, quote.slots, quote.kg, quote.trailerUnits = units, slots, kg, inTrailer
+    -- Delivering in someone else's turf pays them the toll: at the drop-off town, or for an off-road drop the town it
+    -- was taken in (what the server checks). Dangerous contracts pay none.
+    if not job.contract then
+      quote.pay, quote.toll = self:applyToll(quote.pay, places.get(job.drop and job.from or job.to))
+    end
     return quote
   end
 
@@ -1262,7 +1285,7 @@ function M.new(deps)
     local units, pay = jobs.share(quote.units, quote.pay, share)
     quote.units, quote.slots, quote.kg, quote.pay = units, units * good.slots, units * good.kg, pay
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
-      from = place.id, to = destination.id, drivenKm = 0, drop = location.copy(job.drop) }
+      from = place.id, to = destination.id, drivenKm = 0, drop = location.copy(job.drop), toll = quote.toll }
     -- The trailer is filled first; a part load leaves the car empty before the trailer.
     local inTrailer = math.min(quote.trailerUnits or 0, units)
     if inTrailer > 0 then self.load.trailerUnits = inTrailer end
@@ -1537,7 +1560,7 @@ function M.new(deps)
     -- An off-road drop counts for the turf of the town it was taken in, at both ends.
     local town = not load.beacon and not section and places.get(load.from) or nil
     self:reportDelivery(load.beacon and 'beacon' or (section and 'contract' or 'drop'), not load.beacon and good or nil,
-      load.units, nil, section and section.name or nil, load.pay, townEnds(town, town))
+      load.units, nil, section and section.name or nil, load.pay, townEnds(town, town), load.toll)
     if load.beacon then
       self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), 'Dropped off. Nobody saw a thing, and nobody asked.'
         .. refund)
@@ -1548,7 +1571,7 @@ function M.new(deps)
     end
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units)
       .. (section and (' over ' .. section.name .. '. ' .. self:named('You made it') .. '.') or (' dropped off road. ' .. self:named('Nice driving') .. '.'))
-      .. refund)
+      .. tollLine(load) .. refund)
     self.tradeFeedback = nil
     self:autoSaveSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> drop for %d', good.id, load.units, load.pay))
@@ -1579,9 +1602,10 @@ function M.new(deps)
     jobs.delivered(self.needs, place, good, self.now())
     self:finishJob()
     local from = places.get(load.from)
-    if load.ship and self.mp then self.mp:shipDelivered(load.ship.ship, load.ship.n, place.name, load.pay, townEnds(from, place))
+    if load.ship and self.mp then
+      self.mp:shipDelivered(load.ship.ship, load.ship.n, place.name, load.pay, townEnds(from, place), load.toll and load.toll.amount or nil)
     else
-      self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay, townEnds(from, place))
+      self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay, townEnds(from, place), load.toll)
     end
     local refund = ''
     if self.offer and shipping.offerPays(place, self.offer) then
@@ -1592,7 +1616,7 @@ function M.new(deps)
     end
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' to '
       .. (load.business and (load.business.name .. ', ') or '') .. place.name
-      .. '. ' .. self:named('Nice driving') .. '.' .. refund)
+      .. '. ' .. self:named('Nice driving') .. '.' .. tollLine(load) .. refund)
     self.tradeFeedback = nil
     self:autoSaveSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> %s for %d', good.id, load.units, place.id, load.pay))
@@ -1892,6 +1916,7 @@ function M.new(deps)
         shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road - (q.baseBonus or 0) > 1.005 and q.road - (q.baseBonus or 0) or nil,
         -- What the player's base adds, as a percentage of the pay without it.
         basePercent = q.baseBonus and math.floor(q.baseBonus / (q.road - q.baseBonus) * 100 + 0.5) or nil, outside = job.outside,
+        tollTo = q.toll and q.toll.owner or nil, tollPercent = q.toll and math.floor(magnate.TOLL * 100 + 0.5) or nil,
         allowed = allowed and q.units > 0 and (not section or self:canAfford(contracts.FEE)) }
     end
     return out

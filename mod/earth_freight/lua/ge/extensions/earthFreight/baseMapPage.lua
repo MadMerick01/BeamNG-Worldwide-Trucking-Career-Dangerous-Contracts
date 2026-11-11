@@ -49,7 +49,7 @@ M.html = [==[<!doctype html>
 <div id="map" role="region" aria-label="Map of bases and their turf"></div>
 <footer>
   <div id="job"></div>
-  <div>Each circle is a trucker's base. Where circles overlap, the bigger one pushes the border towards the smaller one, and every base keeps the 5 km around its town. Jobs that start or end in your own turf pay you +0.4 on the region multiplier there, and in anyone else's turf +0.2.</div>
+  <div>Each circle is a trucker's base. Where circles overlap, the bigger one pushes the border towards the smaller one, and every base keeps the 100 km around its town. Jobs that start or end in your own turf pay you +0.4 on the region multiplier there. Deliver in anyone else's turf and 20% of the pay goes to them as a turf toll.</div>
 </footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -59,7 +59,7 @@ M.html = [==[<!doctype html>
   var MINE = '#a7e5c9'
   var COLOURS = ['#56ccf2', '#f2994a', '#bb6bd9', '#eb5757', '#9b8cff', '#27ae60', '#f78fb3', '#2d9cdb']
   var $ = function (id) { return document.getElementById(id) }
-  var state = { follow: true, fitted: false, circlesKey: null, circles: [], coreKm: 5, lastOk: 0, layers: [], truck: null, pins: [] }
+  var state = { follow: true, fitted: false, circlesKey: null, circles: [], coreKm: 100, lastOk: 0, layers: [], truck: null, pins: [] }
 
   var reasons = {
     earth_missing: 'Waiting for BeamNG.Earth to load',
@@ -94,9 +94,10 @@ M.html = [==[<!doctype html>
     return COLOURS[h % COLOURS.length]
   }
   function whose (t) {
-    if (!t) return 'no base bonus'
+    if (!t) return 'nobody’s turf'
     var where = t.town ? ' around ' + t.town : ''
-    return (t.mine ? 'your turf' : (t.owner || 'another trucker') + '’s turf') + where + ', +' + Number(t.share).toFixed(1)
+    if (t.mine) return 'your turf' + where + ', +' + Number(t.share).toFixed(1)
+    return (t.owner || 'another trucker') + '’s turf' + where + ', ' + t.toll + '% toll'
   }
   function label (text) { var s = document.createElement('span'); s.textContent = text; return s }
   function status (kind, message) { $('dot').className = 'dot ' + kind; $('status').textContent = message }
@@ -156,7 +157,7 @@ M.html = [==[<!doctype html>
         state.pins.push(m)
         var t = p.turf
         lines.push(pair[0] + (p.name ? ' (' + p.name + ')' : '') + ': ' +
-          (!t ? 'no base bonus' : whose(t) + (t.counts ? '' : ', which doesn’t count for this job')))
+          (!t ? 'nobody’s turf' : whose(t) + (t.counts ? '' : ', which doesn’t count here')))
       })
     }
     var el = $('job'); el.textContent = ''
@@ -179,7 +180,7 @@ M.html = [==[<!doctype html>
   }
 
   function show (d) {
-    state.coreKm = d.coreKm || 5
+    state.coreKm = d.coreKm || 100
     var circles = Array.isArray(d.circles) ? d.circles : []
     var key = JSON.stringify(circles)
     if (key !== state.circlesKey) { state.circlesKey = key; state.circles = circles; drawCircles(circles) }
@@ -198,8 +199,9 @@ M.html = [==[<!doctype html>
       } else if (state.follow) map.panTo(at, { animate: true })
       var t = d.turf
       $('turf').textContent = t ? (t.mine ? 'In your turf' : 'In ' + (t.owner || 'another trucker') + '’s turf') : 'Outside every turf'
-      $('sub').textContent = t ? 'Around ' + (t.town || 'their base') + '. Jobs that start or end here pay you +' + Number(t.share).toFixed(1) + ' on the region multiplier.'
-        : (circles.length ? 'No base bonus here.' : 'No bases yet. Buy one on the Base tab in the game.')
+      $('sub').textContent = !t ? (circles.length ? 'No base bonus and no toll here.' : 'No bases yet. Buy one on the Base tab in the game.')
+        : t.mine ? 'Around ' + (t.town || 'your base') + '. Jobs that start or end here pay you +' + Number(t.share).toFixed(1) + ' on the region multiplier.'
+        : 'Around ' + (t.town || 'their base') + '. Deliveries here pay ' + t.toll + '% of their pay to ' + (t.owner || 'them') + '.'
     } else {
       $('turf').textContent = 'Base map'
       $('sub').textContent = reasons[d.waiting] || 'Waiting for your truck'
