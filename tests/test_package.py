@@ -1,6 +1,7 @@
 """Validate the distributed layout/assets, not just the development checkout."""
 import hashlib
 import json
+import re
 import struct
 import subprocess
 import sys
@@ -62,19 +63,23 @@ class PackageTest(unittest.TestCase):
         self.assertIn(b"'" + (prefix + 'earth_freight_starter.pc').encode() + b"'", workshop)
 
     def test_trailers_for_sale_are_packaged(self):
-        prefix = 'vehicles/boxutility/'
         with ZipFile(self.output) as archive:
-            trailers = archive.read('lua/ge/extensions/earthFreight/trailers.lua')
-            for key, name in (('earth_freight_trailer_boxes', 'Cargo Boxes XL'), ('earth_freight_trailer_fluid', 'Fluid Tanks XL')):
+            trailers = archive.read('lua/ge/extensions/earthFreight/trailers.lua').decode()
+            ours = re.findall(r"id = '([a-z_]+)/(earth_freight_[a-z0-9_]+)'", trailers)
+            self.assertEqual(len(ours), 15)
+            for model, key in ours:
+                prefix = 'vehicles/' + model + '/'
                 config = json.loads(archive.read(prefix + key + '.pc'))
                 info = json.loads(archive.read(prefix + 'info_' + key + '.json'))
                 thumbnail = archive.read(prefix + key + '.jpg')
-                self.assertEqual(config['model'], 'boxutility')
+                self.assertEqual(config['model'], model)
                 self.assertIsInstance(config['parts'], dict)
-                self.assertEqual(info['Configuration'], name)
+                self.assertTrue(info['Configuration'])
                 self.assertGreater(info['Value'], 0)
                 self.assertEqual(thumbnail[:3], b'\xff\xd8\xff')
-                self.assertIn(b"'boxutility/" + key.encode() + b"'", trailers)
+                # A tank setup fits tanks, a box setup leaves the game's own boxes in.
+                tanks = [part for part in config['parts'].values() if 'cargo_load_tank' in part]
+                self.assertEqual(bool(tanks), 'Tanks' in info['Configuration'] or 'Fluid' in info['Configuration'], key)
 
     def test_png_is_complete_with_valid_checksums(self):
         with ZipFile(self.output) as archive:

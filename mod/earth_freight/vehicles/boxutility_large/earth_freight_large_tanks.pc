@@ -1,0 +1,10 @@
+{
+  "format": 2,
+  "model": "boxutility_large",
+  "parts": {
+    "boxutility_large_load": "boxutility_large_load_cargo_load_box_3XL",
+    "cargo_load_box_XL_A_90deg": "cargo_load_tank_XL_A_90deg",
+    "cargo_load_box_XL_B_90deg": "cargo_load_tank_XL_B_90deg",
+    "cargo_load_box_XL_C_90deg": "cargo_load_tank_XL_C_90deg"
+  }
+}

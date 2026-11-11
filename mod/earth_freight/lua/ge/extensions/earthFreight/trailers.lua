@@ -25,15 +25,61 @@ M.SPAWN_SECONDS = 5
 
 local dollars = pricing.dollars
 
--- The trailers for sale, as model/config key: our own configs, shipped in the mod's vehicles
--- folder next to the starter car, picked to carry the goods jobs pay for. Add more here, with
--- their .pc, info json (its Value is the price) and picture.
+-- The trailers for sale, cheapest first on the card. Each is a model/config key (our own empty
+-- setups in the mod's vehicles folder, with a .pc, info json whose Value is the price, and picture,
+-- or a vanilla tanker whose tank is already empty), the name the card shows, the cargo fitted
+-- (fit: Boxes or Tanks, or nil when the tank is part of the trailer), the hitch it needs, what it
+-- holds (room) and maxKg: the most a job puts on it, BeamNG's own payload for that trailer (its
+-- heaviest loaded setup less the empty one), so 32 XL boxes don't take 80 t. The trailer fills
+-- first, up to maxKg, and the rest goes in the car. Prices are the game's own for the empty trailer.
 M.FOR_SALE = {
-  'boxutility/earth_freight_trailer_boxes', -- two Cargo Load boxes XL
-  'boxutility/earth_freight_trailer_fluid', -- two Cargo Load fluid tanks XL
+  { id = 'boxutility/earth_freight_trailer_boxes', name = 'Box utility trailer', fit = 'Boxes', hitch = 'ball', room = '2 XL boxes', maxKg = 600 },
+  { id = 'boxutility/earth_freight_trailer_fluid', name = 'Box utility trailer', fit = 'Tanks', hitch = 'ball', room = '2 XL tanks', maxKg = 600 },
+  { id = 'boxutility_large/earth_freight_large_boxes', name = 'Large box utility trailer', fit = 'Boxes', hitch = 'ball', room = '3 XL boxes', maxKg = 800 },
+  { id = 'boxutility_large/earth_freight_large_tanks', name = 'Large box utility trailer', fit = 'Tanks', hitch = 'ball', room = '3 XL tanks', maxKg = 800 },
+  { id = 'tiltdeck/earth_freight_22ft_boxes', name = 'Tilt deck 22 ft', fit = 'Boxes', hitch = 'ball', room = '4 XL boxes', maxKg = 2900 },
+  { id = 'tiltdeck/earth_freight_22ft_tanks', name = 'Tilt deck 22 ft', fit = 'Tanks', hitch = 'ball', room = '4 XL tanks', maxKg = 2900 },
+  { id = 'tiltdeck/earth_freight_30ft_boxes', name = 'Tilt deck 30 ft', fit = 'Boxes', hitch = 'ball', room = '7 XL boxes', maxKg = 3800 },
+  { id = 'cargotrailer/earth_freight_enclosed_boxes', name = 'Enclosed cargo trailer', fit = 'Boxes', hitch = 'ball', room = '4 XL boxes', maxKg = 2100 },
+  { id = 'tiltdeck/earth_freight_40ft_boxes', name = 'Tilt deck 40 ft', fit = 'Boxes', hitch = 'ball', room = '9 XL boxes', maxKg = 7000 },
+  { id = 'tiltdeck/earth_freight_30ft_gooseneck_boxes', name = 'Tilt deck 30 ft gooseneck', fit = 'Boxes', hitch = 'gooseneck', room = '7 XL boxes', maxKg = 5600 },
+  { id = 'tiltdeck/earth_freight_40ft_gooseneck_boxes', name = 'Tilt deck 40 ft gooseneck', fit = 'Boxes', hitch = 'gooseneck', room = '9 XL boxes', maxKg = 9600 },
+  { id = 'tanker/empty_short', name = 'Short tanker', hitch = 'fifthwheel', room = '17,700 L tank', maxKg = 17700 },
+  { id = 'tanker/empty', name = 'Long tanker', hitch = 'fifthwheel', room = '34,000 L tank', maxKg = 34000 },
+  { id = 'flatbed/earth_freight_28ft_boxes', name = 'Flatbed 28 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '10 XL boxes', maxKg = 8400 },
+  { id = 'dryvan/earth_freight_28ft_boxes', name = 'Dry van 28 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '8 XL boxes', maxKg = 9600 },
+  { id = 'flatbed/earth_freight_53ft_boxes', name = 'Flatbed 53 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '32 XL boxes', maxKg = 19700 },
+  { id = 'dryvan/earth_freight_53ft_boxes', name = 'Dry van 53 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '32 XL boxes', maxKg = 22400 },
+  { id = 'eu_trailers/tanker3a', name = 'EU tanker, 3 axle', hitch = 'fifthwheel', room = '22,500 L tank', maxKg = 22500 },
 }
 local forSale = {}
-for _, id in ipairs(M.FOR_SALE) do forSale[id] = true end
+for _, entry in ipairs(M.FOR_SALE) do forSale[entry.id] = entry end
+
+-- What each hitch is called on a card.
+M.HITCHES = { ball = 'ball hitch', gooseneck = 'gooseneck hitch', fifthwheel = 'fifth wheel' }
+
+-- The hitches a car has, from its fitted parts (a parts snapshot): a set of ball, gooseneck,
+-- fifthwheel. Read from the part names, so a car with an oddly named hitch may show none.
+function M.hitches(snapshot)
+  local found = {}
+  for _, part in pairs(type(snapshot) == 'table' and type(snapshot.parts) == 'table' and snapshot.parts or {}) do
+    local text = type(part) == 'string' and part:lower() or ''
+    if text:find('fifthwheel', 1, true) or text:find('fifth_wheel', 1, true) then found.fifthwheel = true
+    elseif text:find('gooseneck', 1, true) then found.gooseneck = true
+    elseif text:find('hitch', 1, true) and not text:find('pintle', 1, true) then found.ball = true end
+  end
+  return found
+end
+
+-- The most a job puts on a trailer, from the list, by its model and .pc path; nil when not listed.
+function M.limitOf(model, config)
+  -- A trailer with parts fitted keeps its whole config, which still names the .pc it came from.
+  if type(config) == 'table' then config = config.partConfigFilename end
+  if type(model) ~= 'string' or type(config) ~= 'string' then return nil end
+  local key = config:match('([^/\\]+)%.pc$')
+  local entry = key and forSale[model .. '/' .. key]
+  return entry and entry.maxKg or nil
+end
 
 -- Whether a config from the game's list is one of the trailers for sale, with a price.
 function M.sellable(info)
@@ -43,20 +89,29 @@ function M.sellable(info)
   return value ~= nil and value == value and value > 0 and value ~= math.huge
 end
 
--- Every trailer for sale, cheapest first, then by name: { model, key, config, name, preview, price }.
+-- Every trailer for sale, cheapest first, then in list order:
+-- { model, key, config, name, fit, hitch, room, maxKg, preview, price }.
 function M.catalogue(list)
-  local out = {}
+  local out, order = {}, {}
+  for i, entry in ipairs(M.FOR_SALE) do order[entry.id] = i end
   for _, info in ipairs(list or {}) do
     if M.sellable(info) then
-      out[#out + 1] = { model = info.model, key = info.key, config = info.config, name = info.name or info.model,
-        preview = info.preview, price = math.floor(tonumber(info.value) + 0.5) }
+      local entry = forSale[info.model .. '/' .. info.key]
+      out[#out + 1] = { model = info.model, key = info.key, config = info.config, name = entry.name, fit = entry.fit,
+        hitch = entry.hitch, room = entry.room, maxKg = entry.maxKg, preview = info.preview,
+        price = math.floor(tonumber(info.value) + 0.5), order = order[entry.id] }
     end
   end
   table.sort(out, function(a, b)
     if a.price ~= b.price then return a.price < b.price end
-    return a.model .. '/' .. a.key < b.model .. '/' .. b.key
+    return a.order < b.order
   end)
   return out
+end
+
+-- The name a bought trailer goes by: its card's name, with what is fitted.
+function M.offerName(offer)
+  return offer.fit and (offer.name .. ' with ' .. offer.fit:lower()) or offer.name
 end
 
 -- What a trailer sells for: SELL_SHARE of what was paid, less the repair it needs, never below $0.
@@ -75,13 +130,17 @@ function M.space(storage)
 end
 
 -- A trailer's space from its containers, or, when they give none, from the cargo boxes and fluid
--- tanks fitted to it, as for a car (a parts snapshot; a trailer has no boot).
-function M.spaceWith(storage, snapshot)
+-- tanks fitted to it, as for a car (a parts snapshot; a trailer has no boot). With maxKg, no job
+-- puts more than that many kg on it, however much room its boxes or tank have.
+function M.spaceWith(storage, snapshot, maxKg)
   local space = M.space(storage)
   if snapshot then
     local fitted = cargo.capacity(snapshot)
     if space.slots == 0 and not fitted.boot then space.slots, space.kg = fitted.slots, fitted.kg end
     if space.litres == 0 and fitted.litres > 0 then space.litres, space.tankKg = fitted.litres, fitted.tankKg end
+  end
+  if type(maxKg) == 'number' and maxKg > 0 then
+    space.kg, space.tankKg, space.maxKg = math.min(space.kg, maxKg), math.min(space.tankKg, maxKg), maxKg
   end
   return space
 end
@@ -111,6 +170,18 @@ function M.attach(c)
       return list
     end
     return self.trailerList or {}
+  end
+
+  -- The most a job puts on the trailer owned, or nil for no limit (a trailer no longer for sale).
+  function c:trailerLimit()
+    local t = self.trailer
+    if not t then return nil end
+    return t.maxKg or M.limitOf(t.model, t.config)
+  end
+
+  -- What the trailer owned is worth for wealth: what was paid for it and its parts.
+  function c:trailerWorth()
+    return self.trailer and self.trailer.paid or 0
   end
 
   -- The trailer's space while it is out and hitched, or nil.
@@ -179,7 +250,7 @@ function M.attach(c)
     local out = self.trailerOut
     if not out then return end
     if not snapshot and self.garage.parts then snapshot = self.garage:parts(out.id) end
-    out.space = M.spaceWith(self.garage.cargoStorage and self.garage:cargoStorage(out.id) or {}, snapshot)
+    out.space = M.spaceWith(self.garage.cargoStorage and self.garage:cargoStorage(out.id) or {}, snapshot, self:trailerLimit())
     self.appliedWeight = nil
   end
 
@@ -269,6 +340,8 @@ function M.attach(c)
     local kept = persistence.plainConfig({ model = config.model or t.model, parts = config.parts, partsTree = config.partsTree,
       partConfigFilename = config.partConfigFilename, vars = config.vars, paints = config.paints })
     if kept then t.config = kept else self.diag:event('trailer_config_unsaved', t.model, 'W') end
+    -- The parts are part of what the trailer is worth: its sale, repairs and the player's wealth.
+    t.paid = math.max(0, t.paid + bill.cost)
     backToCar(self)
     self.trailerFeedback = 'Trailer parts paid: ' .. dollars(bill.cost) .. '. Back up to your trailer to hitch it again.'
     self:autoSaveSoon('your trailer parts')
@@ -310,7 +383,8 @@ function M.attach(c)
       self.trailerFeedback = problem
       return false
     end
-    self.trailer = { model = offer.model, config = offer.config, name = offer.name, paid = offer.price, stored = false }
+    self.trailer = { model = offer.model, config = offer.config, name = M.offerName(offer), paid = offer.price,
+      maxKg = offer.maxKg, stored = false }
     if not self:spawnTrailer() then
       self.trailer = nil
       self.trailerFeedback = 'Could not bring that trailer out. Try again in a moment. You have not been charged.'
@@ -318,8 +392,10 @@ function M.attach(c)
     end
     self:spend(offer.price, 'trailer')
     self.trailersOpen = false
-    self.trailerFeedback = 'Bought the ' .. offer.name .. ' for ' .. dollars(offer.price)
+    local need = offer.hitch and not M.hitches(self.ownedParts)[offer.hitch]
+    self.trailerFeedback = 'Bought the ' .. self.trailer.name .. ' for ' .. dollars(offer.price)
       .. '. It is behind your car: back up to it slowly and it hitches itself.'
+      .. (need and (' It needs a ' .. M.HITCHES[offer.hitch] .. ': fit one with Buy parts if your car has none.') or '')
     self:autoSaveSoon('buying your trailer')
     self.diag:event('trailer_bought', offer.model .. '/' .. offer.key .. ' ' .. offer.price)
     return true
@@ -523,7 +599,7 @@ function M.attach(c)
     local t = self.trailer
     if not t then return nil end
     local damage = self:trailerDamage()
-    return { model = t.model, config = t.config, name = t.name, paid = t.paid,
+    return { model = t.model, config = t.config, name = t.name, paid = t.paid, maxKg = t.maxKg,
       damage = damage > 0 and math.min(9007199254740991, damage) or nil, stored = t.stored == true }
   end
 
@@ -556,9 +632,18 @@ function M.attach(c)
       view.sellArmed = self.sellArmed == true
       view.repairAllowed = view.owned.owed > 0 and view.owned.owed <= balance
     elseif self.trailersOpen then
+      -- One card per trailer, cheapest first; a trailer sold with boxes or tanks has a button for each.
       view.offers = {}
+      local cards, have = {}, M.hitches(self.ownedParts)
       for i, offer in ipairs(self:trailerCatalogue()) do
-        view.offers[i] = { index = i, name = offer.name, preview = offer.preview, price = offer.price,
+        local card = cards[offer.name]
+        if not card then
+          card = { name = offer.name, preview = offer.preview, hitch = offer.hitch, hitchName = M.HITCHES[offer.hitch],
+            hitchFound = offer.hitch == nil or have[offer.hitch] == true, maxKg = offer.maxKg, room = offer.room, buys = {} }
+          cards[offer.name] = card
+          view.offers[#view.offers + 1] = card
+        end
+        card.buys[#card.buys + 1] = { index = i, fit = offer.fit, room = offer.room, price = offer.price,
           short = offer.price > balance and offer.price - balance or nil,
           allowed = problem == nil and offer.price <= balance }
       end
@@ -575,8 +660,10 @@ function M.clean(t)
       or type(t.name) ~= 'string' or t.name == '' or #t.name > 256 or t.name:find('%c')
       or not finite(t.paid) or t.paid < 0 or t.paid ~= math.floor(t.paid) or t.paid > 9007199254740991
       or (t.damage ~= nil and (not finite(t.damage) or t.damage < 0))
-      or (t.stored ~= nil and type(t.stored) ~= 'boolean') then return nil end
-  return { model = t.model, config = t.config, name = t.name, paid = t.paid, damage = t.damage, stored = t.stored == true }
+      or (t.stored ~= nil and type(t.stored) ~= 'boolean')
+      or (t.maxKg ~= nil and (not finite(t.maxKg) or t.maxKg <= 0)) then return nil end
+  return { model = t.model, config = t.config, name = t.name, paid = t.paid, maxKg = t.maxKg, damage = t.damage,
+    stored = t.stored == true }
 end
 
 return M
