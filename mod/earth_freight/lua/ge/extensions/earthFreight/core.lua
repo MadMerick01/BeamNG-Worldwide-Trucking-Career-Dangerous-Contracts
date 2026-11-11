@@ -459,6 +459,7 @@ function M.new(deps)
     self.hudSeen, self.hudHints, self.hudMissingFor = nil, nil, nil
     self.ship, self.shipAt, self.shipClaim, self.shipFeedback = nil, nil, nil, nil
     self.finding = nil
+    self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
     self:interrupt('earth_level_required')
@@ -1816,6 +1817,7 @@ function M.new(deps)
     self:watchClaim()
     self:watchFind()
     self:watchCommission()
+    self:watchTurf()
     self:reportWhere(sample)
     self:provideVehicle()
     self:watchHire()
@@ -1830,7 +1832,7 @@ function M.new(deps)
     self:watchTimedSave()
     self:watchAutoSave()
     if self.streetView then
-      self.streetView:poll(self.clock, function() return self:streetViewPosition() end)
+      self.streetView:poll(self.clock, function() return self:streetViewPosition() end, function() return self:baseMapData() end)
     end
     -- A refuel the car never answered is given up, uncharged.
     if self.refuelPending and self.clock - self.refuelPending.at > fuel.STALE_SECONDS then
@@ -1970,6 +1972,33 @@ function M.new(deps)
       or 'To see Street View, copy the address below into your web browser.'
     self.diag:event('street_view', 'started')
     return true
+  end
+
+  -- The Base map: the same little web server as Street View, at its /bases page, opened in the browser.
+  function c:openBaseMap()
+    if not self.streetView then return false end
+    local ok, why = self.streetView:start()
+    if not ok then
+      self.baseMapFeedback = why == 'port_busy'
+        and 'The base map could not start: something else on your computer is using port ' .. self.streetView.port .. '.'
+        or 'The base map could not start in this version of BeamNG.'
+      self.diag:event('base_map', tostring(why), 'W')
+      return false
+    end
+    self:rememberStreetView(true)
+    local url = self.streetView:url() .. 'bases'
+    local okOpen, opened = false, false
+    if self.openUrl then okOpen, opened = pcall(self.openUrl, url) end
+    self.baseMapFeedback = (okOpen and opened ~= false)
+      and 'The base map is opening in your web browser. If it does not, copy the address below into your browser.'
+      or 'To see the base map, copy the address below into your web browser.'
+    self.diag:event('base_map', 'started')
+    return true
+  end
+
+  function c:baseMapView()
+    if not self.streetView then return nil end
+    return { on = self.streetView.on, url = self.streetView:url() .. 'bases', feedback = self.streetView.on and self.baseMapFeedback or nil }
   end
 
   function c:stopStreetView()
@@ -2209,6 +2238,7 @@ function M.new(deps)
       here = trade.here, region = trade.region, where = trade.where, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
       shortages = trade.shortages,
       streetView = self:streetViewView(),
+      baseMap = self:baseMapView(),
       sightseeing = self:sightseeingView(current),
       gpsAllowed = self.adapter.setDestination ~= nil and self.state == 'READY' and self.arrived and not self.hire,
       gpsFeedback = self.gpsFeedback,
@@ -2744,6 +2774,7 @@ function M.onFilesChanged(files)
 end
 function M.openStreetView() return safely(function() return ensure():openStreetView() end) end
 function M.stopStreetView() return safely(function() return ensure():stopStreetView() end) end
+function M.openBaseMap() return safely(function() return ensure():openBaseMap() end) end
 function M.onExtensionUnloaded()
   -- The web server lets go of its port, so the next load can open it again.
   if active and active.streetView then pcall(function() active.streetView:stop() end) end

@@ -789,6 +789,16 @@
             <span style="color:#c9d6d2;white-space:nowrap;">{{b.radiusKm}} km circle<span ng-if="b.distanceMetres != null">, {{km(b.distanceMetres)}} km away</span></span>
           </div>
         </div>
+        <div ng-if="data.home && data.baseMap" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Base map</div>
+          <div style="margin-top:2px;font-size:13px;">An overhead map in your web browser with every base's circle, the borders between them, your truck and your job's pickup and drop-off. It follows your truck and tells you whose turf you are in. Handy on a second screen, and it can pop out into its own window.</div>
+          <button type="button" ng-click="openBaseMap()" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Open base map</button>
+          <div ng-if="data.baseMap.feedback" role="status" style="margin-top:6px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.baseMap.feedback}}</div>
+          <div ng-if="data.baseMap.on && data.baseMap.url" style="display:flex;gap:6px;margin-top:4px;font-size:12px;">
+            <input aria-label="Base map address" type="text" readonly ng-value="data.baseMap.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
+            <button type="button" aria-label="Copy the base map address" ng-click="copyBaseMap()">Copy</button>
+          </div>
+        </div>
         <div ng-if="data.home.feedback" role="status" style="margin-top:4px;">{{data.home.feedback}}</div>
       </div>
       <div ng-if="tab === 'streetview'">

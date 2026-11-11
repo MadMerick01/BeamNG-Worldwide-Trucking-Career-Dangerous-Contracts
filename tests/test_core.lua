@@ -1509,6 +1509,53 @@ do
   T.eq(r.property.peak, wealth, 'and back after a reload')
 end
 
+-- The Base map's data and the messages when the truck crosses into or out of a turf.
+do
+  local Home = require('earthFreight/home')
+  local c, io, a, g = F.controller()
+  g.fitted.box = 'pickup_cargo_load_box_m'
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local toasts = {}
+  c.toast = function(self, kind, title, text) if title:find('turf', 1, true) then toasts[#toasts + 1] = text end end
+  local d = c:baseMapData()
+  T.check(d.ok, 'base map answers'); T.eq(#d.circles, 0, 'no circles without a base'); T.eq(d.turf, nil, 'and no turf')
+  T.check(d.truck and d.truck.latitude == a.pose.latitude, 'the truck is on it')
+  c.profile.progression.balance = 400000
+  T.check(c:claimHome(), 'base bought')
+  d = c:baseMapData()
+  T.eq(#d.circles, 1, 'your circle'); T.check(d.circles[1].mine, 'marked as yours'); T.eq(d.circles[1].town, 'Penrith', 'around its town')
+  T.check(d.turf and d.turf.mine, 'you are in your turf'); T.near(d.turf.share, 0.4, 1e-9, 'worth +0.4')
+  -- A job's two ends, with whose turf each is in.
+  local job
+  for _, j in ipairs(c:view().town.jobs) do if not job and not j.contract and not j.drop and j.units > 0 then job = j end end
+  T.check(c:takeJob(job.id), 'job taken')
+  d = c:baseMapData()
+  T.check(d.job and d.job.pickup and d.job.dropoff, 'both ends of the job')
+  T.eq(d.job.pickup.name, 'Penrith', 'picked up in Penrith'); T.check(d.job.pickup.turf.mine and d.job.pickup.turf.counts, 'in your turf, and it counts')
+
+  -- Crossing borders: told once the change is seen twice in a row. Before the base, the truck started outside
+  -- every turf, which was said nothing about.
+  local circles = c:baseCircles()
+  c.baseCircles = function() return circles end
+  for _ = 1, 3 do c:tick(Home.TURF_SECONDS + 0.1) end
+  T.eq(toasts[1], 'You are in your turf around Penrith. Jobs that start or end here pay you +0.4 on the region multiplier.', 'a new base: you are in your turf')
+  T.eq(#toasts, 1, 'said once')
+  for k in pairs(toasts) do toasts[k] = nil end
+  circles = {}
+  c:tick(Home.TURF_SECONDS + 0.1)
+  T.eq(#toasts, 0, 'a change seen once waits')
+  c:tick(Home.TURF_SECONDS + 0.1)
+  T.eq(toasts[1], 'You have left your turf. No base bonus out here.', 'leaving your turf')
+  circles = { { latitude = a.pose.latitude, longitude = a.pose.longitude, radiusKm = 20, name = 'Penrith', owner = 'Belake' } }
+  c:tick(Home.TURF_SECONDS + 0.1); c:tick(Home.TURF_SECONDS + 0.1)
+  T.eq(toasts[2], "You are in Belake's turf around Penrith. Jobs that start or end here pay you +0.2 on the region multiplier.", 'entering someone else\'s turf')
+  circles = {}
+  c:tick(Home.TURF_SECONDS + 0.1)
+  circles = { { latitude = a.pose.latitude, longitude = a.pose.longitude, radiusKm = 20, name = 'Penrith', owner = 'Belake' } }
+  c:tick(Home.TURF_SECONDS + 0.1); c:tick(Home.TURF_SECONDS + 0.1)
+  T.eq(#toasts, 2, 'a blip along a border says nothing')
+end
+
 -- The circle's size: 20 km at $350,000 on flat ground, area in line with wealth, bigger on steep
 -- ground, never past 100 km; and whose turf a spot is where circles overlap.
 do

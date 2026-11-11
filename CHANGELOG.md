@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New Base map: see every base's circle on a real map.** Press **Open base map** on the **Base** tab and an overhead map opens in your web browser, like Street View does. It shows your circle, every other trucker's circle on a server, the borders where circles overlap (each turf is shaded in its owner's colour), your truck as it moves, and your job's pickup and drop-off. The top of the page says whose turf you are in and what it's worth, and the bottom says whether each end of your job gets the base bonus. **Follow truck** keeps you in the middle, and **Pop out** opens it in its own small window for a second screen. The map pictures need the internet.
+- **The game now tells you when you cross into or out of a turf.** A short message says "You are in your turf around Penrith" or "You are in Belake's turf", with the bonus jobs pay there, and another says when you have left. Driving along a border doesn't keep sending messages. Saves still work as before.
 ## Build 174 · 11 Nov 2026
 
 - **Buy new trailer now offers 16 trailers instead of two**, from the $6,000 box utility trailer up to semi trailers: tilt decks, an enclosed cargo trailer, flatbeds, dry vans, and short, long and EU tankers holding up to 34,000 L. Each trailer has its own card with its picture, what it holds and the most it can carry.
