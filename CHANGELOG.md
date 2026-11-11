@@ -7,6 +7,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **Trucking servers now post three reminders in chat, in colour, taking turns every 10 minutes while anyone is on:** how to turn on the trucking HUD (in yellow), the Discord address (in blue) and the address of the live trucking career page (in gold). Server hosts can change the lines, add more, change how often or turn them off at the top of the server plugin, and the update script keeps those changes. To get this, update the server as usual. Careers are unaffected.
+- No changes in the game. The server page now shows the server's new name, **A WW Trucking Career | MadMerick**, while it's loading and in its sample data.
 
 ## Build 179 · 11 Nov 2026
 
@@ -21,7 +22,6 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - Every base now keeps the 100 km around its town however rich its neighbours get, and new bases must be at least 300 km apart. Existing bases stay where they are and simply grow to the new size.
 - The "you are in someone's turf" message, the Base tab and the Base map now talk about the toll, and the server's web page shades each base's turf in its own colour.
 - Saves still work. Server hosts: run the server updater to get the new sizes and the toll.
-- No changes in the game. The server page now shows the server's new name, **A WW Trucking Career | MadMerick**, while it's loading and in its sample data.
 
 ## Build 177 · 11 Nov 2026
 
