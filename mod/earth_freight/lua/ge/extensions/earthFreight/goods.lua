@@ -6,7 +6,7 @@ local M = {}
 -- A parcel unit takes this many slots and weighs this many kg. A fluid unit is `litres` litres
 -- (its slots are those litres too, so a load's slots are its litres) of this many kg. Pay goes by
 -- the load's weight (jobs.weightPay); rate is a good's pay against that, 1 being the curve as is.
--- A job fills every slot or litre the vehicle has, so a Burnside with 52 slots of boxes carries
+-- A job fills every slot or litre the vehicle has. Before jobs.PAY_PERCENT (75, so a quarter less), a Burnside with 52 slots of boxes carries
 -- 780 kg of parts for $2,000 over 5 km, or 1,200 kg of bricks (8 units with 3 L boxes and an
 -- M: the weight runs out first) for about $2,620; a full 800 L tank is 800 kg of water for about $2,030, or 600 kg of
 -- fuel for about $1,540. Parcels are heavy for their slots (bricks 50 kg

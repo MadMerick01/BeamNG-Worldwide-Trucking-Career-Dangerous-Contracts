@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Every job now pays a quarter less.** Town jobs, off-road drops, dangerous contracts, shortages, jackpots and Ship Day containers all pay 75% of what they did, so a full load of parts in the starter Burnside over 5 km pays $1,500 instead of $2,000. The "don't ask questions" beacon job pays $9,000 instead of $12,000, and on a server the commission from your base's turf is a quarter lower too, because it's a share of the pay.
+- Prices haven't changed: cars, parts, repairs, trailers, fuel, fees and the $250,000 base cost the same as before, so everything takes about a third more driving to afford. Your circle of influence still grows with your wealth in the same way, so it will grow more slowly.
+- Your saves still work, and the money you already have stays as it is. A job you had already taken before updating keeps the pay it showed when you took it.
+
 ## Build 176 · 11 Nov 2026
 
 - **New Base map: see every base's circle on a real map.** Press **Open base map** on the **Base** tab and an overhead map opens in your web browser, like Street View does. It shows your circle, every other trucker's circle on a server, the borders where circles overlap (each turf is shaded in its owner's colour), your truck as it moves, and your job's pickup and drop-off. The top of the page says whose turf you are in and what it's worth, and the bottom says whether each end of your job gets the base bonus. **Follow truck** keeps you in the middle, and **Pop out** opens it in its own small window for a second screen. The map pictures need the internet.
