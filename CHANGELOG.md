@@ -6,6 +6,13 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Buy new trailer now offers 16 trailers instead of two**, from the $6,000 box utility trailer up to semi trailers: tilt decks, an enclosed cargo trailer, flatbeds, dry vans, and short, long and EU tankers holding up to 34,000 L. Each trailer has its own card with its picture, what it holds and the most it can carry.
+- Trailers come ready to work, with XL cargo boxes fitted. The box utility trailer can also be bought with XL fluid tanks instead: press **Boxes** or **Tanks** on its card. The tankers' own tanks start empty.
+- Each card says which hitch the trailer needs (a ball hitch, a gooseneck hitch or a fifth wheel) and whether your car has one. Small trailers take a ball hitch, and semi trailers need a truck with a fifth wheel. You can still buy a trailer before fitting the hitch with **Buy parts**.
+- **Every trailer now has a weight limit.** A job fills your trailer first, up to the most that trailer can carry, and the rest goes in your car. Before, a trailer could take as much as its boxes held, which on the biggest trailers would have been far more than they're built for. The limits are BeamNG's own, such as 600 kg for the box utility trailer and 22,400 kg for the 53 ft dry van.
+- **Your trailer now counts towards your wealth**, at what you paid for it and its parts. That includes the circle around your base, and the leaderboard on a multiplayer server. Buying a trailer no longer looks like losing money. Trailer parts you pay for add to what the trailer is worth, so they also count when you sell it.
+- Your saves still work, and a trailer you already own keeps working. A box utility trailer bought before this update gets its 600 kg limit too.
+
 ## Build 173 · 10 Nov 2026
 
 - **Your progress now saves itself every 5 minutes.** If you've driven, earned or spent anything since your last save, the game saves on its own once five minutes have passed. It never saves while you're moving: it waits until you next stop for a few seconds, the same way it already saves after a delivery, so there's no hitch on the road. The Save line in the HUD says "Saved automatically." when it happens.

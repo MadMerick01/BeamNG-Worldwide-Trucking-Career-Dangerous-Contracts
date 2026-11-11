@@ -260,7 +260,7 @@ function M.validate(s)
     if type(raw) == 'table' and type(raw.config) == 'table' then
       local config = plainConfig(raw.config)
       if not config then return nil, 'invalid_trailer' end
-      raw = { model = raw.model, config = config, name = raw.name, paid = raw.paid, damage = raw.damage, stored = raw.stored }
+      raw = { model = raw.model, config = config, name = raw.name, paid = raw.paid, maxKg = raw.maxKg, damage = raw.damage, stored = raw.stored }
     end
     trailer = trailers.clean(raw)
     if not trailer then return nil, 'invalid_trailer' end

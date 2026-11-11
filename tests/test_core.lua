@@ -1629,15 +1629,23 @@ end
 -- Trailers: bought new, hitched behind the car, loaded first, stored, brought out, sold.
 do
   local TR = require('earthFreight/trailers')
-  local c, io, a, g, w = F.controller()
+  local hitched = F.garage(); hitched.fitted.hitch = 'pickup_tow_hitch'
+  local c, io, a, g, w = F.controller({ garage = hitched })
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   c.profile.progression.balance = 100000
   T.eq(c:view().trailer.owned, nil, 'no trailer to start with'); T.eq(c:view().trailer.offers, nil, 'the list is closed')
   c:openTrailers(true)
   local offers = c:view().trailer.offers
-  T.eq(#offers, 2, 'only the trailers for sale, no cars or other trailers'); T.eq(offers[1].name, 'Cargo Boxes XL', 'cheapest first')
-  T.eq(offers[2].price, 30000, 'at its game price'); T.check(offers[1].allowed, 'affordable')
+  T.eq(#offers, 1, 'only the trailers for sale, no cars or other trailers, one card each')
+  T.eq(offers[1].name, 'Box utility trailer', 'by its name on the list'); T.eq(#offers[1].buys, 2, 'with boxes or with tanks')
+  T.eq(offers[1].buys[1].fit, 'Boxes', 'cheapest first'); T.eq(offers[1].buys[2].price, 30000, 'at its game price')
+  T.check(offers[1].buys[1].allowed, 'affordable'); T.eq(offers[1].maxKg, 600, 'the most it carries')
+  T.eq(offers[1].hitch, 'ball', 'the hitch it needs'); T.eq(offers[1].hitchFound, true, 'and the car has one')
   T.check(c:buyTrailer(1), 'bought'); T.eq(c:view().balance, 95000, 'paid')
+  T.eq(c.trailer.name, 'Box utility trailer with boxes', 'named with what is fitted'); T.eq(c.trailer.maxKg, 600, 'its limit kept')
+  T.eq(c:view().trailer.owned.space.kg, 600, 'no job puts more on it than its limit')
+  -- The rest of this test loads more than that, so it gets a bigger limit.
+  c.trailer.maxKg = 5000; c:readTrailerSpace()
   local id = c.trailerOut.id
   T.eq(g.trailers[id].config, 'vehicles/boxutility/earth_freight_trailer_boxes.pc', 'spawned behind the car')
   T.check(not c:buyTrailer(2), 'one trailer at a time'); T.check(c.trailerFeedback:find('already own'), 'told why')
@@ -1700,6 +1708,33 @@ do
   T.check(c:view().trailer.foreign, 'not theirs'); T.eq(c:trailerSpace(), nil, 'no space from it')
 end
 
+-- A trailer's limit: a job fills the trailer first, up to the most it carries, then the car; the
+-- trailer counts in wealth at what was paid for it.
+do
+  local TR = require('earthFreight/trailers')
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 100000
+  local wealth = c:wealth()
+  T.check(c:buyTrailer(1), 'bought'); local id = c.trailerOut.id
+  T.eq(c:wealth(), wealth, 'buying a trailer keeps wealth the same: it counts at what was paid')
+  c:couplerChanged(1, id, true)
+  local to = F.offer(c, stClair, 'parts')
+  local q = c:jobQuote(c:board(penrith)[1])
+  T.eq(q.trailerUnits, math.floor(600 / goods.get('parts').kg), 'the trailer takes up to 600 kg')
+  T.eq(q.units, q.trailerUnits + 2, 'the rest goes in the car')
+  -- An older save's trailer has no limit saved: the list gives it.
+  T.eq(TR.limitOf('boxutility', 'vehicles/boxutility/earth_freight_trailer_fluid.pc'), 600, 'by its .pc')
+  T.eq(TR.limitOf('boxutility', { partConfigFilename = 'vehicles/boxutility/earth_freight_trailer_boxes.pc' }), 600, 'or the .pc its parts came from')
+  T.eq(TR.limitOf('flatbed', 'vehicles/flatbed/logs.pc'), nil, 'none for a trailer not for sale')
+  T.eq(c:view().trailer.offers, nil, 'the list closes once bought')
+  c.trailer.maxKg = nil
+  T.eq(c:trailerLimit(), 600, 'so an older trailer gets its limit too')
+  -- Hitches are read from the car's part names.
+  local h = TR.hitches({ parts = { a = 'semi_fifthwheel', b = 'pickup_gooseneck_hitch', c = 'van_tow_hitch', d = 'x_pintle_hitch' } })
+  T.check(h.fifthwheel and h.gooseneck and h.ball, 'fifth wheel, gooseneck and ball'); T.eq(TR.hitches(nil).ball, nil, 'none without parts')
+end
+
 -- Trailer parts: cargo boxes fitted to a trailer in the parts menu, billed like car parts, saved.
 do
   local c, io, a, g = F.controller()
@@ -1720,7 +1755,9 @@ do
   c:vehicleSpawned(id); c:tick(0.1)
   T.eq(c.pendingCar, nil, 'not a car bill'); T.eq(c:view().trailer.shop.bill.cost, 1500, 'the box billed at its price')
   T.eq(c:view().trailer.owned.space.slots, 16, 'its space counted')
+  local paid = c.trailer.paid
   T.check(c:payTrailerParts(), 'paid'); T.eq(c:view().balance, before - 1500, 'charged')
+  T.eq(c.trailer.paid, paid + 1500, 'the parts add to what the trailer is worth')
   T.eq(g.vehicleId, 1, 'back in the car'); T.eq(c.trailerShop, nil, 'done')
   T.eq(type(c.trailer.config), 'table', 'the fitted parts kept')
   c:couplerChanged(1, id, true); c:tick(0.6); c:tick(0.6)
