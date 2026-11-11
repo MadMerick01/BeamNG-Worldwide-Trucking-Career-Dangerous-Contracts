@@ -524,6 +524,19 @@ do
   W.boardCareer(W.players[1], { progression = { balance = 50000 }, vehicle = { worth = 30000 }, property = { paid = 250000 } })
   board = W.status().leaderboard
   T.eq(board[1].baseValue, 250000, 'the base at what was paid'); T.eq(board[1].wealth, 330000, 'cash, truck and base')
+  -- So does a trailer, at what was paid for it and its parts.
+  W.boardCareer(W.players[1], { progression = { balance = 50000 }, vehicle = { worth = 30000 }, property = { paid = 250000 },
+    trailer = { paid = 26000 } })
+  board = W.status().leaderboard
+  T.eq(board[1].trailerValue, 26000, 'the trailer at what was paid'); T.eq(board[1].wealth, 356000, 'cash, truck, trailer and base')
+  W.boardCareer(W.players[1], { progression = { balance = 50000 }, vehicle = { worth = 30000 }, property = { paid = 250000 },
+    trailer = { paid = -3 } })
+  T.eq(W.status().leaderboard[1].trailerValue, 0, 'a bad trailer price is ignored')
+  -- A second trailer kept at the base counts too.
+  W.boardCareer(W.players[1], { progression = { balance = 50000 }, vehicle = { worth = 30000 }, property = { paid = 250000 },
+    trailer = { paid = 26000 }, spareTrailer = { paid = 4000 } })
+  board = W.status().leaderboard
+  T.eq(board[1].trailerValue, 30000, 'both trailers at what was paid'); T.eq(board[1].wealth, 360000, 'in wealth')
   -- Kept over a restart.
   local W2 = server(env.files)
   T.eq(#W2.stats.feed, #W.stats.feed, 'the feed survives a restart')

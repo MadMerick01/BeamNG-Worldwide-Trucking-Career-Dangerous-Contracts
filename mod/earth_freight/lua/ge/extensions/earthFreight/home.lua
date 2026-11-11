@@ -52,7 +52,8 @@ function M.attach(c)
     return d ~= nil and d <= M.HOME_METRES
   end
 
-  -- What the player is worth: cash, plus what their truck is worth, plus what they paid for their base.
+  -- What the player is worth: cash, plus what their truck is worth, plus what they paid for their
+  -- trailers (and their parts) and their base.
   function c:wealth()
     local progression = self.profile and self.profile.progression
     if not progression then return 0 end
@@ -61,7 +62,8 @@ function M.attach(c)
       local saved = self.profile.vehicle
       truck = type(saved) == 'table' and (saved.worth or saved.value) or 0
     end
-    return progression.balance + math.max(0, truck) + (self.property and self.property.paid or 0)
+    local trailer = self.trailerWorth and self:trailerWorth() or 0
+    return progression.balance + math.max(0, truck) + trailer + (self.property and self.property.paid or 0)
   end
 
   -- The town a spot belongs to, for a base's circle: { latitude, longitude, name, boost }, or nil until

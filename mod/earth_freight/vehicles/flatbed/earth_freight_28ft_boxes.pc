@@ -1,0 +1,38 @@
+{
+  "format": 2,
+  "mainPartName": "flatbed_base",
+  "model": "flatbed",
+  "parts": {
+    "28ft_flatbed_axle": "28ft_flatbed_single_axle",
+    "bogie_airbag": "bogie_airbag",
+    "bogie_brake_1": "bogie_brake_1",
+    "bogie_brake_2": "bogie_brake_2",
+    "bogie_leaf": "bogie_leaf",
+    "bogie_mudflap": "bogie_mudflap",
+    "bogie_tire_1": "bogie_tire_1",
+    "bogie_tire_2": "bogie_tire_2",
+    "bogie_wheel_1": "bogie_wheel_1_alt",
+    "bogie_wheel_2": "bogie_wheel_2_alt",
+    "bogie_wheeldata_1": "bogie_wheeldata_1",
+    "bogie_wheeldata_2": "bogie_wheeldata_2",
+    "flatbed": "flatbed_28",
+    "flatbed_28_lights": "flatbed_28_lights",
+    "flatbed_ABS": "",
+    "flatbed_dring": "flatbed_dring",
+    "flatbed_feet": "flatbed_feet",
+    "flatbed_licenseplate": "flatbed_licenseplate",
+    "flatbed_load_short": "flatbed_load_short_cargo_load_box_10XL",
+    "flatbed_mod": "",
+    "flatbed_pintle": "flatbed_pintle",
+    "flatbed_rear_guard": "flatbed_rear_guard",
+    "flatbed_storagebox": "",
+    "licenseplate_design_2_1": "",
+    "rear_guard_lights": "rear_guard_lights"
+  },
+  "vars": {
+    "$bogiepos": 0,
+    "$rideheight": 1.2,
+    "$tirepressure_1": 80,
+    "$tirepressure_2": 80
+  }
+}

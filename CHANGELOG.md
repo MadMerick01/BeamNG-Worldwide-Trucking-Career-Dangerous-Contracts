@@ -8,6 +8,19 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **New Base map: see every base's circle on a real map.** Press **Open base map** on the **Base** tab and an overhead map opens in your web browser, like Street View does. It shows your circle, every other trucker's circle on a server, the borders where circles overlap (each turf is shaded in its owner's colour), your truck as it moves, and your job's pickup and drop-off. The top of the page says whose turf you are in and what it's worth, and the bottom says whether each end of your job gets the base bonus. **Follow truck** keeps you in the middle, and **Pop out** opens it in its own small window for a second screen. The map pictures need the internet.
 - **The game now tells you when you cross into or out of a turf.** A short message says "You are in your turf around Penrith" or "You are in Belake's turf", with the bonus jobs pay there, and another says when you have left. Driving along a border doesn't keep sending messages. Saves still work as before.
+## Build 174 · 11 Nov 2026
+
+- **Buy new trailer now offers 16 trailers instead of two**, from the $6,000 box utility trailer up to semi trailers: tilt decks, an enclosed cargo trailer, flatbeds, dry vans, and short, long and EU tankers holding up to 34,000 L. Each trailer has its own card with its picture, what it holds and the most it can carry.
+- Trailers come ready to work, with XL cargo boxes fitted. The box utility trailer can also be bought with XL fluid tanks instead: press **Boxes** or **Tanks** on its card. The tankers' own tanks start empty.
+- Each card says which hitch the trailer needs (a ball hitch, a gooseneck hitch or a fifth wheel) and whether your car has one. Small trailers take a ball hitch, and semi trailers need a truck with a fifth wheel. You can still buy a trailer before fitting the hitch with **Buy parts**.
+- **Every trailer now has a weight limit.** A job fills your trailer first, up to the most that trailer can carry, and the rest goes in your car. Before, a trailer could take as much as its boxes held, which on the biggest trailers would have been far more than they're built for. The limits are BeamNG's own, such as 600 kg for the box utility trailer and 22,400 kg for the 53 ft dry van.
+- **Your trailer now counts towards your wealth**, at what you paid for it and its parts. That includes the circle around your base, and the leaderboard on a multiplayer server. Buying a trailer no longer looks like losing money. Trailer parts you pay for add to what the trailer is worth, so they also count when you sell it.
+- **Your base of operations now has a spot for a trailer.** Within 200 m of your base, **Park at base** and **Hitch from base** are free. Away from it, **Send to base** and **Have it delivered** cost $100 plus 2 cents a km from your base, so a trailer 500 km away costs $110 to move.
+- **With a base you can own two trailers.** One parks in the spot at your base while you use the other. At your base, **Swap trailers** parks the one you are towing and brings out the other, for free. **Use this trailer** picks which one to bring out next. Without a base you can own one trailer.
+- **Your trailer no longer goes everywhere with you.** If you have no base, or its spot is taken, **Store at depot** keeps your trailer for $250, and bringing it out again costs $250 too, wherever you are.
+- Trailer repairs cost half at your base, as for cars. Both trailers count towards your wealth and on the multiplayer leaderboard.
+- Your save still works. A trailer you had stored moves to your base if it has a free spot, or to the depot if not, with nothing to pay. A trailer that gets lost or left behind by a teleport goes there too, for free.
+- Your saves still work, and a trailer you already own keeps working. A box utility trailer bought before this update gets its 600 kg limit too.
 
 ## Build 173 · 10 Nov 2026
 

@@ -1,0 +1,7 @@
+{
+  "format": 2,
+  "model": "boxutility_large",
+  "parts": {
+    "boxutility_large_load": "boxutility_large_load_cargo_load_box_3XL"
+  }
+}

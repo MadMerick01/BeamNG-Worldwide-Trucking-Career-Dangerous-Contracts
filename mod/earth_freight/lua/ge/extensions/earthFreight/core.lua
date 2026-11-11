@@ -219,14 +219,19 @@ function M.new(deps)
     end
     self.store = self.mp and multiplayer.store(self.mp, deps.io) or persistence.new(deps.io)
     self.profile, self.loadStatus = self.store:load()
-    -- The trailer owned: one saved out comes back behind the car once it is back (watchTrailer).
+    -- The trailers owned: one saved out comes back behind the car once it is back (watchTrailer). A
+    -- second one is kept stored, with a base.
     self.trailer = self.profile and trailers.clean(self.profile.trailer) or nil
+    self.spareTrailer = self.profile and trailers.clean(self.profile.spareTrailer) or nil
     self.trailerOut, self.trailerRestored, self.foreignTrailer, self.trailersOpen = nil, nil, nil, false
     self.trailerFeedback, self.storeArmed, self.sellArmed = nil, false, false
     -- The home owned and the car stored there; like money, a home bought since the last Save is not kept.
     self.property = self.profile and copy(self.profile.property) or nil
     self.storedCars = self.profile and copy(self.profile.storedCars) or nil
     self.homeFeedback, self.homeCard = nil, nil
+    -- A trailer stored before trailers had a place (the garage that went everywhere) is at the base,
+    -- or the depot without one.
+    self:placeStoredTrailers()
     -- A paid-shipping offer the player shipped in on, paid back by their first delivery near it.
     self.offer = self.profile and copy(self.profile.offer) or nil
     -- The saved load's places are near where the player left off.
@@ -2379,7 +2384,7 @@ function M.new(deps)
         worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId,
-      trailer = self:savedTrailer(),
+      trailer = self:savedTrailer(), spareTrailer = self:savedSpareTrailer(),
       property = copy(self.property),
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
       beacon = self.beacon and { pickup = location.copy(self.beacon.pickup), drop = location.copy(self.beacon.drop),

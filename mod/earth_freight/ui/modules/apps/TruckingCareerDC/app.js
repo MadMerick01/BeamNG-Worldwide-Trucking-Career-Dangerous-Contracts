@@ -580,7 +580,15 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.buyTrailer = function (offer) {
         if (offer && offer.allowed && Number.isInteger(offer.index) && offer.index >= 1 && offer.index <= 999) core('buyTrailer(' + offer.index + ')')
       }
-      scope.storeTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeAllowed) core('storeTrailer()') }
+      // Park at base / Send to base ('base') or Store at depot ('depot'); a confirm after the load warning sends the same place.
+      scope.storeTrailer = function (place) {
+        var t = scope.data.trailer
+        if (!t || (place !== 'base' && place !== 'depot')) return
+        var allowed = place === 'base' ? (t.parkAllowed || t.sendAllowed) : t.depotAllowed
+        if (allowed || t.storeArmed === place) core("storeTrailer('" + place + "')")
+      }
+      scope.swapTrailers = function () { var t = scope.data.trailer; if (t && (t.swapAllowed || t.storeArmed === 'swap')) core('swapTrailers()') }
+      scope.switchTrailer = function () { if (scope.data.trailer && scope.data.trailer.switchAllowed) core('switchTrailer()') }
       scope.cancelStoreTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeArmed) core('cancelStoreTrailer()') }
       scope.bringOutTrailer = function () { if (scope.data.trailer && scope.data.trailer.bringOutAllowed) core('bringOutTrailer()') }
       scope.sellTrailer = function () { if (scope.data.trailer && scope.data.trailer.sellAllowed) core('sellTrailer()') }
