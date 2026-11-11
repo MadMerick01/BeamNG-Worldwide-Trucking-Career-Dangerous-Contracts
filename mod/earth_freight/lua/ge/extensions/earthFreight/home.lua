@@ -19,6 +19,8 @@ M.REPAIR_SHARE = 0.5
 M.SPACES = persistence.HOME_SPACES
 -- How long the game waits for the server's answer before Buy can be pressed again.
 M.ASK_SECONDS = 15
+-- How often the game checks whose turf the truck is in, for the messages when it changes.
+M.TURF_SECONDS = 3
 
 local MAX_INTEGER = 9007199254740991
 local dollars = pricing.dollars
@@ -117,6 +119,78 @@ function M.attach(c)
   function c:baseShareFunction()
     if #self:baseCircles() == 0 then return nil end
     return function(point) return self:baseShareAt(point) end
+  end
+
+  -- Whose turf a point is in, for this player: { town, owner, mine, share }, or nil outside every circle.
+  local function turfInfo(circles, point)
+    local t = point and location.valid(point) and magnate.turf(circles, point)
+    if not t then return nil end
+    return { town = t.name, owner = t.owner, mine = t.mine or nil,
+      share = t.mine and magnate.OWNER_SHARE or magnate.VISITOR_SHARE }
+  end
+  local function round(n, places_) local m = 10 ^ places_; return math.floor(n * m + 0.5) / m end
+
+  -- What the Base map page draws, built only when it asks: every base's circle (town centres only),
+  -- the truck, whose turf it is in, and the current job's two ends with whose turf each is in.
+  function c:baseMapData()
+    local circles = self:baseCircles()
+    local out = { ok = true, coreKm = magnate.CORE_KM, circles = {} }
+    for _, b in ipairs(circles) do
+      out.circles[#out.circles + 1] = { latitude = round(b.latitude, 5), longitude = round(b.longitude, 5),
+        radiusKm = round(b.radiusKm, 1), town = b.name, owner = b.owner, mine = b.mine or nil }
+    end
+    local sample = self.lastSample
+    if sample and sample.valid and location.valid(sample) then
+      out.truck = { latitude = sample.latitude, longitude = sample.longitude,
+        heading = location.finite(sample.heading) and math.floor(sample.heading + 0.5) or nil }
+      out.turf = turfInfo(circles, sample)
+    else
+      out.waiting = sample and sample.reason or 'earth_starting'
+    end
+    local load = self.load
+    if load then
+      local from, to = load.pickup or places.get(load.from), load.drop or load.business or places.get(load.to)
+      -- Contracts and beacon packages never get the base bonus, and an off-road drop only at the drop spot.
+      local counts = not load.contract and not load.beacon
+      local function pin(p, name, bonus)
+        if not p or not location.valid(p) then return nil end
+        local t = turfInfo(circles, p)
+        if t then t.counts = bonus or nil end
+        return { latitude = p.latitude, longitude = p.longitude, name = name, turf = t }
+      end
+      local fromTown, toTown = places.get(load.from), places.get(load.to)
+      out.job = {
+        pickup = pin(from, fromTown and fromTown.name, counts and not load.drop),
+        dropoff = pin(to, load.drop and 'Off-road drop' or (load.business and load.business.name) or (toTown and toTown.name), counts),
+      }
+    end
+    return out
+  end
+
+  -- Tells the player when they cross into or out of a turf, checked every TURF_SECONDS. A change only
+  -- counts once it is seen twice in a row, so driving along a border doesn't keep sending messages.
+  function c:watchTurf()
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return end
+    if self.turfCheckedAt and self.clock - self.turfCheckedAt < M.TURF_SECONDS then return end
+    self.turfCheckedAt = self.clock
+    local sample = self.lastSample
+    if not sample or not sample.valid or not location.valid(sample) then return end
+    local t = turfInfo(self:baseCircles(), sample)
+    local key = t and ((t.mine and 'mine' or (t.owner or '?')) .. '@' .. (t.town or '')) or ''
+    if self.turf == nil then self.turf, self.turfKey = t or false, key; return end -- where you start says nothing
+    if key == self.turfKey then self.turfPending = nil; return end
+    if self.turfPending ~= key then self.turfPending = key; return end
+    local was = self.turf
+    self.turf, self.turfKey, self.turfPending = t or false, key, nil
+    local where = function(x) return x.town and (' around ' .. x.town) or '' end
+    if t and t.mine then
+      self:toast('info', 'Your turf', string.format('You are in your turf%s. Jobs that start or end here pay you +%.1f on the region multiplier.', where(t), t.share))
+    elseif t then
+      self:toast('info', 'Base turf', string.format('You are in %s\'s turf%s. Jobs that start or end here pay you +%.1f on the region multiplier.', t.owner or 'another trucker', where(t), t.share))
+    elseif was then
+      self:toast('info', 'Base turf', was.mine and 'You have left your turf. No base bonus out here.'
+        or string.format('You have left %s\'s turf. No base bonus out here.', was.owner or 'another trucker'))
+    end
   end
 
   -- Another player's base too close to this town for a new one, or nil (magnate.MIN_APART_KM).

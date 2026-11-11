@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New Base map: see every base's circle on a real map.** Press **Open base map** on the **Base** tab and an overhead map opens in your web browser, like Street View does. It shows your circle, every other trucker's circle on a server, the borders where circles overlap (each turf is shaded in its owner's colour), your truck as it moves, and your job's pickup and drop-off. The top of the page says whose turf you are in and what it's worth, and the bottom says whether each end of your job gets the base bonus. **Follow truck** keeps you in the middle, and **Pop out** opens it in its own small window for a second screen. The map pictures need the internet.
+- **The game now tells you when you cross into or out of a turf.** A short message says "You are in your turf around Penrith" or "You are in Belake's turf", with the bonus jobs pay there, and another says when you have left. Driving along a border doesn't keep sending messages. Saves still work as before.
+
 ## Build 173 · 10 Nov 2026
 
 - **Your progress now saves itself every 5 minutes.** If you've driven, earned or spent anything since your last save, the game saves on its own once five minutes have passed. It never saves while you're moving: it waits until you next stop for a few seconds, the same way it already saves after a delivery, so there's no hitch on the road. The Save line in the HUD says "Saved automatically." when it happens.

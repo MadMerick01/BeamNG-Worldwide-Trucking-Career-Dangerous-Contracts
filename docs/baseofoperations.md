@@ -2,7 +2,9 @@
 
 Status: **steps 1 to 3 built**, 10 Nov 2026: the base replaces the home; its circle and the owner's bonus; on a
 server, bases kept by the server (one a town, 10 km apart), everyone's circles, visitors' bonus, turf pushing, Ship Day
-containers, circles and a Base column on the web page, and commission.
+containers, circles and a Base column on the web page, and commission. Since 11 Nov 2026 the Base tab also opens a
+Base map in the browser (served by the game like Street View, at `/bases`), and the game says when the truck crosses
+into or out of a turf. BeamNG.Earth's own map has no way for a mod to draw on it, so the circles live there instead.
 Dangerous contracts, heli jobs and beacon packages get no base bonus and no commission: they run on famous roads and
 remote spots far from towns, where a town's circle means little. An off-road drop counts for the town it was taken in,
 at both ends. Commission is marked paid when the owner's next save reaches the server (the save carries the batch's

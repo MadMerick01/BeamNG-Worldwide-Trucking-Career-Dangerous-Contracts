@@ -547,6 +547,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // Sightseeing: saves, swaps the truck for the free Moonhawk; Return to your job brings it back.
       scope.goSightseeing = function () { if (scope.data.sightseeing && scope.data.sightseeing.allowed) core('goSightseeing()') }
       scope.returnToJob = function () { if (scope.data.sightseeing && scope.data.sightseeing.returnAllowed) core('returnToJob()') }
+      // Opens the Base map (circles, borders and the truck, from the same little web server) in the browser.
+      scope.openBaseMap = function () { if (scope.data.baseMap) core('openBaseMap()') }
       scope.stopStreetView = function () { if (scope.data.streetView && scope.data.streetView.on) core('stopStreetView()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
@@ -637,6 +639,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.copyStreetView = function () {
         var url = scope.data && scope.data.streetView && scope.data.streetView.url
         if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/$/.test(url)) call('setClipboard("' + url + '")')
+      }
+      scope.copyBaseMap = function () {
+        var url = scope.data && scope.data.baseMap && scope.data.baseMap.url
+        if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/bases$/.test(url)) call('setClipboard("' + url + '")')
       }
       // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
       scope.openKofi = function () {
