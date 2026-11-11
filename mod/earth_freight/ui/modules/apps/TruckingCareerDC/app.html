@@ -19,6 +19,7 @@
       <span ng-if="hudAlert(data) && !atDestination(data)" ng-style="{color: hudAlert(data) === 'bad' ? '#eb5757' : '#f2c94c'}" aria-label="needs attention" style="flex:none;">&#9679;</span>
     </div>
     <div ng-if="data.where" class="ef-line" style="font-size:14px;color:#c9d6d2;"><b style="color:#f2f6f5;">{{data.where.title}}</b><span ng-if="data.where.area"> &middot; {{data.where.area}}</span><span ng-if="data.where.street" style="color:#a7e5c9;"> &middot; {{data.where.street}}</span></div>
+    <div ng-if="data.where && data.turf" class="ef-line" style="font-size:13px;font-weight:bold;" ng-style="{color: data.turf.mine ? '#6fcf97' : '#f2994a'}"><span ng-if="data.turf.mine">Your turf &middot; +{{data.turf.share | number:1}} bonus</span><span ng-if="!data.turf.mine">{{data.turf.owner || 'Another trucker'}}'s turf &middot; {{data.turf.toll}}% toll on deliveries here</span></div>
   </button>
   <div class="ef-start" ng-show="intro.open" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(4,8,10,.6);color:#f2f6f5;font:15px/1.45 sans-serif;pointer-events:auto;">
     <div role="dialog" aria-label="Worldwide Trucking start page" style="width:920px;max-width:94vw;max-height:90vh;overflow:auto;box-sizing:border-box;padding:20px 24px;background:rgba(12,19,24,.97);border:3px solid #568d7a;border-radius:12px;box-shadow:0 0 40px rgba(0,0,0,.8);">
@@ -167,6 +168,8 @@
       <div title="Where you are" style="font-size:20px;font-weight:bold;line-height:1.2;overflow-wrap:anywhere;">{{data.where.title}}</div>
       <div style="color:#c9d6d2;">{{data.where.area}}<span ng-if="data.region && data.region.boost > 1.05" title="Rough roads: jobs here pay this much more than on flat, busy ground" style="color:#f2c94c;font-weight:bold;"> &middot; rough roads &times;{{data.region.boost | number:1}}</span></div>
       <div ng-if="data.where.street" title="The road you are on, from BeamNG.Earth" style="font-size:13px;color:#a7e5c9;overflow-wrap:anywhere;">{{data.where.street}}</div>
+      <div ng-if="data.turf && data.turf.mine" title="Jobs that start or end in your own turf pay you more" style="font-size:13px;font-weight:bold;color:#6fcf97;">Your turf &middot; +{{data.turf.share | number:1}} bonus</div>
+      <div ng-if="data.turf && !data.turf.mine" title="Deliver here and part of the pay goes to this base's owner" style="font-size:13px;font-weight:bold;color:#f2994a;overflow-wrap:anywhere;">{{data.turf.owner || 'Another trucker'}}'s turf &middot; {{data.turf.toll}}% toll on deliveries here</div>
     </div>
     <div ng-if="!data.where" style="margin-top:2px;color:#c9d6d2;">{{data.here ? 'In ' + data.here.name : 'A world freight economy for BeamNG.Earth'}}<span ng-if="data.region" title="Rough roads: jobs here pay this much more than on flat, busy ground"> &middot; {{data.region.name}} <span ng-style="{color: data.region.boost > 1.05 ? '#f2c94c' : '#c9d6d2', fontWeight: data.region.boost > 1.05 ? 'bold' : 'normal'}">&times;{{data.region.boost | number:1}}</span></span></div>
     <div ng-if="notice(data)" ng-attr-role="{{notice(data).alert ? 'alert' : 'status'}}" ng-style="{borderColor: notice(data).color, color: notice(data).color}" style="margin:8px 0;padding:6px 10px;border:2px solid;border-radius:6px;background:rgba(0,0,0,.35);">

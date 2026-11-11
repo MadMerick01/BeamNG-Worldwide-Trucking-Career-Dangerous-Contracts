@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The HUD now always shows whose turf you're in.** Under the town name, an orange line such as "HybridLWB's turf · 20% toll on deliveries here" stays on screen while you're in another trucker's turf, and a green "Your turf · +0.4 bonus" while you're in your own. Outside every turf there's no line. It changes when you cross a border, at the same moment as the pop-up message. Saves still work.
+
 ## Build 182 · 11 Nov 2026
 
 - **Trucking servers now post three reminders in chat, in colour, taking turns every 10 minutes while anyone is on:** how to turn on the trucking HUD (in yellow), the Discord address (in blue) and the address of the live trucking career page (in gold). Server hosts can change the lines, add more, change how often or turn them off at the top of the server plugin, and the update script keeps those changes. To get this, update the server as usual. Careers are unaffected.
