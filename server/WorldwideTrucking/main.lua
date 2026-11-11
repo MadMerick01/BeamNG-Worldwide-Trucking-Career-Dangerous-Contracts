@@ -72,6 +72,17 @@ W.WELCOME = {
   'Pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom, press + Add to layout, then Save.',
   'Your career is kept on this server. It saves itself every 5 minutes, or press Save in the HUD. Type !hud to see this again.',
 }
+-- Posted in chat to everyone, one line at a time in turn, every ANNOUNCE_EVERY_MINUTES while anyone is on. Change
+-- the lines as you like, add more, or make it {} to send nothing. Codes starting with ^ colour the text after them:
+-- ^c red, ^6 gold, ^e yellow, ^a green, ^b aqua, ^9 blue, ^d pink, ^f white, ^l bold, ^r back to normal.
+W.ANNOUNCE_EVERY_MINUTES = 10
+W.ANNOUNCE = {
+  '^e^lNo trucking HUD on screen?^r^e Press Esc > System > HUD Apps > .Earth (edit layout) > + Add app, pick '
+    .. '"BeamNG Worldwide Trucking Career: Dangerous Contracts", + Add to layout, Save. Type ^b!hud^e for the steps.',
+  '^b^lJoin our Discord:^r^a discord.gg/eYJCfXNGbP ^b for news, help and Ship Day calls.',
+  '^6^lLive trucking career page:^r^a madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts ^6 '
+    .. 'for who\'s driving, Ship Day and the leaderboard.',
+}
 -- The server page (GitHub Pages): every STATS_EVERY_SECONDS the server sends its stats (who's on and in which town,
 -- Ship Day, the live feed, today's totals and the leaderboard) to status.json in STATS_REPO on GitHub. Make STATS_REPO
 -- '' to send nothing. The GitHub token goes in github-token.txt next to this file, never in here. The stats are also
@@ -798,6 +809,22 @@ function W.welcome(pid)
   for _, line in ipairs(W.WELCOME or {}) do W.env.chat(pid, tostring(line)) end
 end
 
+-- Every timer tick: the next ANNOUNCE line in chat once every ANNOUNCE_EVERY_MINUTES, while anyone is on. The first
+-- comes a whole period after someone joins an empty server, so it never lands on top of the welcome lines.
+function W.announceTick()
+  local lines = type(W.ANNOUNCE) == 'table' and W.ANNOUNCE or {}
+  local every = (tonumber(W.ANNOUNCE_EVERY_MINUTES) or 0) * 60
+  if #lines == 0 or every <= 0 or not W.env.chat then return end
+  local _, n = W.online()
+  local now = W.env.clock()
+  if n == 0 then W.announcedAt = nil; return end
+  if not W.announcedAt then W.announcedAt = now; return end
+  if now - W.announcedAt < every then return end
+  W.announceNext = (W.announceNext or 0) % #lines + 1
+  W.env.chat(-1, tostring(lines[W.announceNext]))
+  W.announcedAt = now
+end
+
 -- A chat message: !hud sends the welcome again, to that player only, and isn't shown to everyone. True: hide it.
 function W.onChat(pid, message)
   if tostring(message or ''):lower():match('^%s*!hud%s*$') then
@@ -1217,7 +1244,7 @@ if MP and MP.RegisterEvent then
   WWTC_onClaim = guarded('claim', W.onClaim)
   WWTC_onRelease = guarded('release', W.onRelease)
   WWTC_onShipDone = guarded('ship delivered', W.onShipDone)
-  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.statsTick(); W.restartTick(); W.sendPlayersToAll() end)
+  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.statsTick(); W.restartTick(); W.sendPlayersToAll(); W.announceTick() end)
   WWTC_onWhere = guarded('where', W.onWhere)
   WWTC_onDelivered = guarded('delivered', W.onDelivered)
   WWTC_onFind = guarded('find', W.onFind)
