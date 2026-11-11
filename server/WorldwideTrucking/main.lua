@@ -241,8 +241,10 @@ function W.boardCareer(p, save)
   local car = type(save.vehicle) == 'table' and save.vehicle or {}
   local worth = payOf(car.worth) or payOf(car.value)
   if worth then e.truckValue = worth end
-  -- What they paid for their trailer and its parts, if they have one.
-  e.trailerValue = type(save.trailer) == 'table' and payOf(save.trailer.paid) or nil
+  -- What they paid for their trailers and their parts: the one in use and a second one kept stored.
+  local trailer = type(save.trailer) == 'table' and payOf(save.trailer.paid) or nil
+  local spare = type(save.spareTrailer) == 'table' and payOf(save.spareTrailer.paid) or nil
+  e.trailerValue = (trailer or spare) and ((trailer or 0) + (spare or 0)) or nil
   -- What they paid for their base of operations, if they have one.
   e.baseValue = type(save.property) == 'table' and payOf(save.property.paid) or nil
   local town = e.baseValue and type(save.property.town) == 'table' and save.property.town.name or (e.baseValue and save.property.name)

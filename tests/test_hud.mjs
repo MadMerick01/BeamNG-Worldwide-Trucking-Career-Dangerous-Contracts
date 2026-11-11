@@ -90,7 +90,8 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
   assert.equal(a.commands.length, count, 'refused unless allowed, with a whole index')
   a.scope.buyTrailer({ index: 3, allowed: true }); assert.equal(a.commands.at(-1), fixed('buyTrailer(3)'))
   const buttons = {
-    storeTrailer: ['storeAllowed', 'storeTrailer()'], cancelStoreTrailer: ['storeArmed', 'cancelStoreTrailer()'],
+    cancelStoreTrailer: ['storeArmed', 'cancelStoreTrailer()'], swapTrailers: ['swapAllowed', 'swapTrailers()'],
+    switchTrailer: ['switchAllowed', 'switchTrailer()'],
     bringOutTrailer: ['bringOutAllowed', 'bringOutTrailer()'], sellTrailer: ['sellAllowed', 'sellTrailer()'],
     repairTrailer: ['repairAllowed', 'repairTrailer()'], buyTrailerParts: ['partsAllowed', 'buyTrailerParts()']
   }
@@ -101,6 +102,16 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
     a.state({ state: 'READY', trailer: { [flag]: true } }); a.scope[name]()
     assert.equal(a.commands.at(-1), fixed(body), name)
   }
+  // Storing goes to a place: the base (Park at base or Send to base) or the depot, each when allowed.
+  count = a.commands.length
+  a.state({ state: 'READY', trailer: {} }); a.scope.storeTrailer('base'); a.scope.storeTrailer('depot')
+  a.state({ state: 'READY', trailer: { parkAllowed: true, depotAllowed: true } }); a.scope.storeTrailer('garage')
+  assert.equal(a.commands.length, count, 'refused unless allowed, and only to the base or the depot')
+  a.scope.storeTrailer('base'); assert.equal(a.commands.at(-1), fixed("storeTrailer('base')"))
+  a.state({ state: 'READY', trailer: { sendAllowed: true } }); a.scope.storeTrailer('base'); assert.equal(a.commands.at(-1), fixed("storeTrailer('base')"), 'Send to base')
+  a.state({ state: 'READY', trailer: { depotAllowed: true } }); a.scope.storeTrailer('depot'); assert.equal(a.commands.at(-1), fixed("storeTrailer('depot')"))
+  a.state({ state: 'READY', trailer: { storeArmed: 'depot' } }); a.scope.storeTrailer('depot'); assert.equal(a.commands.at(-1), fixed("storeTrailer('depot')"), 'confirm after the warning')
+  a.state({ state: 'READY', trailer: { storeArmed: 'swap' } }); a.scope.swapTrailers(); assert.equal(a.commands.at(-1), fixed('swapTrailers()'), 'confirm a swap')
 })
 
 test('trailer parts: Pay and Undo only while in the trailer, and Pay only when Lua allows it', () => {
