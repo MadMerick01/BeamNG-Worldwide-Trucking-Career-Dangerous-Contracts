@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 192 · 12 Nov 2026
+
 - **Trailers tow steadily and stop jackknifing.** A load is now shared between your truck and your trailer, each carrying the same share of what it can take. Before, the trailer filled first, so a smaller load sat entirely in the trailer behind an empty truck. Your truck never carries more than it would on a full job, so splitting a load can't overload it.
 - The weight in a trailer now sits just ahead of its axles, like a real driver loads it (about 60% ahead of the axles and 40% behind). That puts a steady share on the hitch, 12% on a ball hitch and 20% on a gooseneck or fifth wheel, which stops the trailer swaying. Tankers are unchanged, because their liquid sits where the tank is. Saves still work, and a job you're already carrying keeps its old split until you deliver it.
 
