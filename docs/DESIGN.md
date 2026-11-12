@@ -67,7 +67,7 @@ The truck earns about 5 times more a run but far less a kg, so fuel, repairs and
 
 **Abandoning a job costs $1,000** (or all your money, if you have less). So does a teleport without a shipping booking while on a job.
 
-**Insurance.** A serious crash (BeamNG damage of 15,000 or more, half of what BeamNG calls major) offers **Claim insurance** on the Garage tab next to the normal repair. A claim costs $1,000 (or all your money, if you have less): the car is put back on the nearest road (BeamNG's own "teleport to last road", guarded, and skipped where Earth has no road graph) and fixed, but the job and its cargo are lost. The normal paid repair stays as it was and keeps the job. Fuel and repair prices are unchanged.
+**Insurance.** A serious crash (BeamNG damage of 15,000 or more, half of what BeamNG calls major) offers **Claim insurance** on the Garage tab next to the normal repair. A claim costs a share of the real repair: your wealth (cash, truck, trailers and base, as for a base's circle) divided by $500,000, so from $500,000 it is the whole repair (MadMerick, 12 Nov). It is never less than $1,000 unless the repair itself is less. Whatever your money doesn't cover becomes an insurance debt (MadMerick, 12 Nov: nothing is let off): half of each delivery's pay goes to it, it can be paid off on the Garage tab, and parts and cars can't be bought until it is paid. Either way the car is put back on the nearest road (BeamNG's own "teleport to last road", guarded, and skipped where Earth has no road graph) and fixed, but the job and its cargo are lost. The normal paid repair stays as it was and keeps the job. Fuel and repair prices are unchanged.
 
 **Old saves.** A save made while carrying bought cargo loads fine: the cargo is taken off and the money paid for it is refunded, with a message.
 
@@ -415,7 +415,7 @@ Decided by MadMerick on 26 Oct: a big-pay job over about 2 km of a treacherous E
 - **Relocation:** taking it costs a flat $200, and Earth is asked to teleport the car to the start (or the player pastes the start coordinates from the Route tab). A teleport landing within 1 km of the start starts the contract and does not lose the load; driving distance counts from there. Any other teleport cancels it as on any job. Abandoning before the start pays the $200 back; the $1,000 abandon fee still applies.
 - **GPS:** set to the finish when the contract starts. The Route tab's arrow shows the way too.
 - **Delivering:** stopped within 100 m of the finish, once 70% of the straight line from the start has been driven, from the Route tab as for an off-road drop.
-- **Insurance:** a claim on a contract costs $4,000 instead of $1,000, and as on any job the contract and its cargo are lost.
+- **Insurance:** a claim on a contract costs the same as on any other job (MadMerick, 12 Nov; it used to be $4,000), and as on any job the contract and its cargo are lost.
 - **Saves:** the load keeps the section id, whether it has started and the fee paid. Older saves load unchanged.
 
 ## Fluids as built
@@ -449,7 +449,7 @@ Decided by MadMerick on 28 Oct (`beacons.lua`).
 - **Finding one:** every 5 minutes of flying at least 30 m above the ground there is a 50% chance of a signal beacon, unless one is waiting or on board (one at a time). The pickup is 0.5 to 3 km from the helicopter, and must be within 15 km of the car so it can be driven to (8 directions are tried; otherwise nothing this time). A centre-screen box, like the parts bill's, says so and closes by itself after 10 s or on a click, since a click is awkward on the flight controls.
 - **What it is:** one of 19 lines (what is at the pickup), random and never the same twice running; MadMerick cut the school bag. A package of no weight (`goods.lua` "package", never posted on a board).
 - **Waiting:** shown on the Route tab with its distance, an arrow, coordinates and Copy, on the Town tab's job list, and on the Heli tab. It goes quiet after 1 hour of play, counted while the game runs. Ignoring it is free (asked twice). It is kept by Save (`beacon` in the save: pickup, drop, line, seconds left); older saves load unchanged.
-- **The run:** stop within 100 m of the pickup in the car, with no other job, and press Pick it up. It is then a job like an off-road drop: no GPS, the arrow on the Route tab, delivered stopped within 100 m of a drop 2 to 5 km away, once 70% of the straight line from the pickup has been driven. It pays $12,000 (MadMerick, 28 Oct, down from $25,000). An insurance claim costs $4,000 and loses it, as on a dangerous contract; a teleport without a booking cancels it, and abandoning costs the usual $1,000.
+- **The run:** stop within 100 m of the pickup in the car, with no other job, and press Pick it up. It is then a job like an off-road drop: no GPS, the arrow on the Route tab, delivered stopped within 100 m of a drop 2 to 5 km away, once 70% of the straight line from the pickup has been driven. It pays $12,000 (MadMerick, 28 Oct, down from $25,000). An insurance claim costs at least $4,000 (otherwise as on any job) and loses it; a teleport without a booking cancels it, and abandoning costs the usual $1,000.
 - **Needs checking in game:** the beacon rate and pay against trucking, and the 15 km reach.
 
 ## Open questions

@@ -563,6 +563,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
       scope.towHere = function () { if (scope.data.tow && scope.data.tow.allowed) core('towHere()') }
       scope.payTow = function () { if (scope.data.tow && scope.data.tow.payAllowed) core('payTow()') }
+      scope.payInsurance = function () { if (scope.data.insuranceDebt && scope.data.insuranceDebt.payAllowed) core('payInsurance()') }
       scope.getOut = function () { if (scope.data.tow && scope.data.tow.getOutAllowed) core('getOut()') }
       // Paying for a bill takes two presses: the first asks to confirm that total, and a changed
       // total asks again.
