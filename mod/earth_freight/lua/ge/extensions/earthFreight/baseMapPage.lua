@@ -49,7 +49,7 @@ M.html = [==[<!doctype html>
 <div id="map" role="region" aria-label="Map of bases and their turf"></div>
 <footer>
   <div id="job"></div>
-  <div>Each circle is a trucker's base. Where circles overlap, the bigger one pushes the border towards the smaller one, and every base keeps the 100 km around its town. Jobs that start or end in your own turf pay you +0.4 on the region multiplier there. Deliver in anyone else's turf and 20% of the pay goes to them as a turf toll, unless you are in their corp.</div>
+  <div>Each circle is a trucker's base. Where circles overlap, the bigger one pushes the border towards the smaller one, and every base keeps the 100 km around its town. Jobs in your own turf pay you up to +20%, or up to +10% in your corp's turf. Deliver in anyone else's turf and 20% of the pay goes to them as a turf toll, unless you are in their corp.</div>
 </footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -96,8 +96,8 @@ M.html = [==[<!doctype html>
   function whose (t) {
     if (!t) return 'nobody’s turf'
     var where = t.town ? ' around ' + t.town : ''
-    if (t.mine) return 'your turf' + where + ', +' + Number(t.share).toFixed(1)
-    if (t.corp) return 'your corp’s turf' + where + ', +' + Number(t.share).toFixed(1)
+    if (t.mine) return 'your turf' + where + ', up to +' + t.percent + '%'
+    if (t.corp) return 'your corp’s turf' + where + ', up to +' + t.percent + '%'
     return (t.owner || 'another trucker') + '’s turf' + where + ', ' + t.toll + '% toll'
   }
   function label (text) { var s = document.createElement('span'); s.textContent = text; return s }
@@ -216,8 +216,8 @@ M.html = [==[<!doctype html>
       var t = d.turf
       $('turf').textContent = t ? (t.mine ? 'In your turf' : t.corp ? 'In your corp’s turf' : 'In ' + (t.owner || 'another trucker') + '’s turf') : 'Outside every turf'
       $('sub').textContent = !t ? (circles.length ? 'No base bonus and no toll here.' : 'No bases yet. Buy one on the Base tab in the game.')
-        : t.mine ? 'Around ' + (t.town || 'your base') + '. Jobs that start or end here pay you +' + Number(t.share).toFixed(1) + ' on the region multiplier.'
-        : t.corp ? 'Around ' + (t.town || 'their base') + ', ' + (t.owner || 'the owner') + '’s base. Jobs that start or end here pay you +' + Number(t.share).toFixed(1) + ', and you pay no toll.'
+        : t.mine ? 'Around ' + (t.town || 'your base') + '. Jobs that start and end here pay you up to +' + t.percent + '%.'
+        : t.corp ? 'Around ' + (t.town || 'their base') + ', ' + (t.owner || 'the owner') + '’s base. Jobs that start and end here pay you up to +' + t.percent + '%, and you pay no toll.'
         : 'Around ' + (t.town || 'their base') + '. Deliveries here pay ' + t.toll + '% of their pay to ' + (t.owner || 'them') + '.'
     } else {
       $('turf').textContent = 'Base map'

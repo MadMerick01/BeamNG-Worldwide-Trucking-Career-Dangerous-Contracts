@@ -146,8 +146,8 @@ function M.attach(c)
   local function turfInfo(circles, point)
     local t = point and location.valid(point) and magnate.turf(circles, point)
     if not t then return nil end
-    if t.mine then return { town = t.name, mine = true, share = magnate.OWNER_SHARE } end
-    if t.corp then return { town = t.name, owner = t.owner, corp = true, share = magnate.MEMBER_SHARE } end
+    if t.mine then return { town = t.name, mine = true, share = magnate.OWNER_SHARE, percent = magnate.percent(magnate.OWNER_SHARE) } end
+    if t.corp then return { town = t.name, owner = t.owner, corp = true, share = magnate.MEMBER_SHARE, percent = magnate.percent(magnate.MEMBER_SHARE) } end
     return { town = t.name, owner = t.owner, toll = math.floor(magnate.TOLL * 100 + 0.5) }
   end
 
@@ -214,10 +214,10 @@ function M.attach(c)
     self.turf, self.turfKey, self.turfPending = t or false, key, nil
     local where = function(x) return x.town and (' around ' .. x.town) or '' end
     if t and t.mine then
-      self:toast('info', 'Your turf', string.format('You are in your turf%s. Jobs that start or end here pay you +%.1f on the region multiplier.', where(t), t.share))
+      self:toast('info', 'Your turf', string.format('You are in your turf%s. Jobs that start and end here pay you up to +%d%%.', where(t), t.percent))
     elseif t and t.corp then
-      self:toast('info', 'Your corp\'s turf', string.format('You are in your corp\'s turf%s. Jobs that start or end here pay you +%.1f on the region multiplier, and you pay %s no toll.',
-        where(t), t.share, t.owner or 'the owner'))
+      self:toast('info', 'Your corp\'s turf', string.format('You are in your corp\'s turf%s. Jobs that start and end here pay you up to +%d%%, and you pay no toll.',
+        where(t), t.percent))
     elseif t then
       self:toast('info', 'Base turf', string.format('You are in %s\'s turf%s. Deliveries here pay %d%% of their pay to %s.',
         t.owner or 'another trucker', where(t), t.toll, t.owner or 'them'))
@@ -525,8 +525,8 @@ function M.attach(c)
       local now = { latitude = yard.latitude, longitude = yard.longitude, owner = b.name, town = b.town }
       self.corp = now
       if not was then
-        self:showFlash('delivered', 'YOU JOINED A CORP', string.format('You are in %s\'s corp. Jobs that start or end in its turf pay you +%.1f, you pay no toll there, and its base keeps a car and a trailer for you.',
-          b.name or 'their', magnate.MEMBER_SHARE))
+        self:showFlash('delivered', 'YOU JOINED A CORP', string.format('You are in %s\'s corp. Jobs in its turf pay you up to +%d%%, you pay no toll there, you get an equal share of the tolls others pay there, and its base keeps a car and a trailer for you.',
+          b.name or 'their', magnate.percent(magnate.MEMBER_SHARE)))
         self.diag:event('corp_joined', tostring(b.name))
         self:autoSaveSoon('joining the corp')
       elseif was.latitude ~= now.latitude or was.longitude ~= now.longitude or was.owner ~= now.owner then
@@ -661,7 +661,7 @@ function M.attach(c)
     while #others > 5 do table.remove(others) end
     view.others = #others > 0 and others or nil
     view.tollPercent = math.floor(magnate.TOLL * 100 + 0.5)
-    view.corpMax, view.memberBonus = M.CORP_MAX, magnate.MEMBER_SHARE
+    view.corpMax, view.memberBonus = M.CORP_MAX, magnate.percent(magnate.MEMBER_SHARE)
     view.joinProblem = canAsk and joinProblem or nil
     view.online = self.mp ~= nil and self.mp.state == 'server' or nil
     local p = self.property
@@ -678,7 +678,7 @@ function M.attach(c)
         local d = current and location.distance(current, y) or nil
         view.corp = { owner = y.owner, town = y.town, latitude = y.latitude, longitude = y.longitude,
           members = #names > 0 and table.concat(names, ', ') or nil, radiusKm = base and math.floor(base.radiusKm + 0.5) or nil,
-          share = magnate.MEMBER_SHARE, distanceMetres = d, here = d ~= nil and d <= M.HOME_METRES,
+          share = magnate.MEMBER_SHARE, percent = magnate.percent(magnate.MEMBER_SHARE), distanceMetres = d, here = d ~= nil and d <= M.HOME_METRES,
           leaveArmed = self.leaveArmed or nil }
         local owned = self.ownedParts
         view.active = owned and { name = owned.name or owned.model, value = self:carWorth() } or nil
@@ -698,7 +698,8 @@ function M.attach(c)
       local mine
       for _, b in ipairs(self.mp.bases or {}) do if b.mine then mine = b end end
       view.owned.corp = { members = mine and mine.members or {}, requests = mine and mine.requests or {},
-        size = 1 + #(mine and mine.members or {}), max = M.CORP_MAX, share = magnate.MEMBER_SHARE }
+        size = 1 + #(mine and mine.members or {}), max = M.CORP_MAX, share = magnate.MEMBER_SHARE,
+        percent = magnate.percent(magnate.MEMBER_SHARE) }
     end
     local circle = self:baseCircle()
     if circle then
@@ -706,7 +707,7 @@ function M.attach(c)
       local next = radius < magnate.MAX_KM and math.min(magnate.MAX_KM, (math.floor(radius / 500) + 1) * 500) or nil
       view.circle = { town = circle.name, radiusKm = radius, boost = circle.boost, wealth = math.floor(self:wealth()),
         memberWealth = circle.memberWealth and circle.memberWealth > 0 and circle.memberWealth or nil,
-        peak = circle.peak, share = magnate.OWNER_SHARE, bonus = math.floor(magnate.OWNER_SHARE * circle.boost * 10 + 0.5) / 10,
+        peak = circle.peak, share = magnate.OWNER_SHARE, percent = magnate.percent(magnate.OWNER_SHARE),
         nextKm = next, nextWealth = next and math.ceil((magnate.wealthFor(next, circle.boost) - (circle.memberWealth or 0)) / 1000) * 1000 or nil,
         maxKm = magnate.MAX_KM, commission = self.mp ~= nil and self.mp.state == 'server' or nil, inside = current and location.distance(current, circle) <= circle.radiusKm * 1000 or false }
     end

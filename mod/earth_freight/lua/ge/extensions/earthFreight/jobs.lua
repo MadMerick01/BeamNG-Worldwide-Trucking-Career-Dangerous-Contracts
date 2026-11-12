@@ -204,7 +204,8 @@ function M.quote(job, units, needs, now, shareAt)
   end
   if job.drop then
     local factor, road = job.jackpot or 1, M.steepBonus(from)
-    local extra = shareAt and shareAt(job.drop) * places.boost(from) * M.DROP_STEEP_SHARE or 0
+    -- Halved like a town job's (ROAD_SHARE), so a base's bonus is the same +20% on a drop in its turf.
+    local extra = shareAt and shareAt(job.drop) * places.boost(from) * M.ROAD_SHARE or 0
     road = road + extra
     local base = M.basePay(good, units, M.DROP_KM)
     return { pay = units > 0 and math.max(10, round10(base * factor * road)) or 0, base = round10(base),

@@ -6,6 +6,11 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Turf tolls in a corp are now split equally between everyone in it.** When a trucker outside the corp delivers in its turf, the 20% toll is shared out evenly between the owner and every member, and each gets their share the next time they're on the server. A base owner on their own still keeps every toll. So going solo means a smaller turf where all the tolls are yours, and a corp means a bigger turf where the tolls are shared. A member who leaves stops earning tolls straight away but still gets anything already owed to them.
+- The base bonus is now shown as a percentage instead of "+0.4". In your own turf, jobs pay up to 20% more: 10% when one end of the job is in it, 20% when both are, and a little more on steep ground. In your corp's turf it's up to 10%. The HUD line now reads, for example, "Your turf · up to +20% pay". The bonus on town jobs hasn't changed, only how it's shown.
+- Off-road drops in your own turf now get the same bonus as town jobs, up to +20%. Before, they got up to +40%.
+- Server hosts need to update the server plugin as usual. Tolls already owed to base owners are kept, and saves still work.
+
 ## Build 186 · 12 Nov 2026
 
 - **The Base map now draws the bases' circles.** Because of a fault in how the game sent them to your browser, the map showed your truck and said whose turf you were in, but drew no circles and no turf colours at all. Now every base shows, with its circle and its turf shaded, whether its owner is online or not.

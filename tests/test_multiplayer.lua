@@ -755,12 +755,12 @@ do
   local town = { latitude = -33.75, longitude = 150.7 }
   local balance1, balance2 = c1.profile.progression.balance, c2.profile.progression.balance
   W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 800, toll = 200, from = 'Ropes Crossing', to = 'Penrith', ends = { ropes, town } }))
-  T.eq(W.bases[key].batch.amount, 200, 'the toll goes to the turf\'s owner'); T.eq(c2.profile.progression.balance, balance2, 'the server takes nothing more from the driver')
+  T.eq(W.tolls[key].batch.amount, 200, 'the toll goes to the turf\'s owner'); T.eq(c2.profile.progression.balance, balance2, 'the server takes nothing more from the driver')
   pump(); F.advance(c1, 0.6)
   T.eq(c1.profile.progression.balance, balance1 + 200, 'paid into the owner\'s money')
-  T.eq(c1.profile.commissionId, W.bases[key].batch and W.bases[key].batch.id or c1.profile.commissionId, 'once, by its batch')
+  T.eq(c1.profile.commissionId, W.tolls[key].batch and W.tolls[key].batch.id or c1.profile.commissionId, 'once, by its batch')
   F.advance(c1, 4); pump()
-  T.eq(W.bases[key].batch, nil, 'the save tells the server it is paid')
+  T.eq(W.tolls[key].batch, nil, 'the save tells the server it is paid')
   -- Sent again (a lost answer), it isn't paid twice.
   c1.mp.commission = { id = c1.profile.commissionId, amount = 200, jobs = 1 }; F.advance(c1, 0.6)
   T.eq(c1.profile.progression.balance, balance1 + 200, 'never paid twice')
@@ -769,13 +769,13 @@ do
   W.onDelivered(1, J.encode({ v = 1, kind = 'job', pay = 800, toll = 200, ends = { ropes, town } }))
   W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 800, toll = 200, ends = { town, far } }))
   W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 1000, ends = { ropes, town } }))
-  T.eq(W.bases[key].batch, nil, 'nothing for your own jobs, far away or without a toll')
+  T.eq(W.tolls[key].batch, nil, 'nothing for your own jobs, far away or without a toll')
   -- A game can't claim a bigger toll than 20% of the pay.
   W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 800, toll = 5000, ends = { ropes, town } }))
-  T.eq(W.bases[key].batch.amount, 210, 'at most 20% of the whole pay')
+  T.eq(W.tolls[key].batch.amount, 210, 'at most 20% of the whole pay')
   -- No daily limit: it's money moving between players.
   for _ = 1, 30 do W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 16000, toll = 4000, ends = { ropes, town } })) end
-  local b = W.bases[key]
+  local b = W.tolls[key]
   T.eq(b.batch.amount + b.owed, 210 + 30 * 4000, 'no daily limit')
   -- Dangerous contracts pay none.
   local owed = b.owed
@@ -862,7 +862,21 @@ do
   T.eq(c1:baseShareAt(F.copy(F.PENRITH)), magnate.OWNER_SHARE, 'the owner keeps +0.4')
   local town = { latitude = -33.75, longitude = 150.7 }
   W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 800, toll = 200, ends = { ropes, town } }))
-  T.eq(base.batch, nil, 'the server takes no toll from a member either'); T.eq(base.owed or 0, 0, 'none owed')
+  T.eq((W.tolls[key1] or {}).batch, nil, 'the server takes no toll from a member either'); T.eq((W.tolls[key1] or {}).owed or 0, 0, 'none owed')
+  -- Anyone else's toll in the corp's turf is split equally between the owner and the member.
+  W.onHello(3); W.onJoin(3, J.encode({ v = 1 }))
+  local key3 = W.players[3].key
+  local money1, money2 = c1.profile.progression.balance, c2.profile.progression.balance
+  W.onDelivered(3, J.encode({ v = 1, kind = 'job', pay = 1204, toll = 301, ends = { ropes, town } }))
+  T.eq(W.tolls[key1].batch.amount, 151, 'the owner gets half, and the odd dollar')
+  T.eq(W.tolls[key2].batch.amount, 150, 'the member gets the other half')
+  T.eq(W.tolls[key3], nil, 'the driver gets nothing')
+  T.check(W.stats.feed[1].text:find("player1's corp a $301 turf toll, $150 each", 1, true) ~= nil, 'the feed says it was split')
+  step(); step()
+  T.eq(c1.profile.progression.balance, money1 + 151, 'paid into the owner\'s money')
+  T.eq(c2.profile.progression.balance, money2 + 150, 'and the member\'s')
+  F.advance(c2, 4); pump()
+  T.eq(W.tolls[key2].batch, nil, 'the member\'s save marks their share paid')
   -- A member can't buy a base, and the server agrees.
   T.check(c2:claimProblem():find('corp', 1, true) ~= nil, 'a member can\'t buy a base')
   W.onBaseClaim(2, J.encode({ v = 1, town = 'Faraway', latitude = -31.95, longitude = 115.86, boost = 1 }))
@@ -917,10 +931,26 @@ do
   base.members[key2] = { name = 'player2', id = 9 }
   W.baseCareer(W.players[1], J.decode(env.files[W.careerPath(key1)]))
   local W2 = server(env.files)
+  T.eq(W2.tolls[key2].lastId, W.tolls[key2].lastId, 'what each player is owed survives a restart')
   T.eq(W2.bases[key1].members[key2].name, 'player2', 'members are kept'); T.eq(W2.bases[key1].id, base.id, 'and the base\'s number')
   T.check(W2.corpLeft[key2] ~= nil, 'and the wait')
   local st = W.status()
   T.eq(st.bases[1].members[1], 'player2', 'the page lists the members')
+end
+
+-- Before the corp toll split, a base kept its owner's owed tolls itself: they move to the player's tolls on loading.
+do
+  local W, env = server()
+  local key = string.rep('ab', 16)
+  env.files[W.seasonDir() .. '/bases.json'] = J.encode({ { key = key, name = 'Owner', town = 'Penrith', latitude = -33.75,
+    longitude = 150.69, boost = 1, peak = 300000, owed = 400, jobs = 2, by = 'Sam', lastId = 3,
+    batch = { id = 3, amount = 250, jobs = 1, by = 'Jo' } } })
+  local W2 = server(env.files)
+  local t = W2.tolls[key]
+  T.check(t ~= nil and t.owed == 400 and t.batch.id == 3 and t.batch.amount == 250 and t.lastId == 3, 'owed tolls move from the base')
+  T.eq(W2.bases[key].owed, nil, 'and the base no longer keeps them')
+  local W3 = server(env.files)
+  T.eq(W3.tolls[key].owed, 400, 'moved once, not twice')
 end
 
 -- Restarting for an update: warnings in chat, every game saves itself, everyone is sent off, and the script is told.

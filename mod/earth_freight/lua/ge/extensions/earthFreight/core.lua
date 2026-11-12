@@ -451,9 +451,14 @@ function M.new(deps)
     self.profile.commissionId = d.id
     if d.amount > 0 then
       self:addMoney(d.amount)
+      -- In a corp the tolls are split equally between everyone in it: this is the player's share.
+      local shared = self.corp ~= nil
+      for _, b in ipairs(self.mp.bases or {}) do if b.mine and #(b.members or {}) > 0 then shared = true end end
+      local turf = self.corp and 'your corp\'s turf' or 'your turf'
       self:toast('info', 'Commission', d.jobs == 1 and d.by
-        and string.format('%s delivered in your turf and paid you a %s turf toll.', d.by, dollars(d.amount))
-        or string.format('%d deliveries in your turf paid you %s in turf tolls.', d.jobs, dollars(d.amount)))
+        and (shared and string.format('%s delivered in %s. Your share of the turf toll: %s.', d.by, turf, dollars(d.amount))
+          or string.format('%s delivered in %s and paid you a %s turf toll.', d.by, turf, dollars(d.amount)))
+        or string.format('%d deliveries in %s paid you %s in turf tolls%s.', d.jobs, turf, dollars(d.amount), shared and ' (your share)' or ''))
       self.diag:event('commission', string.format('#%d %d from %d jobs', d.id, d.amount, d.jobs))
     end
     self:autoSaveSoon('your commission')

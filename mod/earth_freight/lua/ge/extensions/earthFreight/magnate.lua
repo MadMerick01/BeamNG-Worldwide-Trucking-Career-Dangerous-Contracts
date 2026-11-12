@@ -14,6 +14,13 @@ M.START_WEALTH, M.START_KM, M.MAX_KM = 250000, 1600, 20000
 M.OWNER_SHARE = 0.4
 -- On a server, the members of a base's corp get this much in its turf, and pay no toll there (Magnate 3).
 M.MEMBER_SHARE = 0.2
+
+-- What a share adds to a job's pay, in percent, with both ends in the turf on flat ground (jobs.lua halves the
+-- share like the region boost: +0.4 is +20%, +0.2 is +10%; one end in the turf is half that, steep ground a little
+-- more). This is the figure players see.
+function M.percent(share)
+  return math.floor((share or 0) * 50 + 0.5)
+end
 -- The share of a delivery's pay that goes to the owner of the turf its drop-off is in, when that's not you.
 M.TOLL = 0.2
 M.CORE_KM = 100

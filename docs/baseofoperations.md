@@ -291,7 +291,14 @@ Built. On a server, other players can join a base and become a corp. Single play
   The server only sends the base's exact spot to its members.
 - **No toll in their corp's turf.** Everyone else still pays the 20% toll, and all of it goes to the owner.
 - **+0.2 on the region multiplier** for jobs that start or end in their corp's turf. The owner keeps +0.4.
-- Members don't pay the owner anything. The owner gains a bigger circle and more turf to collect tolls on.
+- Members don't pay the owner anything.
+- **Tolls are split equally** between the owner and every member (since 12 Nov 2026). A solo owner keeps every toll in
+  a smaller turf; a corp shares the tolls of a bigger one. Each player's share is kept on the server (`tolls.json`,
+  by career key) and paid as a batch when they're next on, as before. A member who leaves stops earning but keeps
+  what they're owed. Whole dollars only: what doesn't split evenly goes to the owner.
+- **The bonus is shown as a percentage.** +0.4 on the region multiplier is up to +20% on a job (both ends in the turf,
+  flat ground; one end is +10%), +0.2 is up to +10%. Off-road drops are now halved like town jobs, so they also get
+  +20% in your turf instead of +40%.
 
 ### Circle size
 
@@ -348,3 +355,5 @@ each base's `id`, `members` (names) and the viewer's own `corp`, `asked`, `yard`
 | B17 | Corps: what do members get? | **Decided:** a car and trailer yard at the base, and +0.2 in the corp's turf; they pay the owner nothing |
 | B18 | Corps: what sizes the circle? | **Decided:** the owner's best wealth plus half of each member's wealth now |
 | B19 | Corps: limits | **Decided:** 5 truckers a corp, one corp at a time, 24 hours after leaving before joining another |
+| B20 | Corps: who gets the tolls? | **Decided:** split equally between the owner and every member; a solo owner keeps them all |
+| B21 | How is the bonus shown? | **Decided:** as a percentage, up to +20% for an owner and +10% for a member; drops get the same +20% |

@@ -511,8 +511,6 @@ function W.baseCareer(p, save)
       -- A base can't be in a corp: a member who has one (an old save) leaves the corp.
       W.corpLeave(p.key, false)
     end
-    -- Commission the game has added to the money in this save is paid.
-    if b.batch and (payOf(save.commissionId) or 0) >= b.batch.id then b.batch = nil end
     W.bases[p.key] = b
     saveBases()
     W.sendBasesToAll()
@@ -532,10 +530,8 @@ end
 -- ----- The turf toll (Magnate 2) -------------------------------------------------------------------------------------
 -- A delivery by someone else whose drop-off is in a base's turf pays TOLL of its pay to that base's owner. The driver's
 -- game takes it off their pay (so the job board already shows the pay after it) and says how much it took; the server
--- pays the owner that, at most what TOLL of the pay could be. It builds up while the owner is away and goes to their
--- game as a batch (wwtcCommission { id, amount, jobs, by }); the game adds it to their money and saves with
--- commissionId = id, and that save is what marks the batch paid. There is no daily limit: it's money moving between
--- players, not new money.
+-- pays the owner that (split with their corp, see W.commission), at most what TOLL of the pay could be. There is no
+-- daily limit: it's money moving between players, not new money.
 W.TOLL = 0.2
 W.BASE_CORE_KM = 100
 
@@ -552,27 +548,87 @@ function W.turfAt(spot)
   return best
 end
 
--- Sends a base owner what they're owed, if they're on: the batch already sent, else a new one.
-function W.sendCommission(key)
-  local b = W.bases and W.bases[key]
-  if not b then return end
-  local pid
-  for id, p in pairs(W.players) do if p.key == key then pid = id end end
-  if not pid then return end
-  if not b.batch and (b.owed or 0) > 0 then
-    b.lastId = (b.lastId or 0) + 1
-    b.batch = { id = b.lastId, amount = b.owed, jobs = b.jobs or 1, by = b.by }
-    b.owed, b.jobs, b.by = 0, 0, nil
-    saveBases()
+-- Turf tolls owed, by career key: { owed, jobs, by, batch, lastId }, kept in tolls.json. A solo base's owner gets
+-- every toll in their turf; a corp's tolls are split equally between the owner and every member (Magnate 3). What a
+-- player is owed builds up while they're away and goes to their game as a batch (wwtcCommission { id, amount, jobs,
+-- by }); their game adds it to their money and saves with commissionId = id, and that save marks it paid. Someone who
+-- leaves a corp keeps what they're already owed.
+local function tollsPath() return W.seasonDir() .. '/tolls.json' end
+
+local function cleanToll(t)
+  if type(t) ~= 'table' then return nil end
+  local batch = type(t.batch) == 'table' and payOf(t.batch.id) and payOf(t.batch.amount)
+    and { id = payOf(t.batch.id), amount = payOf(t.batch.amount), jobs = payOf(t.batch.jobs) or 1, by = clean(t.batch.by, 32) } or nil
+  return { owed = payOf(t.owed) or 0, jobs = payOf(t.jobs) or 0, by = clean(t.by, 32), batch = batch, lastId = payOf(t.lastId) or 0 }
+end
+
+local function saveTolls() W.env.write(tollsPath(), W.env.encode(W.tolls)) end
+
+-- Loads tolls.json, and moves what bases kept before it (a base owner's owed and batch) into it.
+function W.loadTolls()
+  local text = W.env.read(tollsPath())
+  local ok, d = false, nil
+  if text and text ~= '' then ok, d = pcall(W.env.decode, text) end
+  W.tolls = {}
+  for key, t in pairs(ok and type(d) == 'table' and d or {}) do
+    if W.validKey(key) then W.tolls[key] = cleanToll(t) end
   end
-  if b.batch then
-    W.env.send(pid, 'wwtcCommission', W.env.encode({ v = W.PROTO, id = b.batch.id, amount = b.batch.amount,
-      jobs = b.batch.jobs, by = b.batch.by }))
+  local moved = false
+  for key, b in pairs(W.bases or {}) do
+    if (b.owed or 0) > 0 or b.batch or (b.lastId or 0) > 0 then
+      local t = W.tolls[key] or { owed = 0, jobs = 0, lastId = 0 }
+      t.owed, t.jobs = (t.owed or 0) + (b.owed or 0), (t.jobs or 0) + (b.jobs or 0)
+      t.by, t.batch = t.by or b.by, t.batch or b.batch
+      t.lastId = math.max(t.lastId or 0, b.lastId or 0)
+      W.tolls[key] = t
+      b.owed, b.jobs, b.by, b.batch, b.lastId = nil, nil, nil, nil, nil
+      moved = true
+    end
+  end
+  if moved then saveTolls(); saveBases() end
+end
+
+-- A save came in: the batch it carries the id of is paid.
+function W.tollsPaid(key, save)
+  local t = W.tolls and W.tolls[key]
+  if t and t.batch and type(save) == 'table' and (payOf(save.commissionId) or 0) >= t.batch.id then
+    t.batch = nil
+    saveTolls()
   end
 end
 
+-- Sends a player what they're owed, if they're on: the batch already sent, else a new one.
+function W.sendCommission(key)
+  local t = W.tolls and W.tolls[key]
+  if not t then return end
+  local pid
+  for id, p in pairs(W.players) do if p.key == key then pid = id end end
+  if not pid then return end
+  if not t.batch and (t.owed or 0) > 0 then
+    t.lastId = (t.lastId or 0) + 1
+    t.batch = { id = t.lastId, amount = t.owed, jobs = t.jobs or 1, by = t.by }
+    t.owed, t.jobs, t.by = 0, 0, nil
+    saveTolls()
+  end
+  if t.batch then
+    W.env.send(pid, 'wwtcCommission', W.env.encode({ v = W.PROTO, id = t.batch.id, amount = t.batch.amount,
+      jobs = t.batch.jobs, by = t.batch.by }))
+  end
+end
+
+-- Who shares a base's tolls: its owner, then its members by number.
+function W.tollShares(key, b)
+  local keys = { key }
+  local members = {}
+  for k, m in pairs(b.members or {}) do members[#members + 1] = { key = k, id = m.id or 0 } end
+  table.sort(members, function(x, y) return x.id < y.id end)
+  for _, m in ipairs(members) do keys[#keys + 1] = m.key end
+  return keys
+end
+
 -- A delivery's turf toll: ends are the town centres { latitude, longitude } at each end, the second the drop-off. pay
--- is what the driver was paid after the toll, and toll what their game took.
+-- is what the driver was paid after the toll, and toll what their game took. Split equally between everyone in the
+-- turf's corp (a solo owner gets it all); what doesn't split into whole dollars goes to the owner.
 function W.commission(p, pay, ends, toll)
   if not p or not p.key or not pay or pay < 0 or type(ends) ~= 'table' or not W.bases then return end
   toll = type(toll) == 'number' and toll == toll and math.floor(toll) or 0
@@ -584,16 +640,29 @@ function W.commission(p, pay, ends, toll)
   if not key or key == p.key then return end
   local b = W.bases[key]
   if b.members and b.members[p.key] then return end
-  b.owed, b.jobs, b.by = (b.owed or 0) + toll, (b.jobs or 0) + 1, clean(p.name, 32) or 'A trucker'
-  W.feed('commission', string.format("%s paid %s a %s turf toll.", clean(p.name, 32) or 'A trucker', b.name, dollars(toll)))
-  W.awayToll(key, clean(p.name, 32) or 'A trucker', toll)
-  saveBases()
-  W.sendCommission(key)
+  local driver = clean(p.name, 32) or 'A trucker'
+  local shares = W.tollShares(key, b)
+  local each = math.floor(toll / #shares)
+  W.tolls = W.tolls or {}
+  for i, k in ipairs(shares) do
+    local amount = each + (i == 1 and toll - each * #shares or 0)
+    if amount > 0 then
+      local t = W.tolls[k] or { owed = 0, jobs = 0, lastId = 0 }
+      t.owed, t.jobs, t.by = (t.owed or 0) + amount, (t.jobs or 0) + 1, driver
+      W.tolls[k] = t
+      W.awayToll(k, driver, amount)
+    end
+  end
+  W.feed('commission', #shares > 1
+    and string.format("%s paid %s's corp a %s turf toll, %s each.", driver, b.name, dollars(toll), dollars(each))
+    or string.format("%s paid %s a %s turf toll.", driver, b.name, dollars(toll)))
+  saveTolls()
+  for _, k in ipairs(shares) do W.sendCommission(k) end
 end
 
 -- ----- Corps (Magnate 3) --------------------------------------------------------------------------------------------
--- Other players join a base as members of its corp. The owner (who built it) keeps it and every toll from
--- non-members; members pay no toll in its turf, get the owner's spot as a yard for a car and a trailer, and +0.2 in
+-- Other players join a base as members of its corp. The owner (who built it) keeps it; tolls from non-members are
+-- split equally between the owner and every member; members pay no toll in its turf, get the owner's spot as a yard for a car and a trailer, and +0.2 in
 -- its turf (the game works that out). Half of each member's wealth now adds to the owner's best wealth in sizing the
 -- circle. A corp holds CORP_MAX truckers (the owner too); a player is in one at a time and can't own a base while
 -- they are; after leaving or being removed they wait CORP_WAIT_SECONDS before asking to join again.
@@ -1058,6 +1127,7 @@ function W.start(env)
   W.loadStats()
   W.loadBases()
   W.loadCorps()
+  W.loadTolls()
   W.loadAway()
   local accountsText = env.read(W.DIR .. '/accounts.json')
   local okA, accounts = false, nil
@@ -1128,7 +1198,7 @@ function W.onJoin(pid, data)
   for _, frame in ipairs(W.frames(W.nextId, message)) do W.env.send(pid, 'wwtcCareer', frame) end
   W.sendPlayersToAll()
   W.shipTick()
-  if save then W.baseCareer(p, save) end
+  if save then W.tollsPaid(key, save); W.baseCareer(p, save) end
   W.sendBases(pid)
   W.sendCommission(key)
   W.sendShip(pid)
@@ -1196,7 +1266,9 @@ function W.onSave(pid, frame)
   end
   p.balance = save.progression.balance
   W.boardCareer(p, save)
+  W.tollsPaid(p.key, save)
   W.baseCareer(p, save)
+  W.sendCommission(p.key)
   answer(pid, true, save.generation)
 end
 
