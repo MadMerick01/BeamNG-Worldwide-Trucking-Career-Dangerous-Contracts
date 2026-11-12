@@ -456,13 +456,13 @@ do
   T.check(o:view().flash.text:find('refunded', 1, true), 'the player is told')
 end
 
--- What a claim costs: the share of the repair that wealth is of $500,000, at least $1,000, at most the repair.
+-- What a claim costs: a share of the repair growing to 25% at $300,000, at least $1,000, at most the repair.
 do
-  T.eq(workshop.claimFee(60100, 5000, 1000), 1000, 'starting out: $1,000')
-  T.eq(workshop.claimFee(60100, 50000, 1000), 6010, '$50,000 pays a tenth')
-  T.eq(workshop.claimFee(60100, 250000, 1000), 30050, '$250,000 pays half')
-  T.eq(workshop.claimFee(60100, 500000, 1000), 60100, '$500,000 pays the whole repair')
-  T.eq(workshop.claimFee(60100, 2000000, 1000), 60100, 'and never more')
+  T.eq(workshop.claimFee(60000, 5000, 1000), 1000, 'starting out: $1,000')
+  T.eq(workshop.claimFee(60000, 60000, 1000), 3000, '$60,000 pays 5%')
+  T.eq(workshop.claimFee(60000, 150000, 1000), 7500, '$150,000 pays 12.5%')
+  T.eq(workshop.claimFee(60000, 300000, 1000), 15000, '$300,000 pays a quarter')
+  T.eq(workshop.claimFee(60000, 2000000, 1000), 15000, 'and never more')
   T.eq(workshop.claimFee(600, 0, 1000), 600, 'never more than a cheap repair')
   T.eq(workshop.claimFee(20000, 0, 4000), 4000, "a beacon's higher minimum")
   T.eq(workshop.claimFee(0, 0, 1000), 1000, 'unknown repair: the minimum')
@@ -479,7 +479,7 @@ do
   g.damage = 20000; c:tick(0.1)
   local ins = c:view().insurance
   T.check(ins ~= nil and ins.allowed, 'offered after a serious crash'); T.eq(ins.fee, math.min(1000, ins.repair), 'for $1,000 when starting out')
-  T.eq(ins.fullPriceWealth, 500000, 'says where the cover runs out')
+  T.eq(ins.topWealth, 300000, 'says where the cover stops shrinking'); T.eq(ins.topPercent, 25, 'at 25%')
   T.check(ins.loseJob, 'the job would be lost'); T.check(ins.repair > 0, 'the repair is shown to compare')
   local balance = c:view().balance
   T.check(not c:claimInsurance(), 'asks first'); T.check(c:view().insurance.armed, 'armed')
@@ -1256,11 +1256,12 @@ do
   c.profile.progression.balance = 600000
   g.damage = 30000; c:tick(0.1)
   local ins = c:view().insurance
-  T.check(ins ~= nil and ins.allowed, 'still offered'); T.eq(ins.fee, ins.repair, 'for the full repair')
+  T.check(ins ~= nil and ins.allowed, 'still offered'); T.eq(ins.fee, math.max(1000, math.floor(ins.repair * 0.25 + 0.5)), 'for a quarter of the repair')
+  T.eq(ins.sharePercent, 25, 'says so')
   T.check(ins.wealth >= 600000, 'counts their wealth')
   c.profile.progression.balance = 100000; c:tick(0.1)
   ins = c:view().insurance
-  T.eq(ins.fee, math.max(1000, math.floor(ins.repair * ins.wealth / 500000 + 0.5)), 'a share of it when less rich')
+  T.eq(ins.fee, math.max(1000, math.floor(ins.repair * 0.25 * ins.wealth / 300000 + 0.5)), 'a smaller share when less rich')
 end
 
 -- Abandoned before the start, the relocation is paid back; not enough money, no contract.

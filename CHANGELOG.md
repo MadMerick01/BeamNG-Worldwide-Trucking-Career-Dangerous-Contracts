@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Insurance is cheaper for rich players again.** A claim now costs at most a quarter of the real repair, which you reach at $300,000 of wealth (cash, truck, trailers and base). Below that the share shrinks with your wealth: at $60,000 it's 5% and at $150,000 it's 12.5%. A claim still costs at least $1,000. For example, a $60,000 repair costs $15,000 to claim once you're worth $300,000, where it used to cost the full $60,000 from $500,000. The Serious crash box on the Garage tab shows the share you pay. Saves still work.
+
 ## Build 189 · 12 Nov 2026
 
 - **Insurance now covers less the richer you get.** When you're starting out, a claim after a serious crash still costs $1,000. As your cash, truck, trailers and base add up, a claim costs a bigger share of the real repair: at $50,000 it's a tenth, at $250,000 half, and from $500,000 you pay the full repair. Rich players can still claim to get pulled back onto the road. The Serious crash box on the Garage tab shows what you're worth and what the claim costs.

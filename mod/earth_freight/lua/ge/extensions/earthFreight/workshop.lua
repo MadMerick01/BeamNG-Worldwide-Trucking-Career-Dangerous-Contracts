@@ -19,16 +19,17 @@ M.UNPAID_PARTS_DRIVE_LIMIT = 25
 M.STARTER_MODEL = 'burnside'
 M.STARTER_CONFIG = 'vehicles/burnside/earth_freight_starter.pc'
 -- Insurance: from this much damage (half of what BeamNG calls major) a crash is serious, and the
--- player can claim instead of paying for the repair. Cover fades out as the player gets richer:
--- a claim costs the share of the real repair that their wealth (cash, truck, trailers and base)
--- is of FULL_PRICE_WEALTH, so at that wealth or more it costs the whole repair. It never costs
--- less than INSURANCE_FEE (more for a beacon's package) and never more than the repair. What the
--- player's money doesn't cover is owed: DEBT_SHARE of every delivery's pay goes to it until it is
--- paid, it can be paid off on the Garage tab, and parts and cars can't be bought meanwhile. The car is first sent back to the road, then fixed
--- ROAD_SECONDS later where it landed; jumps in the GRACE_SECONDS after a claim are not teleports.
+-- player can claim instead of paying for the repair. Cover shrinks as the player gets richer: a
+-- claim costs a share of the real repair that grows with their wealth (cash, truck, trailers and
+-- base), from nothing up to TOP_SHARE at TOP_WEALTH or more (25% from $300,000, MadMerick,
+-- 12 Nov). It never costs less than INSURANCE_FEE (more for a beacon's package) and never more
+-- than the repair. What the player's money doesn't cover is owed: DEBT_SHARE of every delivery's
+-- pay goes to it until it is paid, it can be paid off on the Garage tab, and parts and cars can't
+-- be bought meanwhile. The car is first sent back to the road, then fixed ROAD_SECONDS later where
+-- it landed; jumps in the GRACE_SECONDS after a claim are not teleports.
 M.SERIOUS_DAMAGE = 15000
 M.INSURANCE_FEE = 1000
-M.FULL_PRICE_WEALTH = 500000
+M.TOP_WEALTH, M.TOP_SHARE = 300000, 0.25
 M.DEBT_SHARE = 0.5
 M.ROAD_SECONDS, M.GRACE_SECONDS = 1.5, 10
 -- Tow: on foot, within TOW_RANGE metres of the car, the player pays TOW_FEE to have it brought to
@@ -51,11 +52,11 @@ M.RUST_VALUE, M.RIG_VALUE = 3500, 100000
 M.PHOTO_DELAY = 3
 
 -- What an insurance claim costs before the player's money caps it: the share of the repair that
--- wealth is of FULL_PRICE_WEALTH, at least minimum, but never more than the repair (0: unknown).
+-- grows with wealth up to TOP_SHARE at TOP_WEALTH, at least minimum, but never more than the repair (0: unknown).
 function M.claimFee(repair, wealth, minimum)
   repair = math.max(0, tonumber(repair) or 0)
   wealth = math.max(0, tonumber(wealth) or 0)
-  local share = math.min(1, wealth / M.FULL_PRICE_WEALTH)
+  local share = M.TOP_SHARE * math.min(1, wealth / M.TOP_WEALTH)
   local fee = math.max(minimum or M.INSURANCE_FEE, math.floor(repair * share + 0.5))
   if repair > 0 then fee = math.min(fee, repair) end
   return fee
@@ -305,7 +306,7 @@ function M.attach(c)
     return d ~= nil and owned ~= nil and d.id == owned.id and d.damage >= M.SERIOUS_DAMAGE
   end
 
-  -- What the claim costs now: see M.FULL_PRICE_WEALTH. A beacon's package has a higher minimum.
+  -- What the claim costs now: see M.TOP_WEALTH. A beacon's package has a higher minimum.
   -- Wealth here is less what is already owed for insurance.
   function c:insuranceFee()
     local minimum = self.load and self.load.beacon and beacons.INSURANCE_FEE or M.INSURANCE_FEE
@@ -436,7 +437,8 @@ function M.attach(c)
     local d = self.lastDamage
     return { fee = self:insuranceFee(), armed = self.insuranceArmed, pending = self.insurancePending ~= nil,
       allowed = self:insuranceAllowed(), loseJob = self.load ~= nil,
-      wealth = self:insuranceWealth(), fullPriceWealth = M.FULL_PRICE_WEALTH,
+      wealth = self:insuranceWealth(), topWealth = M.TOP_WEALTH,
+      topPercent = math.floor(M.TOP_SHARE * 100 + 0.5), sharePercent = math.floor(M.TOP_SHARE * 100 * math.min(1, self:insuranceWealth() / M.TOP_WEALTH) + 0.5),
       short = math.max(0, self:insuranceFee() - (self.profile and self.profile.progression.balance or 0)),
       repair = d and self:repairPrice(d.damage, self:carValueOf(d.id)) or nil }
   end

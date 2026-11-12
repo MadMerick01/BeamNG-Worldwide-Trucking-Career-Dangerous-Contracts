@@ -453,7 +453,7 @@
           <div style="font-weight:bold;color:#eb5757;">Serious crash</div>
           <div>Claim insurance for ${{data.insurance.fee | number:0}}: your car is fixed and put back on the nearest road<span ng-if="data.insurance.loseJob">, but your job and its cargo are lost</span>.</div>
           <div ng-if="data.insurance.repair != null" style="font-size:13px;color:#c9d6d2;">Or repair it below for about ${{data.insurance.repair | number:0}}<span ng-if="data.insurance.loseJob"> and keep the job</span>.</div>
-          <div ng-if="data.insurance.fullPriceWealth" style="font-size:12px;color:#c9d6d2;">Insurance covers less the richer you are. You're worth ${{data.insurance.wealth | number:0}} with your truck; from ${{data.insurance.fullPriceWealth | number:0}} a claim costs the full repair.</div>
+          <div ng-if="data.insurance.topWealth" style="font-size:12px;color:#c9d6d2;">Insurance covers less the richer you are. You're worth ${{data.insurance.wealth | number:0}} with your truck, so a claim is {{data.insurance.sharePercent}}% of the repair (at least $1,000). From ${{data.insurance.topWealth | number:0}} it's {{data.insurance.topPercent}}%.</div>
           <div ng-if="data.insurance.short > 0" style="font-size:12px;color:#f2c94c;">You're ${{data.insurance.short | number:0}} short, so that much would be owed and come out of your next deliveries.</div>
           <button type="button" ng-click="claimInsurance()" ng-disabled="!data.insurance.allowed" ng-style="data.insurance.armed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="margin-top:6px;padding:7px 12px;">{{data.insurance.pending ? 'Towing to the road...' : (data.insurance.armed ? 'Confirm claim' : 'Claim insurance')}}</button>
         </div>
