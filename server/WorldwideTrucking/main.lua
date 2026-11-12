@@ -940,7 +940,7 @@ function W.status()
   end
   return {
     version = 1, updated = W.env.now(),
-    server = { name = W.env.setting and W.env.setting('name') or nil, online = true,
+    server = { name = W.plainName(W.env.setting and W.env.setting('name') or nil), online = true,
       maxPlayers = W.env.setting and W.env.setting('maxPlayers') or nil },
     season = { number = W.SEASON, day = math.floor((now - W.stats.started) / 86400) + 1, truckers = truckers },
     today = { deliveries = t.deliveries or 0, earned = t.earned or 0 },
@@ -1215,6 +1215,14 @@ end
 function W.welcome(pid)
   if not W.env.chat then return end
   for _, line in ipairs(W.WELCOME or {}) do W.env.chat(pid, tostring(line)) end
+end
+
+-- The server's name without BeamMP's ^ colour and style codes (^c, ^l, ^r ...), for the server page and Play online,
+-- which show plain text. nil when there's no name left.
+function W.plainName(name)
+  if type(name) ~= 'string' then return nil end
+  local plain = name:gsub('%^%w', ''):gsub('^%s+', ''):gsub('%s+$', '')
+  return plain ~= '' and plain or nil
 end
 
 -- Every timer tick: the next ANNOUNCE line in chat once every ANNOUNCE_EVERY_MINUTES, while anyone is on. The first
