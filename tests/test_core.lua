@@ -1497,7 +1497,7 @@ do
   T.eq(v.circle.town, 'Penrith', 'around the town it is in'); T.eq(v.circle.wealth, wealth, 'cash, truck and base')
   T.eq(v.circle.radiusKm, math.floor(magnate.radiusKm(wealth, 1) + 0.5), 'sized by wealth')
   T.check(v.circle.radiusKm >= 1600, 'a big circle from the start'); T.check(v.circle.inside, 'and you are inside it')
-  T.near(v.circle.bonus, 0.4, 1e-9, 'the owner gets +0.4 in a flat region')
+  T.eq(v.circle.percent, 20, 'the owner gets up to +20%')
   T.check(v.circle.nextKm % 500 == 0 and v.circle.nextKm > v.circle.radiusKm and v.circle.nextKm <= v.circle.radiusKm + 500 and v.circle.nextWealth > wealth, 'and how to grow it')
   -- Town jobs in the circle pay about 20% more on flat ground: the bonus is half of +0.4 at each end.
   local town = 0
@@ -1508,7 +1508,7 @@ do
       T.check(j.basePercent and j.basePercent >= 10 and j.basePercent <= 25, 'your base about +20% on ' .. j.id)
       T.check(math.abs(j.pay - before[j.id] * (1 + j.basePercent / 100)) <= 10 + before[j.id] * 0.006, 'and paid that much more on ' .. j.id)
     elseif j.drop then
-      T.eq(j.basePercent, 40, 'an off-road drop gets the whole +0.4')
+      T.eq(j.basePercent, 20, 'an off-road drop gets +20% too')
     elseif j.contract then
       T.eq(j.basePercent, nil, 'dangerous contracts are left alone for now')
     end
@@ -1541,7 +1541,7 @@ do
   T.check(c:claimHome(), 'base bought')
   d = c:baseMapData()
   T.eq(#d.circles, 1, 'your circle'); T.check(d.circles[1].mine, 'marked as yours'); T.eq(d.circles[1].town, 'Penrith', 'around its town')
-  T.check(d.turf and d.turf.mine, 'you are in your turf'); T.near(d.turf.share, 0.4, 1e-9, 'worth +0.4')
+  T.check(d.turf and d.turf.mine, 'you are in your turf'); T.eq(d.turf.percent, 20, 'worth up to +20%')
   -- A job's two ends, with whose turf each is in.
   local job
   for _, j in ipairs(c:view().town.jobs) do if not job and not j.contract and not j.drop and j.units > 0 then job = j end end
@@ -1555,9 +1555,9 @@ do
   local circles = c:baseCircles()
   c.baseCircles = function() return circles end
   for _ = 1, 3 do c:tick(Home.TURF_SECONDS + 0.1) end
-  T.eq(toasts[1], 'You are in your turf around Penrith. Jobs that start or end here pay you +0.4 on the region multiplier.', 'a new base: you are in your turf')
+  T.eq(toasts[1], 'You are in your turf around Penrith. Jobs that start and end here pay you up to +20%.', 'a new base: you are in your turf')
   T.eq(#toasts, 1, 'said once')
-  T.check(c:view().turf and c:view().turf.mine, 'the HUD line says you are in your turf'); T.near(c:view().turf.share, 0.4, 1e-9, 'with its bonus')
+  T.check(c:view().turf and c:view().turf.mine, 'the HUD line says you are in your turf'); T.eq(c:view().turf.percent, 20, 'with its bonus')
   for k in pairs(toasts) do toasts[k] = nil end
   circles = {}
   c:tick(Home.TURF_SECONDS + 0.1)
