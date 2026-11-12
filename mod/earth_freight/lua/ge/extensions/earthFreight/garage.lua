@@ -351,8 +351,12 @@ function M.new(environment)
   -- Respawns the vehicle where it stands, which leaves every part new. With no config it keeps the
   -- current parts, tuning and paint; with one, it fits that config's parts but keeps the current
   -- tuning and paint. Returns true once the game accepted the respawn.
-  function g:repair(withConfig)
+  function g:repair(withConfig, vehicleId)
     local vehicle, id = current()
+    if vehicleId ~= nil then
+      local found, other = pcall(env.objectById, vehicleId)
+      vehicle, id = found and other or nil, vehicleId
+    end
     if not vehicle then return false, 'vehicle_required' end
     local vehicles = env.vehicles()
     if type(env.manager()) ~= 'table' or type(vehicles) ~= 'table' or type(vehicles.replaceVehicle) ~= 'function' then
@@ -364,6 +368,9 @@ function M.new(environment)
     if type(withConfig) == 'table' then
       config = copy(withConfig)
       config.vars, config.paints = copy(data.config.vars), copy(data.config.paints)
+    elseif type(withConfig) == 'string' and withConfig ~= '' then
+      -- A .pc path: the vehicle as that setup comes (a trailer put back as it was sold).
+      config = withConfig
     end
     local modelOK, model = pcall(function() return vehicle:getJBeamFilename() end)
     if not modelOK or type(model) ~= 'string' or model == '' then model = config.model end

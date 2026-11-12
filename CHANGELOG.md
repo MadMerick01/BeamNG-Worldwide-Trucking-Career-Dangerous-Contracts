@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Trailer parts can no longer be changed.** Trailers come with their cargo boxes or tanks already fitted, and you can only buy and sell them. The Buy trailer parts button on the Garage tab is gone. If you change a trailer's parts in the game's own parts menu, the trailer is put straight back as you bought it and you're put back in your truck, with nothing charged. For more room, buy a bigger trailer.
+- If you fitted parts to a trailer in an earlier build, it comes back as it was sold when you load your save. What you paid for those parts still counts toward the trailer's value when you sell it. Saves still work.
+
 ## Build 190 · 12 Nov 2026
 
 - **Insurance is cheaper for rich players again.** A claim now costs at most a quarter of the real repair, which you reach at $300,000 of wealth (cash, truck, trailers and base). Below that the share shrinks with your wealth: at $60,000 it's 5% and at $150,000 it's 12.5%. A claim still costs at least $1,000. For example, a $60,000 repair costs $15,000 to claim once you're worth $300,000, where it used to cost the full $60,000 from $500,000. The Serious crash box on the Garage tab shows the share you pay. Saves still work.
