@@ -459,6 +459,19 @@ function M.new(deps)
     self:autoSaveSoon('your commission')
   end
 
+  -- The "While you were away" card, on a server after joining: what the server kept for this player while they were
+  -- off it, until they press Got it. Shown once they're back at their save, so it doesn't sit under the start page.
+  function c:awayView()
+    local a = self.mp and self.mp.away
+    if not a or not self.arrived then return nil end
+    return { since = a.since, place = a.place, was = a.was, of = a.of, tolls = a.tolls, news = #a.news > 0 and a.news or nil }
+  end
+
+  function c:dismissAway()
+    if self.mp then self.mp.away = nil end
+    return true
+  end
+
   -- Tells the server a delivery happened, for its live feed, today's totals and base owners' commission.
   function c:reportDelivery(kind, good, units, from, to, pay, ends, toll)
     if not self.mp or self.mp.state ~= 'server' then return end
@@ -2334,6 +2347,7 @@ function M.new(deps)
       heli = self:heliView(current), beacon = self:beaconView(current),
       shipping = self:shippingView(current),
       shipDay = self:shipView(current),
+      away = self:awayView(),
       home = self:homeView(current),
       repairAtHome = self:homeSpot() ~= nil and self:atHome() or nil,
       stranded = self.stranded and current and {
@@ -2736,6 +2750,7 @@ function M.cancelLeaveCorp() return safely(function() return ensure():cancelLeav
 function M.corpAccept(who) return safely(function() return ensure():corpAccept(tonumber(who)) end) end
 function M.corpRefuse(who) return safely(function() return ensure():corpRefuse(tonumber(who)) end) end
 function M.corpRemove(who) return safely(function() return ensure():corpRemove(tonumber(who)) end) end
+function M.dismissAway() return safely(function() return ensure():dismissAway() end) end
 function M.repairTrailer() return safely(function() return ensure():repairTrailer() end) end
 -- The game calls these when two vehicles couple or uncouple, such as a car and its trailer.
 function M.onCouplerAttached(a, b) return safely(function() if active then active:couplerChanged(a, b, true) end end) end

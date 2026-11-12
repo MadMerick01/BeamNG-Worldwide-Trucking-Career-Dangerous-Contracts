@@ -31,6 +31,8 @@
 --   server -> game  wwtcLocate '{"v","ask","name"}'  someone (name) wants to relocate to you: where are you?
 --   game -> server  wwtcHere   '{"v","ask","ok","latitude","longitude","heading","why"}'  ('off' or 'away' when not ok)
 --   server -> game  wwtcFound  '{"v","to","name","ok","latitude","longitude","heading","why"}'  to the asker only
+--   server -> game  wwtcAway   '{"v","since","place","was","of","tolls","news"}'  on joining: what happened while this
+--                   player was off the server (see 'While you were away')
 -- A frame is 'v|id|i|n|piece': piece i of n of message id. The server keeps the save's own JSON text as it came, so
 -- nothing about it is rounded or reordered on the way through.
 --
@@ -584,6 +586,7 @@ function W.commission(p, pay, ends, toll)
   if b.members and b.members[p.key] then return end
   b.owed, b.jobs, b.by = (b.owed or 0) + toll, (b.jobs or 0) + 1, clean(p.name, 32) or 'A trucker'
   W.feed('commission', string.format("%s paid %s a %s turf toll.", clean(p.name, 32) or 'A trucker', b.name, dollars(toll)))
+  W.awayToll(key, clean(p.name, 32) or 'A trucker', toll)
   saveBases()
   W.sendCommission(key)
 end
@@ -710,8 +713,8 @@ function W.onCorp(pid, data)
   local why, wait, changed
   local mine = W.bases[p.key]
   if what == 'ask' then
-    local b
-    for _, x in pairs(W.bases) do if not x.asked and x.id == payOf(d.base) then b = x end end
+    local b, owner
+    for k, x in pairs(W.bases) do if not x.asked and x.id == payOf(d.base) then b, owner = x, k end end
     if not b then why = 'no_base'
     elseif mine then why = 'have_base'
     elseif W.corpOf(p.key) then why = 'in_corp'
@@ -727,6 +730,7 @@ function W.onCorp(pid, data)
       b.nextMember = (b.nextMember or 0) + 1
       b.requests[p.key] = { name = name, id = b.nextMember, at = W.env.clock() }
       saveBases()
+      W.awayNote(owner, name .. ' asked to join your corp. Accept or turn them down on the Base tab.')
       changed = true
     end
   elseif what == 'cancel' then
@@ -734,9 +738,11 @@ function W.onCorp(pid, data)
     saveBases()
     changed = true
   elseif what == 'leave' then
+    local _, owner = W.corpOf(p.key)
     local b = W.corpLeave(p.key, true)
     if not b then why = 'not_in_corp' else
       W.feed('corp', string.format('%s left %s\'s corp.', name, b.name))
+      W.awayNote(owner, name .. ' left your corp.')
       changed = true
     end
   elseif what == 'accept' or what == 'refuse' or what == 'remove' then
@@ -747,6 +753,7 @@ function W.onCorp(pid, data)
       if not key then why = 'gone' else
         W.corpLeave(key, true)
         W.feed('corp', string.format('%s removed %s from their corp.', mine.name, m.name))
+        W.awayNote(key, mine.name .. ' removed you from their corp.')
         changed = true
       end
     else
@@ -755,6 +762,7 @@ function W.onCorp(pid, data)
       elseif what == 'refuse' then
         mine.requests[key] = nil
         saveBases()
+        W.awayNote(key, mine.name .. ' turned down your request to join their corp.')
         changed = true
       elseif W.bases[key] then why = 'have_base'; mine.requests[key] = nil; changed = true
       elseif W.corpOf(key) then why = 'in_corp'; mine.requests[key] = nil; changed = true
@@ -764,6 +772,7 @@ function W.onCorp(pid, data)
         mine.members[key] = { name = m.name, id = m.id, at = W.env.clock() }
         saveBases()
         W.feed('corp', string.format('%s joined %s\'s corp.', m.name, mine.name))
+        W.awayNote(key, mine.name .. ' let you into their corp. Your corp yard is at their base: see the Base tab.')
         changed = true
       end
     end
@@ -772,6 +781,117 @@ function W.onCorp(pid, data)
   end
   W.env.send(pid, 'wwtcCorpDone', W.env.encode({ v = W.PROTO, ['do'] = what, ok = why == nil, why = why, wait = wait }))
   if changed then W.sendBasesToAll() end
+end
+
+-- ----- While you were away ---------------------------------------------------------------------------------------------
+-- What happens to a player while they're off the server, kept in careers/season-N/away.json by career key: { seen =
+-- when they left, place = their leaderboard place then, tolls = { amount, jobs, from = { name = amount } }, news =
+-- { text, ... } }. On their next join the game gets it all as one wwtcAway message for the HUD's "While you were
+-- away" card, and the record is cleared. A quick rejoin (under AWAY_MIN_SECONDS) with nothing to say sends nothing.
+W.AWAY_MIN_SECONDS = 15 * 60
+W.AWAY_NEWS_MAX = 10
+W.AWAY_FROM_MAX = 3
+
+local function awayPath() return W.seasonDir() .. '/away.json' end
+
+function W.loadAway()
+  local text = W.env.read(awayPath())
+  local ok, d = false, nil
+  if text and text ~= '' then ok, d = pcall(W.env.decode, text) end
+  W.away = {}
+  for key, a in pairs(ok and type(d) == 'table' and d or {}) do
+    if W.validKey(key) and type(a) == 'table' then
+      local tolls = type(a.tolls) == 'table' and a.tolls or nil
+      local from = {}
+      for name, amount in pairs(tolls and type(tolls.from) == 'table' and tolls.from or {}) do
+        local n = clean(name, 32)
+        if n and payOf(amount) then from[n] = payOf(amount) end
+      end
+      local news = {}
+      for _, line in ipairs(type(a.news) == 'table' and a.news or {}) do
+        local t = clean(line, 160)
+        if t and #news < W.AWAY_NEWS_MAX then news[#news + 1] = t end
+      end
+      W.away[key] = { seen = tonumber(a.seen), place = payOf(a.place),
+        tolls = tolls and payOf(tolls.amount) and { amount = payOf(tolls.amount), jobs = payOf(tolls.jobs) or 1, from = from } or nil,
+        news = news }
+    end
+  end
+end
+
+local function saveAway() W.env.write(awayPath(), W.env.encode(W.away)) end
+
+-- Whether a career is on the server right now.
+function W.isOn(key)
+  for _, p in pairs(W.players) do if p.key == key then return true end end
+  return false
+end
+
+local function awayOf(key)
+  local a = W.away[key]
+  if not a then a = { news = {} }; W.away[key] = a end
+  return a
+end
+
+-- Something to tell a player who isn't on: kept for their next join (the newest AWAY_NEWS_MAX).
+function W.awayNote(key, text)
+  if not W.away or not W.validKey(key) or W.isOn(key) then return end
+  local news = awayOf(key).news
+  news[#news + 1] = clean(text, 160)
+  while #news > W.AWAY_NEWS_MAX do table.remove(news, 1) end
+  saveAway()
+end
+
+-- A turf toll paid to an owner who isn't on.
+function W.awayToll(key, name, amount)
+  if not W.away or not W.validKey(key) or W.isOn(key) or not payOf(amount) or amount <= 0 then return end
+  local a = awayOf(key)
+  a.tolls = a.tolls or { amount = 0, jobs = 0, from = {} }
+  a.tolls.amount, a.tolls.jobs = a.tolls.amount + amount, a.tolls.jobs + 1
+  a.tolls.from[name] = (a.tolls.from[name] or 0) + amount
+  saveAway()
+end
+
+-- A career's place on the season leaderboard by wealth (1 is the top), the number of truckers on it, or nil.
+function W.placeOf(key)
+  local me = W.stats and W.stats.board and W.stats.board[key]
+  if not me then return nil end
+  local mine, place, of = W.wealthOf(key), 1, 0
+  for k, e in pairs(W.stats.board) do
+    of = of + 1
+    local w = W.wealthOf(k)
+    if k ~= key and (w > mine or (w == mine and (e.name or '') < (me.name or ''))) then place = place + 1 end
+  end
+  return place, of
+end
+
+-- A player left: when, and where they stood, for their next join.
+function W.awayLeft(key)
+  if not W.away or not W.validKey(key) then return end
+  local a = awayOf(key)
+  a.seen, a.place = W.env.clock(), W.placeOf(key)
+  saveAway()
+end
+
+-- The wwtcAway message for a player joining, or nil when there's nothing to tell them; the record is cleared.
+function W.awayMessage(key)
+  local a = W.away and W.away[key]
+  if not a then return nil end
+  W.away[key] = nil
+  saveAway()
+  local since = a.seen and math.max(0, W.env.clock() - a.seen) or nil
+  local news = #(a.news or {}) > 0 and a.news or nil
+  if not a.tolls and not news and (not since or since < W.AWAY_MIN_SECONDS) then return nil end
+  local tolls
+  if a.tolls then
+    local from, others = {}, 0
+    for name, amount in pairs(a.tolls.from or {}) do from[#from + 1] = { name = name, amount = amount } end
+    table.sort(from, function(x, y) if x.amount ~= y.amount then return x.amount > y.amount end return x.name < y.name end)
+    while #from > W.AWAY_FROM_MAX do table.remove(from); others = others + 1 end
+    tolls = { amount = a.tolls.amount, jobs = a.tolls.jobs, from = from, others = others > 0 and others or nil }
+  end
+  local place, of = W.placeOf(key)
+  return W.env.encode({ v = W.PROTO, since = since, place = place, was = a.place, of = of, tolls = tolls, news = news })
 end
 
 -- The stats file the page reads.
@@ -938,6 +1058,7 @@ function W.start(env)
   W.loadStats()
   W.loadBases()
   W.loadCorps()
+  W.loadAway()
   local accountsText = env.read(W.DIR .. '/accounts.json')
   local okA, accounts = false, nil
   if accountsText and accountsText ~= '' then okA, accounts = pcall(env.decode, accountsText) end
@@ -1012,6 +1133,8 @@ function W.onJoin(pid, data)
   W.sendCommission(key)
   W.sendShip(pid)
   if save then W.boardCareer(p, save) end
+  local away = W.awayMessage(key)
+  if away then W.env.send(pid, 'wwtcAway', away) end
   W.feed('join', (clean(p.name, 32) or 'A trucker') .. ' joined the server.')
   W.env.print(string.format('[Trucking] %s joined: %s, %s', tostring(p.name), account and 'signed in' or 'guest',
     save and ('balance $' .. tostring(save.progression.balance)) or 'new career'))
@@ -1030,6 +1153,8 @@ function W.rejoin(pid, p, account, key)
   local _, save = readSave(key)
   p.balance = save and save.progression and save.progression.balance or nil
   W.env.send(pid, 'wwtcRejoined', W.env.encode({ v = W.PROTO, key = key }))
+  -- They never really left, so nothing is kept for a "while you were away" card.
+  if W.away and W.away[key] then W.away[key] = nil; saveAway() end
   if not was then
     W.env.print(string.format('[Trucking] %s joined back after the server lost track of them', tostring(p.name)))
     W.statsChanged = true
@@ -1079,6 +1204,7 @@ function W.onLeave(pid)
   local was = W.players[pid]
   if was then W.statsChanged = true end
   W.players[pid] = nil
+  if was and was.key and not W.isOn(was.key) then W.awayLeft(was.key) end
   for n, a in pairs(W.asks or {}) do
     if a.from == pid or a.to == pid then W.asks[n] = nil end
   end

@@ -525,6 +525,15 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var n = box ? parseInt(box.n, 10) : 0
         if (scope.data.shipDay && box.allowed && n > 0) core('takeContainer(' + n + ', ' + scope.shareOf({ id: 'container' }) + ')')
       }
+      // The "While you were away" card on a server: Got it closes it.
+      scope.dismissAway = function () { core('dismissAway()') }
+      // 1st, 2nd, 3rd, 4th, 11th, 21st: a place on the leaderboard.
+      scope.ordinal = function (n) {
+        n = Math.floor(Number(n))
+        if (!isFinite(n) || n < 1) return ''
+        var t = n % 100, u = n % 10
+        return n + (t >= 11 && t <= 13 ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th')
+      }
       // A long wait as days and hours, or hours and minutes: 2d 14h, 5h 12m.
       scope.until = function (seconds) {
         if (typeof seconds !== 'number' || !isFinite(seconds)) return ''
