@@ -353,6 +353,8 @@ function M.new(deps)
       self:playerFound(self.mp.found)
     elseif event == 'wwtcBaseClaimed' then
       self:baseClaimAnswered(self.mp.baseClaimed)
+    elseif event == 'wwtcOutpostDone' then
+      self:outpostAnswered(self.mp.outpostDone)
     end
     if event == 'wwtcSaveNow' then self:saveForRestart() end
     if event == 'wwtcSaved' and self.mp.saveError then
@@ -2305,6 +2307,8 @@ function M.new(deps)
       here = trade.here, region = trade.region, where = trade.where, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
       -- Whose turf the truck is in, for the line under the town name (the same check as the turf messages).
       turf = self.turf or nil,
+      -- The land race on a server: the share of Earth's land the player's corp holds, and who leads.
+      land = self:landView(),
       shortages = trade.shortages,
       streetView = self:streetViewView(),
       baseMap = self:baseMapView(),
@@ -2755,6 +2759,7 @@ function M.cancelLeaveCorp() return safely(function() return ensure():cancelLeav
 function M.corpAccept(who) return safely(function() return ensure():corpAccept(tonumber(who)) end) end
 function M.corpRefuse(who) return safely(function() return ensure():corpRefuse(tonumber(who)) end) end
 function M.corpRemove(who) return safely(function() return ensure():corpRemove(tonumber(who)) end) end
+function M.openBase() return safely(function() return ensure():openBase() end) end
 function M.dismissAway() return safely(function() return ensure():dismissAway() end) end
 function M.repairTrailer() return safely(function() return ensure():repairTrailer() end) end
 -- The game calls these when two vehicles couple or uncouple, such as a car and its trailer.

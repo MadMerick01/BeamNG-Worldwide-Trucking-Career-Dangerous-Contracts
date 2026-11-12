@@ -7,10 +7,11 @@
 local location = require('earthFreight/location')
 local M = {}
 
--- A base worth START_WEALTH in a flat region (×1.0) reaches START_KM; its area grows in line with
--- wealth, and steep regions reach further by √(multiplier). There is no cap: MAX_KM is half way round
--- the world, past which a circle covers the whole planet anyway.
-M.START_WEALTH, M.START_KM, M.MAX_KM = 250000, 1600, 20000
+-- A base worth START_WEALTH in a flat region (×1.0) reaches START_KM; its area grows with the square
+-- root of wealth × the region multiplier (4× the wealth doubles it), up to full size, MAX_KM, at
+-- $4,000,000 on flat ground (Magnate 4). On a server, once a corp's newest circle is full size it can
+-- open another base (the server sizes those).
+M.START_WEALTH, M.START_KM, M.MAX_KM = 250000, 800, 1600
 M.OWNER_SHARE = 0.4
 -- On a server, the members of a base's corp get this much in its turf, and pay no toll there (Magnate 3).
 M.MEMBER_SHARE = 0.2
@@ -31,14 +32,17 @@ M.MIN_APART_KM = 300
 function M.radiusKm(wealth, boost)
   wealth = math.max(0, tonumber(wealth) or 0)
   boost = math.max(1, tonumber(boost) or 1)
-  return math.min(M.MAX_KM, M.START_KM * math.sqrt(wealth / M.START_WEALTH) * math.sqrt(boost))
+  return math.min(M.MAX_KM, M.START_KM * (wealth * boost / M.START_WEALTH) ^ 0.25)
 end
 
 -- The wealth a base at this multiplier needs to reach this radius (for "grows to N km at $X").
 function M.wealthFor(radiusKm, boost)
   boost = math.max(1, tonumber(boost) or 1)
-  return M.START_WEALTH * (radiusKm / (M.START_KM * math.sqrt(boost))) ^ 2
+  return M.START_WEALTH * (radiusKm / M.START_KM) ^ 4 / boost
 end
+
+-- Whether a circle this big is full size.
+function M.isFull(radiusKm) return (tonumber(radiusKm) or 0) >= M.MAX_KM - 0.5 end
 
 -- Whose turf a point is: among the circles it is inside, a base's own core first, else the one with
 -- the smallest distance ÷ radius, which puts each border in proportion to the two circles' sizes.

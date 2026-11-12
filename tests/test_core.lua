@@ -1496,7 +1496,7 @@ do
   local wealth = 400000 - Home.PRICE + (c.ownedParts.value or 0) + Home.PRICE
   T.eq(v.circle.town, 'Penrith', 'around the town it is in'); T.eq(v.circle.wealth, wealth, 'cash, truck and base')
   T.eq(v.circle.radiusKm, math.floor(magnate.radiusKm(wealth, 1) + 0.5), 'sized by wealth')
-  T.check(v.circle.radiusKm >= 1600, 'a big circle from the start'); T.check(v.circle.inside, 'and you are inside it')
+  T.check(v.circle.radiusKm >= 800 and v.circle.radiusKm < 1600, 'a big circle from the start, short of full size'); T.check(v.circle.inside, 'and you are inside it')
   T.eq(v.circle.percent, 20, 'the owner gets up to +20%')
   T.check(v.circle.nextKm % 500 == 0 and v.circle.nextKm > v.circle.radiusKm and v.circle.nextKm <= v.circle.radiusKm + 500 and v.circle.nextWealth > wealth, 'and how to grow it')
   -- Town jobs in the circle pay about 20% more on flat ground: the bonus is half of +0.4 at each end.
@@ -1576,16 +1576,19 @@ do
   T.eq(#toasts, 2, 'a blip along a border says nothing')
 end
 
--- The circle's size (Magnate 2): 1,600 km at $250,000 on flat ground, area in line with wealth, bigger on steep
--- ground, no cap short of half way round the world; whose turf a spot is where circles overlap; and the turf toll.
+-- The circle's size (Magnate 4): 800 km at $250,000 on flat ground, 4× the wealth doubles the area, bigger on steep
+-- ground, full size (1,600 km, the USA's size) at $4,000,000; whose turf a spot is where circles overlap; and the toll.
 do
   local magnate = require('earthFreight/magnate')
-  T.near(magnate.radiusKm(250000, 1), 1600, 1e-9, '1,600 km at $250,000')
-  T.near(magnate.radiusKm(637500, 1), 1600 * math.sqrt(2.55), 1e-9, '$637,500 reaches about 2,555 km')
-  T.near(magnate.radiusKm(1000000, 1), 3200, 1e-9, 'four times the wealth, twice the radius')
-  T.near(magnate.radiusKm(250000, 3), 1600 * math.sqrt(3), 1e-9, 'Death Road reaches further')
-  T.eq(magnate.radiusKm(1e12, 1), magnate.MAX_KM, 'past half way round the world it covers everything')
-  T.near(magnate.wealthFor(3200, 1), 1000000, 1e-3, 'the wealth for a size')
+  T.near(magnate.radiusKm(250000, 1), 800, 1e-9, '800 km at $250,000')
+  T.near(magnate.radiusKm(1000000, 1), 800 * math.sqrt(2), 1e-9, '$1,000,000 reaches about 1,130 km')
+  T.near(magnate.radiusKm(2200000, 1), 800 * (8.8 ^ 0.25), 1e-9, '$2,200,000 reaches about 1,380 km')
+  T.near(magnate.radiusKm(4000000, 1), 1600, 1e-9, 'full size at $4,000,000')
+  T.eq(magnate.radiusKm(9000000, 1), 1600, 'and no bigger')
+  T.check(magnate.isFull(1600) and not magnate.isFull(1500), 'full size is 1,600 km')
+  T.near(magnate.radiusKm(250000, 3), 800 * (3 ^ 0.25), 1e-9, 'Death Road reaches further')
+  T.near(magnate.wealthFor(1600, 1), 4000000, 1e-3, 'the wealth for a size')
+  T.near(magnate.wealthFor(1600, 2), 2000000, 1e-3, 'less on steep ground')
   local big = { latitude = 0, longitude = 0, radiusKm = 4000, mine = true }
   local small = { latitude = 0, longitude = 3000 / 111.195, radiusKm = 2000, owner = 'Belake' }
   local function at(km) return { latitude = 0, longitude = km / 111.195 } end

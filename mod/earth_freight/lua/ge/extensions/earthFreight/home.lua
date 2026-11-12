@@ -114,16 +114,27 @@ function M.attach(c)
       radiusKm = magnate.radiusKm(p.peak + extra, town.boost), peak = p.peak, memberWealth = extra, mine = true }
   end
 
-  -- Every circle that counts for this player: their own, and on a server everyone else's.
+  -- Every circle that counts for this player: their own, and on a server everyone else's, each base's outposts (its
+  -- corp's further bases, Magnate 4) too. full: the circle is full size.
   function c:baseCircles()
     local list = {}
     local own = self:baseCircle()
-    if own then list[1] = own end
+    if own then
+      own.full = magnate.isFull(own.radiusKm) or nil
+      list[1] = own
+    end
     local others = self.mp and self.mp.state == 'server' and self.mp.bases or nil
     for _, b in ipairs(others or {}) do
       if not b.mine then
         list[#list + 1] = { latitude = b.latitude, longitude = b.longitude, radiusKm = b.radiusKm, name = b.town, owner = b.name,
-          corp = b.corp or nil }
+          corp = b.corp or nil, full = magnate.isFull(b.radiusKm) or nil }
+      end
+      if not b.mine or own then
+        for _, o in ipairs(b.outposts or {}) do
+          list[#list + 1] = { latitude = o.latitude, longitude = o.longitude, radiusKm = o.radiusKm, name = o.town,
+            owner = not b.mine and b.name or nil, mine = b.mine or nil, corp = b.corp or nil, outpost = true,
+            full = magnate.isFull(o.radiusKm) or nil }
+        end
       end
     end
     return list
@@ -165,8 +176,10 @@ function M.attach(c)
     local out = { ok = true, coreKm = magnate.CORE_KM, circles = {} }
     for _, b in ipairs(circles) do
       out.circles[#out.circles + 1] = { latitude = round(b.latitude, 5), longitude = round(b.longitude, 5),
-        radiusKm = round(b.radiusKm, 1), town = b.name, owner = b.owner, mine = b.mine or nil, corp = b.corp or nil }
+        radiusKm = round(b.radiusKm, 1), town = b.name, owner = b.owner, mine = b.mine or nil, corp = b.corp or nil,
+        full = b.full or nil, outpost = b.outpost or nil }
     end
+    out.land = self:landView()
     local sample = self.lastSample
     if sample and sample.valid and location.valid(sample) then
       out.truck = { latitude = sample.latitude, longitude = sample.longitude,
@@ -228,11 +241,17 @@ function M.attach(c)
     end
   end
 
-  -- Another player's base too close to this town for a new one, or nil (magnate.MIN_APART_KM).
+  -- Another player's base (or one of their outposts) too close to this town for a new one: the base and the town
+  -- that's too close, or nil (magnate.MIN_APART_KM).
   local function tooClose(self, town)
     local others = self.mp and self.mp.state == 'server' and self.mp.bases or nil
     for _, b in ipairs(others or {}) do
-      if not b.mine and location.distance(b, town) < magnate.MIN_APART_KM * 1000 then return b end
+      if not b.mine then
+        if location.distance(b, town) < magnate.MIN_APART_KM * 1000 then return b, b.town end
+        for _, o in ipairs(b.outposts or {}) do
+          if location.distance(o, town) < magnate.MIN_APART_KM * 1000 then return b, o.town end
+        end
+      end
     end
     return nil
   end
@@ -287,9 +306,10 @@ function M.attach(c)
     if self.baseAsk and self.clock - self.baseAsk.at < M.ASK_SECONDS then return 'Asking the server...' end
     local here = self.lastSample
     local town = here and here.valid and location.valid(here) and townAt(here) or nil
-    local near = town and tooClose(self, town)
+    local near, at = nil, nil
+    if town then near, at = tooClose(self, town) end
     if near then
-      return string.format('Too close to %s\'s base in %s. Bases must be %d km apart.', near.name, near.town or 'a town nearby',
+      return string.format('Too close to %s\'s base in %s. Bases must be %d km apart.', near.name, at or 'a town nearby',
         magnate.MIN_APART_KM)
     end
     return nil
@@ -519,6 +539,7 @@ function M.attach(c)
     end
     if not mp.bases or mp.bases == self.corpSeen then return end
     self.corpSeen = mp.bases
+    self:watchGrown()
     local b, was = self:corpBase(), self.corp
     if b and not self.property then
       local yard = b.yard or { latitude = b.latitude, longitude = b.longitude }
@@ -636,6 +657,130 @@ function M.attach(c)
       or 'The server said no. Try again in a moment.'
   end
 
+  -- ----- The land race (Magnate 4) ---------------------------------------------------------------------------------
+  -- On a server, once the newest circle of the player's corp (their own base's, or the one they're a member of) is
+  -- full size, anyone in it can open the corp's next base, free, in a town outside all of its circles. The first corp
+  -- to hold the server's winning share of Earth's land wins the season.
+
+  -- The server's entry for this player's corp: their own base, else the one they're a member of, or nil.
+  function c:myCorpEntry()
+    for _, b in ipairs(self.mp and self.mp.state == 'server' and self.mp.bases or {}) do
+      if b.mine or b.corp then return b end
+    end
+    return nil
+  end
+
+  -- The land race for the HUD and the Base map: the share of Earth's land this player's corp holds (nil without
+  -- one), what wins, who leads and the days left. nil off a server.
+  function c:landView()
+    local mp = self.mp
+    if not mp or mp.state ~= 'server' or not mp.race then return nil end
+    local r = mp.race
+    local mine = self:myCorpEntry()
+    local left = r.left and math.max(0, r.left - ((mp.now or 0) - (r.at or 0)))
+    return { percent = mine and mine.land or nil, who = mine and (mine.mine and #(mine.members or {}) == 0 and 'You hold' or 'Your corp holds') or nil,
+      win = r.win, leader = r.leader, leaderLand = r.leaderLand, daysLeft = left and math.max(1, math.ceil(left / 86400)) or nil }
+  end
+
+  -- The newest base's town of a corp entry.
+  local function newestTown(entry)
+    local list = entry.outposts or {}
+    return #list > 0 and list[#list].town or entry.town
+  end
+
+  -- Why Open a base here cannot be pressed now, or nil.
+  function c:openBaseProblem()
+    if not self.mp or self.mp.state ~= 'server' then return 'New bases are only on a trucking server.' end
+    local mine = self:myCorpEntry()
+    if not mine then return 'Buy a base or join a corp first.' end
+    if not mine.grown then
+      return string.format('Your newest base is not full size yet. It is full at %s of wealth, and your corp has %s.',
+        dollars(mine.fullAt or 0), dollars(mine.wealth or 0))
+    end
+    local problem = busy(self)
+    if problem then return problem end
+    if self.outpostAsk and self.clock - self.outpostAsk < M.ASK_SECONDS then return 'Asking the server...' end
+    local here = self.lastSample
+    local town = here and here.valid and location.valid(here) and townAt(here) or nil
+    if not town then return 'Waiting for the towns nearby to load.' end
+    for _, circle in ipairs(self:baseCircles()) do
+      if (circle.mine or circle.corp) and location.distance(circle, town) <= circle.radiusKm * 1000 then
+        return 'Inside your corp\'s turf. Go further out: a new base must be outside all of your circles.'
+      end
+    end
+    local near, at = tooClose(self, town)
+    if near then
+      return string.format('Too close to %s\'s base in %s. Bases must be %d km apart.', near.name, at or 'a town nearby',
+        magnate.MIN_APART_KM)
+    end
+    return nil
+  end
+
+  -- Opens the corp's next base in the town the truck is in: the server says yes or no (outpostAnswered).
+  function c:openBase()
+    local problem = self:openBaseProblem()
+    if problem then
+      self.homeFeedback = problem
+      return false
+    end
+    local town = townAt(self.lastSample)
+    self.outpostAsk = self.clock
+    self.mp:openBase({ town = town.name, latitude = town.latitude, longitude = town.longitude, boost = town.boost })
+    self.homeFeedback = 'Asking the server to open a base in ' .. tostring(town.name) .. '...'
+    return true
+  end
+
+  function c:outpostAnswered(d)
+    self.outpostAsk = nil
+    if type(d) ~= 'table' then return end
+    if d.ok then
+      self.homeFeedback = nil
+      self:showFlash('delivered', 'NEW BASE', string.format('Your corp has a new base in %s. Its circle starts at %d km and grows as your corp gets richer.',
+        d.town or 'this town', magnate.START_KM))
+      self.diag:event('outpost_opened', tostring(d.town))
+      return
+    end
+    self.homeFeedback = d.why == 'not_full' and 'Your newest base is not full size yet.'
+      or d.why == 'inside_own' and 'Inside your corp\'s turf. Go further out: a new base must be outside all of your circles.'
+      or d.why == 'too_close' and string.format('Too close to %s\'s base in %s. Bases must be %d km apart.', d.by or 'another trucker',
+        d.town or 'a town nearby', magnate.MIN_APART_KM)
+      or d.why == 'no_base' and 'Buy a base or join a corp first.'
+      or d.why == 'max' and 'Your corp has as many bases as it can have.'
+      or 'The server said no. Try again in a moment.'
+  end
+
+  -- Says so when the corp's newest circle becomes full size while the player is on (the server tells anyone away).
+  function c:watchGrown()
+    local entry = self:myCorpEntry()
+    local now = { grown = entry and entry.grown or false, count = entry and (1 + #(entry.outposts or {})) or 0 }
+    local was = self.grownSeen
+    self.grownSeen = now
+    if not was or not now.grown or (was.grown and was.count == now.count) then return end
+    self:showFlash('delivered', 'BASE FULL SIZE', string.format('Your base in %s is full size. Anyone in your corp can now open a new base in a town outside your turf, on the Base tab.',
+      newestTown(entry) or 'your newest town'))
+    self.diag:event('base_full', tostring(newestTown(entry)))
+  end
+
+  -- The land race card on the Base tab, for a player with a base or in a corp on a server.
+  function c:conquestView()
+    local entry = self:myCorpEntry()
+    if not entry then return nil end
+    local list = { { town = entry.town, radiusKm = math.floor(entry.radiusKm + 0.5), full = magnate.isFull(entry.radiusKm) or nil } }
+    if entry.mine then
+      local own = self:baseCircle()
+      if own then list[1].radiusKm, list[1].full = math.floor(own.radiusKm + 0.5), magnate.isFull(own.radiusKm) or nil end
+    end
+    for _, o in ipairs(entry.outposts or {}) do
+      list[#list + 1] = { town = o.town, radiusKm = math.floor(o.radiusKm + 0.5), full = magnate.isFull(o.radiusKm) or nil }
+    end
+    local problem = self:openBaseProblem()
+    local fullAt, wealth = entry.fullAt, entry.wealth or 0
+    return { land = entry.land, bases = list, newest = newestTown(entry), grown = entry.grown or nil, fullAt = fullAt, wealth = wealth,
+      progress = fullAt and fullAt > 0 and math.min(100, math.floor(wealth * 100 / fullAt)) or nil,
+      startKm = magnate.START_KM, maxKm = magnate.MAX_KM,
+      openAllowed = problem == nil or nil, openProblem = entry.grown and problem or nil, race = self:landView() }
+  end
+
   -- The Home tab.
   function c:homeView(current)
     if self.state ~= 'READY' or not self.arrived or not self.profile or self.error then return nil end
@@ -664,6 +809,7 @@ function M.attach(c)
     view.corpMax, view.memberBonus = M.CORP_MAX, magnate.percent(magnate.MEMBER_SHARE)
     view.joinProblem = canAsk and joinProblem or nil
     view.online = self.mp ~= nil and self.mp.state == 'server' or nil
+    view.conquest = view.online and self:conquestView() or nil
     local p = self.property
     if not p then
       local problem = self:claimProblem()

@@ -6,6 +6,14 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **On a trucking server, the season is now a race for land.** The first base owner whose turf, with their corp's, covers half of Earth's land (Antarctica left out) wins the season. If nobody gets there within 12 weeks, whoever holds the most land wins. Then a new season starts and everyone starts over. You're sent off the server with a message saying who won, and you start fresh when you join again. The winners are listed on the server's web page, with a trophy next to their names on the leaderboard.
+- A land meter shows how much of Earth's land you or your corp hold, who's leading and how many days are left. You'll find it under the town name on the HUD, on the Base tab, on the Base map and on the web page.
+- Circles now start smaller and stop growing at the size of the USA. A new base's circle reaches 800 km, it takes four times the wealth to double its area, and it's full size at 1,600 km once your corp is worth $4,000,000. The circles already on the server are resized to these sizes, so big circles shrink once. For example, a base worth $2.2 million goes from about 4,750 km to about 1,380 km. Your money, trucks, base and corp are kept.
+- **Once your newest base is full size, anyone in your corp can open another base, for free.** Drive to a town outside all of your corp's circles and at least 300 km from anyone else's base, then press **Open a base here** on the Base tab. The new base's circle starts at 800 km and gives the same bonus, tolls and turf as your first. It grows as your corp gets richer and is full size after about $3,750,000 more. Then you can open the next one. Everyone in the corp gets a message when a base fills up, and anyone who was offline hears about it when they next join. The Base tab shows how far your newest base is from full size.
+- A rival's circle that pushes into yours costs you land on the meter, but it never stops your next base from unlocking.
+- On the Base map, a full-size circle has a thicker edge. On the web page, all of a corp's bases share one colour.
+- Server hosts need to update the server plugin as usual. Saves still work.
+
 ## Build 187 · 12 Nov 2026
 
 - **Turf tolls in a corp are now split equally between everyone in it.** When a trucker outside the corp delivers in its turf, the 20% toll is shared out evenly between the owner and every member, and each gets their share the next time they're on the server. A base owner on their own still keeps every toll. So going solo means a smaller turf where all the tolls are yours, and a corp means a bigger turf where the tolls are shared. A member who leaves stops earning tolls straight away but still gets anything already owed to them.
