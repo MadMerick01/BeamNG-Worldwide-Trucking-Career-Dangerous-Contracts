@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 191 · 12 Nov 2026
+
 - **Trailer parts can no longer be changed.** Trailers come with their cargo boxes or tanks already fitted, and you can only buy and sell them. The Buy trailer parts button on the Garage tab is gone. If you change a trailer's parts in the game's own parts menu, the trailer is put straight back as you bought it and you're put back in your truck, with nothing charged. For more room, buy a bigger trailer.
 - If you fitted parts to a trailer in an earlier build, it comes back as it was sold when you load your save. What you paid for those parts still counts toward the trailer's value when you sell it. Saves still work.
 
