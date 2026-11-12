@@ -27,6 +27,18 @@ local function encode(value)
     end) .. '"'
   end
   if t == 'table' then
+    -- A list (keys 1..n, as the Base map's circles are) is a JSON array. Before, a list came out as an object
+    -- of nulls, so the Base map never drew any circle.
+    local n = #value
+    if n > 0 then
+      local count = 0
+      for _ in pairs(value) do count = count + 1 end
+      if count == n then
+        local parts = {}
+        for i = 1, n do parts[i] = encode(value[i]) end
+        return '[' .. table.concat(parts, ',') .. ']'
+      end
+    end
     local keys = {}
     for k in pairs(value) do keys[#keys + 1] = tostring(k) end
     table.sort(keys)
