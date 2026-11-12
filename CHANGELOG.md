@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 186 · 12 Nov 2026
+
 - **The Base map now draws the bases' circles.** Because of a fault in how the game sent them to your browser, the map showed your truck and said whose turf you were in, but drew no circles and no turf colours at all. Now every base shows, with its circle and its turf shaded, whether its owner is online or not.
 - The Base map also opens on the nearest base now. Before, if you didn't own a base it opened zoomed right in on your truck, so a circle a few thousand kilometres away was off the screen. Now it opens showing your truck and the whole circle of the nearest base, or your own or your corp's. Follow truck keeps that view and only moves the map when your truck gets near the edge. Saves still work.
 
