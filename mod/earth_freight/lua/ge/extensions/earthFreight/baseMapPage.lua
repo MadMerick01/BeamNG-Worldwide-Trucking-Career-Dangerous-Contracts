@@ -168,6 +168,12 @@ M.html = [==[<!doctype html>
     }
   }
 
+  // Follow truck pans only once the truck is within 30 px of the map's edge, so a view fitted to a far-off circle stays.
+  function nearEdge (at) {
+    var p = map.latLngToContainerPoint(at), size = map.getSize()
+    return p.x < 30 || p.y < 30 || p.x > size.x - 30 || p.y > size.y - 30
+  }
+
   function setFollow (on) {
     state.follow = on
     $('follow').className = on ? 'on' : ''
@@ -192,12 +198,21 @@ M.html = [==[<!doctype html>
         state.truck = L.circleMarker(at, { radius: 8, color: '#0c1318', weight: 3, fillColor: '#ffffff', fillOpacity: 1, zIndexOffset: 1000 }).addTo(map)
         state.truck.bindTooltip(label('Your truck'), { direction: 'bottom', offset: [0, 8], className: 'tag' })
       } else state.truck.setLatLng(at)
-      if (!state.fitted) {
+      // The first view: your own circle, else the nearest base's whole circle, with the truck in view. Done again
+      // once when the bases first arrive, so a page opened before the server sent them doesn't stay zoomed in.
+      if (!state.fitted || (!state.fittedCircles && circles.length)) {
         state.fitted = true
-        var own = circles.filter(function (c) { return c.mine })[0]
+        state.fittedCircles = circles.length > 0
+        var own = circles.filter(function (c) { return c.mine || c.corp })[0]
+        var near = null, nearKm = Infinity
+        circles.forEach(function (c) {
+          var edge = map.distance(at, [c.latitude, c.longitude]) / 1000 - c.radiusKm
+          if (edge < nearKm) { near = c; nearKm = edge }
+        })
         if (own) map.fitBounds(L.latLng(at).toBounds(Math.max(own.radiusKm, 5) * 2000).extend([own.latitude, own.longitude]))
+        else if (near) map.fitBounds(L.latLng(at).toBounds(20000).extend(L.latLng(near.latitude, near.longitude).toBounds(near.radiusKm * 2000)), { padding: [60, 60] })
         else map.setView(at, 10)
-      } else if (state.follow) map.panTo(at, { animate: true })
+      } else if (state.follow && nearEdge(at)) map.panTo(at, { animate: true })
       var t = d.turf
       $('turf').textContent = t ? (t.mine ? 'In your turf' : t.corp ? 'In your corp’s turf' : 'In ' + (t.owner || 'another trucker') + '’s turf') : 'Outside every turf'
       $('sub').textContent = !t ? (circles.length ? 'No base bonus and no toll here.' : 'No bases yet. Buy one on the Base tab in the game.')

@@ -127,6 +127,8 @@ end
 -- JSON
 T.eq(SV.encode({ a = 0 / 0, b = 1e300 * 1e10, c = 'line\nbreak\1' }), '{"a":null,"b":null,"c":"line\\nbreak\\u0001"}', 'JSON escapes')
 T.eq(SV.encode(-33.12345678), '-33.1234568', 'seven decimals')
+T.eq(SV.encode({ { a = 1 }, { a = 2 } }), '[{"a":1},{"a":2}]', 'a list is a JSON array')
+T.eq(SV.encode({ list = { 3 }, none = {} }), '{"list":[3],"none":{}}', 'in an object too, and an empty table is {}')
 
 -- In the game: the Street View button.
 do
@@ -194,6 +196,15 @@ do
   cb:tick(0.1); cb:tick(0.1)
   T.eq(body(pageReq), require('earthFreight/baseMapPage').html, 'the base map page')
   T.check(body(dataReq):find('"circles":', 1, true) ~= nil and body(dataReq):find('"ok":true', 1, true) ~= nil, 'and its data')
+  -- With a base, its circle reaches the page as a list (it came out as an object of nulls, so none was drawn).
+  cb:tick(0.6); cb:tick(0.6)
+  cb.profile.progression.balance = 400000
+  T.check(cb:claimHome(), 'a base for the map')
+  local dataReq2 = libB.client(get('/basemap'))
+  libB.queue = { dataReq2 }
+  cb:tick(0.1); cb:tick(0.1)
+  T.check(body(dataReq2):find('"circles":[{', 1, true) ~= nil, 'the circles are a JSON array of circles')
+  T.check(body(dataReq2):find('"town":"Penrith"', 1, true) ~= nil, 'with the base in it')
   local busyB = fakeSocket(); busyB.busy = true
   local cb2 = F.controller({ streetView = SV.new({ socket = busyB }) })
   T.check(not cb2:openBaseMap(), 'busy port fails')
