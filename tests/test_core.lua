@@ -1402,6 +1402,15 @@ do
   -- A part change keeps its value and its wear.
   g:fit('engine', 'sport_engine_race'); g.values.sport_engine_race = 9000; c:vehicleSpawned(); c:tick(0.1)
   T.eq(#g.wears, 2, 'worn again after the respawn'); T.check(c:buyParts(), 'parts paid')
+  -- Traffic or another car spawning is not the player's car: no wear (the game resets the car to put
+  -- it on, back to where it first spawned), no parts check and no repair owed.
+  local owedBefore = c.owedDamage
+  c:vehicleSpawned(500); c:vehicleSpawned(501); c:tick(0.1); c:tick(0.1)
+  T.eq(#g.wears, 2, 'not worn again by traffic spawning'); T.eq(c.owedDamage, owedBefore, 'nothing owed')
+  T.eq(c:view().carChange, nil, 'no car bill'); T.eq(c.pendingParts, nil, 'no parts bill')
+  -- Its own spawn, by id, still is.
+  c:vehicleSpawned(g.vehicleId); c:tick(0.1)
+  T.eq(#g.wears, 3, 'worn again after its own respawn')
   T.eq(c.ownedParts.value, offer.price, 'still worth what was paid'); T.eq(c.ownedParts.km, offer.km, 'and keeps its km')
   -- Save keeps the price and km; a reload brings the car back at that value, worn.
   c:tick(0.6); c:tick(0.6)

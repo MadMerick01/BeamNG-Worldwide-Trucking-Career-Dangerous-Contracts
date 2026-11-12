@@ -73,6 +73,7 @@ function F.garage()
     names = { pickup_cargo_load_box_m = 'Cargo Load Box M', pickup_cargo_load_box_l = 'Cargo Load Box L' },
     carValues = { pickup = 20000, burnside = 3500, sport = 40000 }, parked = {} }
   function g:carValue(model) return self.carValues[model], model end
+  function g:playerId() return self.vehicleId end
   function g:enter(id)
     -- Into the trailer and back: the player vehicle becomes that id; the car keeps its parts.
     if self.trailers[id] then

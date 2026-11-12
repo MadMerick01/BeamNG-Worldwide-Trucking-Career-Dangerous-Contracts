@@ -110,6 +110,12 @@ function M.new(environment)
     return vehicle, id
   end
 
+  -- The id of the vehicle the player is in now, or nil.
+  function g:playerId()
+    local _, id = current()
+    return id
+  end
+
   -- Returns { id, damage } for the player vehicle, or for the vehicle with carId (the parked car
   -- while the player is on foot), or nil and a reason.
   function g:inspect(carId)
