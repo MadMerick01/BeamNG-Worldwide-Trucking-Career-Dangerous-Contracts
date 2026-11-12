@@ -50,7 +50,8 @@ local function link(W, env, pid, deliver)
         elseif m.event == 'wwtcFind' then W.onFind(pid, m.data)
         elseif m.event == 'wwtcHere' then W.onHere(pid, m.data)
         elseif m.event == 'wwtcBaseClaim' then W.onBaseClaim(pid, m.data)
-        elseif m.event == 'wwtcCorp' then W.onCorp(pid, m.data) end
+        elseif m.event == 'wwtcCorp' then W.onCorp(pid, m.data)
+        elseif m.event == 'wwtcOutpost' then W.onOutpost(pid, m.data) end
       else
         local found
         for i, m in ipairs(env.sent) do if m.pid == pid then found = i; break end end
@@ -748,7 +749,7 @@ do
   T.eq(W.bases[key].asked, nil, 'the base is confirmed by the save'); T.check(W.bases[key].peak >= 400000, 'with the best wealth')
   local st = W.status()
   T.eq(#st.bases, 1, 'one base on the page'); T.eq(st.bases[1].town, 'Penrith', 'at its town')
-  T.check(st.bases[1].radiusKm >= 1600, 'with its circle')
+  T.check(st.bases[1].radiusKm >= 800 and st.bases[1].radiusKm < 1600, 'with its circle')
   T.near(st.bases[1].latitude, 0, 90, 'a town centre'); T.eq(st.leaderboard[1].baseTown, 'Penrith', 'and the leaderboard names it')
   -- The toll: player 2's delivery from Ropes Crossing to Penrith, in player 1's turf, pays player 1 what player 2's game
   -- took off the pay.
@@ -951,6 +952,158 @@ do
   T.eq(W2.bases[key].owed, nil, 'and the base no longer keeps them')
   local W3 = server(env.files)
   T.eq(W3.tolls[key].owed, 400, 'moved once, not twice')
+end
+
+-- The land race (Magnate 4): circles start at 800 km and are full size (1,600 km) at $4,000,000; then anyone in the
+-- corp can open its next base outside its circles, which grows from what the corp earns beyond that. The land meter
+-- is the share of Earth's land in each corp's turf, and the first to WIN_LAND (or the most at the time limit) wins:
+-- the winner is kept, everyone is sent off, and the next season starts.
+do
+  local W, env = server()
+  local kicked = {}
+  env.kick = function(pid, why) kicked[#kicked + 1] = { pid = pid, why = why } end
+  env.players = function() local t = {}; for pid, p in pairs(W.players) do t[pid] = p.name end; return t end
+  local hybrid, member, other = string.rep('a1', 16), string.rep('b2', 16), string.rep('c3', 16)
+  env.files[W.seasonDir() .. '/bases.json'] = J.encode({
+    { key = hybrid, name = 'Hybrid', town = 'Wichita', latitude = 37.69, longitude = -97.34, boost = 1, peak = 2200000,
+      id = 1, members = { [member] = { name = 'Kez', id = 1 } } },
+    { key = other, name = 'Sam', town = 'Mexico City', latitude = 19.43, longitude = -99.13, boost = 1, peak = 250000, id = 2 } })
+  W = server(env.files)
+  W.env.kick, W.env.players = env.kick, function() local t = {}; for pid, p in pairs(W.players) do t[pid] = p.name end; return t end
+  local b = W.bases[hybrid]
+  T.near(W.circleKm(b), 800 * (8.8 ^ 0.25), 1e-6, 'today\'s $2.2M circle shrinks to about 1,380 km')
+  T.check(not W.grown(b), 'not full size yet'); T.eq(W.fullAt(b), 4000000, 'full size at $4,000,000')
+  local shares = W.landShares()
+  T.check(shares[hybrid] > 0.035 and shares[hybrid] < 0.05, 'about 4% of Earth\'s land (got ' .. shares[hybrid] .. ')')
+  T.check(shares[other] > 0 and shares[other] < shares[hybrid], 'Mexico City holds less')
+  T.eq(W.landShares(), shares, 'worked out again only when a circle changes')
+  -- Hybrid asks for a new base too soon.
+  W.players[1] = { key = hybrid, name = 'Hybrid', inbox = {} }
+  local function open(pid, town, lat, lon)
+    W.onOutpost(pid, J.encode({ v = 1, town = town, latitude = lat, longitude = lon, boost = 1 }))
+    for i = #env.sent, 1, -1 do if env.sent[i].event == 'wwtcOutpostDone' then return J.decode(env.sent[i].data) end end
+  end
+  W.env.send = env.send
+  T.eq(open(1, 'Edmonton', 53.55, -113.49).why, 'not_full', 'a new base waits for full size')
+  -- At $4M the circle is full size: Kez (away) is told once.
+  b.peak = 4000000
+  W.checkGrown(hybrid, b)
+  T.check(W.grown(b), 'full size')
+  T.check(W.away[member] and W.away[member].news[1]:find('Wichita is full size', 1, true), 'the member who is away is told')
+  W.checkGrown(hybrid, b)
+  T.eq(#W.away[member].news, 1, 'once')
+  -- Not inside its own circles, and not near anyone else's base.
+  T.eq(open(1, 'Denver', 39.74, -104.99).why, 'inside_own', 'Denver is inside its own circle')
+  local near = open(1, 'Puebla', 19.04, -98.2)
+  T.check(near.why == 'too_close' and near.by == 'Sam' and near.town == 'Mexico City', 'too close to Sam\'s base')
+  local done = open(1, 'Edmonton', 53.55, -113.49)
+  T.check(done.ok, 'Edmonton is far enough out'); T.eq(#b.outposts, 1, 'the corp has a second base')
+  T.near(W.circlesOf(hybrid, b)[2].radiusKm, 800, 1e-6, 'starting at 800 km')
+  T.check(not W.grown(b), 'and the newest is not full size'); T.eq(W.fullAt(b), 7750000, 'until $3,750,000 more')
+  T.eq(W.turfAt({ latitude = 53.55, longitude = -113.49 }), hybrid, 'Edmonton is the corp\'s turf')
+  T.check(W.stats.feed[1].text:find('Hybrid opened a new base in Edmonton', 1, true), 'in the feed')
+  T.check(W.away[member].news[2]:find('opened a new base for your corp in Edmonton', 1, true), 'and the member is told')
+  T.check(W.landShares()[hybrid] > shares[hybrid] + 0.01, 'more land')
+  -- Kept across a restart, and sent to the games.
+  local W2 = server(env.files)
+  T.eq(#W2.bases[hybrid].outposts, 1, 'the second base is kept'); T.eq(W2.bases[hybrid].outposts[1].town, 'Edmonton', 'in Edmonton')
+  local m = J.decode(W.basesMessage(1))
+  local mine
+  for _, e in ipairs(m.bases) do if e.mine then mine = e end end
+  T.check(mine and mine.outposts and #mine.outposts == 1 and mine.outposts[1].town == 'Edmonton', 'the game hears of it')
+  T.check(mine.land > 4 and not mine.grown and mine.fullAt == 7750000 and mine.wealth == 4000000, 'with the land and how to grow')
+  T.check(m.race.win == 50 and m.race.leader == 'Hybrid' and m.race.left > 0, 'and the race')
+  local st = W.status()
+  local outposts = 0
+  for _, e in ipairs(st.bases) do if e.outpost then outposts = outposts + 1; T.eq(e.land, nil, 'land is on the base only') end end
+  T.eq(outposts, 1, 'the page shows the second base too'); T.eq(st.race.leader, 'Hybrid', 'and who leads')
+  -- The game takes it in.
+  local clean = MPC.cleanBases(m.bases)
+  local seen
+  for _, e in ipairs(clean) do if e.mine then seen = e end end
+  T.check(seen.outposts[1].town == 'Edmonton' and seen.land > 4 and seen.fullAt == 7750000, 'the game keeps the second base and the land')
+  T.eq(MPC.cleanRace(m.race, 5).win, 50, 'and the race')
+  -- Hybrid's corp reaches the winning share: the season is won.
+  W.WIN_LAND = 0.05
+  W.players[2] = { key = other, name = 'Sam', inbox = {} }
+  W.seasonTick()
+  T.eq(W.SEASON, 2, 'the next season starts'); T.eq(J.decode(env.files[W.DIR .. '/season.json']).season, 2, 'and is kept')
+  local winners = J.decode(env.files[W.DIR .. '/winners.json'])
+  T.check(winners[1].season == 1 and winners[1].owner == 'Hybrid' and winners[1].members[1] == 'Kez', 'Hybrid\'s corp won season 1')
+  T.eq(#kicked, 2, 'everyone is sent off'); T.check(kicked[1].why:find('Season 1 is over! Hybrid\'s corp (with Kez)', 1, true), 'saying who won')
+  T.eq(next(W.bases), nil, 'the new season has no bases'); T.eq(next(W.players), nil, 'and nobody joined to it yet')
+  -- A game still in season 1 that tries to carry on is sent off again; a fresh join starts season 2.
+  kicked = {}
+  W.rejoin(1, { inbox = {} }, nil, hybrid)
+  T.eq(#kicked, 1, 'last season\'s career can\'t carry on')
+  W.onJoin(1, J.encode({ v = 1, key = hybrid }))
+  T.eq(W.players[1].key, hybrid, 'joining again works'); T.eq(W.seasonEnded[hybrid], nil, 'in the new season')
+  -- A restart keeps the season and the winners, and the page shows them.
+  local W3 = server(env.files)
+  T.eq(W3.SEASON, 2, 'the season is kept across a restart'); T.eq(W3.winsOf(member), 1, 'Kez won once')
+  W3.stats.board[member] = { name = 'Kez', balance = 1000 }
+  local st3 = W3.status()
+  T.eq(st3.winners[1].owner, 'Hybrid', 'the page lists the winners'); T.eq(st3.leaderboard[1].wins, 1, 'and the leaderboard')
+  -- At the time limit, whoever holds the most wins.
+  env.files[W3.seasonDir() .. '/bases.json'] = J.encode({
+    { key = other, name = 'Sam', town = 'Perth', latitude = -31.95, longitude = 115.86, boost = 1, peak = 300000, id = 1 } })
+  local W4, env4 = server(env.files)
+  W4.seasonTick()
+  T.eq(W4.SEASON, 2, 'nothing happens before the time is up')
+  W4.stats.raceStarted = env4.time - 12 * 7 * 86400 - 1
+  W4.seasonTick()
+  T.eq(W4.SEASON, 3, 'at 12 weeks the season ends')
+  local w4 = J.decode(env4.files[W4.DIR .. '/winners.json'])
+  T.check(w4[1].season == 2 and w4[1].owner == 'Sam' and w4[1].why == 'time', 'won on time by whoever held the most')
+end
+
+-- The land race in the game: the Base tab shows the land and how far the newest base is from full size; once it is,
+-- Open a base here works in a town outside the corp's circles, and the circles and the map show the new base.
+do
+  local W, env = server()
+  W.SHIP_CONTAINERS = 0
+  local io = F.io({ [F.CONFIG] = F.config() })
+  local handler
+  local send, pump = link(W, env, 1, function(event, data) handler(event, data) end)
+  local mp = { inSession = function() return true end, send = send, encode = J.encode, decode = J.decode,
+    listen = function(h) handler = h; return true end }
+  local a = F.adapter(F.copy(F.PENRITH))
+  local c = F.controller({ io = io, multiplayer = mp, adapter = a })
+  pump()
+  F.advance(c, 2)
+  if not c.arrived then c:startHere(); F.advance(c, 2) end
+  pump()
+  c.profile.progression.balance = 400000
+  F.advance(c, 0.6)
+  T.check(c:claimHome(), 'Buy asks the server'); pump()
+  T.check(c.property ~= nil, 'a base in Penrith')
+  F.advance(c, 0.6); T.check(c:manualSave(), 'saved'); pump()
+  local v = c:view()
+  T.check(v.land and v.land.percent and v.land.who == 'You hold' and v.land.win == 50, 'the HUD shows the land race')
+  local q = v.home.conquest
+  T.check(q and q.bases[1].town == 'Penrith' and not q.grown and q.fullAt == 4000000, 'the Base tab: full size at $4,000,000')
+  T.check(q.progress > 0 and q.progress < 100 and q.openProblem == nil and not q.openAllowed, 'and how far along')
+  T.check(c:openBaseProblem():find('not full size yet', 1, true), 'no new base yet')
+  -- Rich enough: the circle is full size, and the game says so once.
+  c.profile.progression.balance = 5000000
+  F.advance(c, 0.6); T.check(c:manualSave(), 'saved'); pump(); F.advance(c, 0.6)
+  T.check(c:view().home.conquest.grown, 'full size')
+  T.eq(c.flash and c.flash.title, 'BASE FULL SIZE', 'the player is told')
+  T.check(c:openBaseProblem():find('Inside your corp\'s turf', 1, true), 'not inside its own circle')
+  -- Perth is far outside it.
+  a.pose = { latitude = -31.9523, longitude = 115.8613, altitude = 20, heading = 0 }
+  F.advance(c, 3); c.stranded = nil; F.advance(c, 3)
+  T.eq(c:openBaseProblem(), nil, 'Open a base here in Perth'); T.check(c:view().home.conquest.openAllowed, 'the button is on')
+  T.check(c:openBase(), 'asked'); pump(); F.advance(c, 0.6)
+  T.eq(c.flash and c.flash.title, 'NEW BASE', 'a new base')
+  T.eq(#W.bases[c.mp.key].outposts, 1, 'the server has it')
+  local q2 = c:view().home.conquest
+  T.eq(#q2.bases, 2, 'the Base tab lists both'); T.check(not q2.grown and q2.fullAt == 7750000, 'and the next goal')
+  local circles = c:baseCircles()
+  T.check(#circles == 2 and circles[2].mine and circles[2].outpost, 'its circle is the player\'s own turf')
+  T.eq(c:baseShareAt({ latitude = -31.95, longitude = 115.86 }), require('earthFreight/magnate').OWNER_SHARE, 'with the bonus')
+  local map = c:baseMapData()
+  T.check(#map.circles == 2 and map.circles[1].full and map.land.percent > 0, 'the Base map draws it, the full circle and the land')
 end
 
 -- Restarting for an update: warnings in chat, every game saves itself, everyone is sent off, and the script is told.

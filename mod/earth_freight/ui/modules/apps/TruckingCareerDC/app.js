@@ -587,6 +587,13 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.corpAccept = function (id) { if (num(id)) core('corpAccept(' + num(id) + ')') }
       scope.corpRefuse = function (id) { if (num(id)) core('corpRefuse(' + num(id) + ')') }
       scope.corpRemove = function (id) { if (num(id)) core('corpRemove(' + num(id) + ')') }
+      // The land race: Open a base here, and how full the land bar is (the winning share is the end of the bar).
+      scope.openBase = function () { var c = scope.data.home && scope.data.home.conquest; if (c && c.openAllowed) core('openBase()') }
+      scope.landBar = function (c) {
+        var win = c && c.race && Number(c.race.win) > 0 ? Number(c.race.win) : 100
+        var land = c ? Number(c.land) || 0 : 0
+        return Math.max(0, Math.min(100, land / win * 100))
+      }
       scope.removing = null
       scope.setRemoving = function (id) { scope.removing = id }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }

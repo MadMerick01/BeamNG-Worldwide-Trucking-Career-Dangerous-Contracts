@@ -49,6 +49,7 @@ M.html = [==[<!doctype html>
 <div id="map" role="region" aria-label="Map of bases and their turf"></div>
 <footer>
   <div id="job"></div>
+  <div id="land"></div>
   <div>Each circle is a trucker's base. Where circles overlap, the bigger one pushes the border towards the smaller one, and every base keeps the 100 km around its town. Jobs in your own turf pay you up to +20%, or up to +10% in your corp's turf. Deliver in anyone else's turf and 20% of the pay goes to them as a turf toll, unless you are in their corp.</div>
 </footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -135,10 +136,11 @@ M.html = [==[<!doctype html>
     state.layers = []
     list.forEach(function (c) {
       var col = colour(c), at = [c.latitude, c.longitude]
-      state.layers.push(L.circle(at, { radius: c.radiusKm * 1000, color: col, weight: 2, fill: false, dashArray: c.mine ? null : '6 6', interactive: false }).addTo(map))
+      // A full-size circle has a thick edge: its corp can open another base outside it.
+      state.layers.push(L.circle(at, { radius: c.radiusKm * 1000, color: col, weight: c.full ? 4 : 2, fill: false, dashArray: c.mine ? null : '6 6', interactive: false }).addTo(map))
       state.layers.push(L.circle(at, { radius: state.coreKm * 1000, color: col, weight: 1, fill: false, opacity: 0.6, interactive: false }).addTo(map))
       var m = L.circleMarker(at, { radius: 5, color: col, weight: 2, fillColor: col, fillOpacity: 1 }).addTo(map)
-      m.bindTooltip(label((c.mine ? 'Your base' : (c.owner || 'A trucker')) + ' · ' + (c.town || '') + ' · ' + c.radiusKm + ' km'),
+      m.bindTooltip(label((c.mine ? 'Your base' : c.corp ? 'Your corp' : (c.owner || 'A trucker')) + ' · ' + (c.town || '') + ' · ' + c.radiusKm + ' km' + (c.full ? ', full size' : '')),
         { permanent: true, direction: 'top', offset: [0, -6], className: 'tag' })
       state.layers.push(m)
     })
@@ -221,6 +223,12 @@ M.html = [==[<!doctype html>
         : 'Around ' + (t.town || 'their base') + '. Deliveries here pay ' + t.toll + '% of their pay to ' + (t.owner || 'them') + '.'
     } else {
       $('turf').textContent = 'Base map'
+    }
+    var l = d.land
+    $('land').textContent = !l ? '' : 'Land race: ' + (l.percent != null ? l.who + ' ' + l.percent.toFixed(1) + '% of Earth’s land. ' : '')
+      + (l.leader ? l.leader + ' leads with ' + (l.leaderLand || 0).toFixed(1) + '%. ' : '') + 'The first to ' + l.win + '% wins the season'
+      + (l.daysLeft ? ', or whoever holds the most in ' + l.daysLeft + (l.daysLeft === 1 ? ' day.' : ' days.') : '.')
+    if (!d.truck) {
       $('sub').textContent = reasons[d.waiting] || 'Waiting for your truck'
     }
   }
