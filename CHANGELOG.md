@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 188 · 12 Nov 2026
+
 - **On a trucking server, the season is now a race for land.** The first base owner whose turf, with their corp's, covers half of Earth's land (Antarctica left out) wins the season. If nobody gets there within 12 weeks, whoever holds the most land wins. Then a new season starts and everyone starts over. You're sent off the server with a message saying who won, and you start fresh when you join again. The winners are listed on the server's web page, with a trophy next to their names on the leaderboard.
 - A land meter shows how much of Earth's land you or your corp hold, who's leading and how many days are left. You'll find it under the town name on the HUD, on the Base tab, on the Base map and on the web page.
 - Circles now start smaller and stop growing at the size of the USA. A new base's circle reaches 800 km, it takes four times the wealth to double its area, and it's full size at 1,600 km once your corp is worth $4,000,000. The circles already on the server are resized to these sizes, so big circles shrink once. For example, a base worth $2.2 million goes from about 4,750 km to about 1,380 km. Your money, trucks, base and corp are kept.
