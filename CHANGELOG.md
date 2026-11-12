@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Base map now opens on the nearest base, so you can see it even when it's far away.** Before, if you didn't own a base it opened zoomed right in on your truck, so another trucker's circle a few thousand kilometres away was off the screen, whether they were online or not. Now it opens showing your truck and the whole circle of the nearest base, or your own or your corp's. Follow truck keeps that view and only moves the map when your truck gets near the edge. Every base shows on the map whether its owner is online or not. Saves still work.
+
 ## Build 185 · 12 Nov 2026
 
 - **On a trucking server, a "While you were away" card now greets you when you come back.** Once you're back at your last save, it sits on the HUD under your money until you press **Got it**. It shows how long you were gone and the turf tolls paid to you while you were off, with the biggest payers by name. It lists any corp news, such as someone asking to join, leaving, being let in or being removed. It also shows your place on the season leaderboard and whether you've gone up or down, and where Ship Day is and when it sails. If you drop out and rejoin within 15 minutes, no card appears unless something happened. Server hosts need to update the server plugin as usual to get it. Careers and saves still work.
