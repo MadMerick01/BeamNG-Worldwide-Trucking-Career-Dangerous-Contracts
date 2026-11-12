@@ -578,8 +578,9 @@ function M.attach(c)
     if vehicleId ~= nil and self.garage and self.garage.isWalker and self.garage:isWalker(vehicleId) then return end
     -- The player's trailer coming out is not a change to their car.
     if self.trailerSpawning or (vehicleId ~= nil and self.trailerOut and vehicleId == self.trailerOut.id) then
-      -- A part change in the parts menu respawns the trailer: its bill is worked out next tick.
-      if self.trailerShop then self.trailerShop.due = true end
+      -- Not one we spawned: the game's parts menu (or a reload) respawned it. Its parts are checked
+      -- next tick, and changed ones are put back (watchTrailerParts).
+      if not self.trailerSpawning and self.trailerOut then self.trailerOut.respawned = true end
       return
     end
     self.partsCheckDue, self.respawned, self.wearDue = true, true, true
@@ -644,8 +645,6 @@ function M.attach(c)
   end
 
   function c:checkParts()
-    -- While the player is in their trailer for its parts, the vehicle they are in is not a car to buy.
-    if self.trailerShop then return false end
     local snapshot = self.garage:parts()
     if not snapshot then return false end
     -- A second-hand car is priced once it has spawned (watchParts drops one that never does).

@@ -286,7 +286,6 @@ function M.attach(c)
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from first.' end
     if self.booking then return 'Teleport to your relocation booking, or cancel it, first.' end
     if self.pendingCar or self.pendingParts then return 'Pay for or undo the bill on the Garage tab first.' end
-    if self.trailerShop then return 'Finish with your trailer parts on the Garage tab first.' end
     if self.secondHand then return 'Bringing the car out...' end
     local vehicle = self.lastSample and self.lastSample.valid and self.lastSample.vehicle
     if not self.ownedParts or not vehicle or vehicle.id ~= self.ownedParts.id then return 'Get in your own car first.' end

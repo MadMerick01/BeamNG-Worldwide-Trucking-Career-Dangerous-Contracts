@@ -1876,45 +1876,45 @@ do
   T.check(h.fifthwheel and h.gooseneck and h.ball, 'fifth wheel, gooseneck and ball'); T.eq(TR.hitches(nil).ball, nil, 'none without parts')
 end
 
--- Trailer parts: cargo boxes fitted to a trailer in the parts menu, billed like car parts, saved.
+-- Trailer parts cannot be changed: a part change made in the game's own parts menu is put back,
+-- and an older save's trailer with parts fitted comes back as it was sold.
 do
   local c, io, a, g = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   c.profile.progression.balance = 100000
-  g.storage = {}
+  T.eq(c.buyTrailerParts, nil, 'no Buy trailer parts')
   T.check(c:buyTrailer(1), 'trailer bought'); local id = c.trailerOut.id
-  c:couplerChanged(1, id, true)
-  T.eq(c:view().trailer.owned.space.slots, 0, 'a trailer with no storage carries nothing')
-  c.load = { good = 'parts', units = 1, slots = 1, kg = 15 }
-  T.check(not c:buyTrailerParts(), 'not with a job'); T.check(c.trailerFeedback:find('job'), 'told why')
-  c.load = nil
-  local before = c:view().balance
-  T.check(c:buyTrailerParts(), 'in the trailer'); T.eq(g.vehicleId, id, 'the player is in it'); T.eq(g.partsMenus, 1, 'parts menu opened')
-  T.check(c:view().garageLocked, 'car parts and cars wait'); T.check(not c:manualSave(), 'no save mid-shop')
-  -- Fitting a box respawns the trailer: billed, not taken as a car purchase.
+  c:couplerChanged(1, id, true); c:tick(0.1)
+  T.eq(c.trailerOut.parts.deck, 'flatbed_deck', 'the parts it came out with are kept')
+  local balance = c:view().balance
+  -- The player switches into the trailer and fits a box in the parts menu, which respawns it.
+  g:enter(id)
   g.trailers[id].fitted.box = 'pickup_cargo_load_box_l'
   c:vehicleSpawned(id); c:tick(0.1)
-  T.eq(c.pendingCar, nil, 'not a car bill'); T.eq(c:view().trailer.shop.bill.cost, 1500, 'the box billed at its price')
-  T.eq(c:view().trailer.owned.space.slots, 16, 'its space counted')
-  local paid = c.trailer.paid
-  T.check(c:payTrailerParts(), 'paid'); T.eq(c:view().balance, before - 1500, 'charged')
-  T.eq(c.trailer.paid, paid + 1500, 'the parts add to what the trailer is worth')
-  T.eq(g.vehicleId, 1, 'back in the car'); T.eq(c.trailerShop, nil, 'done')
-  T.eq(type(c.trailer.config), 'table', 'the fitted parts kept')
-  c:couplerChanged(1, id, true); c:tick(0.6); c:tick(0.6)
-  T.check(c:manualSave(), 'saved')
-  local saved = io.files[A].trailer and io.files[A] or io.files[B]
-  T.eq(saved.trailer.config.parts.box, 'pickup_cargo_load_box_l', 'the box saved')
-  local r, _, ra, rg = F.controller({ io = io })
-  ra.pose = F.copy(a.pose); rg.storage = {}; r:tick(0.1); r:vehicleSpawned(); r:tick(0.1); r:tick(0.1)
-  T.eq(rg.trailers[r.trailerOut.id].fitted.box, 'pickup_cargo_load_box_l', 'it comes back with its box')
-  -- Undo puts the paid parts back, for nothing.
-  before = c:view().balance
-  T.check(c:buyTrailerParts(), 'in again')
-  g.trailers[id].fitted.box = nil; c:vehicleSpawned(id); c:tick(0.1)
-  T.eq(#c:view().trailer.shop.bill.removed, 1, 'taking it off shows on the bill'); T.eq(c:view().trailer.shop.bill.cost, 0, 'never below $0, as for car parts')
-  T.check(c:undoTrailerParts(), 'undone'); T.eq(g.trailers[id].fitted.box, 'pickup_cargo_load_box_l', 'box back on')
-  T.eq(c:view().balance, before, 'nothing paid'); T.eq(g.vehicleId, 1, 'back in the car')
+  T.eq(c.pendingCar, nil, 'not a car bill'); T.eq(c.pendingParts, nil, 'nor a parts bill')
+  T.eq(g.trailers[id].fitted.box, nil, 'the box taken back off'); T.eq(g.trailers[id].fitted.deck, 'flatbed_deck', 'as sold')
+  T.eq(g.vehicleId, 1, 'back in the car'); T.eq(c:view().balance, balance, 'nothing charged')
+  T.eq(type(c.trailer.config), 'string', 'the setup it was sold with is kept')
+  -- Our own respawn comes back with the same parts: nothing more to do.
+  local repairs = g.trailerRepairs
+  c:vehicleSpawned(id); c:tick(0.1)
+  T.eq(g.trailerRepairs, repairs, 'a respawn with the same parts is left alone')
+  -- When putting it back keeps failing to stick, it gives up rather than respawning it forever.
+  local put = g.repair
+  g.repair = function(self, config, vid) self.trailerRepairs = self.trailerRepairs + 1; return true end
+  for _ = 1, 4 do g.trailers[id].fitted.box = 'pickup_cargo_load_box_l'; c:vehicleSpawned(id); c:tick(0.1) end
+  T.eq(g.trailerRepairs, repairs + 2, 'tried twice, then left')
+  g.repair = put
+  -- A trailer saved with parts fitted (older builds) loads as its .pc setup; what was paid stays.
+  local TR = require('earthFreight/trailers')
+  local old = TR.clean({ model = 'boxutility', name = 'Box utility trailer', paid = 6500,
+    config = { model = 'boxutility', parts = { box = 'pickup_cargo_load_box_l' },
+      partConfigFilename = 'vehicles/boxutility/earth_freight_trailer_boxes.pc' } })
+  T.eq(old.config, 'vehicles/boxutility/earth_freight_trailer_boxes.pc', 'back to the setup it was sold with')
+  T.eq(old.paid, 6500, 'the paid parts still count toward its sale')
+  T.eq(TR.limitOf(old.model, old.config), 600, 'and its load limit')
+  local odd = TR.clean({ model = 'boxutility', name = 'X', paid = 1, config = { model = 'boxutility', parts = {} } })
+  T.eq(type(odd.config), 'table', 'a config naming no .pc file is kept as it is')
 end
 
 -- A trailer spot at the base: two trailers with a base, parked and hitched for free within 200 m,
