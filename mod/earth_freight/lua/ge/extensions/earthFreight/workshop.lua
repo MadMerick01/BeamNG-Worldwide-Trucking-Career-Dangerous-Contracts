@@ -8,7 +8,6 @@ local persistence = require('earthFreight/persistence')
 local pricing = require('earthFreight/pricing')
 local cargo = require('earthFreight/cargo')
 local goods = require('earthFreight/goods')
-local contracts = require('earthFreight/contracts')
 local beacons = require('earthFreight/beacons')
 local places = require('earthFreight/places')
 local usedCars = require('earthFreight/usedCars')
@@ -20,11 +19,15 @@ M.UNPAID_PARTS_DRIVE_LIMIT = 25
 M.STARTER_MODEL = 'burnside'
 M.STARTER_CONFIG = 'vehicles/burnside/earth_freight_starter.pc'
 -- Insurance: from this much damage (half of what BeamNG calls major) a crash is serious, and the
--- player can claim instead of paying for the repair. A claim costs INSURANCE_FEE, or all the
--- player's money if less. The car is first sent back to the road, then fixed ROAD_SECONDS later
--- where it landed; jumps in the GRACE_SECONDS after a claim are not teleports.
+-- player can claim instead of paying for the repair. Cover fades out as the player gets richer:
+-- a claim costs the share of the real repair that their wealth (cash, truck, trailers and base)
+-- is of FULL_PRICE_WEALTH, so at that wealth or more it costs the whole repair. It never costs
+-- less than INSURANCE_FEE (more for a beacon's package), never more than the repair, and never
+-- more than all the player's money. The car is first sent back to the road, then fixed
+-- ROAD_SECONDS later where it landed; jumps in the GRACE_SECONDS after a claim are not teleports.
 M.SERIOUS_DAMAGE = 15000
 M.INSURANCE_FEE = 1000
+M.FULL_PRICE_WEALTH = 500000
 M.ROAD_SECONDS, M.GRACE_SECONDS = 1.5, 10
 -- Tow: on foot, within TOW_RANGE metres of the car, the player pays TOW_FEE to have it brought to
 -- them. Short of the fee, it is owed instead, and parts and cars cannot be bought until it is paid.
@@ -44,6 +47,17 @@ M.RUST_VALUE, M.RIG_VALUE = 3500, 100000
 -- After parts or a car are paid for, a photo of the car is taken this many seconds later, once it
 -- is standing still, for the start page. The game's menus close and the car settles first.
 M.PHOTO_DELAY = 3
+
+-- What an insurance claim costs before the player's money caps it: the share of the repair that
+-- wealth is of FULL_PRICE_WEALTH, at least minimum, but never more than the repair (0: unknown).
+function M.claimFee(repair, wealth, minimum)
+  repair = math.max(0, tonumber(repair) or 0)
+  wealth = math.max(0, tonumber(wealth) or 0)
+  local share = math.min(1, wealth / M.FULL_PRICE_WEALTH)
+  local fee = math.max(minimum or M.INSURANCE_FEE, math.floor(repair * share + 0.5))
+  if repair > 0 then fee = math.min(fee, repair) end
+  return fee
+end
 
 -- How far along the Rust Bucket to Rig line a car worth this much is, from 0 to 1; nil unknown.
 function M.climb(value)
@@ -289,9 +303,12 @@ function M.attach(c)
     return d ~= nil and owned ~= nil and d.id == owned.id and d.damage >= M.SERIOUS_DAMAGE
   end
 
-  -- On a dangerous contract, or a beacon's package, a claim costs more instead.
+  -- What the claim costs now: see M.FULL_PRICE_WEALTH. A beacon's package has a higher minimum.
   function c:insuranceFee()
-    local fee = self.load and (self.load.contract and contracts.INSURANCE_FEE or self.load.beacon and beacons.INSURANCE_FEE) or M.INSURANCE_FEE
+    local minimum = self.load and self.load.beacon and beacons.INSURANCE_FEE or M.INSURANCE_FEE
+    local d = self.lastDamage
+    local repair = d and self:repairPrice(d.damage, self:carValueOf(d.id)) or 0
+    local fee = M.claimFee(repair, self.wealth and self:wealth() or 0, minimum)
     return math.min(fee, self.profile and self.profile.progression.balance or 0)
   end
 
@@ -366,7 +383,8 @@ function M.attach(c)
     local d = self.lastDamage
     return { fee = self:insuranceFee(), armed = self.insuranceArmed, pending = self.insurancePending ~= nil,
       allowed = self:insuranceAllowed(), loseJob = self.load ~= nil,
-      repair = d and pricing.repairCost(d.damage, self:carValueOf(d.id)) or nil }
+      wealth = math.floor(self.wealth and self:wealth() or 0), fullPriceWealth = M.FULL_PRICE_WEALTH,
+      repair = d and self:repairPrice(d.damage, self:carValueOf(d.id)) or nil }
   end
 
   -- Tow, on the Garage tab's Repair card: the player gets out, walks to a clear spot within

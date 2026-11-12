@@ -1739,7 +1739,7 @@ function M.new(deps)
     self.tradeFeedback = 'Picked up: ' .. beacons.line(b.line):lower():gsub('%.$', '') .. '. Take it '
       .. string.format('%.1f', away / 1000) .. ' km to the ' .. location.compassPoint(location.bearing(b.pickup, b.drop))
       .. ', off road: follow the arrow and stop within ' .. beacons.RADIUS .. ' m of the drop. It pays ' .. dollars(beacons.PAY)
-      .. '. A crash costs ' .. dollars(beacons.INSURANCE_FEE) .. ' insurance and loses it.'
+      .. '. A crash loses it, and an insurance claim costs at least ' .. dollars(beacons.INSURANCE_FEE) .. '.'
     self.diag:event('beacon_picked_up', string.format('%.5f,%.5f', b.drop.latitude, b.drop.longitude))
     return true
   end
@@ -1952,7 +1952,7 @@ function M.new(deps)
         gps = (section and self.gpsContract == section.id or not job.drop and not section and self.gpsTown == to.id) or nil,
         size = not job.drop and to.size or nil, drop = job.drop ~= nil and not section or nil,
         contract = section and { id = section.id, name = section.name, region = section.region, summary = section.summary,
-          fee = contracts.FEE, insurance = contracts.INSURANCE_FEE, pays = section.pay } or nil,
+          fee = contracts.FEE, pays = section.pay } or nil,
         direction = job.drop and not section and location.compassPoint(location.bearing(place, job.drop)) or nil,
         distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
         units = q.units, kg = q.kg, unitSlots = good.slots, unitKg = good.kg,
@@ -2145,7 +2145,7 @@ function M.new(deps)
           started = self.load.started == true, start = location.copy(section.start),
           startMetres = current and location.distance(current, section.start) or nil,
           teleportAllowed = not self.load.started and self.adapter.teleport ~= nil and not teleporting,
-          teleporting = not self.load.started and teleporting or nil, insurance = contracts.INSURANCE_FEE } or nil,
+          teleporting = not self.load.started and teleporting or nil } or nil,
         distanceMetres = away, direction = bearing and location.compassPoint(bearing) or nil,
         drop = {
           distanceMetres = away, bearing = bearing,

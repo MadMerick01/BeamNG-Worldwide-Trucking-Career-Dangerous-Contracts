@@ -8,6 +8,7 @@ local jobs = require('earthFreight/jobs')
 local fuel = require('earthFreight/fuel')
 local location = require('earthFreight/location')
 local contracts = require('earthFreight/contracts')
+local workshop = require('earthFreight/workshop')
 local A, B = P.DIRECTORY .. 'save-a.json', P.DIRECTORY .. 'save-b.json'
 local north = 1 / 111195.0802 -- degrees latitude per metre
 
@@ -455,6 +456,18 @@ do
   T.check(o:view().flash.text:find('refunded', 1, true), 'the player is told')
 end
 
+-- What a claim costs: the share of the repair that wealth is of $500,000, at least $1,000, at most the repair.
+do
+  T.eq(workshop.claimFee(60100, 5000, 1000), 1000, 'starting out: $1,000')
+  T.eq(workshop.claimFee(60100, 50000, 1000), 6010, '$50,000 pays a tenth')
+  T.eq(workshop.claimFee(60100, 250000, 1000), 30050, '$250,000 pays half')
+  T.eq(workshop.claimFee(60100, 500000, 1000), 60100, '$500,000 pays the whole repair')
+  T.eq(workshop.claimFee(60100, 2000000, 1000), 60100, 'and never more')
+  T.eq(workshop.claimFee(600, 0, 1000), 600, 'never more than a cheap repair')
+  T.eq(workshop.claimFee(20000, 0, 4000), 4000, "a beacon's higher minimum")
+  T.eq(workshop.claimFee(0, 0, 1000), 1000, 'unknown repair: the minimum')
+end
+
 -- Insurance after a serious crash: the car back on the road and fixed for $1,000, the job lost.
 do
   local c, io, a, g = F.controller()
@@ -465,7 +478,8 @@ do
   T.check(not c:claimInsurance(), 'refused')
   g.damage = 20000; c:tick(0.1)
   local ins = c:view().insurance
-  T.check(ins ~= nil and ins.allowed, 'offered after a serious crash'); T.eq(ins.fee, 1000, 'for $1,000')
+  T.check(ins ~= nil and ins.allowed, 'offered after a serious crash'); T.eq(ins.fee, math.min(1000, ins.repair), 'for $1,000 when starting out')
+  T.eq(ins.fullPriceWealth, 500000, 'says where the cover runs out')
   T.check(ins.loseJob, 'the job would be lost'); T.check(ins.repair > 0, 'the repair is shown to compare')
   local balance = c:view().balance
   T.check(not c:claimInsurance(), 'asks first'); T.check(c:view().insurance.armed, 'armed')
@@ -474,7 +488,7 @@ do
   -- The move back to the road is a jump, but not a teleport.
   a.pose = location.destination(F.PENRITH, 0, 3000); c:tick(0.5); c:tick(0.5); c:tick(0.6)
   T.eq(g.repairs, 1, 'fixed'); T.eq(c.stranded, nil, 'not stranded')
-  T.eq(c:view().balance, balance - 1000, 'charged $1,000'); T.eq(c.load, nil, 'the job is lost')
+  T.eq(c:view().balance, balance - ins.fee, 'charged the claim'); T.eq(c.load, nil, 'the job is lost')
   T.eq(c:view().flash.title, 'INSURANCE CLAIMED', 'told so')
   c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
   T.eq(c:view().insurance, nil, 'no more offer once fixed')
@@ -1141,7 +1155,7 @@ do
   local job, section = onContract(c)
   local row = c:view().town.jobs[#c:view().town.jobs]
   T.check(row.contract ~= nil and not row.drop, 'the board ends with a dangerous contract'); T.eq(row.to, section.name, 'named for its section')
-  T.eq(row.contract.fee, contracts.FEE, 'with its relocation fee'); T.eq(row.contract.pays, section.pay, 'and its pay multiple'); T.eq(row.contract.insurance, 4000, 'and its $4,000 insurance')
+  T.eq(row.contract.fee, contracts.FEE, 'with its relocation fee'); T.eq(row.contract.pays, section.pay, 'and its pay multiple');
   T.eq(row.distanceMetres, 2000, 'about 2 km'); T.check(row.allowed, 'can be taken')
   local q = c:jobQuote(job)
   T.eq(q.pay, math.floor(jobs.basePay(goods.get('parts'), q.units, 5) * section.pay / 10 + 0.5) * 10, 'its multiple of a 5 km job')
@@ -1195,7 +1209,7 @@ do
   T.check(not d:deliver(), 'a lift to the finish does not deliver')
 end
 
--- A crash on a dangerous contract: the claim costs $4,000 and the contract is lost.
+-- A crash on a dangerous contract: the claim costs what it does on any job, and the contract is lost.
 do
   local c, io, a, g = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
@@ -1204,10 +1218,26 @@ do
   T.check(c:takeJob(job.id), 'taken')
   a.pose = F.copy(section.start); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   g.damage = 20000; c:tick(0.1)
-  T.eq(c:view().insurance.fee, 4000, 'the claim costs $4,000')
+  local fee = c:view().insurance.fee
+  T.eq(fee, workshop.claimFee(c:view().insurance.repair, c:wealth(), workshop.INSURANCE_FEE), 'the usual claim')
+  T.check(fee < 4000, 'not the old $4,000')
   c:claimInsurance(); T.check(c:claimInsurance(), 'claimed')
   a.pose = location.destination(section.start, 0, 50); c:tick(0.5); c:tick(0.5); c:tick(0.6)
-  T.eq(c.load, nil, 'the contract is lost'); T.eq(c:view().balance, 10000 - contracts.FEE - 4000, 'charged $4,000')
+  T.eq(c.load, nil, 'the contract is lost'); T.eq(c:view().balance, 10000 - contracts.FEE - fee, 'charged the claim')
+end
+
+-- A rich player's claim costs the whole repair; it still puts the car back on the road.
+do
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 600000
+  g.damage = 30000; c:tick(0.1)
+  local ins = c:view().insurance
+  T.check(ins ~= nil and ins.allowed, 'still offered'); T.eq(ins.fee, ins.repair, 'for the full repair')
+  T.check(ins.wealth >= 600000, 'counts their wealth')
+  c.profile.progression.balance = 100000; c:tick(0.1)
+  ins = c:view().insurance
+  T.eq(ins.fee, math.max(1000, math.floor(ins.repair * ins.wealth / 500000 + 0.5)), 'a share of it when less rich')
 end
 
 -- Abandoned before the start, the relocation is paid back; not enough money, no contract.

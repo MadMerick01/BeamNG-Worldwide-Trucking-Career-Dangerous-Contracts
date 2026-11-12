@@ -28,7 +28,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 - **Buy a home.** For $250,000, make any spot on Earth yours. It stores a second car you can swap into there, and repairs at home are half price.
 - **Relocate.** Pay to move to any town or coordinates on Earth. Some of the world's hardest regions will pay your way if you come and deliver their wares.
 - **Fuel, punctures and breakdowns.** Refuel in towns, repair burst tyres and use **Tow to road** when you're stuck.
-- **Insurance** after a big crash costs $1,000 (the load is lost), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
+- **Insurance** after a big crash costs $1,000 when you're starting out, and covers less the richer you get, up to the full repair from $500,000 (the load is lost), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
 - **Street View window.** On the HUD's **Street View** tab, press **Turn on** to follow your truck in Google Street View in your web browser, updated every 10 seconds (or every 6 or 20, in the page's Settings). Handy on a second screen.
 - **Go sightseeing.** Save, swap your truck for a free Moonhawk, teleport anywhere on Earth to look around, then press **Return to your job** to get your truck and job back.
 - **Heli flights.** Hire a Bell 407 for $1,000 and search for **'dont ask questions'** jobs. Needs the [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) mod by stefan750.
