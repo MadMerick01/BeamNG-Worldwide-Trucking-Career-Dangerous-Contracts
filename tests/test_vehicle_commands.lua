@@ -48,6 +48,46 @@ do
   run(vehicle.commands[5], { v = {}, obj = {} }) -- a car without nodes: nothing happens, no error
 end
 
+-- A trailer's load is centred just ahead of its axles, so hitchShare of it rests on the hitch.
+do
+  local trailer = car(42)
+  local w = cargo.new({ byId = function(id) return id == 42 and trailer or nil end })
+  -- A trailer facing -y: hitch node at y = -4 (tagged), axle hubs at y = 2, deck nodes from -3 to 4.
+  local masses, nodes = {}, {}
+  local function node(cid, y, extra)
+    local n = { cid = cid, pos = { x = 0, y = y, z = 1 } }
+    for k, v in pairs(extra or {}) do n[k] = v end
+    nodes[cid], masses[cid] = n, 5
+  end
+  node(0, -4, { couplerTag = 'tow_hitch' })
+  for i = 1, 8 do node(i, -4 + i) end
+  node(20, 2); node(21, 2); node(22, 2.3, { wheelID = 0 })
+  local world = { v = { data = { nodes = nodes, wheels = { [0] = { node1 = 20, node2 = 21 } } } },
+    obj = { setNodeMass = function(_, cid, m) masses[cid] = m end, getNodeMass = function(_, cid) return masses[cid] end } }
+  T.check(w:setWeightOn(42, 1000, {}, {}, 0.12), 'sent')
+  run(trailer.commands[1], world)
+  local total, moment = 0, 0
+  for cid, n in pairs(nodes) do
+    local added = masses[cid] - 5
+    total, moment = total + added, moment + added * n.pos.y
+  end
+  T.near(total, 1000, 1e-6, 'all the weight is on the trailer')
+  local centre = moment / total
+  T.near((2 - centre) / (2 - -4), 0.12, 1e-3, '12% of it rests on the hitch')
+  T.check(centre < 2, 'the load sits ahead of the axles')
+  T.eq(masses[0], 5, 'none on the coupler'); T.eq(masses[20], 5, 'none on the hubs'); T.eq(masses[22], 5, 'nor the tyres')
+  local most, least = 0, math.huge
+  for i = 1, 8 do most, least = math.max(most, masses[i] - 5), math.min(least, masses[i] - 5) end
+  T.check(most / least <= 20 + 1e-6, 'no node takes more than 20 times another')
+  -- Without wheels to find the axles, it is spread evenly as before.
+  world.v.data.wheels = nil
+  w:setWeightOn(42, 900, {}, {}, 0.12); run(trailer.commands[2], world)
+  T.near(masses[1] - 5, 900 / 12, 1e-6, 'even spread over every node')
+  -- A share outside 0..1 is never sent: the load is then spread evenly.
+  w:setWeightOn(42, 10, {}, {}, 2)
+  T.check(trailer.commands[3]:match('^[^\n]*') :sub(-5) == ', nil', 'a share outside 0..1 is sent as none')
+end
+
 -- Fluid: the tank's own container is filled through its jbeam expressions, so it sloshes.
 do
   -- A stand-in for BeamNG's expression parser: "$=" then Lua arithmetic in $names.

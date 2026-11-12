@@ -220,7 +220,7 @@ function F.cargo()
   local c = { weights = {}, tankReads = 0 }
   function c:setWeight(kg, parts, fluid) self.weights[#self.weights + 1] = { kg = kg, parts = F.copy(parts), fluid = F.copy(fluid) }; return true end
   c.trailerWeights = {}
-  function c:setWeightOn(id, kg, parts, fluid) self.trailerWeights[#self.trailerWeights + 1] = { id = id, kg = kg, fluid = F.copy(fluid) }; return true end
+  function c:setWeightOn(id, kg, parts, fluid, hitchShare) self.trailerWeights[#self.trailerWeights + 1] = { id = id, kg = kg, fluid = F.copy(fluid), hitchShare = hitchShare }; return true end
   function c:readTanks() self.tankReads = self.tankReads + 1; return true end
   return c
 end

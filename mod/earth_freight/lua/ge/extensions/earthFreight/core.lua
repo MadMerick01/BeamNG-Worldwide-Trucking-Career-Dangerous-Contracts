@@ -1065,10 +1065,12 @@ function M.new(deps)
       return
     end
     local good = goods.get(shipday.GOOD)
+    local full = quote.units
     quote.units, quote.pay = jobs.share(quote.units, quote.pay, claim.share or 100)
     self.load = { good = good.id, units = quote.units, slots = quote.units * good.slots, kg = quote.units * good.kg,
       pay = quote.pay, from = box.from, to = box.to, drivenKm = 0, ship = { ship = claim.ship, n = claim.n }, toll = quote.toll }
-    if (quote.trailerUnits or 0) > 0 then self.load.trailerUnits = math.min(quote.trailerUnits, quote.units) end
+    local inTrailer = trailers.split(quote.units, full, quote.trailerUnits)
+    if inTrailer > 0 then self.load.trailerUnits = inTrailer end
     self.abandonArmed = false
     self:applyWeight()
     self:gpsToJob()
@@ -1281,7 +1283,7 @@ function M.new(deps)
   -- What a job on the board pays the player's car now: how many units of its good fit, and the pay.
   function c:jobQuote(job)
     local good = goods.get(job.good)
-    -- A hitched trailer is loaded first, then the car. A dangerous contract only loads the car: its
+    -- A hitched trailer adds its room to the car's. A dangerous contract only loads the car: its
     -- teleport to the start leaves the trailer behind.
     local units, slots, kg, inTrailer = trailers.fits(self:space(), not job.contract and self:trailerSpace() or nil, good)
     -- Ends inside the player's base circle pay more (magnate.lua).
@@ -1323,12 +1325,13 @@ function M.new(deps)
       return false
     end
     local destination = places.get(job.to)
+    local full = quote.units
     local units, pay = jobs.share(quote.units, quote.pay, share)
     quote.units, quote.slots, quote.kg, quote.pay = units, units * good.slots, units * good.kg, pay
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
       from = place.id, to = destination.id, drivenKm = 0, drop = location.copy(job.drop), toll = quote.toll }
-    -- The trailer is filled first; a part load leaves the car empty before the trailer.
-    local inTrailer = math.min(quote.trailerUnits or 0, units)
+    -- Split between the car and the trailer, each loaded to the same share of its room.
+    local inTrailer = trailers.split(units, full, quote.trailerUnits)
     if inTrailer > 0 then self.load.trailerUnits = inTrailer end
     self.abandonArmed = false
     if job.contract then return self:takeContract(job, good, quote) end
