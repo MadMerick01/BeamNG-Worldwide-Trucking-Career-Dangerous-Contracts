@@ -1207,4 +1207,13 @@ do
   T.check(v ~= nil and v.tolls.amount == 1500 and v.place == 3, 'shown on the HUD once back on the road')
   T.check(c:dismissAway(), 'Got it'); T.eq(c:view().away, nil, 'closes it')
 end
+-- A coloured server name shows as plain text on the server page and in Play online.
+do
+  local W, env = server()
+  T.eq(W.plainName('^l^6A WW Trucking Career ^r^f| ^bMadMerick'), 'A WW Trucking Career | MadMerick', 'colour codes are taken out')
+  T.eq(W.plainName('Plain name'), 'Plain name', 'a plain name stays as it is')
+  T.eq(W.plainName('^c^l'), nil, 'nothing but codes is no name'); T.eq(W.plainName(nil), nil, 'no name')
+  env.setting = function(which) if which == 'name' then return '^6A WW ^bTrucking' end end
+  T.eq(W.status().server.name, 'A WW Trucking', 'the stats carry the plain name')
+end
 T.done('multiplayer careers')
