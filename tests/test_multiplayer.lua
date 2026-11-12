@@ -1138,4 +1138,73 @@ do
   local last = J.decode(env.sent[#env.sent].data)
   T.eq(last.ok, true, 'the same save sent again is answered ok')
 end
+-- While you were away: tolls, corp news and the leaderboard kept for a player who's off, sent once on their next join.
+do
+  local W, env = server()
+  W.SHIP_CONTAINERS = 0
+  local function sentTo(pid, event)
+    local found
+    for _, m in ipairs(env.sent) do if m.pid == pid and m.event == event then found = J.decode(m.data) end end
+    return found
+  end
+  W.onJoin(1, J.encode({ v = 1 })); W.onJoin(2, J.encode({ v = 1 })); W.onJoin(3, J.encode({ v = 1 }))
+  local key1, key2 = W.players[1].key, W.players[2].key
+  T.eq(sentTo(1, 'wwtcAway'), nil, 'nothing on a first join')
+  W.bases[key1] = { name = 'player1', town = 'Penrith', latitude = -33.75, longitude = 150.7, boost = 1, peak = 400000,
+    id = 1, members = {}, requests = {}, nextMember = 0 }
+  W.stats.board[key1] = { name = 'player1', balance = 900000 }
+  W.stats.board[key2] = { name = 'player2', balance = 100000 }
+  -- A toll while the owner is on goes as usual, and isn't kept for later.
+  local penrith, ropes = { latitude = -33.75, longitude = 150.7 }, { latitude = -33.7328, longitude = 150.791 }
+  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 800, toll = 200, ends = { ropes, penrith } }))
+  T.eq(W.away[key1], nil, 'nothing kept while the owner is on')
+  env.sent = {}
+  W.onLeave(1)
+  T.eq(W.away[key1].place, 1, 'their place is kept as they leave')
+  -- While they're off: two players pay tolls, one asks to join the corp, and player 2 gets richer.
+  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 800, toll = 200, ends = { ropes, penrith } }))
+  W.onDelivered(2, J.encode({ v = 1, kind = 'job', pay = 1200, toll = 300, ends = { ropes, penrith } }))
+  W.onDelivered(3, J.encode({ v = 1, kind = 'job', pay = 400, toll = 100, ends = { ropes, penrith } }))
+  W.onCorp(3, J.encode({ v = 1, ['do'] = 'ask', base = 1 }))
+  W.stats.board[key2].balance = 2000000
+  env.time = env.time + 2 * 86400
+  -- The away file survives a restart of the plugin.
+  local W2, env2 = server(env.files)
+  env2.time = env.time
+  W2.SHIP_CONTAINERS = 0
+  W2.bases[key1] = W.bases[key1]
+  W2.stats.board = W.stats.board
+  W2.onJoin(1, J.encode({ v = 1, key = key1 }))
+  local away
+  for _, m in ipairs(env2.sent) do if m.pid == 1 and m.event == 'wwtcAway' then away = J.decode(m.data) end end
+  T.check(away ~= nil, 'the card comes on joining again')
+  T.eq(away.since, 2 * 86400, 'with how long they were away')
+  T.eq(away.tolls.amount, 600, 'the tolls paid while they were off'); T.eq(away.tolls.jobs, 3, 'from three deliveries')
+  T.eq(away.tolls.from[1].name, 'player2', 'biggest payer first'); T.eq(away.tolls.from[1].amount, 500, 'with what they paid')
+  T.eq(away.tolls.from[2].name, 'player3', 'then the next')
+  T.eq(#away.news, 1, 'one piece of corp news'); T.check(away.news[1]:find('player3 asked to join your corp', 1, true), 'the request')
+  T.eq(away.place, 2, 'their place now'); T.eq(away.was, 1, 'and as they left'); T.eq(away.of, 3, 'of everyone on the board')
+  T.eq(W2.away[key1], nil, 'and it is only sent once')
+  -- A quick drop and rejoin with nothing new sends no card; news for the player who asked comes when they return.
+  W2.onLeave(1); env2.time = env2.time + 60; env2.sent = {}
+  W2.onJoin(1, J.encode({ v = 1, key = key1 }))
+  local again
+  for _, m in ipairs(env2.sent) do if m.event == 'wwtcAway' then again = m end end
+  T.eq(again, nil, 'no card after a minute away with nothing new')
+  local key3 = W2.players[3] and W2.players[3].key
+  T.eq(key3, nil, 'player 3 is not on this restarted server')
+  -- The game checks what it gets, and the HUD shows it once back on the road, until Got it.
+  local clean = MPC.cleanAway({ since = 7200, place = 3, was = 0, of = 9, news = { 'One\nline', 5 },
+    tolls = { amount = 1500, jobs = 0, from = { { name = 'Sam', amount = 1000 }, { amount = 'x' } }, others = 2 } })
+  T.eq(clean.since, 7200, 'how long'); T.eq(clean.was, nil, 'no place is no place'); T.eq(clean.tolls.jobs, 1, 'at least one job')
+  T.eq(#clean.tolls.from, 1, 'bad payers dropped'); T.eq(clean.news[1], 'One line', 'news is one line'); T.eq(#clean.news, 1, 'and text only')
+  T.eq(MPC.cleanAway({}), nil, 'an empty message is no card')
+  local c = F.controller()
+  c.mp = { away = clean }
+  T.eq(c:view().away, nil, 'not before the player is back at their save')
+  c.arrived = true
+  local v = c:view().away
+  T.check(v ~= nil and v.tolls.amount == 1500 and v.place == 3, 'shown on the HUD once back on the road')
+  T.check(c:dismissAway(), 'Got it'); T.eq(c:view().away, nil, 'closes it')
+end
 T.done('multiplayer careers')

@@ -1039,3 +1039,12 @@ test('Play online says when the status cannot be reached, and opens its two link
   const page = html.slice(html.indexOf('class="ef-start"'), html.indexOf('<div ng-if="!hud.minimised && !intro.open">'))
   for (const part of ['PLAY ONLINE', 'OFFLINE CAREER', 'ng-click="toggleOnline()"', "openLink('server')", "openLink('discord')", 'ng-if="!data.online"']) assert.ok(page.includes(part), part)
 })
+test('the While you were away card: places read as 1st, 2nd, 3rd, and Got it closes it in the game', () => {
+  const a = app()
+  assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 101, 112].map(a.scope.ordinal),
+    ['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd', '101st', '112th'])
+  assert.equal(a.scope.ordinal(0), '')
+  a.scope.dismissAway()
+  assert.equal(a.commands.at(-1), fixed('dismissAway()'))
+  assert.ok(html.includes('WHILE YOU WERE AWAY') && html.includes('ng-click="dismissAway()"'), 'the card and its button')
+})

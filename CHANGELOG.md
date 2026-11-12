@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **On a trucking server, a "While you were away" card now greets you when you come back.** Once you're back at your last save, it sits on the HUD under your money until you press **Got it**. It shows how long you were gone and the turf tolls paid to you while you were off, with the biggest payers by name. It lists any corp news, such as someone asking to join, leaving, being let in or being removed. It also shows your place on the season leaderboard and whether you've gone up or down, and where Ship Day is and when it sails. If you drop out and rejoin within 15 minutes, no card appears unless something happened. Server hosts need to update the server plugin as usual to get it. Careers and saves still work.
+
 ## Build 184 · 11 Nov 2026
 
 - **On a trucking server, you can now join another trucker's base as part of their corp.** If you don't own a base, press **Ask to join** next to one under Other truckers' bases on the Base tab. The owner sees your request on their Base tab and presses **Accept** or **Turn down**. A corp holds up to 5 truckers, owner included, and you can be in one corp at a time.

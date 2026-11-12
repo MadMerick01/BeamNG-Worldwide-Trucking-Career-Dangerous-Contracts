@@ -98,6 +98,36 @@ function M.cleanBases(list)
   return out
 end
 
+-- The server's "while you were away" summary, checked: how long ago this player left, their leaderboard place now and
+-- then, the turf tolls paid to them (the biggest payers by name) and what happened to their corp. nil if it's empty.
+local function whole(v, max)
+  v = tonumber(v)
+  return v and v >= 0 and v <= (max or 1e12) and math.floor(v) or nil
+end
+function M.cleanAway(d)
+  if type(d) ~= 'table' then return nil end
+  local away = { since = whole(d.since, 3650 * 86400), place = whole(d.place, 1e6), was = whole(d.was, 1e6),
+    of = whole(d.of, 1e6), news = {} }
+  if away.place == 0 then away.place = nil end
+  if away.was == 0 then away.was = nil end
+  local t = type(d.tolls) == 'table' and d.tolls or nil
+  local amount = t and whole(t.amount, 1e9)
+  if amount and amount > 0 then
+    local from = {}
+    for _, f in ipairs(type(t.from) == 'table' and t.from or {}) do
+      local paid = type(f) == 'table' and whole(f.amount, 1e9)
+      if paid and #from < 5 then from[#from + 1] = { name = M.cleanText(f.name, 32) or 'A trucker', amount = paid } end
+    end
+    away.tolls = { amount = amount, jobs = math.max(1, whole(t.jobs, 1e6) or 1), from = from, others = whole(t.others, 1e6) }
+  end
+  for _, line in ipairs(type(d.news) == 'table' and d.news or {}) do
+    local text = M.cleanText(line, 160)
+    if text and #away.news < 10 then away.news[#away.news + 1] = text end
+  end
+  if not away.since and not away.tolls and #away.news == 0 then return nil end
+  return away
+end
+
 local function validId(k) return type(k) == 'string' and #k == 32 and not k:find('[^0-9a-f]') end
 
 -- On joining: the save on this PC in dir when it is newer than the server's (serverSave, or nil for none) and is
@@ -294,6 +324,12 @@ function M.new(deps)
       self.commission = { id = id, amount = math.floor(amount), jobs = math.max(1, math.floor(tonumber(d.jobs) or 1)),
         by = M.cleanText(d.by, 32) }
       return true
+    elseif event == 'wwtcAway' then
+      -- What happened while this player was off the server, for the HUD's card (core.lua awayView).
+      local d = decode(data)
+      if not d then return false end
+      self.away = M.cleanAway(d)
+      return true
     elseif event == 'wwtcFound' then
       -- The answer to find(): the other player's spot, or why not.
       local d = decode(data)
@@ -457,7 +493,7 @@ function M.game()
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
     for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow',
         'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission', 'wwtcRejoined',
-        'wwtcCorpDone' }) do
+        'wwtcCorpDone', 'wwtcAway' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true

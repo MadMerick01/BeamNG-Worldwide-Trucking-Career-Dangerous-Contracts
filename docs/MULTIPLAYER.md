@@ -132,6 +132,18 @@ MadMerick, 9 Nov: "there need to be a way to relocate to a player, so you can do
   to me" (kept on their PC in `mp/prefs.json`, for every server). A player on foot, in a helicopter or the sightseeing
   car, or not yet back at their save answers no, so nobody lands under a helicopter.
 
+## While you were away (built)
+
+MadMerick, 12 Nov: a card on joining that says what happened while you were off the server.
+
+- The server keeps `careers/season-N/away.json` by career key: when the player left and their leaderboard place then,
+  turf tolls paid to them while they were off (total, deliveries, and how much each payer paid), and up to 10 lines of
+  corp news (a request to join, a member leaving, being let in, turned down or removed).
+- On a full join (not a quiet rejoin after a lost connection) it sends `wwtcAway { since, place, was, of, tolls, news }`
+  and clears the record. A player away under 15 minutes with no tolls or news gets nothing.
+- The game shows it on the HUD under the money once the player is back at their save, with Ship Day from what the game
+  already knows, until **Got it**. The tolls themselves still arrive as the usual commission batch.
+
 ## Later steps (agreed in principle, not scheduled)
 
 - **Shared job boards and town need.** Boards are now seeded by the player's own delivery count (`jobsDone`), so two
