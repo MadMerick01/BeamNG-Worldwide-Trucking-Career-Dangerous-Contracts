@@ -56,7 +56,8 @@ local MAX_CONTRACTS_DONE = 4096
 
 -- The money and distance driven, where the last puncture was, how many jobs are done (the job
 -- boards are seeded from it), the dangerous contract roads delivered (a list of section ids,
--- counted on the career page; they stay in rotation on the boards), and what is owed for tows.
+-- counted on the career page; they stay in rotation on the boards), and what is owed for tows
+-- and for insurance claims.
 -- Returns a clean copy, or nil. A loan owed in a save from before the short term loan was
 -- removed is dropped, so that debt is cleared.
 local function progression(p)
@@ -65,6 +66,7 @@ local function progression(p)
   if not amount(p.lastPunctureKm) then return nil end
   if p.jobsDone ~= nil and not integer(p.jobsDone, 0) then return nil end
   if p.towOwed ~= nil and not integer(p.towOwed, 1) then return nil end
+  if p.insuranceOwed ~= nil and not integer(p.insuranceOwed, 1) then return nil end
   local done
   if p.contractsDone ~= nil then
     if type(p.contractsDone) ~= 'table' then return nil end
@@ -77,7 +79,7 @@ local function progression(p)
     end
   end
   return { balance = p.balance, totalDistanceKm = p.totalDistanceKm, lastPunctureKm = p.lastPunctureKm, jobsDone = p.jobsDone,
-    contractsDone = done, towOwed = p.towOwed }
+    contractsDone = done, towOwed = p.towOwed, insuranceOwed = p.insuranceOwed }
 end
 
 -- A saved position, with the altitude and heading when present. Returns a clean copy, or nil and why.

@@ -3,7 +3,7 @@
   "sample": true,
   "updated": "2026-11-08T19:00:00Z",
   "server": { "name": "A WW Trucking Career | MadMerick", "online": true, "maxPlayers": 8, "earthVersion": "1.9.0" },
-  "season": { "number": 1, "day": 1, "truckers": 7 },
+  "season": { "number": 2, "day": 1, "truckers": 7 },
   "today": { "deliveries": 23, "earned": 412800 },
   "ship": {
     "number": 1, "name": "MV Pacific Star", "port": "Valparaíso", "region": "Chile",
@@ -30,10 +30,14 @@
     { "name": "MadMerick", "balance": 184300, "truckValue": 96500, "baseValue": 250000, "baseTown": "Parramatta", "wealth": 530800, "deliveries": 41 },
     { "name": "Jonno", "balance": 98120, "truckValue": 61200, "wealth": 159320, "deliveries": 22 },
     { "name": "Ruby", "balance": 61400, "truckValue": 12800, "wealth": 74200, "deliveries": 18 },
-    { "name": "Kez", "balance": 23310, "truckValue": 4000, "wealth": 27310, "deliveries": 7 }
+    { "name": "Kez", "wins": 1, "balance": 23310, "truckValue": 4000, "wealth": 27310, "deliveries": 7 }
   ],
   "bases": [
-    { "name": "Sam", "town": "Perth", "latitude": -31.95, "longitude": 115.86, "radiusKm": 1893.0 },
-    { "name": "MadMerick", "town": "Parramatta", "latitude": -33.82, "longitude": 151.0, "radiusKm": 2555.0 }
+    { "name": "Sam", "town": "Perth", "latitude": -31.95, "longitude": 115.86, "radiusKm": 975.0, "land": 1.6 },
+    { "name": "MadMerick", "town": "Parramatta", "latitude": -33.82, "longitude": 151.0, "radiusKm": 966.0, "land": 1.1 }
+  ],
+  "race": { "win": 50, "left": 7257600, "leader": "Sam", "leaderLand": 1.6 },
+  "winners": [
+    { "season": 1, "owner": "Hybrid", "town": "Wichita", "members": ["Kez"], "land": 50.4, "why": "land" }
   ]
 }

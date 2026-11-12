@@ -563,6 +563,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
       scope.towHere = function () { if (scope.data.tow && scope.data.tow.allowed) core('towHere()') }
       scope.payTow = function () { if (scope.data.tow && scope.data.tow.payAllowed) core('payTow()') }
+      scope.payInsurance = function () { if (scope.data.insuranceDebt && scope.data.insuranceDebt.payAllowed) core('payInsurance()') }
       scope.getOut = function () { if (scope.data.tow && scope.data.tow.getOutAllowed) core('getOut()') }
       // Paying for a bill takes two presses: the first asks to confirm that total, and a changed
       // total asks again.
@@ -587,6 +588,13 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.corpAccept = function (id) { if (num(id)) core('corpAccept(' + num(id) + ')') }
       scope.corpRefuse = function (id) { if (num(id)) core('corpRefuse(' + num(id) + ')') }
       scope.corpRemove = function (id) { if (num(id)) core('corpRemove(' + num(id) + ')') }
+      // The land race: Open a base here, and how full the land bar is (the winning share is the end of the bar).
+      scope.openBase = function () { var c = scope.data.home && scope.data.home.conquest; if (c && c.openAllowed) core('openBase()') }
+      scope.landBar = function (c) {
+        var win = c && c.race && Number(c.race.win) > 0 ? Number(c.race.win) : 100
+        var land = c ? Number(c.land) || 0 : 0
+        return Math.max(0, Math.min(100, land / win * 100))
+      }
       scope.removing = null
       scope.setRemoving = function (id) { scope.removing = id }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
@@ -612,13 +620,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.cancelStoreTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeArmed) core('cancelStoreTrailer()') }
       scope.bringOutTrailer = function () { if (scope.data.trailer && scope.data.trailer.bringOutAllowed) core('bringOutTrailer()') }
       scope.sellTrailer = function () { if (scope.data.trailer && scope.data.trailer.sellAllowed) core('sellTrailer()') }
-      scope.buyTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.partsAllowed) core('buyTrailerParts()') }
-      scope.payTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.shop && scope.data.trailer.shop.payAllowed) core('payTrailerParts()') }
-      scope.undoTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.shop) core('undoTrailerParts()') }
       scope.repairTrailer = function () { if (scope.data.trailer && scope.data.trailer.repairAllowed) core('repairTrailer()') }
       // Open the game's own parts menu (Ctrl+W) and car selector (Ctrl+E); the bill then shows up on the Garage tab.
-      scope.openPartsMenu = function (forTrailer) {
-        if (scope.data.garageLocked && !(forTrailer && scope.data.trailer && scope.data.trailer.shop)) return
+      scope.openPartsMenu = function () {
+        if (scope.data.garageLocked) return
         call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
           "elseif guihooks then guihooks.trigger('ChangeState', {state = 'menu.vehicleconfig.parts'}) end")
       }

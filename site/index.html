@@ -78,6 +78,8 @@
   td.wealth { font-weight: 600; }
   .board-wrap { overflow-x: auto; }
   .note { color: var(--faint); font-size: 13px; margin: 8px 0 0; }
+  .bar { height: 6px; margin-top: 4px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--gold); }
   .empty { color: var(--faint); font-style: italic; }
   ol.steps { margin: 0; padding-left: 20px; }
   ol.steps li { margin-bottom: 6px; }
@@ -146,6 +148,12 @@
       <section>
         <h2>Driving now</h2>
         <ul class="list" id="online"><li class="empty">Nobody on right now.</li></ul>
+      </section>
+      <section>
+        <h2>Land race</h2>
+        <div id="race" class="small muted">No bases yet.</div>
+        <ul class="list" id="land"></ul>
+        <div id="winners"></div>
       </section>
       <section>
         <h2>Season leaderboard</h2>
@@ -320,7 +328,7 @@ function renderBoard() {
   // Wealth is cash plus what the truck, trailer and base are worth; a page from an older server sorts by it too.
   rows = rows.map(function (r) {
     var cash = Number(r.balance) || 0, truck = Number(r.truckValue) || 0, trailer = Number(r.trailerValue) || 0, base = Number(r.baseValue) || 0
-    return { name: r.name, balance: cash, truckValue: truck, baseTown: r.baseTown, hasBase: base > 0, wealth: r.wealth != null ? Number(r.wealth) || 0 : cash + truck + trailer + base, deliveries: r.deliveries }
+    return { name: r.name, wins: num(r.wins) || 0, balance: cash, truckValue: truck, baseTown: r.baseTown, hasBase: base > 0, wealth: r.wealth != null ? Number(r.wealth) || 0 : cash + truck + trailer + base, deliveries: r.deliveries }
   })
   rows.sort(function (a, b) { return b.wealth - a.wealth })
   if (!rows.length) {
@@ -331,7 +339,13 @@ function renderBoard() {
   rows.forEach(function (r, i) {
     var tr = el('tr')
     tr.appendChild(el('td', '', i + 1))
-    tr.appendChild(el('td', '', r.name))
+    var who = el('td', '', r.name)
+    if (r.wins > 0) {
+      var cup = el('span', 'gold', ' \u{1F3C6}' + (r.wins > 1 ? ' \u00d7' + r.wins : ''))
+      cup.title = r.wins > 1 ? 'Won ' + r.wins + ' seasons' : 'Won a season'
+      who.appendChild(cup)
+    }
+    tr.appendChild(who)
     tr.appendChild(el('td', 'num', money(r.balance)))
     tr.appendChild(el('td', 'num', money(r.truckValue)))
     tr.appendChild(el('td', r.hasBase ? 'base' : '', r.hasBase ? text(r.baseTown || 'Yes') : '–'))
@@ -339,6 +353,50 @@ function renderBoard() {
     tr.appendChild(el('td', 'num', count(r.deliveries)))
     body.appendChild(tr)
   })
+}
+
+// The land race: each base's corp by the share of Earth's land it holds, what wins and the time left, then the
+// winners of past seasons.
+function renderRace() {
+  var race = stats && stats.race, box = $('race'), list = $('land'), past = $('winners')
+  clear(list); clear(past)
+  var win = race && num(race.win), left = race && num(race.left)
+  var days = left !== null && left !== undefined ? Math.max(1, Math.ceil(left / 86400)) : null
+  box.textContent = win === null ? 'No land race on this server yet.'
+    : 'The first base to cover ' + win + '% of Earth\'s land (Antarctica left out) with its corp wins the season'
+      + (days !== null ? ', or whoever holds the most in ' + days + (days === 1 ? ' day' : ' days') : '') + '. Then everyone starts over.'
+  var bases = (stats && Array.isArray(stats.bases) ? stats.bases : []).filter(function (b) { return !b.outpost && num(b.land) !== null })
+  var counts = {}
+  ;(stats && Array.isArray(stats.bases) ? stats.bases : []).forEach(function (b) { counts[b.name] = (counts[b.name] || 0) + 1 })
+  bases.sort(function (a, b) { return b.land - a.land })
+  bases.slice(0, 10).forEach(function (b) {
+    var li = el('li')
+    var box2 = el('div', 'grow')
+    box2.appendChild(el('div', 'who', text(b.name) + (Array.isArray(b.members) && b.members.length ? "'s corp" : '')))
+    box2.appendChild(el('div', 'small muted', (counts[b.name] || 1) + ((counts[b.name] || 1) === 1 ? ' base' : ' bases')
+      + (Array.isArray(b.members) && b.members.length ? ' · with ' + b.members.map(text).join(', ') : '')))
+    var bar = el('div', 'bar')
+    var fill = el('span')
+    fill.style.width = Math.max(0, Math.min(100, b.land / (win || 100) * 100)) + '%'
+    bar.appendChild(fill)
+    box2.appendChild(bar)
+    li.appendChild(box2)
+    li.appendChild(el('span', 'num gold', b.land.toFixed(1) + '%'))
+    list.appendChild(li)
+  })
+  var winners = stats && Array.isArray(stats.winners) ? stats.winners : []
+  if (winners.length) {
+    past.appendChild(el('div', 'small muted', 'Past winners'))
+    var ul = el('ul', 'list')
+    winners.forEach(function (w) {
+      var li = el('li')
+      li.appendChild(el('span', 'when', 'Season ' + count(w.season)))
+      li.appendChild(el('span', 'grow', '\u{1F3C6} ' + text(w.owner) + (Array.isArray(w.members) && w.members.length ? ' with ' + w.members.map(text).join(', ') : '')
+        + (num(w.land) !== null ? ', ' + w.land.toFixed(1) + '% of the land' : '') + (w.why === 'time' ? ' when time ran out' : '')))
+      ul.appendChild(li)
+    })
+    past.appendChild(ul)
+  }
 }
 
 // Turf, the same rule as the game: a spot inside several circles belongs to the base with the smallest distance ÷ radius,
@@ -374,7 +432,7 @@ function turfLayer(bases) {
         for (var x = 0; x < size.x; x += step) {
           var ll = map.unproject(origin.add([x + step / 2, y + step / 2]), coords.z)
           var i = turfOf(bases, { latitude: ll.lat, longitude: ll.lng })
-          if (i >= 0) { g.fillStyle = turfColour(i); g.fillRect(x, y, step, step) }
+          if (i >= 0) { g.fillStyle = turfColour(bases[i].colour); g.fillRect(x, y, step, step) }
         }
       }
       return tile
@@ -410,12 +468,18 @@ function renderMap() {
   // Bases of operations: each owner's turf shaded in their colour (a bigger neighbour pushes the border), with the
   // circle's edge and its 100 km core.
   var bases = (stats && Array.isArray(stats.bases) ? stats.bases : []).filter(function (b) { return validPoint(b) && Number(b.radiusKm) > 0 })
+  // One colour for each owner: a corp's further bases (outposts, the land race) share it.
+  var owners = {}
+  bases.forEach(function (b) { if (owners[b.name] === undefined) owners[b.name] = Object.keys(owners).length; b.colour = owners[b.name] })
+  var land = {}
+  bases.forEach(function (b) { if (num(b.land) !== null) land[b.name] = b.land })
   if (bases.length) turfLayer(bases).addTo(layer)
-  bases.forEach(function (b, i) {
-    var pop = el('div'); pop.appendChild(el('b', '', text(b.name) + "'s base")); pop.appendChild(el('div', '', (text(b.town) || 'A town') + ', ' + Math.round(b.radiusKm).toLocaleString('en') + ' km circle'))
+  bases.forEach(function (b) {
+    var pop = el('div'); pop.appendChild(el('b', '', text(b.name) + "'s base")); pop.appendChild(el('div', '', (text(b.town) || 'A town') + ', ' + Math.round(b.radiusKm).toLocaleString('en') + ' km circle' + (b.radiusKm >= 1599.5 ? ' (full size)' : '')))
     if (Array.isArray(b.members) && b.members.length) pop.appendChild(el('div', '', 'Corp: ' + b.members.map(text).join(', ')))
-    L.circle([b.latitude, b.longitude], { radius: baseKm(b) * 1000, color: turfColour(i), weight: 2, fill: false, className: 'turf' }).bindPopup(pop).addTo(layer)
-    L.circle([b.latitude, b.longitude], { radius: CORE_KM * 1000, stroke: false, fillColor: turfColour(i), fillOpacity: 0.3 }).bindPopup(pop).addTo(layer)
+    if (land[b.name] !== undefined) pop.appendChild(el('div', '', 'Holds ' + land[b.name].toFixed(1) + "% of Earth's land"))
+    L.circle([b.latitude, b.longitude], { radius: baseKm(b) * 1000, color: turfColour(b.colour), weight: b.radiusKm >= 1599.5 ? 4 : 2, fill: false, className: 'turf' }).bindPopup(pop).addTo(layer)
+    L.circle([b.latitude, b.longitude], { radius: CORE_KM * 1000, stroke: false, fillColor: turfColour(b.colour), fillOpacity: 0.3 }).bindPopup(pop).addTo(layer)
     // A dark tag with a gold edge over each base: "Sam's base · 41 km", as on the Magnate update banner.
     var tag = el('span', '', text(b.name) + "'s base · "); tag.appendChild(el('span', 'gold', Math.round(b.radiusKm).toLocaleString('en') + ' km'))
     L.circleMarker([b.latitude, b.longitude], { radius: 4, stroke: false, fillColor: '#f2c94c', fillOpacity: 1 })
@@ -450,6 +514,7 @@ function render() {
   renderShip(now)
   renderOnline()
   renderFeed(now)
+  renderRace()
   renderBoard()
   renderMap()
 }

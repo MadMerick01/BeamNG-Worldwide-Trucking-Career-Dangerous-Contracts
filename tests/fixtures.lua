@@ -185,10 +185,16 @@ function F.garage()
   end
   g.partsMenus = 0
   function g:openPartsMenu() self.partsMenus = self.partsMenus + 1; return true end
-  function g:repair(config)
+  -- Respawns the player vehicle (or the vehicle with id) with config: a parts table, or a .pc path,
+  -- which puts a trailer back to the deck it spawns with.
+  g.trailerRepairs = 0
+  function g:repair(config, id)
     if not self.accepts then return false, 'repair_failed', 'rejected' end
-    if self.trailers[self.vehicleId] then
-      if config then self.trailers[self.vehicleId].fitted = F.copy(config.parts) end
+    local target = id or self.vehicleId
+    if self.trailers[target] then
+      if type(config) == 'table' then self.trailers[target].fitted = F.copy(config.parts)
+      elseif type(config) == 'string' then self.trailers[target].fitted = { deck = 'flatbed_deck' } end
+      self.trailerRepairs = self.trailerRepairs + 1
       return true
     end
     self.repairs, self.damage = self.repairs + 1, 0
@@ -214,7 +220,7 @@ function F.cargo()
   local c = { weights = {}, tankReads = 0 }
   function c:setWeight(kg, parts, fluid) self.weights[#self.weights + 1] = { kg = kg, parts = F.copy(parts), fluid = F.copy(fluid) }; return true end
   c.trailerWeights = {}
-  function c:setWeightOn(id, kg, parts, fluid) self.trailerWeights[#self.trailerWeights + 1] = { id = id, kg = kg, fluid = F.copy(fluid) }; return true end
+  function c:setWeightOn(id, kg, parts, fluid, hitchShare) self.trailerWeights[#self.trailerWeights + 1] = { id = id, kg = kg, fluid = F.copy(fluid), hitchShare = hitchShare }; return true end
   function c:readTanks() self.tankReads = self.tankReads + 1; return true end
   return c
 end

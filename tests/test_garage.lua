@@ -21,6 +21,16 @@ local info = g:inspect()
 T.eq(info.id, 7, 'reads the player vehicle id'); T.eq(info.damage, 1234, 'reads damage from map.objects')
 T.check(g:repair(), 'repair accepted'); T.eq(replaced.model, 'pickup', 'respawns the same model')
 T.eq(replaced.options.config.model, 'pickup', 'respawns with the current parts config'); T.eq(replaced.veh:getID(), 7, 'replaces the player vehicle in place')
+-- A trailer put back as it was sold: another vehicle, by id, respawned from its .pc path.
+do
+  local trailer = { getID = function() return 42 end, getJBeamFilename = function() return 'tiltdeck' end }
+  local tg = G.new(env({ objectById = function(id) return id == 42 and trailer or nil end,
+    manager = function() return { getVehicleData = function(id) return id == 42 and { config = { model = 'tiltdeck', parts = { box = 'x' } } } or nil end } end }))
+  T.check(tg:repair('vehicles/tiltdeck/earth_freight_22ft_boxes.pc', 42), 'trailer respawn accepted')
+  T.eq(replaced.veh:getID(), 42, 'the trailer, not the player vehicle'); T.eq(replaced.model, 'tiltdeck', 'its own model')
+  T.eq(replaced.options.config, 'vehicles/tiltdeck/earth_freight_22ft_boxes.pc', 'as its .pc file sets it up')
+  T.eq(select(2, tg:repair('x.pc', 43)), 'vehicle_required', 'a vehicle that is gone is refused')
+end
 
 local _, why = G.new(env({ vehicle = function() return nil end })):inspect()
 T.eq(why, 'vehicle_required', 'no vehicle, no quote')

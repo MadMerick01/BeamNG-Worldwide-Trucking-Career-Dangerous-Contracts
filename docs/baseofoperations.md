@@ -1,6 +1,6 @@
 # The Magnate update: bases of operations
 
-Status: **steps 1 to 3 built**, 10 Nov 2026; **Magnate 2 built**, 11 Nov 2026; **Magnate 3 (corps) built**, 11 Nov 2026 (see below). Built so far: the base replaces the home; its circle and the owner's bonus; on a
+Status: **steps 1 to 3 built**, 10 Nov 2026; **Magnate 2 built**, 11 Nov 2026; **Magnate 3 (corps) built**, 11 Nov 2026; **Magnate 4 (the land race) built**, 12 Nov 2026 (see below). Built so far: the base replaces the home; its circle and the owner's bonus; on a
 server, bases kept by the server (one a town, 10 km apart), everyone's circles, visitors' bonus, turf pushing, Ship Day
 containers, circles and a Base column on the web page, and commission. Since 11 Nov 2026 the Base tab also opens a
 Base map in the browser (served by the game like Street View, at `/bases`), and the game says when the truck crosses
@@ -319,6 +319,79 @@ it goes ahead.
 `wwtcCorp '{"v","do","base","who"}'` carries ask, cancel, leave, accept, turn down and remove. `wwtcBases` gains
 each base's `id`, `members` (names) and the viewer's own `corp`, `asked`, `yard`, `requests` and `memberList`.
 
+## Magnate 4: the land race
+
+Decided with MadMerick, 12 Nov 2026. Big corps were getting too big: today a fresh circle already covers the whole USA.
+Circles now start smaller, grow slower and stop at the size of the USA, so the only way to hold more land is to open
+new bases in new countries. The first to hold half of Earth's land wins the season.
+
+### Circle size
+
+- A new base's circle reaches **800 km** (about a quarter of the USA) at $250,000 on flat ground.
+- Its area grows with the **square root** of wealth: 4× the wealth doubles it.
+- It is **full size at 1,600 km**, the size of the USA, and grows no more.
+
+> radius = 800 km × ⁴√(wealth × region multiplier ÷ $250,000), at most 1,600 km
+
+| Corp wealth | Radius |
+|---|---|
+| $250,000 | 800 km |
+| $1,000,000 | 1,130 km |
+| $2,000,000 | 1,345 km |
+| **$4,000,000** | **1,600 km, full size** |
+
+The wealth is the same as before: the owner's best wealth this season plus half of each member's wealth now. A steep
+region still helps, now inside the fourth root (Death Road ×3 starts at 1,050 km instead of 800).
+
+**Decided:** the current season carries on, and its circles are resized to these sizes once. A base worth $2.2M goes
+from about 4,750 km to about 1,380 km. Cash, trucks, bases and corps stay as they are.
+
+### More bases
+
+- When a corp's **newest** circle is full size, **anyone in the corp** (the owner or a member) can open its next base.
+  A solo owner is a corp of one.
+- It is opened on the Base tab with **Open a base here**, in the town the truck is in. It's free.
+- The town must be **outside all of the corp's own circles**, and 300 km from every other base, so the corp has to
+  move on to new ground: from Kansas, that means Canada, Mexico or overseas.
+- A further base is a circle only. It has no yard, and it gives the same bonus, toll and turf as the first.
+- It starts at 800 km and grows from the corp's wealth less $3,750,000 for each base before it. So base 2 is full at
+  about $7.75M, base 3 at about $11.5M, and so on. Wealth earned before opening it counts.
+- The owner and every member who is online get a **BASE FULL SIZE** message when the newest circle fills. Anyone away
+  hears it on their next join. The Base tab shows how far the newest base is from full size ("full size at $4,000,000:
+  $2,200,000 so far (55%)").
+- **Being pushed:** full size goes by the circle, not the land held. A rival's circle that pushes into yours costs you
+  land on the meter, but never stops your next base from unlocking.
+
+### The land meter
+
+- The share of **Earth's land** each corp holds, **Antarctica left out**, worked out with the same turf borders as the
+  tolls, so land a rival has pushed into counts for the rival.
+- The server cuts the land into 1° squares (made by `tools/make_land.py` from Natural Earth's land map) and counts the
+  squares whose middle is in each corp's turf. One full circle on land covers about 5% of it.
+- Shown on the HUD under the town name, on the Base tab, on the Base map and on the web page.
+
+### Winning a season
+
+- The first corp (or solo owner) to hold **50%** of Earth's land wins.
+- If nobody gets there within **12 weeks** of the race starting, whoever holds the most land wins. For a season
+  already going, the 12 weeks start when the server gets this update.
+- Then the next season starts by itself. Everyone online is sent off with a message saying who won, and everyone
+  starts over on their next join. The old season's careers stay in their folder.
+- The winners are kept for good (`winners.json`) and shown on the web page, with a 🏆 next to their names on the
+  leaderboard.
+- Both numbers are server settings (`WIN_LAND`, `SEASON_WEEKS`).
+
+### The server
+
+- `bases.json` gains `outposts` ({ town, latitude, longitude, boost, by, at }) and `fullSeen` (how many circles were full
+  when the corp was last told).
+- `wwtcOutpost { town, latitude, longitude, boost }` opens a base, answered by `wwtcOutpostDone { ok, why, by, town }`
+  (why: `not_full`, `inside_own`, `too_close`, `no_base`, `max`).
+- `wwtcBases` gains each base's `outposts` and `land`, and for the player's own corp `grown`, `fullAt` and `wealth`,
+  plus `race { win, left, leader, leaderLand }`. `status.json` gains the further bases (marked `outpost`), each base's
+  `land`, `race`, `winners` and the leaderboard's `wins`.
+- `season.json` keeps the season reached, so a season won carries on after a restart.
+
 ## Building it in steps
 
 1. **Single player:** the base replaces the home, the circle and its size, and the owner's +0.4. Shown on the Home
@@ -357,3 +430,8 @@ each base's `id`, `members` (names) and the viewer's own `corp`, `asked`, `yard`
 | B19 | Corps: limits | **Decided:** 5 truckers a corp, one corp at a time, 24 hours after leaving before joining another |
 | B20 | Corps: who gets the tolls? | **Decided:** split equally between the owner and every member; a solo owner keeps them all |
 | B21 | How is the bonus shown? | **Decided:** as a percentage, up to +20% for an owner and +10% for a member; drops get the same +20% |
+| B22 | Circle size (Magnate 4) | **Decided:** 800 km at $250k, area with the square root of wealth, full size 1,600 km at $4M |
+| B23 | More bases | **Decided:** once the newest circle is full, anyone in the corp opens the next one free, outside the corp's circles; each grows from $3.75M more |
+| B24 | Being pushed | **Decided:** full size goes by the circle, so a push costs land on the meter but never blocks the next base |
+| B25 | Winning a season | **Decided:** 50% of Earth's land (Antarctica left out), or the most after 12 weeks; then everyone starts over and the winner keeps a badge |
+| B26 | The season already going | **Decided:** carries on, its circles resized once to the new sizes |

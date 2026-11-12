@@ -93,7 +93,7 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
     cancelStoreTrailer: ['storeArmed', 'cancelStoreTrailer()'], swapTrailers: ['swapAllowed', 'swapTrailers()'],
     switchTrailer: ['switchAllowed', 'switchTrailer()'],
     bringOutTrailer: ['bringOutAllowed', 'bringOutTrailer()'], sellTrailer: ['sellAllowed', 'sellTrailer()'],
-    repairTrailer: ['repairAllowed', 'repairTrailer()'], buyTrailerParts: ['partsAllowed', 'buyTrailerParts()']
+    repairTrailer: ['repairAllowed', 'repairTrailer()']
   }
   for (const [name, [flag, body]] of Object.entries(buttons)) {
     count = a.commands.length
@@ -114,16 +114,10 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
   a.state({ state: 'READY', trailer: { storeArmed: 'swap' } }); a.scope.swapTrailers(); assert.equal(a.commands.at(-1), fixed('swapTrailers()'), 'confirm a swap')
 })
 
-test('trailer parts: Pay and Undo only while in the trailer, and Pay only when Lua allows it', () => {
+test('trailer parts cannot be bought: no button for them', () => {
   const a = app()
-  let count = a.commands.length
-  a.state({ state: 'READY', trailer: {} }); a.scope.payTrailerParts(); a.scope.undoTrailerParts()
-  assert.equal(a.commands.length, count, 'nothing to pay or undo outside the trailer')
-  a.state({ state: 'READY', trailer: { shop: { payAllowed: false } } }); a.scope.payTrailerParts()
-  assert.equal(a.commands.length, count, 'Pay refused when short')
-  a.scope.undoTrailerParts(); assert.equal(a.commands.at(-1), fixed('undoTrailerParts()'))
-  a.state({ state: 'READY', trailer: { shop: { payAllowed: true } } }); a.scope.payTrailerParts()
-  assert.equal(a.commands.at(-1), fixed('payTrailerParts()'))
+  for (const name of ['buyTrailerParts', 'payTrailerParts', 'undoTrailerParts']) assert.equal(a.scope[name], undefined, name)
+  assert.ok(!html.includes('Buy trailer parts'), 'no Buy trailer parts button')
 })
 
 test('paying a bill asks to confirm that total, and a new total asks again', () => {
@@ -223,6 +217,14 @@ test('insurance is only claimed when Lua offers it', () => {
   assert.equal(a.commands.length, 1)
   a.state({ state: 'READY', insurance: { allowed: true } }); a.scope.claimInsurance()
   assert.equal(a.commands.at(-1), fixed('claimInsurance()'))
+})
+test('an insurance debt is only paid off when Lua allows it', () => {
+  const a = app()
+  a.state({ state: 'READY', insuranceDebt: { owed: 5000, payAllowed: false } }); a.scope.payInsurance()
+  assert.equal(a.commands.length, 1)
+  a.state({ state: 'READY', insuranceDebt: { owed: 5000, payAllowed: true } }); a.scope.payInsurance()
+  assert.equal(a.commands.at(-1), fixed('payInsurance()'))
+  assert.ok(html.includes('ng-click="payInsurance()"'), 'a Pay off button')
 })
 test('towing is only asked for when Lua allows it, from the Repair card, with the steps shown', () => {
   const a = app()

@@ -78,6 +78,28 @@ end
 -- and whether it is this player's own. Since corps (Magnate 3) also its number, its members, whether it is full,
 -- half its members' wealth (which grows the circle), and for this player: whether they are a member (then the yard,
 -- the owner's spot) or have asked to join, and for the owner the requests waiting.
+-- Since the land race (Magnate 4) also each base's outposts (its corp's further bases: town, centre and radius), the
+-- share of Earth's land its corp holds (land, a percentage), and for this player's own corp: whether its newest circle
+-- is full size (grown), the corp wealth that fills it (fullAt) and the corp's wealth now.
+local function outpostsOf(list)
+  local out = {}
+  for _, o in ipairs(type(list) == 'table' and list or {}) do
+    local spot, r = spotOf(o), type(o) == 'table' and tonumber(o.radiusKm)
+    if spot and r and r > 0 and r <= 20000 and #out < 64 then
+      out[#out + 1] = { town = M.cleanText(o.town, 40), latitude = spot.latitude, longitude = spot.longitude, radiusKm = r }
+    end
+  end
+  return out
+end
+local function money(v)
+  v = tonumber(v)
+  return v and v >= 0 and v < 1e15 and math.floor(v) or nil
+end
+local function percent(v)
+  v = tonumber(v)
+  return v and v >= 0 and v <= 100 and v or nil
+end
+
 function M.cleanBases(list)
   local out = {}
   for _, b in ipairs(type(list) == 'table' and list or {}) do
@@ -92,10 +114,21 @@ function M.cleanBases(list)
         memberWealth = extra and extra >= 0 and extra < 1e15 and math.floor(extra) or 0,
         members = people(b.members), full = b.full == true, held = b.held == true,
         corp = corp, asked = b.asked == true and not corp, yard = corp and spotOf(b.yard) or nil,
-        requests = b.mine == true and people(b.requests) or nil }
+        requests = b.mine == true and people(b.requests) or nil,
+        outposts = outpostsOf(b.outposts), land = percent(b.land) or 0, grown = b.grown == true,
+        fullAt = money(b.fullAt), wealth = money(b.wealth) }
     end
   end
   return out
+end
+
+-- The land race from the server, checked: the land that wins (a percentage), the seconds left when it came (at the
+-- session clock now), and who leads with how much. nil if it's missing.
+function M.cleanRace(r, now)
+  if type(r) ~= 'table' then return nil end
+  local left = tonumber(r.left)
+  return { win = percent(r.win), left = left and left >= 0 and left < 3650 * 86400 and math.floor(left) or nil, at = now or 0,
+    leader = M.cleanText(r.leader, 32), leaderLand = percent(r.leaderLand) }
 end
 
 -- The server's "while you were away" summary, checked: how long ago this player left, their leaderboard place now and
@@ -301,6 +334,13 @@ function M.new(deps)
       self.bases = M.cleanBases(d.bases)
       local wait = type(d.corp) == 'table' and tonumber(d.corp.wait) or nil
       self.corpWait = wait and wait > 0 and { seconds = math.min(wait, 7 * 86400), at = self.now or 0 } or nil
+      self.race = M.cleanRace(d.race, self.now)
+      return true
+    elseif event == 'wwtcOutpostDone' then
+      -- The answer to openBase(): { ok, why, by, town }.
+      local d = decode(data)
+      if not d then return false end
+      self.outpostDone = { ok = d.ok == true, why = M.cleanText(d.why, 20), by = M.cleanText(d.by, 32), town = M.cleanText(d.town, 40) }
       return true
     elseif event == 'wwtcCorpDone' then
       -- The answer to corp(): { do, ok, why, wait }.
@@ -443,6 +483,8 @@ function M.new(deps)
   end
   -- A base of operations: asks the server whether this town is free (one base a town, 10 km apart).
   function s:claimBase(t) return shipEvent('wwtcBaseClaim', t) end
+  -- The land race: opens the corp's next base in this town, once its newest circle is full size.
+  function s:openBase(t) return shipEvent('wwtcOutpost', t) end
   -- Corps: ask to join a base (base = its number), cancel, leave, or as its owner accept, refuse or remove (who).
   function s:corp(what, t)
     t = t or {}
@@ -493,7 +535,7 @@ function M.game()
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
     for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow',
         'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission', 'wwtcRejoined',
-        'wwtcCorpDone', 'wwtcAway' }) do
+        'wwtcCorpDone', 'wwtcAway', 'wwtcOutpostDone' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true

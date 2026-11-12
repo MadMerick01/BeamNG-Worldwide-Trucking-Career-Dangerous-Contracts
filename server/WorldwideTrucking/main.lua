@@ -71,6 +71,12 @@ W.SHIP_NAMES = { 'MV Pacific Star', 'MV Southern Cross', 'MV Northern Light', 'M
 -- The season. Raise it by one to start everyone over on their next join: rusty starter car and the starting money.
 -- The old season's careers stay in their folder (careers/season-N), untouched.
 W.SEASON = 1
+-- The land race (Magnate 4): the first base owner whose corp's turf covers WIN_LAND of Earth's land (0.5 is half,
+-- Antarctica left out) wins the season, or whoever covers the most once SEASON_WEEKS have passed since the race
+-- started. Then the next season starts by itself (careers/season-N+1), everyone starts over, and the winner is kept in
+-- winners.json for the page. Make SEASON_WEEKS 0 for no time limit, or WIN_LAND 0 to only end on time.
+W.WIN_LAND = 0.5
+W.SEASON_WEEKS = 12
 -- Sent in chat to each player as they finish joining, one message per line. Anyone can type !hud to see them again.
 -- Change the lines as you like, or make it {} to send nothing.
 W.WELCOME = {
@@ -211,8 +217,10 @@ function W.loadStats()
     board = type(d.board) == 'table' and d.board or {},
     feed = type(d.feed) == 'table' and d.feed or {},
     today = type(d.today) == 'table' and d.today or {},
+    -- When the land race started: the season's start, or for a season already going, when the server first had it.
+    raceStarted = type(d.raceStarted) == 'number' and d.raceStarted or W.env.clock(),
   }
-  if not d.started then W.saveStats() end
+  if not d.started or not d.raceStarted then W.saveStats() end
 end
 
 function W.saveStats()
@@ -317,10 +325,12 @@ end
 -- ----- Bases of operations (the Magnate update) ---------------------------------------------------------------------
 -- Kept in careers/season-N/bases.json, by career key: { name, town, latitude, longitude, boost, peak, asked }. A base sits
 -- at its town's centre (public), never at the spot its owner parked on. The game sizes and draws the circles the same
--- way (mod magnate.lua): 1,600 km at $250,000 in a flat region, area in line with wealth, × √(region multiplier), with
--- no cap (BASE_MAX_KM is half way round the world). One base a town, at least BASE_APART_KM apart.
+-- way (mod magnate.lua): 800 km at $250,000 in a flat region, its area growing with the square root of wealth × the
+-- region multiplier (4× the wealth doubles it), up to full size, BASE_MAX_KM, at $4,000,000 (Magnate 4). One base a
+-- town, at least BASE_APART_KM apart. Once a corp's newest circle is full size, its next base (an outpost, see the
+-- land race below) can be opened.
 W.BASE_APART_KM = 300
-W.BASE_START_WEALTH, W.BASE_START_KM, W.BASE_MAX_KM = 250000, 1600, 20000
+W.BASE_START_WEALTH, W.BASE_START_KM, W.BASE_MAX_KM = 250000, 800, 1600
 W.BASE_PRICE = 250000
 W.BASE_ASK_SECONDS = 600   -- a base asked for, but not yet in a save, is held this long
 
@@ -329,8 +339,12 @@ local function basesPath() return W.seasonDir() .. '/bases.json' end
 function W.baseRadius(peak, boost)
   peak = math.max(0, tonumber(peak) or 0)
   boost = math.max(1, tonumber(boost) or 1)
-  return math.min(W.BASE_MAX_KM, W.BASE_START_KM * math.sqrt(peak / W.BASE_START_WEALTH) * math.sqrt(boost))
+  return math.min(W.BASE_MAX_KM, W.BASE_START_KM * (peak * boost / W.BASE_START_WEALTH) ^ 0.25)
 end
+
+-- The wealth that fills a flat circle, and what each further base needs on top ($3,750,000).
+function W.fullWealth() return W.BASE_START_WEALTH * (W.BASE_MAX_KM / W.BASE_START_KM) ^ 4 end
+function W.stepWealth() return W.fullWealth() - W.BASE_START_WEALTH end
 
 -- Kilometres between two { latitude, longitude } on the Earth's surface.
 function W.km(a, b)
@@ -365,6 +379,19 @@ function W.spotTable(t)
   return lat and { latitude = lat, longitude = lon } or nil
 end
 
+-- A corp's further bases (outposts) as kept: { town, latitude, longitude, boost, by, at }, oldest first.
+function W.cleanOutposts(list)
+  local out = {}
+  for _, o in ipairs(type(list) == 'table' and list or {}) do
+    local lat, lon = spotOf(o)
+    if lat and #out < W.OUTPOSTS_MAX then
+      out[#out + 1] = { town = clean(o.town, 40), latitude = lat, longitude = lon,
+        boost = math.max(1, math.min(3, tonumber(o.boost) or 1)), by = clean(o.by, 32), at = tonumber(o.at) }
+    end
+  end
+  return out
+end
+
 -- The next free base number.
 function W.newBaseId()
   local top = 0
@@ -387,7 +414,8 @@ function W.loadBases()
         owed = payOf(b.owed) or 0, jobs = payOf(b.jobs) or 0, by = clean(b.by, 32), batch = batch, lastId = payOf(b.lastId) or 0,
         day = type(b.day) == 'string' and b.day or nil, dayTotal = payOf(b.dayTotal) or 0,
         id = payOf(b.id), spot = W.spotTable(b.spot),
-        members = W.cleanCorpList(b.members), requests = W.cleanCorpList(b.requests), nextMember = payOf(b.nextMember) or 0 }
+        members = W.cleanCorpList(b.members), requests = W.cleanCorpList(b.requests), nextMember = payOf(b.nextMember) or 0,
+        outposts = W.cleanOutposts(b.outposts), fullSeen = payOf(b.fullSeen) }
     end
   end
   -- Every base has a number, which the corp buttons use (an older bases.json has none).
@@ -401,7 +429,7 @@ local function saveBases()
       boost = b.boost, peak = b.peak, asked = b.asked, owed = b.owed, jobs = b.jobs, by = b.by, batch = b.batch,
       lastId = b.lastId, day = b.day, dayTotal = b.dayTotal, id = b.id, spot = b.spot,
       members = next(b.members or {}) and b.members or nil, requests = next(b.requests or {}) and b.requests or nil,
-      nextMember = b.nextMember }
+      nextMember = b.nextMember, outposts = b.outposts and #b.outposts > 0 and b.outposts or nil, fullSeen = b.fullSeen }
   end
   table.sort(list, function(a, b) return a.key < b.key end)
   W.env.write(basesPath(), W.env.encode(list))
@@ -420,14 +448,30 @@ end
 -- Every base, for one player's game: owner, town, centre, radius, whether it's theirs, and its corp: the members'
 -- names, whether this player is one (then also the base's own spot, its yard) or has asked to join, and for the
 -- owner the requests waiting. corp.wait: the seconds before this player may ask to join a corp again.
+-- Since the land race (Magnate 4) each also has its outposts (their towns, centres and radii) and the share of
+-- Earth's land its corp holds (land, a percentage), and for its owner and members: whether its newest circle is full
+-- size (grown, so a new base can be opened), the corp wealth that fills it (fullAt) and the corp's wealth now. race:
+-- the land that wins, the seconds left and who leads.
 function W.basesMessage(pid)
   local p = W.players[pid]
   local me = p and p.key
   local list = {}
+  local shares = W.landShares()
   for key, b in pairs(W.bases) do
+    local circles = W.circlesOf(key, b)
+    local outposts = {}
+    for i = 2, #circles do
+      local c = circles[i]
+      outposts[#outposts + 1] = { town = c.town, latitude = c.latitude, longitude = c.longitude, radiusKm = c.radiusKm }
+    end
     local e = { id = b.id, name = b.name, town = b.town, latitude = b.latitude, longitude = b.longitude,
-      radiusKm = W.circleKm(b), memberWealth = W.membersWealth(b), mine = me ~= nil and me == key,
-      members = W.memberList(b.members), full = W.corpFull(b) or nil, held = b.asked ~= nil or nil }
+      radiusKm = circles[1].radiusKm, memberWealth = W.membersWealth(b), mine = me ~= nil and me == key,
+      members = W.memberList(b.members), full = W.corpFull(b) or nil, held = b.asked ~= nil or nil,
+      outposts = #outposts > 0 and outposts or nil, land = W.landPercent(shares[key]) }
+    if me and (me == key or (b.members and b.members[me])) then
+      e.grown = W.grown(b, circles) or nil
+      e.fullAt, e.wealth = W.fullAt(b), W.corpWealth(b)
+    end
     if me and b.members and b.members[me] then
       e.corp = true
       e.yard = b.spot or { latitude = b.latitude, longitude = b.longitude }
@@ -438,7 +482,7 @@ function W.basesMessage(pid)
   end
   table.sort(list, function(a, b) return a.name < b.name end)
   local wait = me and W.corpWait(me)
-  return W.env.encode({ v = W.PROTO, bases = list, corp = wait and { wait = wait } or nil })
+  return W.env.encode({ v = W.PROTO, bases = list, corp = wait and { wait = wait } or nil, race = W.raceInfo(shares) })
 end
 
 function W.sendBases(pid)
@@ -449,6 +493,19 @@ end
 function W.sendBasesToAll()
   for pid, p in pairs(W.players) do if p.key then W.sendBases(pid) end end
   W.statsChanged = true
+end
+
+-- A base or outpost (not the given owner's) within BASE_APART_KM of a spot: the base and the town it's in, or nil.
+function W.nearBase(spot, except)
+  for key, b in pairs(W.bases or {}) do
+    if key ~= except then
+      if W.km(b, spot) < W.BASE_APART_KM then return b, b.town end
+      for _, o in ipairs(b.outposts or {}) do
+        if W.km(o, spot) < W.BASE_APART_KM then return b, o.town end
+      end
+    end
+  end
+  return nil
 end
 
 -- A player asks for a base in a town: theirs unless another base is within BASE_APART_KM.
@@ -466,15 +523,14 @@ function W.onBaseClaim(pid, data)
   if mine and not mine.asked then why = 'have_one' end
   if not why and W.corpOf(p.key) then why = 'in_corp' end
   if not why then
-    for key, b in pairs(W.bases) do
-      if key ~= p.key and W.km(b, { latitude = lat, longitude = lon }) < W.BASE_APART_KM then why, by, near = 'too_close', b.name, b.town end
-    end
+    local b, at = W.nearBase({ latitude = lat, longitude = lon }, p.key)
+    if b then why, by, near = 'too_close', b.name, at end
   end
   if not why then
     local boost = tonumber(d.boost) or 1
     W.bases[p.key] = { name = clean(p.name, 32) or 'A trucker', town = town, latitude = lat, longitude = lon,
       boost = math.max(1, math.min(3, boost)), peak = 0, asked = W.env.clock(), id = (mine and mine.id) or W.newBaseId(),
-      members = {}, requests = {}, nextMember = 0 }
+      members = {}, requests = {}, nextMember = 0, outposts = {} }
     W.dropRequests(p.key)
     saveBases()
   end
@@ -507,12 +563,14 @@ function W.baseCareer(p, save)
     b.spot = spotLat and { latitude = spotLat, longitude = spotLon } or b.spot
     b.id = b.id or W.newBaseId()
     b.members, b.requests, b.nextMember = b.members or {}, b.requests or {}, b.nextMember or 0
+    b.outposts = b.outposts or {}
     if W.corpOf(p.key) then
       -- A base can't be in a corp: a member who has one (an old save) leaves the corp.
       W.corpLeave(p.key, false)
     end
     W.bases[p.key] = b
     saveBases()
+    W.checkGrown(p.key, b)
     W.sendBasesToAll()
     W.sendCommission(p.key)
   elseif had and not had.asked and not property then
@@ -521,8 +579,9 @@ function W.baseCareer(p, save)
     W.sendBasesToAll()
   elseif W.corpOf(p.key) then
     -- A member's wealth sizes their corp's circle: every save can change it.
-    local b = W.corpOf(p.key)
+    local b, owner = W.corpOf(p.key)
     b.members[p.key].name = clean(p.name, 32) or b.members[p.key].name
+    W.checkGrown(owner, b)
     W.sendBasesToAll()
   end
 end
@@ -535,15 +594,14 @@ end
 W.TOLL = 0.2
 W.BASE_CORE_KM = 100
 
--- Whose turf a spot is: a base's own core first, else the circle with the smallest distance ÷ radius.
-function W.turfAt(spot)
+-- Whose turf a spot is (the owner's key: their corp's): a base's own core first, else the circle with the smallest
+-- distance ÷ radius. circles: W.allCircles(), worked out here if not given.
+function W.turfAt(spot, circles)
   local best, bestScore
-  for key, b in pairs(W.bases or {}) do
-    if not b.asked then
-      local km, r = W.km(b, spot), W.circleKm(b)
-      if km <= W.BASE_CORE_KM then return key end
-      if km <= r and (not bestScore or km / r < bestScore) then best, bestScore = key, km / r end
-    end
+  for _, c in ipairs(circles or W.allCircles()) do
+    local km, r = W.km(c, spot), c.radiusKm
+    if km <= W.BASE_CORE_KM then return c.key end
+    if km <= r and (not bestScore or km / r < bestScore) then best, bestScore = c.key, km / r end
   end
   return best
 end
@@ -720,9 +778,50 @@ function W.membersWealth(b)
   return math.floor(sum * W.CORP_MEMBER_SHARE)
 end
 
--- The circle's radius in km: the owner's best wealth (at least the base's price) and half of each member's.
+-- What sizes a corp's circles: the owner's best wealth (at least the base's price) and half of each member's.
+function W.corpWealth(b)
+  return math.max(b.peak or 0, W.BASE_PRICE) + W.membersWealth(b)
+end
+
+-- The base's own circle's radius in km.
 function W.circleKm(b)
-  return W.baseRadius(math.max(b.peak or 0, W.BASE_PRICE) + W.membersWealth(b), b.boost)
+  return W.baseRadius(W.corpWealth(b), b.boost)
+end
+
+-- Every circle of a corp: its base first, then its outposts, oldest first. The nth outpost grows from the corp's
+-- wealth less n × stepWealth, so each further base takes about $3,750,000 more to fill.
+function W.circlesOf(key, b, wealth)
+  wealth = wealth or W.corpWealth(b)
+  local list = { { key = key, latitude = b.latitude, longitude = b.longitude, town = b.town, boost = b.boost,
+    radiusKm = W.baseRadius(wealth, b.boost) } }
+  for i, o in ipairs(b.outposts or {}) do
+    list[#list + 1] = { key = key, latitude = o.latitude, longitude = o.longitude, town = o.town, boost = o.boost, outpost = i,
+      radiusKm = W.baseRadius(math.max(W.BASE_START_WEALTH, wealth - i * W.stepWealth()), o.boost) }
+  end
+  return list
+end
+
+-- Every circle on the server (bases being claimed don't count yet).
+function W.allCircles()
+  local list = {}
+  for key, b in pairs(W.bases or {}) do
+    if not b.asked then
+      for _, c in ipairs(W.circlesOf(key, b)) do list[#list + 1] = c end
+    end
+  end
+  table.sort(list, function(x, y) if x.key ~= y.key then return x.key < y.key end return (x.outpost or 0) < (y.outpost or 0) end)
+  return list
+end
+
+-- Whether a corp's newest circle is full size, so its next base can be opened; and the corp wealth that fills it.
+function W.grown(b, circles)
+  circles = circles or W.circlesOf(nil, b)
+  return circles[#circles].radiusKm >= W.BASE_MAX_KM - 0.5
+end
+function W.fullAt(b)
+  local n = #(b.outposts or {})
+  local boost = n > 0 and b.outposts[n].boost or b.boost
+  return math.ceil(W.fullWealth() / math.max(1, boost or 1) + n * W.stepWealth())
 end
 
 -- Members or requests, for the games and the page: { id, name }, by number.
@@ -852,6 +951,229 @@ function W.onCorp(pid, data)
   if changed then W.sendBasesToAll() end
 end
 
+-- ----- The land race (Magnate 4) ----------------------------------------------------------------------------------
+-- Once a corp's newest circle is full size (BASE_MAX_KM), anyone in it (the owner or a member) can open its next base,
+-- an outpost: a circle only (no yard), at a town outside all of the corp's own circles and BASE_APART_KM from every
+-- other base. It starts at 800 km and grows from the corp's wealth less stepWealth for each base before it. A solo
+-- owner is a corp of one. The land meter is the share of Earth's land (Antarctica left out) in each corp's turf; the
+-- first to WIN_LAND wins the season, or whoever holds the most after SEASON_WEEKS. Then the next season starts and
+-- everyone starts over; the winners are kept in winners.json for good.
+--   game -> server  wwtcOutpost '{"v","town","latitude","longitude","boost"}'
+--   server -> game  wwtcOutpostDone '{"v","ok","why","by","town"}'  and everyone's wwtcBases again
+W.OUTPOSTS_MAX = 40
+
+-- Tells a corp, once, that its newest circle is full size (the games online say so themselves).
+function W.checkGrown(key, b)
+  if not b or b.asked then return end
+  local circles = W.circlesOf(key, b)
+  local n = #circles
+  if not W.grown(b, circles) or (b.fullSeen or 0) >= n then return end
+  b.fullSeen = n
+  saveBases()
+  local town = circles[n].town or 'your newest town'
+  W.feed('corp', string.format("%s's base in %s is full size. Their corp can open a new base.", b.name, town))
+  for _, k in ipairs(W.tollShares(key, b)) do
+    W.awayNote(k, string.format('Your base in %s is full size. Anyone in your corp can now open a new base outside your turf, on the Base tab.', town))
+  end
+end
+
+-- The corp a player can open a base for (their own base, else the one they're a member of), and its owner's key.
+function W.corpFor(key)
+  local b = W.bases[key]
+  if b and not b.asked then return b, key end
+  return W.corpOf(key)
+end
+
+function W.onOutpost(pid, data)
+  local p = W.players[pid]
+  if not p or not p.key then return end
+  local ok, d = pcall(W.env.decode, data or '')
+  if not ok or type(d) ~= 'table' then return end
+  local lat, lon = spotOf(d)
+  if not lat then return end
+  local spot, town = { latitude = lat, longitude = lon }, clean(d.town, 40)
+  local name = clean(p.name, 32) or 'A trucker'
+  local b, key = W.corpFor(p.key)
+  local why, by, near
+  if not b then why = 'no_base' else
+    local circles = W.circlesOf(key, b)
+    if not W.grown(b, circles) then why = 'not_full'
+    elseif #b.outposts >= W.OUTPOSTS_MAX then why = 'max'
+    else
+      for _, c in ipairs(circles) do
+        if W.km(c, spot) <= c.radiusKm then why, near = 'inside_own', c.town end
+      end
+      if not why then
+        local other, at = W.nearBase(spot)
+        if other then why, by, near = 'too_close', other.name, at end
+      end
+    end
+  end
+  if not why then
+    b.outposts[#b.outposts + 1] = { town = town, latitude = lat, longitude = lon,
+      boost = math.max(1, math.min(3, tonumber(d.boost) or 1)), by = name, at = W.env.clock() }
+    saveBases()
+    W.feed('corp', key == p.key and string.format('%s opened a new base in %s.', name, town or 'a new town')
+      or string.format("%s opened a new base in %s for %s's corp.", name, town or 'a new town', b.name))
+    for _, k in ipairs(W.tollShares(key, b)) do
+      if k ~= p.key then W.awayNote(k, string.format('%s opened a new base for your corp in %s.', name, town or 'a new town')) end
+    end
+  end
+  W.env.send(pid, 'wwtcOutpostDone', W.env.encode({ v = W.PROTO, ok = why == nil, why = why, by = by, town = near or town }))
+  if not why then W.sendBasesToAll() end
+end
+
+-- The land squares (W.LAND_ROWS, below), worked out once: { lat, lon, w } with w the square's size (cos latitude).
+function W.landCells()
+  if W.land then return W.land end
+  local cells, total = {}, 0
+  for i, row in ipairs(W.LAND_ROWS or {}) do
+    local lat = W.LAND_SOUTH + i - 0.5
+    local w = math.cos(lat * math.pi / 180)
+    for part in row:gmatch('[^,]+') do
+      local a, b = part:match('^(%d+)%-(%d+)$')
+      a, b = tonumber(a or part), tonumber(b or part)
+      for x = a or 1, b or 0 do
+        cells[#cells + 1] = { latitude = lat, longitude = -180 + x + 0.5, w = w }
+        total = total + w
+      end
+    end
+  end
+  W.land = { cells = cells, total = total }
+  return W.land
+end
+
+-- The share of Earth's land (0 to 1) in each corp's turf, by owner key: the same borders as W.turfAt. Worked out
+-- again only when a circle changes.
+function W.landShares(circles)
+  circles = circles or W.allCircles()
+  local sig = {}
+  for i, c in ipairs(circles) do sig[i] = string.format('%s %.3f %.3f %.0f', c.key, c.latitude, c.longitude, c.radiusKm) end
+  sig = table.concat(sig, ';')
+  if W.landCache and W.landCache.sig == sig then return W.landCache.shares end
+  local land = W.landCells()
+  local sums = {}
+  for _, cell in ipairs(land.cells) do
+    local best, bestScore
+    for _, c in ipairs(circles) do
+      if math.abs(cell.latitude - c.latitude) * 111.2 <= c.radiusKm + 1 then
+        local km = W.km(c, cell)
+        if km <= W.BASE_CORE_KM then best, bestScore = c.key, -1; break end
+        if km <= c.radiusKm and (not bestScore or km / c.radiusKm < bestScore) then best, bestScore = c.key, km / c.radiusKm end
+      end
+    end
+    if best then sums[best] = (sums[best] or 0) + cell.w end
+  end
+  local shares = {}
+  for key, w in pairs(sums) do shares[key] = land.total > 0 and w / land.total or 0 end
+  W.landCache = { sig = sig, shares = shares }
+  return shares
+end
+
+-- A share as a percentage, to one decimal place.
+function W.landPercent(share) return math.floor((share or 0) * 1000 + 0.5) / 10 end
+
+-- The corp holding the most land: its owner's key and share, or nil when nobody holds any.
+function W.landLeader(shares)
+  local top, most
+  for key, share in pairs(shares or W.landShares()) do
+    if share > 0 and (not most or share > most or (share == most and key < top)) then top, most = key, share end
+  end
+  return top, most
+end
+
+-- Seconds left before the season ends on time, or nil with no time limit.
+function W.seasonLeft()
+  local weeks = tonumber(W.SEASON_WEEKS) or 0
+  if weeks <= 0 or not W.stats then return nil end
+  return math.max(0, (W.stats.raceStarted or W.env.clock()) + weeks * 7 * 86400 - W.env.clock())
+end
+
+-- The race as the games and the page show it: what wins, time left, and who leads.
+function W.raceInfo(shares)
+  local top, most = W.landLeader(shares)
+  local b = top and W.bases[top]
+  return { win = W.landPercent(W.WIN_LAND), left = W.seasonLeft(), leader = b and b.name or nil,
+    leaderLand = most and W.landPercent(most) or nil }
+end
+
+local function winnersPath() return W.DIR .. '/winners.json' end
+
+function W.loadWinners()
+  local text = W.env.read(winnersPath())
+  local ok, d = false, nil
+  if text and text ~= '' then ok, d = pcall(W.env.decode, text) end
+  W.winners = {}
+  for _, e in ipairs(ok and type(d) == 'table' and d or {}) do
+    if type(e) == 'table' and payOf(e.season) then
+      local keys = {}
+      for _, k in ipairs(type(e.keys) == 'table' and e.keys or {}) do if W.validKey(k) then keys[#keys + 1] = k end end
+      local members = {}
+      for _, m in ipairs(type(e.members) == 'table' and e.members or {}) do members[#members + 1] = clean(m, 32) end
+      W.winners[#W.winners + 1] = { season = payOf(e.season), owner = clean(e.owner, 32) or 'A trucker', town = clean(e.town, 40),
+        members = #members > 0 and members or nil, keys = keys, land = tonumber(e.land), why = e.why == 'time' and 'time' or 'land',
+        at = clean(e.at, 30) }
+    end
+  end
+end
+
+-- How many seasons a career has won.
+function W.winsOf(key)
+  local n = 0
+  for _, e in ipairs(W.winners or {}) do
+    for _, k in ipairs(e.keys or {}) do if k == key then n = n + 1 end end
+  end
+  return n
+end
+
+-- Every timer tick: a corp that holds WIN_LAND wins; at the time limit, whoever holds the most.
+function W.seasonTick()
+  if not W.stats or not W.bases then return end
+  local top, most = W.landLeader()
+  if not top then return end
+  local win = tonumber(W.WIN_LAND) or 0
+  if win > 0 and most >= win then return W.endSeason(top, most, 'land') end
+  local left = W.seasonLeft()
+  if left and left <= 0 then return W.endSeason(top, most, 'time') end
+end
+
+-- The season is won: the winner is kept, everyone is told and sent off, and the next season starts (everyone starts
+-- over on their next join, as when SEASON is raised by hand).
+function W.endSeason(key, share, why)
+  local b = W.bases[key]
+  if not b then return end
+  local members = {}
+  for _, m in ipairs(W.memberList(b.members)) do members[#members + 1] = m.name end
+  local was = W.SEASON
+  table.insert(W.winners, 1, { season = was, owner = b.name, town = b.town, members = #members > 0 and members or nil,
+    keys = W.tollShares(key, b), land = W.landPercent(share), why = why, at = W.env.now() })
+  W.env.write(winnersPath(), W.env.encode(W.winners))
+  local who = #members > 0 and string.format("%s's corp (with %s)", b.name, table.concat(members, ', ')) or b.name
+  local text = string.format("Season %d is over! %s holds %s%% of Earth's land and wins%s. Season %d starts now: everyone starts over. Join again to begin.",
+    was, who, tostring(W.landPercent(share)), why == 'time' and ' on time' or '', was + 1)
+  W.feed('season', text)
+  W.SEASON = was + 1
+  W.env.write(W.DIR .. '/season.json', W.env.encode({ season = W.SEASON }))
+  local list = W.online()
+  if W.env.chat then W.env.chat(-1, text) end
+  W.seasonEnded = W.seasonEnded or {}
+  for _, p in pairs(W.players) do if p.key then W.seasonEnded[p.key] = true end end
+  for pid in pairs(list) do
+    if W.env.kick then pcall(W.env.kick, pid, text) end
+  end
+  W.players, W.asks = {}, {}
+  W.env.mkdir(W.seasonDir())
+  W.loadClaims()
+  W.loadStats()
+  W.loadBases()
+  W.loadCorps()
+  W.loadTolls()
+  W.loadAway()
+  W.landCache, W.statsSentAt, W.statsChanged = nil, nil, true
+  W.env.print(string.format('[Trucking] season %d won by %s (%s%% of the land); season %d started', was, tostring(b.name),
+    tostring(W.landPercent(share)), W.SEASON))
+end
+
 -- ----- While you were away ---------------------------------------------------------------------------------------------
 -- What happens to a player while they're off the server, kept in careers/season-N/away.json by career key: { seen =
 -- when they left, place = their leaderboard place then, tolls = { amount, jobs, from = { name = amount } }, news =
@@ -976,23 +1298,34 @@ function W.status()
   end
   table.sort(players, function(a, b) return a.name < b.name end)
   local board, truckers = {}, 0
-  for _, e in pairs(W.stats.board) do
+  for key, e in pairs(W.stats.board) do
     truckers = truckers + 1
     local balance, truck, trailer, base = e.balance or 0, e.truckValue or 0, e.trailerValue or 0, e.baseValue or 0
-    board[#board + 1] = { name = e.name, balance = balance, truckValue = truck, trailerValue = trailer, baseValue = base,
+    board[#board + 1] = { name = e.name, wins = (W.winsOf(key) > 0) and W.winsOf(key) or nil, balance = balance, truckValue = truck, trailerValue = trailer, baseValue = base,
       baseTown = e.baseTown, wealth = balance + truck + trailer + base,
       deliveries = e.deliveries or 0, containers = e.containers or 0 }
   end
   -- Ranked by wealth: money plus what the truck, trailer and base are worth, so buying one doesn't drop you down.
   table.sort(board, function(a, b) if a.wealth ~= b.wealth then return a.wealth > b.wealth end return a.name < b.name end)
   while #board > 20 do table.remove(board) end
-  -- Every base's town and circle, for the map (town centres only).
+  -- Every base's town and circle, for the map (town centres only), each outpost after its base, and the land each
+  -- corp holds.
   local bases = {}
-  for _, b in pairs(W.bases or {}) do
-    bases[#bases + 1] = { name = b.name, town = b.town, latitude = math.floor(b.latitude * 100 + 0.5) / 100,
-      longitude = math.floor(b.longitude * 100 + 0.5) / 100, radiusKm = math.floor(W.circleKm(b) * 10 + 0.5) / 10, members = W.memberNames(b) }
+  local shares = W.landShares()
+  local function r2(x) return math.floor(x * 100 + 0.5) / 100 end
+  for key, b in pairs(W.bases or {}) do
+    for i, c in ipairs(W.circlesOf(key, b)) do
+      bases[#bases + 1] = { name = b.name, town = c.town, latitude = r2(c.latitude), longitude = r2(c.longitude),
+        radiusKm = math.floor(c.radiusKm * 10 + 0.5) / 10, members = W.memberNames(b), outpost = i > 1 or nil,
+        land = i == 1 and W.landPercent(shares[key]) or nil, n = i }
+    end
   end
-  table.sort(bases, function(a, b) return a.name < b.name end)
+  table.sort(bases, function(a, b) if a.name ~= b.name then return a.name < b.name end return a.n < b.n end)
+  for _, e in ipairs(bases) do e.n = nil end
+  local winners = {}
+  for i, e in ipairs(W.winners or {}) do
+    if i <= 10 then winners[i] = { season = e.season, owner = e.owner, town = e.town, members = e.members, land = e.land, why = e.why } end
+  end
   local t = today()
   local ship
   if W.shipOn() then
@@ -1014,6 +1347,7 @@ function W.status()
     season = { number = W.SEASON, day = math.floor((now - W.stats.started) / 86400) + 1, truckers = truckers },
     today = { deliveries = t.deliveries or 0, earned = t.earned or 0 },
     ship = ship, players = players, feed = W.stats.feed, leaderboard = board, bases = bases,
+    race = W.raceInfo(shares), winners = #winners > 0 and winners or nil,
   }
 end
 
@@ -1107,6 +1441,12 @@ function W.start(env)
   W.env = env
   env.mkdir(W.DIR)
   env.mkdir(W.DIR .. '/careers')
+  -- A season won moves on by itself (season.json); raising SEASON above it by hand still starts the next one.
+  local seasonText = env.read(W.DIR .. '/season.json')
+  local okS, season = false, nil
+  if seasonText and seasonText ~= '' then okS, season = pcall(env.decode, seasonText) end
+  local reached = okS and type(season) == 'table' and payOf(season.season) or nil
+  if reached and reached > W.SEASON then W.SEASON = reached end
   env.mkdir(W.seasonDir())
   -- (Nothing is decoded that isn't there: BeamMP's JsonDecode logs an error for empty text, as on a first start.)
   local server = env.read(W.DIR .. '/server.json')
@@ -1129,6 +1469,7 @@ function W.start(env)
   W.loadCorps()
   W.loadTolls()
   W.loadAway()
+  W.loadWinners()
   local accountsText = env.read(W.DIR .. '/accounts.json')
   local okA, accounts = false, nil
   if accountsText and accountsText ~= '' then okA, accounts = pcall(env.decode, accountsText) end
@@ -1191,6 +1532,7 @@ function W.onJoin(pid, data)
     W.env.write(W.DIR .. '/accounts.json', W.env.encode(W.accounts))
   end
   p.key, p.account, p.name = key, account, W.env.name(pid)
+  if W.seasonEnded then W.seasonEnded[key] = nil end
   local text, save = readSave(key)
   p.balance = save and save.progression and save.progression.balance or nil
   W.nextId = W.nextId + 1
@@ -1214,6 +1556,11 @@ end
 -- signed-in player's must be their account's), and nothing is sent but the answer.
 function W.rejoin(pid, p, account, key)
   if not W.validKey(key) or (account and W.accounts[account] and W.accounts[account] ~= key) then return end
+  -- A game still holding last season's career joins again from the start, which gives it the new season.
+  if W.seasonEnded and W.seasonEnded[key] then
+    if W.env.kick then pcall(W.env.kick, pid, 'A new season has started. Join again to begin it.') end
+    return
+  end
   if account and not W.accounts[account] then
     W.accounts[account] = key
     W.env.write(W.DIR .. '/accounts.json', W.env.encode(W.accounts))
@@ -1642,6 +1989,164 @@ function W.report()
   return table.concat(lines, '\n')
 end
 
+-- LAND BEGIN
+-- Made by tools/make_land.py from Natural Earth (public domain): row 1 is -60°..-59°, each a list
+-- of 1° squares (0 is 180°W..179°W) whose centre is on land. Antarctica is left out.
+W.LAND_SOUTH = -60
+W.LAND_ROWS = {
+  '',
+  '',
+  '',
+  '',
+  '111',
+  '108-113',
+  '106-111',
+  '106-109',
+  '105-110,119-121',
+  '105-110',
+  '104-111,249',
+  '104-112',
+  '105-113',
+  '105-112,348-349',
+  '105-112,347-350',
+  '106-114,348-350',
+  '107-114,326,350-352',
+  '106-116,325-327,351-353',
+  '106-114,325-327,352-353,355',
+  '106-117,355-356',
+  '107-117,354-356',
+  '107-120,323,325-326,355-357',
+  '106-122,320-329,355',
+  '107-122,320-329,354',
+  '107-122,318-329,353',
+  '108-121,123-125,199-200,296-298,315,317-330',
+  '108-126,198-206,295-303,315-316,318-330',
+  '109-127,198-208,296-305,314-331',
+  '108-128,198-209,296-332',
+  '108-129,197-210,295-332',
+  '109-129,197-210,295-332',
+  '109-130,196-211,295-333',
+  '109-130,195-212,294-332',
+  '109-130,195-212,293-332',
+  '109-131,195-212,225,294-332',
+  '109-132,195-214,224-226,293-331',
+  '110-134,194-214,224-227,294-330',
+  '110-137,194-215,223-227,294-329',
+  '110-138,194-214,223-227,295-328,345',
+  '110-139,193-214,224-228,298-328,344',
+  '110-139,193-214,224-228,301-326',
+  '110-139,192-215,224-228,302-325',
+  '109-140,192-217,224-228,302-319,321-325,358',
+  '107-140,192-219,224-229,304-317,321-325,347,359',
+  '105-140,192-219,227-229,304-315,322-324',
+  '104-140,192-220,228-229,306-307,309-315,322-324',
+  '104-140,193-220,229,310-315,322-323',
+  '103-141,193-220,229,311-316,322',
+  '103-142,194-219,312,322',
+  '102-143,193-219,330',
+  '101-143,193-219,299,304,327-328,340-341',
+  '101-144,193-218,294,297-298,300,302,306,320-322,326-327',
+  '100-144,193-218,287-292,318-326,338',
+  '99-144,192-218,286-288,314,318-327,335',
+  '99-144,192-218,284-285,302,314,318-325,328,330-331',
+  '99-141,191-218,283-285,302,316-324',
+  '100-140,191-219,282-285,294-295,299,301,306,310,313-322',
+  '99-134,136,190-220,281-285,290-296,299-301,313,316-319',
+  '99-134,189-221,281-283,290-296,299-301,311-313',
+  '100-130,189-221,280-283,289-297,312',
+  '100-129,189-222,279-282,289-297,300-303,308',
+  '101-129,189-224,279-281,283,289-297,308',
+  '101-128,190-225,278-279,282-283,291-297',
+  '103-128,190-226,277-278,281-282,293-296',
+  '103-127,172,186-227,276-277,281-282,294-298',
+  '102-126,170-179,185-228,280-282,296-298',
+  '103-121,169-228,260-261,280-281,296-297,304',
+  '99,102-120,167-229,260-261,279,302,304-306',
+  '96-99,102-119,167-229,257,260,278-279,303,305',
+  '96-97,100,104-107,109-118,166-230,256-258,260,278,285,298,305',
+  '94-96,104-107,109-113,116,118,165-223,225-230,256-259,278,284-286,299',
+  '94-95,107,164-222,229-230,256-259,279,283-288,302,305',
+  '93-96,163-222,255-259,278-279,282-288,304',
+  '90-95,163-221,223-226,255-259,278-288,302-303',
+  '88-96,163-220,223-228,254-259,278-288,300-301',
+  '87-95,163-219,223-231,254-259,278-288,300-301',
+  '81-91,163-218,223-232,253-261,274-287,300-301',
+  '79-91,164-218,222-234,253-262,274-286,300-301',
+  '76-84,87-91,106-111,113,164-217,221-236,253-263,274-285,289',
+  '24,75-83,89-92,107-109,164-216,221-237,253-264,274-285,289-290',
+  '74-82,90-92,103-104,164-216,220-238,253-266,273-286',
+  '75-82,101-102,163-216,219-238,250-266,272-287,289-290',
+  '74-81,96,98-100,164-215,219-239,250-270,272-294,300',
+  '73-81,164-215,219-238,248-296,300',
+  '68,72-81,165-214,217-230,234-236,247-298,301',
+  '68,71-82,99,165-214,217-229,231,239-298',
+  '67,71-82,98-99,101,166-213,216-229,237-299',
+  '65-67,69-82,97-99,167-212,216-228,233-300',
+  '66,68-83,97-98,169-213,215-227,231-301',
+  '65,68-84,89-90,97-98,170-211,213-227,230-301',
+  '64,67-98,170-198,200-300',
+  '63-64,66-98,170-195,200-206,210,215-301,310',
+  '63-99,171-194,201-202,215-300,310-311',
+  '62-100,172-190,215-300,310-313',
+  '60-102,173-189,216-299,306,311-313,315-316',
+  '59-103,174,178-190,216-299,307-308,313-320',
+  '58-103,174,181-190,202,209-210,212-213,216-300,306-308,316-320',
+  '57-103,171-178,193-194,201-202,207-229,234-298,300-301,306-308,318-320',
+  '57-104,171-179,201-203,207-228,234-297,305-307,320',
+  '56-105,171-179,188-189,196,200-202,206-228,233-298,302,305-307,320-321',
+  '56-105,171-180,188-189,195-197,199-203,206,209-229,233-300,302-308,320-321',
+  '56-108,171-181,192-195,199-207,212-216,221-228,234-309',
+  '56-108,171-182,191-193,198-207,222-227,233-310,320-323',
+  '56-109,172-174,178-186,190-193,196-207,220-227,231-314,321-324',
+  '56-111,114-115,179-191,195-208,218-226,230-315,322',
+  '56-118,179-192,194-209,213-214,217-227,233-316',
+  '56-114,116,119,178-210,212-214,218-229,233-317,322-323',
+  '56,58-114,124,126,177-318,322',
+  '57-110,112-114,121-126,175-319,322',
+  '53-54,56-112,116-117,122-123,125,178-319,322-323',
+  '52,54-119,122-123,175-176,181-320,322-323',
+  '52-99,101-122,124,176-180,184-320,322,337',
+  '52-97,101-123,171-172,176-181,184-320,322,336-337',
+  '47,51-97,101-123,171-173,177-179,187-320,322,336-339',
+  '15,49-97,100-122,171-173,176-178,189,196-198,200-316,336-340',
+  '17-18,48-93,102-119,174-177,188-189,191-193,201-315,335-341',
+  '20-21,48-91,103-117,174-176,188-190,192-195,201-317,336-342',
+  '22-23,25-27,46-86,103-117,174-177,190,192-196,202,204-319,337-342',
+  '23-25,42-86,102-111,113-116,175-176,186-188,191-196,204-320,339-341',
+  '18-25,28-29,40-84,102-110,114-115,185-197,205-206,208-328,331-334,340-342',
+  '15-31,34-85,102-109,134-136,185-197,202-334,342-350',
+  '14-85,102-107,131-136,185-196,201-336,339-341,344-352',
+  '15-87,96-97,102,110-112,130-136,186-197,201-356,358',
+  '8-9,19-88,94-95,98,108-114,129-138,189-199,202-358',
+  '6,15,19-91,94-97,102-104,106-113,128-138,158-164,191-200,204-214,217-357',
+  '1-7,12-92,94,106-111,115-116,127-139,157-165,192-201,205-214,220-359',
+  '0-4,6-8,15,18-96,106-117,127-144,193-212,215-220,224-251,253-359',
+  '0-3,16-91,93-98,103-104,107-115,126-146,194-220,224-225,228-252,255-359',
+  '0,13-65,72-74,82,86-91,94-98,105-111,128-151,196-217,232-233,237-246,249-253,255-359',
+  '17-40,45-59,63-76,80-83,85-88,94-97,103-112,126-127,129-155,198-212,240-243,247-252,254-347,350-357',
+  '19-28,66-76,84-87,91-110,125-153,156,204-210,247-252,254-339',
+  '0,56-59,61-74,80-82,84-86,90-105,107,125-157,232-235,248-251,253-254,256-308,312,315-316,318-330',
+  '55-60,62-70,72-74,78-82,84-85,90-98,102,125-157,232-235,249-252,261-308,319-324',
+  '56-63,73-74,79-82,84-88,91-93,96-97,99-101,124-158,234-236,261-292,294-298,303-306,320-322',
+  '66-67,90-95,97,123-159,236-238,266-289',
+  '63-69,71-73,79-81,84-85,87-92,94-98,121-159,237-242,270-293,317-324',
+  '58-61,70-71,79-81,84-88,91-100,110-158,245-248,281-291',
+  '61-63,68,85,92-101,111-160,194-197,202,283-284',
+  '67-69,75-79,81-83,87-90,92-104,107-159,192-198,280-284',
+  '85-105,114-160,191-198,201-204,273-279',
+  '84-90,97-109,113-163,199-200,202-204,227-230,272-277',
+  '89-113,118-156,159-167',
+  '94-95,97-117,133-157',
+  '141-152',
+  '',
+  '',
+  '',
+  '',
+  '',
+  '',
+}
+-- LAND END
+
 -- ----- BeamMP glue ------------------------------------------------------------------------------------------------
 if MP and MP.RegisterEvent then
   local function readFile(path)
@@ -1724,13 +2229,14 @@ if MP and MP.RegisterEvent then
   WWTC_onClaim = guarded('claim', W.onClaim)
   WWTC_onRelease = guarded('release', W.onRelease)
   WWTC_onShipDone = guarded('ship delivered', W.onShipDone)
-  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.statsTick(); W.restartTick(); W.sendPlayersToAll(); W.announceTick() end)
+  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.seasonTick(); W.statsTick(); W.restartTick(); W.sendPlayersToAll(); W.announceTick() end)
   WWTC_onWhere = guarded('where', W.onWhere)
   WWTC_onDelivered = guarded('delivered', W.onDelivered)
   WWTC_onFind = guarded('find', W.onFind)
   WWTC_onHere = guarded('here', W.onHere)
   WWTC_onBaseClaim = guarded('base claim', W.onBaseClaim)
   WWTC_onCorp = guarded('corp', W.onCorp)
+  WWTC_onOutpost = guarded('outpost', W.onOutpost)
   WWTC_onChat = function(pid, name, message)
     local ok, hide = pcall(W.onChat, pid, message)
     if ok and hide then return 1 end
@@ -1752,6 +2258,7 @@ if MP and MP.RegisterEvent then
   MP.RegisterEvent('wwtcHere', 'WWTC_onHere')
   MP.RegisterEvent('wwtcBaseClaim', 'WWTC_onBaseClaim')
   MP.RegisterEvent('wwtcCorp', 'WWTC_onCorp')
+  MP.RegisterEvent('wwtcOutpost', 'WWTC_onOutpost')
   MP.RegisterEvent('WWTC_shipTimer', 'WWTC_onShipTimer')
   if MP.CreateEventTimer then MP.CreateEventTimer('WWTC_shipTimer', 15000) end
   WWTC_onShipTimer()

@@ -157,6 +157,11 @@ class PackageTest(unittest.TestCase):
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_land_map_matches_its_generator(self):
+        result = subprocess.run([sys.executable, str(ROOT / 'tools' / 'make_land.py'), '--check'],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

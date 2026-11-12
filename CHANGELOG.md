@@ -9,6 +9,37 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - **Big loads now pay less for their weight.** A load still pays more the heavier it is, but less so: a 16 t trailer load pays about 4.5 times what the starter Burnside's full load pays, where it used to pay 6.6 times. The Burnside's own pay is the same, and a small truck with a 2.5 t load earns about a seventh less. A 20 km run with 16 t of parts now pays about $41,000 instead of $60,000.
 - **Bonuses no longer stack.** A town that badly needs the good, a shortage and a jackpot together now pay at most twice the usual, where they could add up to nearly eight times before. Jackpots now pay 1.5 to 2 times instead of 2 to 3 times. The rough-road and base bonuses still come on top. Saves still work, and a job you had already taken keeps the pay it showed.
 
+## Build 192 · 12 Nov 2026
+
+- **Trailers tow steadily and stop jackknifing.** A load is now shared between your truck and your trailer, each carrying the same share of what it can take. Before, the trailer filled first, so a smaller load sat entirely in the trailer behind an empty truck. Your truck never carries more than it would on a full job, so splitting a load can't overload it.
+- The weight in a trailer now sits just ahead of its axles, like a real driver loads it (about 60% ahead of the axles and 40% behind). That puts a steady share on the hitch, 12% on a ball hitch and 20% on a gooseneck or fifth wheel, which stops the trailer swaying. Tankers are unchanged, because their liquid sits where the tank is. Saves still work, and a job you're already carrying keeps its old split until you deliver it.
+
+## Build 191 · 12 Nov 2026
+
+- **Trailer parts can no longer be changed.** Trailers come with their cargo boxes or tanks already fitted, and you can only buy and sell them. The Buy trailer parts button on the Garage tab is gone. If you change a trailer's parts in the game's own parts menu, the trailer is put straight back as you bought it and you're put back in your truck, with nothing charged. For more room, buy a bigger trailer.
+- If you fitted parts to a trailer in an earlier build, it comes back as it was sold when you load your save. What you paid for those parts still counts toward the trailer's value when you sell it. Saves still work.
+
+## Build 190 · 12 Nov 2026
+
+- **Insurance is cheaper for rich players again.** A claim now costs at most a quarter of the real repair, which you reach at $300,000 of wealth (cash, truck, trailers and base). Below that the share shrinks with your wealth: at $60,000 it's 5% and at $150,000 it's 12.5%. A claim still costs at least $1,000. For example, a $60,000 repair costs $15,000 to claim once you're worth $300,000, where it used to cost the full $60,000 from $500,000. The Serious crash box on the Garage tab shows the share you pay. Saves still work.
+
+## Build 189 · 12 Nov 2026
+
+- **Insurance now covers less the richer you get.** When you're starting out, a claim after a serious crash still costs $1,000. As your cash, truck, trailers and base add up, a claim costs a bigger share of the real repair: at $50,000 it's a tenth, at $250,000 half, and from $500,000 you pay the full repair. Rich players can still claim to get pulled back onto the road. The Serious crash box on the Garage tab shows what you're worth and what the claim costs.
+- **If you can't afford a claim, the rest becomes an insurance debt instead of being let off.** The claim takes the money you have, and half of every delivery's pay goes to the debt until it's paid. You can also pay it off in one go with **Pay off** on the Garage tab. While you owe it, you can't buy parts or cars. You're never stuck: the claim always fixes your truck and puts it back on the road.
+- A claim never costs more than the repair itself, so a cheap car crashed near your base no longer pays $1,000 for a $600 fix.
+- Dangerous contracts no longer have their own $4,000 insurance price: a claim costs the same as on any other job. A signal beacon's package still costs at least $4,000 to claim. Saves still work.
+
+## Build 188 · 12 Nov 2026
+
+- **On a trucking server, the season is now a race for land.** The first base owner whose turf, with their corp's, covers half of Earth's land (Antarctica left out) wins the season. If nobody gets there within 12 weeks, whoever holds the most land wins. Then a new season starts and everyone starts over. You're sent off the server with a message saying who won, and you start fresh when you join again. The winners are listed on the server's web page, with a trophy next to their names on the leaderboard.
+- A land meter shows how much of Earth's land you or your corp hold, who's leading and how many days are left. You'll find it under the town name on the HUD, on the Base tab, on the Base map and on the web page.
+- Circles now start smaller and stop growing at the size of the USA. A new base's circle reaches 800 km, it takes four times the wealth to double its area, and it's full size at 1,600 km once your corp is worth $4,000,000. The circles already on the server are resized to these sizes, so big circles shrink once. For example, a base worth $2.2 million goes from about 4,750 km to about 1,380 km. Your money, trucks, base and corp are kept.
+- **Once your newest base is full size, anyone in your corp can open another base, for free.** Drive to a town outside all of your corp's circles and at least 300 km from anyone else's base, then press **Open a base here** on the Base tab. The new base's circle starts at 800 km and gives the same bonus, tolls and turf as your first. It grows as your corp gets richer and is full size after about $3,750,000 more. Then you can open the next one. Everyone in the corp gets a message when a base fills up, and anyone who was offline hears about it when they next join. The Base tab shows how far your newest base is from full size.
+- A rival's circle that pushes into yours costs you land on the meter, but it never stops your next base from unlocking.
+- On the Base map, a full-size circle has a thicker edge. On the web page, all of a corp's bases share one colour.
+- Server hosts need to update the server plugin as usual. Saves still work.
+
 ## Build 187 · 12 Nov 2026
 
 - **Turf tolls in a corp are now split equally between everyone in it.** When a trucker outside the corp delivers in its turf, the 20% toll is shared out evenly between the owner and every member, and each gets their share the next time they're on the server. A base owner on their own still keeps every toll. So going solo means a smaller turf where all the tolls are yours, and a corp means a bigger turf where the tolls are shared. A member who leaves stops earning tolls straight away but still gets anything already owed to them.

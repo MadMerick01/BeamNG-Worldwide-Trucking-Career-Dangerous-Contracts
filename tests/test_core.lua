@@ -8,6 +8,7 @@ local jobs = require('earthFreight/jobs')
 local fuel = require('earthFreight/fuel')
 local location = require('earthFreight/location')
 local contracts = require('earthFreight/contracts')
+local workshop = require('earthFreight/workshop')
 local A, B = P.DIRECTORY .. 'save-a.json', P.DIRECTORY .. 'save-b.json'
 local north = 1 / 111195.0802 -- degrees latitude per metre
 
@@ -455,6 +456,18 @@ do
   T.check(o:view().flash.text:find('refunded', 1, true), 'the player is told')
 end
 
+-- What a claim costs: a share of the repair growing to 25% at $300,000, at least $1,000, at most the repair.
+do
+  T.eq(workshop.claimFee(60000, 5000, 1000), 1000, 'starting out: $1,000')
+  T.eq(workshop.claimFee(60000, 60000, 1000), 3000, '$60,000 pays 5%')
+  T.eq(workshop.claimFee(60000, 150000, 1000), 7500, '$150,000 pays 12.5%')
+  T.eq(workshop.claimFee(60000, 300000, 1000), 15000, '$300,000 pays a quarter')
+  T.eq(workshop.claimFee(60000, 2000000, 1000), 15000, 'and never more')
+  T.eq(workshop.claimFee(600, 0, 1000), 600, 'never more than a cheap repair')
+  T.eq(workshop.claimFee(20000, 0, 4000), 4000, "a beacon's higher minimum")
+  T.eq(workshop.claimFee(0, 0, 1000), 1000, 'unknown repair: the minimum')
+end
+
 -- Insurance after a serious crash: the car back on the road and fixed for $1,000, the job lost.
 do
   local c, io, a, g = F.controller()
@@ -465,7 +478,8 @@ do
   T.check(not c:claimInsurance(), 'refused')
   g.damage = 20000; c:tick(0.1)
   local ins = c:view().insurance
-  T.check(ins ~= nil and ins.allowed, 'offered after a serious crash'); T.eq(ins.fee, 1000, 'for $1,000')
+  T.check(ins ~= nil and ins.allowed, 'offered after a serious crash'); T.eq(ins.fee, math.min(1000, ins.repair), 'for $1,000 when starting out')
+  T.eq(ins.topWealth, 300000, 'says where the cover stops shrinking'); T.eq(ins.topPercent, 25, 'at 25%')
   T.check(ins.loseJob, 'the job would be lost'); T.check(ins.repair > 0, 'the repair is shown to compare')
   local balance = c:view().balance
   T.check(not c:claimInsurance(), 'asks first'); T.check(c:view().insurance.armed, 'armed')
@@ -474,7 +488,7 @@ do
   -- The move back to the road is a jump, but not a teleport.
   a.pose = location.destination(F.PENRITH, 0, 3000); c:tick(0.5); c:tick(0.5); c:tick(0.6)
   T.eq(g.repairs, 1, 'fixed'); T.eq(c.stranded, nil, 'not stranded')
-  T.eq(c:view().balance, balance - 1000, 'charged $1,000'); T.eq(c.load, nil, 'the job is lost')
+  T.eq(c:view().balance, balance - ins.fee, 'charged the claim'); T.eq(c.load, nil, 'the job is lost')
   T.eq(c:view().flash.title, 'INSURANCE CLAIMED', 'told so')
   c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
   T.eq(c:view().insurance, nil, 'no more offer once fixed')
@@ -482,6 +496,11 @@ do
   g.noRoad = true; g.damage = 40000; c.profile.progression.balance = 300; c:tick(0.1)
   c:claimInsurance(); T.check(c:claimInsurance(), 'claimed again')
   T.eq(g.repairs, 2, 'fixed straight away'); T.eq(c:view().balance, 0, 'took what there was')
+  local owed = c:insuranceOwed()
+  T.check(owed > 0, 'the rest is owed, not forgiven'); T.eq(c:view().insuranceDebt.owed, owed, 'shown on the HUD')
+  T.check(c:view().flash.text:find('short', 1, true) ~= nil, 'told so')
+  T.check(c:view().garageLocked:find('insurance debt', 1, true), 'parts and cars are off until it is paid')
+  T.check(not c:view().insuranceDebt.payAllowed, 'cannot pay it off yet'); T.check(not c:payInsurance(), 'refused')
   -- The normal repair keeps the job.
   c:vehicleSpawned(); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   c.profile.progression.balance = 50000
@@ -489,6 +508,24 @@ do
   T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a new job')
   g.damage = 30000; c:tick(0.1)
   c:requestRepairQuote(); T.check(c:repairVehicle(), 'repaired instead'); T.check(c.load ~= nil, 'the job is kept')
+  -- Half of a delivery's pay goes to the debt.
+  c.profile.progression.insuranceOwed = 1000000
+  local before = c:view().balance
+  local pay = c.load.pay
+  F.drive(c, a, stClair); T.check(c:deliver(), 'delivered')
+  local took = math.floor(pay * 0.5)
+  T.eq(c:view().balance, before + pay - took, 'half the pay kept'); T.eq(c:insuranceOwed(), 1000000 - took, 'half paid off the debt')
+  T.check(c:view().flash.text:find('insurance debt', 1, true) ~= nil, 'the delivery says so')
+  -- It is kept by Save, and can be paid off in one go.
+  c.profile.progression.insuranceOwed = 2000
+  c.lastSample.valid = true; T.check(c:manualSave(), 'saved')
+  local r = F.controller({ io = io }); T.eq(r:insuranceOwed(), 2000, 'still owed after a reload')
+  c.profile.progression.balance = 2500
+  T.check(c:view().insuranceDebt.payAllowed, 'can pay it off'); T.check(c:payInsurance(), 'paid off')
+  T.eq(c:view().balance, 500, '$2,000 taken'); T.eq(c:view().insuranceDebt, nil, 'nothing owed'); T.eq(c:view().garageLocked, nil, 'garage open again')
+  -- A small debt is cleared by one delivery, and only what is owed is taken.
+  c.profile.progression.insuranceOwed = 10
+  T.eq(c:payDebtFrom(1000), ' $10 went to your insurance debt, which is now paid off.', 'paid off'); T.eq(c:insuranceOwed(), 0, 'cleared')
 end
 
 -- Tow: get out, walk to within 50 m of the car and have it brought to you for $500. It keeps the
@@ -1141,7 +1178,7 @@ do
   local job, section = onContract(c)
   local row = c:view().town.jobs[#c:view().town.jobs]
   T.check(row.contract ~= nil and not row.drop, 'the board ends with a dangerous contract'); T.eq(row.to, section.name, 'named for its section')
-  T.eq(row.contract.fee, contracts.FEE, 'with its relocation fee'); T.eq(row.contract.pays, section.pay, 'and its pay multiple'); T.eq(row.contract.insurance, 4000, 'and its $4,000 insurance')
+  T.eq(row.contract.fee, contracts.FEE, 'with its relocation fee'); T.eq(row.contract.pays, section.pay, 'and its pay multiple');
   T.eq(row.distanceMetres, 2000, 'about 2 km'); T.check(row.allowed, 'can be taken')
   local q = c:jobQuote(job)
   T.eq(q.pay, math.floor(jobs.basePay(goods.get('parts'), q.units, 5) * section.pay / 10 + 0.5) * 10, 'its multiple of a 5 km job')
@@ -1195,7 +1232,7 @@ do
   T.check(not d:deliver(), 'a lift to the finish does not deliver')
 end
 
--- A crash on a dangerous contract: the claim costs $4,000 and the contract is lost.
+-- A crash on a dangerous contract: the claim costs what it does on any job, and the contract is lost.
 do
   local c, io, a, g = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
@@ -1204,10 +1241,27 @@ do
   T.check(c:takeJob(job.id), 'taken')
   a.pose = F.copy(section.start); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   g.damage = 20000; c:tick(0.1)
-  T.eq(c:view().insurance.fee, 4000, 'the claim costs $4,000')
+  local fee = c:view().insurance.fee
+  T.eq(fee, workshop.claimFee(c:view().insurance.repair, c:wealth(), workshop.INSURANCE_FEE), 'the usual claim')
+  T.check(fee < 4000, 'not the old $4,000')
   c:claimInsurance(); T.check(c:claimInsurance(), 'claimed')
   a.pose = location.destination(section.start, 0, 50); c:tick(0.5); c:tick(0.5); c:tick(0.6)
-  T.eq(c.load, nil, 'the contract is lost'); T.eq(c:view().balance, 10000 - contracts.FEE - 4000, 'charged $4,000')
+  T.eq(c.load, nil, 'the contract is lost'); T.eq(c:view().balance, 10000 - contracts.FEE - fee, 'charged the claim')
+end
+
+-- A rich player's claim costs the whole repair; it still puts the car back on the road.
+do
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 600000
+  g.damage = 30000; c:tick(0.1)
+  local ins = c:view().insurance
+  T.check(ins ~= nil and ins.allowed, 'still offered'); T.eq(ins.fee, math.max(1000, math.floor(ins.repair * 0.25 + 0.5)), 'for a quarter of the repair')
+  T.eq(ins.sharePercent, 25, 'says so')
+  T.check(ins.wealth >= 600000, 'counts their wealth')
+  c.profile.progression.balance = 100000; c:tick(0.1)
+  ins = c:view().insurance
+  T.eq(ins.fee, math.max(1000, math.floor(ins.repair * 0.25 * ins.wealth / 300000 + 0.5)), 'a smaller share when less rich')
 end
 
 -- Abandoned before the start, the relocation is paid back; not enough money, no contract.
@@ -1496,7 +1550,7 @@ do
   local wealth = 400000 - Home.PRICE + (c.ownedParts.value or 0) + Home.PRICE
   T.eq(v.circle.town, 'Penrith', 'around the town it is in'); T.eq(v.circle.wealth, wealth, 'cash, truck and base')
   T.eq(v.circle.radiusKm, math.floor(magnate.radiusKm(wealth, 1) + 0.5), 'sized by wealth')
-  T.check(v.circle.radiusKm >= 1600, 'a big circle from the start'); T.check(v.circle.inside, 'and you are inside it')
+  T.check(v.circle.radiusKm >= 800 and v.circle.radiusKm < 1600, 'a big circle from the start, short of full size'); T.check(v.circle.inside, 'and you are inside it')
   T.eq(v.circle.percent, 20, 'the owner gets up to +20%')
   T.check(v.circle.nextKm % 500 == 0 and v.circle.nextKm > v.circle.radiusKm and v.circle.nextKm <= v.circle.radiusKm + 500 and v.circle.nextWealth > wealth, 'and how to grow it')
   -- Town jobs in the circle pay about 20% more on flat ground: the bonus is half of +0.4 at each end.
@@ -1576,16 +1630,19 @@ do
   T.eq(#toasts, 2, 'a blip along a border says nothing')
 end
 
--- The circle's size (Magnate 2): 1,600 km at $250,000 on flat ground, area in line with wealth, bigger on steep
--- ground, no cap short of half way round the world; whose turf a spot is where circles overlap; and the turf toll.
+-- The circle's size (Magnate 4): 800 km at $250,000 on flat ground, 4× the wealth doubles the area, bigger on steep
+-- ground, full size (1,600 km, the USA's size) at $4,000,000; whose turf a spot is where circles overlap; and the toll.
 do
   local magnate = require('earthFreight/magnate')
-  T.near(magnate.radiusKm(250000, 1), 1600, 1e-9, '1,600 km at $250,000')
-  T.near(magnate.radiusKm(637500, 1), 1600 * math.sqrt(2.55), 1e-9, '$637,500 reaches about 2,555 km')
-  T.near(magnate.radiusKm(1000000, 1), 3200, 1e-9, 'four times the wealth, twice the radius')
-  T.near(magnate.radiusKm(250000, 3), 1600 * math.sqrt(3), 1e-9, 'Death Road reaches further')
-  T.eq(magnate.radiusKm(1e12, 1), magnate.MAX_KM, 'past half way round the world it covers everything')
-  T.near(magnate.wealthFor(3200, 1), 1000000, 1e-3, 'the wealth for a size')
+  T.near(magnate.radiusKm(250000, 1), 800, 1e-9, '800 km at $250,000')
+  T.near(magnate.radiusKm(1000000, 1), 800 * math.sqrt(2), 1e-9, '$1,000,000 reaches about 1,130 km')
+  T.near(magnate.radiusKm(2200000, 1), 800 * (8.8 ^ 0.25), 1e-9, '$2,200,000 reaches about 1,380 km')
+  T.near(magnate.radiusKm(4000000, 1), 1600, 1e-9, 'full size at $4,000,000')
+  T.eq(magnate.radiusKm(9000000, 1), 1600, 'and no bigger')
+  T.check(magnate.isFull(1600) and not magnate.isFull(1500), 'full size is 1,600 km')
+  T.near(magnate.radiusKm(250000, 3), 800 * (3 ^ 0.25), 1e-9, 'Death Road reaches further')
+  T.near(magnate.wealthFor(1600, 1), 4000000, 1e-3, 'the wealth for a size')
+  T.near(magnate.wealthFor(1600, 2), 2000000, 1e-3, 'less on steep ground')
   local big = { latitude = 0, longitude = 0, radiusKm = 4000, mine = true }
   local small = { latitude = 0, longitude = 3000 / 111.195, radiusKm = 2000, owner = 'Belake' }
   local function at(km) return { latitude = 0, longitude = km / 111.195 } end
@@ -1731,11 +1788,12 @@ do
   c:couplerChanged(1, id, true)
   T.check(c:view().trailer.owned.hitched, 'hitched')
   local q = c:jobQuote(c:board(penrith)[1])
-  T.eq(q.units, 102, 'trailer and car'); T.eq(q.trailerUnits, 100, 'the trailer first')
-  -- A part load fills the trailer, not the car.
-  T.check(c:takeJob(to, 50), 'half a load taken'); T.eq(c.load.units, 51, 'half'); T.eq(c.load.trailerUnits, 51, 'all in the trailer')
-  T.near(w.trailerWeights[#w.trailerWeights].kg, 51 * 12.75, 1e-9, 'its weight on the trailer'); T.eq(w.trailerWeights[#w.trailerWeights].id, id, 'that trailer')
-  T.eq(w.weights[#w.weights].kg, 0, 'none in the car')
+  T.eq(q.units, 102, 'trailer and car'); T.eq(q.trailerUnits, 100, 'a full load fills both')
+  -- A part load is shared: each carries about the same share of its room.
+  T.check(c:takeJob(to, 50), 'half a load taken'); T.eq(c.load.units, 51, 'half'); T.eq(c.load.trailerUnits, 50, 'half the trailer')
+  T.near(w.trailerWeights[#w.trailerWeights].kg, 50 * 12.75, 1e-9, 'its weight on the trailer'); T.eq(w.trailerWeights[#w.trailerWeights].id, id, 'that trailer')
+  T.eq(w.trailerWeights[#w.trailerWeights].hitchShare, 0.12, 'centred ahead of the axles for a ball hitch')
+  T.near(w.weights[#w.weights].kg, 12.75, 1e-9, 'the rest in the car')
   -- Save keeps it hitched, but not unhitched.
   c:couplerChanged(id, 1, false)
   T.check(not c:manualSave(), 'no save unhitched'); T.check(c.feedback:find('Hitch your trailer'), 'told to hitch or store')
@@ -1745,12 +1803,12 @@ do
   T.check(c:manualSave(), 'saved hitched')
   local saved = io.files[A].trailer or io.files[B].trailer
   T.eq(saved.model, 'boxutility', 'trailer saved'); T.eq(saved.stored, false, 'out'); T.eq(saved.paid, 5000, 'with its price')
-  T.eq((io.files[A].load or io.files[B].load).trailerUnits, 51, 'the load in it saved')
+  T.eq((io.files[A].load or io.files[B].load).trailerUnits, 50, 'the load in it saved')
   -- A reload brings it back out once the car is back.
   local r, _, ra, rg = F.controller({ io = io })
   ra.pose = F.copy(a.pose); r:tick(0.1); r:vehicleSpawned(); r:tick(0.1); r:tick(0.1)
   T.check(r.trailerOut ~= nil, 'trailer back out'); T.eq(rg.trailers[r.trailerOut.id].model, 'boxutility', 'the same trailer')
-  T.eq(r.load.trailerUnits, 51, 'with its load')
+  T.eq(r.load.trailerUnits, 50, 'with its load')
   T.check(c:deliver(), 'delivered hitched')
   -- Storing it with a job in it: a warning first, then the load is lost and the fee charged. With no
   -- base it goes to the depot, for the depot's fee.
@@ -1819,45 +1877,60 @@ do
   T.check(h.fifthwheel and h.gooseneck and h.ball, 'fifth wheel, gooseneck and ball'); T.eq(TR.hitches(nil).ball, nil, 'none without parts')
 end
 
--- Trailer parts: cargo boxes fitted to a trailer in the parts menu, billed like car parts, saved.
+-- A load is split between the car and the trailer, each to the same share of its room.
+do
+  local TR = require('earthFreight/trailers')
+  T.eq(TR.split(102, 102, 100), 100, 'a full load fills the trailer')
+  T.eq(TR.split(51, 102, 100), 50, 'half a load: half the trailer'); T.eq(TR.split(10, 110, 100), 9, 'a tenth: a tenth of each, rounded')
+  T.eq(TR.split(1, 102, 100), 1, 'one unit goes where most of the room is')
+  T.eq(TR.split(60, 70, 20), 17, 'about the same share of each')
+  T.eq(TR.split(60, 70, 60), 51, 'never more in the car than it holds (10)')
+  T.eq(TR.split(5, 5, 0), 0, 'no trailer room: all in the car'); T.eq(TR.split(0, 10, 5), 0, 'no load')
+  T.eq(TR.split(3, 3, 3), 3, 'only the trailer has room')
+  T.eq(TR.hitchOf('tiltdeck', 'vehicles/tiltdeck/earth_freight_30ft_gooseneck_boxes.pc'), 'gooseneck', 'the hitch of a trailer for sale')
+  T.eq(TR.hitchOf('flatbed', 'vehicles/flatbed/logs.pc'), nil, 'none for one not for sale')
+  T.eq(TR.HITCH_SHARE.ball, 0.12, 'a ball hitch takes 12%'); T.eq(TR.HITCH_SHARE.fifthwheel, 0.2, 'a fifth wheel 20%')
+end
+
+-- Trailer parts cannot be changed: a part change made in the game's own parts menu is put back,
+-- and an older save's trailer with parts fitted comes back as it was sold.
 do
   local c, io, a, g = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   c.profile.progression.balance = 100000
-  g.storage = {}
+  T.eq(c.buyTrailerParts, nil, 'no Buy trailer parts')
   T.check(c:buyTrailer(1), 'trailer bought'); local id = c.trailerOut.id
-  c:couplerChanged(1, id, true)
-  T.eq(c:view().trailer.owned.space.slots, 0, 'a trailer with no storage carries nothing')
-  c.load = { good = 'parts', units = 1, slots = 1, kg = 15 }
-  T.check(not c:buyTrailerParts(), 'not with a job'); T.check(c.trailerFeedback:find('job'), 'told why')
-  c.load = nil
-  local before = c:view().balance
-  T.check(c:buyTrailerParts(), 'in the trailer'); T.eq(g.vehicleId, id, 'the player is in it'); T.eq(g.partsMenus, 1, 'parts menu opened')
-  T.check(c:view().garageLocked, 'car parts and cars wait'); T.check(not c:manualSave(), 'no save mid-shop')
-  -- Fitting a box respawns the trailer: billed, not taken as a car purchase.
+  c:couplerChanged(1, id, true); c:tick(0.1)
+  T.eq(c.trailerOut.parts.deck, 'flatbed_deck', 'the parts it came out with are kept')
+  local balance = c:view().balance
+  -- The player switches into the trailer and fits a box in the parts menu, which respawns it.
+  g:enter(id)
   g.trailers[id].fitted.box = 'pickup_cargo_load_box_l'
   c:vehicleSpawned(id); c:tick(0.1)
-  T.eq(c.pendingCar, nil, 'not a car bill'); T.eq(c:view().trailer.shop.bill.cost, 1500, 'the box billed at its price')
-  T.eq(c:view().trailer.owned.space.slots, 16, 'its space counted')
-  local paid = c.trailer.paid
-  T.check(c:payTrailerParts(), 'paid'); T.eq(c:view().balance, before - 1500, 'charged')
-  T.eq(c.trailer.paid, paid + 1500, 'the parts add to what the trailer is worth')
-  T.eq(g.vehicleId, 1, 'back in the car'); T.eq(c.trailerShop, nil, 'done')
-  T.eq(type(c.trailer.config), 'table', 'the fitted parts kept')
-  c:couplerChanged(1, id, true); c:tick(0.6); c:tick(0.6)
-  T.check(c:manualSave(), 'saved')
-  local saved = io.files[A].trailer and io.files[A] or io.files[B]
-  T.eq(saved.trailer.config.parts.box, 'pickup_cargo_load_box_l', 'the box saved')
-  local r, _, ra, rg = F.controller({ io = io })
-  ra.pose = F.copy(a.pose); rg.storage = {}; r:tick(0.1); r:vehicleSpawned(); r:tick(0.1); r:tick(0.1)
-  T.eq(rg.trailers[r.trailerOut.id].fitted.box, 'pickup_cargo_load_box_l', 'it comes back with its box')
-  -- Undo puts the paid parts back, for nothing.
-  before = c:view().balance
-  T.check(c:buyTrailerParts(), 'in again')
-  g.trailers[id].fitted.box = nil; c:vehicleSpawned(id); c:tick(0.1)
-  T.eq(#c:view().trailer.shop.bill.removed, 1, 'taking it off shows on the bill'); T.eq(c:view().trailer.shop.bill.cost, 0, 'never below $0, as for car parts')
-  T.check(c:undoTrailerParts(), 'undone'); T.eq(g.trailers[id].fitted.box, 'pickup_cargo_load_box_l', 'box back on')
-  T.eq(c:view().balance, before, 'nothing paid'); T.eq(g.vehicleId, 1, 'back in the car')
+  T.eq(c.pendingCar, nil, 'not a car bill'); T.eq(c.pendingParts, nil, 'nor a parts bill')
+  T.eq(g.trailers[id].fitted.box, nil, 'the box taken back off'); T.eq(g.trailers[id].fitted.deck, 'flatbed_deck', 'as sold')
+  T.eq(g.vehicleId, 1, 'back in the car'); T.eq(c:view().balance, balance, 'nothing charged')
+  T.eq(type(c.trailer.config), 'string', 'the setup it was sold with is kept')
+  -- Our own respawn comes back with the same parts: nothing more to do.
+  local repairs = g.trailerRepairs
+  c:vehicleSpawned(id); c:tick(0.1)
+  T.eq(g.trailerRepairs, repairs, 'a respawn with the same parts is left alone')
+  -- When putting it back keeps failing to stick, it gives up rather than respawning it forever.
+  local put = g.repair
+  g.repair = function(self, config, vid) self.trailerRepairs = self.trailerRepairs + 1; return true end
+  for _ = 1, 4 do g.trailers[id].fitted.box = 'pickup_cargo_load_box_l'; c:vehicleSpawned(id); c:tick(0.1) end
+  T.eq(g.trailerRepairs, repairs + 2, 'tried twice, then left')
+  g.repair = put
+  -- A trailer saved with parts fitted (older builds) loads as its .pc setup; what was paid stays.
+  local TR = require('earthFreight/trailers')
+  local old = TR.clean({ model = 'boxutility', name = 'Box utility trailer', paid = 6500,
+    config = { model = 'boxutility', parts = { box = 'pickup_cargo_load_box_l' },
+      partConfigFilename = 'vehicles/boxutility/earth_freight_trailer_boxes.pc' } })
+  T.eq(old.config, 'vehicles/boxutility/earth_freight_trailer_boxes.pc', 'back to the setup it was sold with')
+  T.eq(old.paid, 6500, 'the paid parts still count toward its sale')
+  T.eq(TR.limitOf(old.model, old.config), 600, 'and its load limit')
+  local odd = TR.clean({ model = 'boxutility', name = 'X', paid = 1, config = { model = 'boxutility', parts = {} } })
+  T.eq(type(odd.config), 'table', 'a config naming no .pc file is kept as it is')
 end
 
 -- A trailer spot at the base: two trailers with a base, parked and hitched for free within 200 m,
