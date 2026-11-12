@@ -224,6 +224,14 @@ test('insurance is only claimed when Lua offers it', () => {
   a.state({ state: 'READY', insurance: { allowed: true } }); a.scope.claimInsurance()
   assert.equal(a.commands.at(-1), fixed('claimInsurance()'))
 })
+test('an insurance debt is only paid off when Lua allows it', () => {
+  const a = app()
+  a.state({ state: 'READY', insuranceDebt: { owed: 5000, payAllowed: false } }); a.scope.payInsurance()
+  assert.equal(a.commands.length, 1)
+  a.state({ state: 'READY', insuranceDebt: { owed: 5000, payAllowed: true } }); a.scope.payInsurance()
+  assert.equal(a.commands.at(-1), fixed('payInsurance()'))
+  assert.ok(html.includes('ng-click="payInsurance()"'), 'a Pay off button')
+})
 test('towing is only asked for when Lua allows it, from the Repair card, with the steps shown', () => {
   const a = app()
   a.state({ state: 'READY', tow: { allowed: false, fee: 500 } }); a.scope.towHere(); a.scope.payTow(); a.scope.getOut()

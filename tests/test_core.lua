@@ -496,6 +496,11 @@ do
   g.noRoad = true; g.damage = 40000; c.profile.progression.balance = 300; c:tick(0.1)
   c:claimInsurance(); T.check(c:claimInsurance(), 'claimed again')
   T.eq(g.repairs, 2, 'fixed straight away'); T.eq(c:view().balance, 0, 'took what there was')
+  local owed = c:insuranceOwed()
+  T.check(owed > 0, 'the rest is owed, not forgiven'); T.eq(c:view().insuranceDebt.owed, owed, 'shown on the HUD')
+  T.check(c:view().flash.text:find('short', 1, true) ~= nil, 'told so')
+  T.check(c:view().garageLocked:find('insurance debt', 1, true), 'parts and cars are off until it is paid')
+  T.check(not c:view().insuranceDebt.payAllowed, 'cannot pay it off yet'); T.check(not c:payInsurance(), 'refused')
   -- The normal repair keeps the job.
   c:vehicleSpawned(); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   c.profile.progression.balance = 50000
@@ -503,6 +508,24 @@ do
   T.check(c:takeJob(F.offer(c, stClair, 'food')), 'a new job')
   g.damage = 30000; c:tick(0.1)
   c:requestRepairQuote(); T.check(c:repairVehicle(), 'repaired instead'); T.check(c.load ~= nil, 'the job is kept')
+  -- Half of a delivery's pay goes to the debt.
+  c.profile.progression.insuranceOwed = 1000000
+  local before = c:view().balance
+  local pay = c.load.pay
+  F.drive(c, a, stClair); T.check(c:deliver(), 'delivered')
+  local took = math.floor(pay * 0.5)
+  T.eq(c:view().balance, before + pay - took, 'half the pay kept'); T.eq(c:insuranceOwed(), 1000000 - took, 'half paid off the debt')
+  T.check(c:view().flash.text:find('insurance debt', 1, true) ~= nil, 'the delivery says so')
+  -- It is kept by Save, and can be paid off in one go.
+  c.profile.progression.insuranceOwed = 2000
+  c.lastSample.valid = true; T.check(c:manualSave(), 'saved')
+  local r = F.controller({ io = io }); T.eq(r:insuranceOwed(), 2000, 'still owed after a reload')
+  c.profile.progression.balance = 2500
+  T.check(c:view().insuranceDebt.payAllowed, 'can pay it off'); T.check(c:payInsurance(), 'paid off')
+  T.eq(c:view().balance, 500, '$2,000 taken'); T.eq(c:view().insuranceDebt, nil, 'nothing owed'); T.eq(c:view().garageLocked, nil, 'garage open again')
+  -- A small debt is cleared by one delivery, and only what is owed is taken.
+  c.profile.progression.insuranceOwed = 10
+  T.eq(c:payDebtFrom(1000), ' $10 went to your insurance debt, which is now paid off.', 'paid off'); T.eq(c:insuranceOwed(), 0, 'cleared')
 end
 
 -- Tow: get out, walk to within 50 m of the car and have it brought to you for $500. It keeps the

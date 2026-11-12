@@ -6,7 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
-- **Insurance now covers less the richer you get.** When you're starting out, a claim after a serious crash still costs $1,000 (or all your money, if you have less). As your cash, truck, trailers and base add up, a claim costs a bigger share of the real repair: at $50,000 it's a tenth, at $250,000 half, and from $500,000 you pay the full repair. Rich players can still claim to get pulled back onto the road. The Serious crash box on the Garage tab shows what you're worth and what the claim costs.
+- **Insurance now covers less the richer you get.** When you're starting out, a claim after a serious crash still costs $1,000. As your cash, truck, trailers and base add up, a claim costs a bigger share of the real repair: at $50,000 it's a tenth, at $250,000 half, and from $500,000 you pay the full repair. Rich players can still claim to get pulled back onto the road. The Serious crash box on the Garage tab shows what you're worth and what the claim costs.
+- **If you can't afford a claim, the rest becomes an insurance debt instead of being let off.** The claim takes the money you have, and half of every delivery's pay goes to the debt until it's paid. You can also pay it off in one go with **Pay off** on the Garage tab. While you owe it, you can't buy parts or cars. You're never stuck: the claim always fixes your truck and puts it back on the road.
 - A claim never costs more than the repair itself, so a cheap car crashed near your base no longer pays $1,000 for a $600 fix.
 - Dangerous contracts no longer have their own $4,000 insurance price: a claim costs the same as on any other job. A signal beacon's package still costs at least $4,000 to claim. Saves still work.
 

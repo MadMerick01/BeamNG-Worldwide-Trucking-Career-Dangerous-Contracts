@@ -1599,6 +1599,7 @@ function M.new(deps)
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
+    refund = refund .. self:payDebtFrom(load.pay)
     local section = load.contract and contracts.get(load.contract)
     -- An off-road drop counts for the turf of the town it was taken in, at both ends.
     local town = not load.beacon and not section and places.get(load.from) or nil
@@ -1657,6 +1658,7 @@ function M.new(deps)
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
+    refund = refund .. self:payDebtFrom(load.pay)
     self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' to '
       .. (load.business and (load.business.name .. ', ') or '') .. place.name
       .. '. ' .. self:named('Nice driving') .. '.' .. tollLine(load) .. refund)
@@ -2326,6 +2328,8 @@ function M.new(deps)
       repairFeedback = self.repairFeedback,
       insurance = self:insuranceView(),
       tow = self:towView(),
+      insuranceDebt = self:insuranceOwed() > 0 and { owed = self:insuranceOwed(), payAllowed = self:payInsuranceAllowed(),
+        sharePercent = math.floor(workshop.DEBT_SHARE * 100 + 0.5) } or nil,
       onFoot = self.onFoot == true,
       -- Why Buy parts, Buy new car and Buy second hand are off, or nil when they are on.
       garageLocked = self.onFoot and 'Get back in your car to change parts or cars.'
@@ -2455,7 +2459,7 @@ function M.new(deps)
       base = self.profile.base, resume = location.copy(fresh),
       progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm,
         jobsDone = progression.jobsDone, contractsDone = copy(progression.contractsDone),
-        towOwed = progression.towOwed },
+        towOwed = progression.towOwed, insuranceOwed = progression.insuranceOwed },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
         -- The car's name, for the start page before the car is back and for the car once it is.
         name = self:savedVehicleName(),
@@ -2795,6 +2799,7 @@ function M.abandonJob() return safely(function() return ensure():abandonJob() en
 function M.claimInsurance() return safely(function() return ensure():claimInsurance() end) end
 function M.towHere() return safely(function() return ensure():towHere() end) end
 function M.payTow() return safely(function() return ensure():payTow() end) end
+function M.payInsurance() return safely(function() return ensure():payInsurance() end) end
 function M.getOut() return safely(function() return ensure():getOut() end) end
 function M.refuel() return safely(function() return ensure():refuel() end) end
 function M.hireHeli() return safely(function() return ensure():hireHeli() end) end

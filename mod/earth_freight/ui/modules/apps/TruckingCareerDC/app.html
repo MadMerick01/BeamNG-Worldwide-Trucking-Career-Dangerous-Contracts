@@ -454,6 +454,7 @@
           <div>Claim insurance for ${{data.insurance.fee | number:0}}: your car is fixed and put back on the nearest road<span ng-if="data.insurance.loseJob">, but your job and its cargo are lost</span>.</div>
           <div ng-if="data.insurance.repair != null" style="font-size:13px;color:#c9d6d2;">Or repair it below for about ${{data.insurance.repair | number:0}}<span ng-if="data.insurance.loseJob"> and keep the job</span>.</div>
           <div ng-if="data.insurance.fullPriceWealth" style="font-size:12px;color:#c9d6d2;">Insurance covers less the richer you are. You're worth ${{data.insurance.wealth | number:0}} with your truck; from ${{data.insurance.fullPriceWealth | number:0}} a claim costs the full repair.</div>
+          <div ng-if="data.insurance.short > 0" style="font-size:12px;color:#f2c94c;">You're ${{data.insurance.short | number:0}} short, so that much would be owed and come out of your next deliveries.</div>
           <button type="button" ng-click="claimInsurance()" ng-disabled="!data.insurance.allowed" ng-style="data.insurance.armed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="margin-top:6px;padding:7px 12px;">{{data.insurance.pending ? 'Towing to the road...' : (data.insurance.armed ? 'Confirm claim' : 'Claim insurance')}}</button>
         </div>
         <div ng-if="data.carChange" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
@@ -638,6 +639,11 @@
               <button type="button" ng-click="repairVehicle()" ng-disabled="!data.repairAllowed" style="padding:5px 12px;">Repair</button>
             </div>
           </div>
+        </div>
+        <div ng-if="data.insuranceDebt" role="alert" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
+          <div style="font-weight:bold;color:#f2c94c;">Insurance debt: ${{data.insuranceDebt.owed | number:0}}</div>
+          <div style="font-size:13px;color:#c9d6d2;">{{data.insuranceDebt.sharePercent}}% of every delivery's pay goes to it until it's paid. Buying parts and cars is off until then.</div>
+          <button type="button" ng-click="payInsurance()" ng-disabled="!data.insuranceDebt.payAllowed" style="margin-top:6px;padding:5px 12px;">Pay off ${{data.insuranceDebt.owed | number:0}}</button>
         </div>
         <div ng-if="data.tow" class="ef-sec" ng-class="{'ef-need': data.tow.owed || data.tow.onFoot}">
           <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('tow')" aria-expanded="{{isOpen('tow', data.tow.owed || data.tow.onFoot)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('tow', data.tow.owed || data.tow.onFoot) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Stuck? Tow your car to you<span ng-if="data.tow.fee > 0"> for ${{data.tow.fee | number:0}}</span><span ng-if="!(data.tow.fee > 0)">, free</span></div><span class="ef-sum"><span ng-if="data.tow.owed">${{data.tow.owed | number:0}} owed</span></span></div></div>

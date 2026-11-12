@@ -22,12 +22,14 @@ M.STARTER_CONFIG = 'vehicles/burnside/earth_freight_starter.pc'
 -- player can claim instead of paying for the repair. Cover fades out as the player gets richer:
 -- a claim costs the share of the real repair that their wealth (cash, truck, trailers and base)
 -- is of FULL_PRICE_WEALTH, so at that wealth or more it costs the whole repair. It never costs
--- less than INSURANCE_FEE (more for a beacon's package), never more than the repair, and never
--- more than all the player's money. The car is first sent back to the road, then fixed
+-- less than INSURANCE_FEE (more for a beacon's package) and never more than the repair. What the
+-- player's money doesn't cover is owed: DEBT_SHARE of every delivery's pay goes to it until it is
+-- paid, it can be paid off on the Garage tab, and parts and cars can't be bought meanwhile. The car is first sent back to the road, then fixed
 -- ROAD_SECONDS later where it landed; jumps in the GRACE_SECONDS after a claim are not teleports.
 M.SERIOUS_DAMAGE = 15000
 M.INSURANCE_FEE = 1000
 M.FULL_PRICE_WEALTH = 500000
+M.DEBT_SHARE = 0.5
 M.ROAD_SECONDS, M.GRACE_SECONDS = 1.5, 10
 -- Tow: on foot, within TOW_RANGE metres of the car, the player pays TOW_FEE to have it brought to
 -- them. Short of the fee, it is owed instead, and parts and cars cannot be bought until it is paid.
@@ -304,12 +306,56 @@ function M.attach(c)
   end
 
   -- What the claim costs now: see M.FULL_PRICE_WEALTH. A beacon's package has a higher minimum.
+  -- Wealth here is less what is already owed for insurance.
   function c:insuranceFee()
     local minimum = self.load and self.load.beacon and beacons.INSURANCE_FEE or M.INSURANCE_FEE
     local d = self.lastDamage
     local repair = d and self:repairPrice(d.damage, self:carValueOf(d.id)) or 0
-    local fee = M.claimFee(repair, self.wealth and self:wealth() or 0, minimum)
-    return math.min(fee, self.profile and self.profile.progression.balance or 0)
+    return M.claimFee(repair, self:insuranceWealth(), minimum)
+  end
+
+  function c:insuranceWealth()
+    return math.max(0, math.floor((self.wealth and self:wealth() or 0) - self:insuranceOwed()))
+  end
+
+  -- What is owed for insurance claims the player's money did not cover.
+  function c:insuranceOwed()
+    return self.profile and self.profile.progression.insuranceOwed or 0
+  end
+
+  -- Everything owed (tows and insurance): parts and cars can't be bought until it is paid.
+  function c:debtOwed()
+    return self:towOwed() + self:insuranceOwed()
+  end
+
+  -- Takes DEBT_SHARE of a delivery's pay (already added to the money) for the insurance owed.
+  -- Returns a line for the delivery message, or ''.
+  function c:payDebtFrom(pay)
+    local owed = self:insuranceOwed()
+    if owed <= 0 or type(pay) ~= 'number' or pay <= 0 then return '' end
+    local take = math.min(owed, math.floor(pay * M.DEBT_SHARE), self.profile.progression.balance)
+    if take <= 0 or not self:spend(take, 'insurance_debt') then return '' end
+    local left = owed - take
+    self.profile.progression.insuranceOwed = left > 0 and left or nil
+    return ' ' .. dollars(take) .. ' went to your insurance debt' .. (left > 0 and (', ' .. dollars(left) .. ' left.') or ', which is now paid off.')
+  end
+
+  function c:payInsuranceAllowed()
+    return self:insuranceOwed() > 0 and self:canAfford(self:insuranceOwed())
+  end
+
+  -- Pays off the insurance owed in one go.
+  function c:payInsurance()
+    local owed = self:insuranceOwed()
+    if owed == 0 then return false end
+    if not self:spend(owed, 'insurance_debt') then
+      self.repairFeedback = 'Not enough money. You need ' .. dollars(owed - self.profile.progression.balance) .. ' more.'
+      return false
+    end
+    self.profile.progression.insuranceOwed = nil
+    self.repairFeedback = 'Insurance debt paid off. Save to keep it.'
+    self:autoSaveSoon('your payment')
+    return true
   end
 
   function c:insuranceAllowed()
@@ -327,8 +373,11 @@ function M.attach(c)
     end
     if not self.insuranceArmed then
       self.insuranceArmed = true
-      self.repairFeedback = 'Press Confirm claim: your car is fixed and put back on the road for ' .. dollars(self:insuranceFee())
+      local fee = self:insuranceFee()
+      local short = fee - math.min(fee, self.profile.progression.balance)
+      self.repairFeedback = 'Press Confirm claim: your car is fixed and put back on the road for ' .. dollars(fee)
         .. (self.load and ', but your job and its cargo are lost.' or '.')
+        .. (short > 0 and (' You are ' .. dollars(short) .. ' short, so that is owed and comes out of your next deliveries.') or '')
       return false
     end
     self.insuranceArmed = false
@@ -357,7 +406,10 @@ function M.attach(c)
       return false
     end
     local fee = self:insuranceFee()
-    if fee > 0 then self:spend(fee, 'insurance') end
+    local paid = math.min(fee, self.profile.progression.balance)
+    if paid > 0 then self:spend(paid, 'insurance') end
+    local short = fee - paid
+    if short > 0 then self.profile.progression.insuranceOwed = self:insuranceOwed() + short end
     local lost = ''
     if self.load then
       lost = ' Your job and its cargo are lost.'
@@ -367,7 +419,8 @@ function M.attach(c)
     self.quote, self.owedDamage, self.punctureDamage, self.lastDamage = nil, 0, 0, nil
     self.insuredUntil = self.clock + M.GRACE_SECONDS
     self.repairFeedback = nil
-    self:showFlash('delivered', 'INSURANCE CLAIMED', 'Your car is fixed and back on the road for ' .. dollars(fee) .. '.' .. lost .. ' Save to keep it.')
+    local owes = short > 0 and (' You were ' .. dollars(short) .. ' short: half of each delivery\'s pay goes to it until it is paid.') or ''
+    self:showFlash('delivered', 'INSURANCE CLAIMED', 'Your car is fixed and back on the road for ' .. dollars(fee) .. '.' .. lost .. owes .. ' Save to keep it.')
     return true
   end
 
@@ -383,7 +436,8 @@ function M.attach(c)
     local d = self.lastDamage
     return { fee = self:insuranceFee(), armed = self.insuranceArmed, pending = self.insurancePending ~= nil,
       allowed = self:insuranceAllowed(), loseJob = self.load ~= nil,
-      wealth = math.floor(self.wealth and self:wealth() or 0), fullPriceWealth = M.FULL_PRICE_WEALTH,
+      wealth = self:insuranceWealth(), fullPriceWealth = M.FULL_PRICE_WEALTH,
+      short = math.max(0, self:insuranceFee() - (self.profile and self.profile.progression.balance or 0)),
       repair = d and self:repairPrice(d.damage, self:carValueOf(d.id)) or nil }
   end
 
@@ -496,7 +550,9 @@ function M.attach(c)
   -- Why buying parts or cars is not possible while a tow is owed, or nil.
   function c:towDebtProblem()
     local owed = self:towOwed()
-    return owed > 0 and ('Pay the ' .. dollars(owed) .. ' tow fee on the Repair card first.') or nil
+    if owed > 0 then return 'Pay the ' .. dollars(owed) .. ' tow fee on the Repair card first.' end
+    owed = self:insuranceOwed()
+    return owed > 0 and ('Pay off your ' .. dollars(owed) .. ' insurance debt on the Garage tab first.') or nil
   end
 
   -- The Tow card on the Garage tab.
@@ -789,13 +845,13 @@ function M.attach(c)
   end
 
   function c:buyCarAllowed()
-    return self.pendingCar ~= nil and not self.load and self:canAfford(self.pendingCar.cost) and self:towOwed() == 0
+    return self.pendingCar ~= nil and not self.load and self:canAfford(self.pendingCar.cost) and self:debtOwed() == 0
   end
 
   -- Keep and store at home: allowed with a home that has room.
   function c:keepCarAllowed()
     return self.pendingCar ~= nil and self:homeSpaceFree() and not self.load and self:canAfford(self.pendingCar.keepCost)
-      and self:towOwed() == 0
+      and self:debtOwed() == 0
   end
 
   -- The player's car as home keeps it, from the parts paid for, after another car has taken its place.
@@ -1118,7 +1174,7 @@ function M.attach(c)
   end
 
   function c:buyPartsAllowed()
-    return self.pendingParts ~= nil and self:canAfford(self.pendingParts.cost) and self:towOwed() == 0
+    return self.pendingParts ~= nil and self:canAfford(self.pendingParts.cost) and self:debtOwed() == 0
       and (not self.fittedParts or self:loadFits(self.fittedParts))
   end
 
