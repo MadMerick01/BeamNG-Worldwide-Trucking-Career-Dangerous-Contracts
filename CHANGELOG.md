@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Big loads now pay less for their weight.** A load still pays more the heavier it is, but less so: a 16 t trailer load pays about 4.5 times what the starter Burnside's full load pays, where it used to pay 6.6 times. The Burnside's own pay is the same, and a small truck with a 2.5 t load earns about a seventh less. A 20 km run with 16 t of parts now pays about $41,000 instead of $60,000.
+- **Bonuses no longer stack.** A town that badly needs the good, a shortage and a jackpot together now pay at most twice the usual, where they could add up to nearly eight times before. Jackpots now pay 1.5 to 2 times instead of 2 to 3 times. The rough-road and base bonuses still come on top. Saves still work, and a job you had already taken keeps the pay it showed.
+
 ## Build 187 · 12 Nov 2026
 
 - **Turf tolls in a corp are now split equally between everyone in it.** When a trucker outside the corp delivers in its turf, the 20% toll is shared out evenly between the owner and every member, and each gets their share the next time they're on the server. A base owner on their own still keeps every toll. So going solo means a smaller turf where all the tolls are yours, and a corp means a bigger turf where the tolls are shared. A member who leaves stops earning tolls straight away but still gets anything already owed to them.

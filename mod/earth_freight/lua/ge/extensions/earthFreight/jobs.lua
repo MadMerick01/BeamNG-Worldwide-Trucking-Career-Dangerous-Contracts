@@ -12,15 +12,16 @@ local M = {}
 -- One-line settings. Tune these after testing in game.
 -- Pay by weight: a full load of PAY_KG kg (the starter Burnside's 52 slots of parts) pays
 -- PAY_DOLLARS over 5 km. Heavier loads pay more, but less a kg: pay grows as (kg / PAY_KG) ^
--- WEIGHT_POWER, so 2,000 kg pays about $3,600, 8,000 kg about $8,700, 10,000 kg about $10,000
--- and 12,000 kg about $11,200. Lighter loads pay a straight share by weight, so 300 kg pays
+-- WEIGHT_POWER, so 2,000 kg pays about $3,200, 8,000 kg about $6,400, 16,000 kg about $9,100
+-- and 22,400 kg about $10,700. WEIGHT_POWER was 0.63 until big trailers earned $170,000 a run
+-- (MadMerick, 12 Nov): a load 20 times the Burnside's now pays 4.5 times its pay, not 6.6. Lighter loads pay a straight share by weight, so 300 kg pays
 -- about $770 and a car boot of parts doesn't out-earn a cargo box. PAY_PERCENT
 -- scales every job's pay, after all of the above: 120 pays a fifth more, 80 a fifth less. It is 75
 -- (MadMerick, 11 Nov: the whole economy a quarter lower, prices kept), so the Burnside's load pays
 -- $1,500 over 5 km. Contracts, shortages, jackpots, Ship Day and base commission all follow it. A
 -- good's rate (goods.lua) scales its own pay.
 M.PAY_PERCENT = 75
-M.PAY_DOLLARS, M.PAY_KG, M.WEIGHT_POWER = 2000, 780, 0.63
+M.PAY_DOLLARS, M.PAY_KG, M.WEIGHT_POWER = 2000, 780, 0.5
 -- Pay grows as (km / 5) ^ DISTANCE_POWER up to FLAT_KM, so 20 km pays 6 times 5 km; past that it
 -- only grows with the square root.
 M.BASE_KM, M.FLAT_KM = 5, 20
@@ -51,8 +52,11 @@ M.HIGH, M.LOW = 1.1, 0.9
 -- Shortages: each town and good has SHORTAGE_CHANCE of one in each SHORTAGE_SECONDS window, paying
 -- SHORTAGE_PAY times. With about 30 towns within 20 km, a little over half the boards carry one.
 M.SHORTAGE_CHANCE, M.SHORTAGE_SECONDS, M.SHORTAGE_PAY = 0.01, 3600, 2
--- About one job in 20 is a jackpot, paying 2 to 3 times.
-M.JACKPOT_CHANCE, M.JACKPOT_MIN, M.JACKPOT_MAX = 0.05, 2, 3
+-- About one job in 20 is a jackpot, paying 1.5 to 2 times.
+M.JACKPOT_CHANCE, M.JACKPOT_MIN, M.JACKPOT_MAX = 0.05, 1.5, 2
+-- Town need, a shortage and a jackpot together pay at most MAX_BONUS times (MadMerick, 12 Nov: they
+-- no longer stack). The road and base bonuses come on top, as before.
+M.MAX_BONUS = 2
 -- The region pay boost (1 to 3) becomes a road bonus of 1 + (boost - 1) * ROAD_SHARE, at most 2.
 M.ROAD_SHARE, M.MAX_ROAD = 0.5, 2
 -- A job only delivers once you have driven at least this share of the straight-line distance
@@ -215,7 +219,7 @@ function M.quote(job, units, needs, now, shareAt)
   local need = M.need(to, good, needs, now)
   if job.decent then need = math.max(1, need) end
   local short = M.shortage(to, good, now)
-  local factor = need * (short and M.SHORTAGE_PAY or 1) * (job.jackpot or 1)
+  local factor = math.min(M.MAX_BONUS, need * (short and M.SHORTAGE_PAY or 1) * (job.jackpot or 1))
   local extra = M.baseExtra(shareAt, from, to)
   local road = M.roadBonus(from, to) + extra
   local base = M.basePay(good, units, job.km)

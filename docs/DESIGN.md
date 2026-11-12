@@ -61,7 +61,7 @@ The truck earns about 5 times more a run but far less a kg, so fuel, repairs and
 **Sweet jobs.** Some jobs pay far more, and the bonuses stack:
 
 - **Shortages:** now and then a town runs short of a good and pays **2×** for it until the end of the clock hour. It is a gold dot on the Nearby list and an alert on the Route tab with the time left, and boards within 20 km offer a job to it (one shortage job per board). Each town and good has a 1% chance of a shortage in each clock hour; with about 30 towns within 20 km, a little over half the boards carry one.
-- **Jackpot jobs:** about 1 job in 20 pays **2× to 3×**, marked on the board.
+- **Jackpot jobs:** about 1 job in 20 pays **1.5× to 2×**, marked on the board. Town need, a shortage and a jackpot together pay at most 2× (MadMerick, 12 Nov).
 
 **Pay is locked when you take the job.** A delivery pays what the board showed, in full, however rough the drive. Deliveries still have to be driven (70% of the straight-line distance) and only count at the job's drop-off.
 
