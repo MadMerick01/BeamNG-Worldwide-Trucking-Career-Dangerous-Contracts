@@ -57,19 +57,32 @@ T.eq(big.kg, 1330, 'L boxes take 400 kg and M 130 kg')
 T.eq(cargo.fits(big, parts), 52, '52 parts'); T.eq(cargo.fits(big, bricks), 10, '10 bricks: the weight runs out first')
 T.eq(jobs.PAY_PERCENT, 75, 'jobs pay 75% of the curve (a quarter less, MadMerick, 11 Nov)')
 T.near(jobs.basePay(parts, 52, 5), 1500, 1e-6, '52 slots of parts (780 kg) pay $1,500 over 5 km')
-T.near(jobs.basePay(bricks, 8, 5), 1968, 1, 'bricks (1,200 kg) about $1,970')
+T.near(jobs.basePay(bricks, 8, 5), 1861, 1, 'bricks (1,200 kg) about $1,860')
 T.near(jobs.basePay(parts, 52, 20), 9000, 1e-6, 'parts $9,000 over 20 km')
 -- Pay by weight: heavier loads pay more, but less a kg; lighter ones a straight share.
 T.near(jobs.weightPay(30), 2000 * 30 / 780, 1e-6, 'a 30 kg boot load pays about $77')
-T.near(jobs.weightPay(8000), 8669, 1, 'an 8,000 kg load about $8,700')
-T.near(jobs.weightPay(10000), 9977, 1, 'a 10,000 kg load about $10,000')
-T.near(jobs.weightPay(12000), 11192, 1, 'a 12,000 kg load about $11,200')
+T.eq(jobs.WEIGHT_POWER, 0.5, 'heavy loads pay by the square root of their weight (MadMerick, 12 Nov)')
+T.near(jobs.weightPay(8000), 6405, 1, 'an 8,000 kg load about $6,400')
+T.near(jobs.weightPay(16000), 9058, 1, 'a 16,000 kg load about $9,100: 4.5 times the Burnside, not 6.6')
+T.near(jobs.weightPay(22400), 10718, 1, 'a 22,400 kg load about $10,700')
 T.check(jobs.weightPay(12000) / 12000 < jobs.weightPay(780) / 780 / 2.5, 'the truck earns well under half as much a kg')
 do
   local percent = jobs.PAY_PERCENT
   jobs.PAY_PERCENT = 120
   T.near(jobs.basePay(parts, 52, 5), 2400, 1e-6, 'the pay percentage scales every job')
   jobs.PAY_PERCENT = percent
+end
+do
+  -- A shortage in a town that badly needs the good, on a jackpot job: still twice at most.
+  local shortage, need = jobs.shortage, jobs.need
+  jobs.shortage = function() return true, 60 end
+  jobs.need = function() return jobs.MAX_NEED end
+  local job = jobs.board(places.get(config.START_PLACE) or places.list[1], 0, {}, 5000)[1]
+  job.jackpot = jobs.JACKPOT_MAX
+  local q = jobs.quote(job, 10, {}, 5000)
+  T.eq(q.factor, 2, 'bonuses no longer stack past twice')
+  T.check(q.shortage and q.jackpot ~= nil, 'the shortage and jackpot still show')
+  jobs.shortage, jobs.need = shortage, need
 end
 -- Fluids: litres in a tank, paid by their weight like any load.
 local water, fuel = goods.get('water'), goods.get('fuel')
@@ -78,7 +91,7 @@ T.eq(cargo.fits(starter, water), 0, 'no fluid without a tank')
 units, slots, kg = cargo.fits(tank, water)
 T.eq(units, 80, '80 units of 10 L'); T.eq(slots, 800, 'filling 800 L'); T.eq(kg, 680, 'weighing 680 kg, 15% under a kg a litre')
 units, slots, kg = cargo.fits(tank, fuel); T.eq(slots, 800, 'fuel fills the tank too'); T.eq(kg, 510, 'lighter: 510 kg')
-T.near(jobs.basePay(water, 80, 5), 1500 * (800 / 780) ^ 0.63, 1e-6, 'a full tank of water (800 kg) pays about $1,520 over 5 km')
+T.near(jobs.basePay(water, 80, 5), 1500 * (800 / 780) ^ 0.5, 1e-6, 'a full tank of water (800 kg) pays about $1,520 over 5 km')
 T.near(jobs.basePay(fuel, 80, 5), 1500 * 600 / 780, 1e-6, 'fuel (600 kg) about $1,150')
 -- Goods weigh 15% less than their pay weight, so a unit pays what it did.
 T.eq(goods.WEIGHT_PERCENT, 85, 'goods are 15% lighter')
@@ -159,9 +172,10 @@ do
         T.check(j.km <= jobs.MAX_KM + 1e-9 and j.to ~= n.place.id, 'jobs go to another town within 20 km')
         local q = jobs.quote(j, 10, {}, 5000)
         if q.factor >= 1 then decent = true end
+        T.check(q.factor <= jobs.MAX_BONUS, 'need, shortage and jackpot together pay at most twice')
         if j.jackpot then
           jackpots = jackpots + 1
-          T.check(j.jackpot >= 2 and j.jackpot <= 3, 'a jackpot pays 2x to 3x')
+          T.check(j.jackpot >= 1.5 and j.jackpot <= 2, 'a jackpot pays 1.5x to 2x')
         end
         jobsSeen = jobsSeen + 1
       end
