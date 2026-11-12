@@ -1788,11 +1788,12 @@ do
   c:couplerChanged(1, id, true)
   T.check(c:view().trailer.owned.hitched, 'hitched')
   local q = c:jobQuote(c:board(penrith)[1])
-  T.eq(q.units, 102, 'trailer and car'); T.eq(q.trailerUnits, 100, 'the trailer first')
-  -- A part load fills the trailer, not the car.
-  T.check(c:takeJob(to, 50), 'half a load taken'); T.eq(c.load.units, 51, 'half'); T.eq(c.load.trailerUnits, 51, 'all in the trailer')
-  T.near(w.trailerWeights[#w.trailerWeights].kg, 51 * 12.75, 1e-9, 'its weight on the trailer'); T.eq(w.trailerWeights[#w.trailerWeights].id, id, 'that trailer')
-  T.eq(w.weights[#w.weights].kg, 0, 'none in the car')
+  T.eq(q.units, 102, 'trailer and car'); T.eq(q.trailerUnits, 100, 'a full load fills both')
+  -- A part load is shared: each carries about the same share of its room.
+  T.check(c:takeJob(to, 50), 'half a load taken'); T.eq(c.load.units, 51, 'half'); T.eq(c.load.trailerUnits, 50, 'half the trailer')
+  T.near(w.trailerWeights[#w.trailerWeights].kg, 50 * 12.75, 1e-9, 'its weight on the trailer'); T.eq(w.trailerWeights[#w.trailerWeights].id, id, 'that trailer')
+  T.eq(w.trailerWeights[#w.trailerWeights].hitchShare, 0.12, 'centred ahead of the axles for a ball hitch')
+  T.near(w.weights[#w.weights].kg, 12.75, 1e-9, 'the rest in the car')
   -- Save keeps it hitched, but not unhitched.
   c:couplerChanged(id, 1, false)
   T.check(not c:manualSave(), 'no save unhitched'); T.check(c.feedback:find('Hitch your trailer'), 'told to hitch or store')
@@ -1802,12 +1803,12 @@ do
   T.check(c:manualSave(), 'saved hitched')
   local saved = io.files[A].trailer or io.files[B].trailer
   T.eq(saved.model, 'boxutility', 'trailer saved'); T.eq(saved.stored, false, 'out'); T.eq(saved.paid, 5000, 'with its price')
-  T.eq((io.files[A].load or io.files[B].load).trailerUnits, 51, 'the load in it saved')
+  T.eq((io.files[A].load or io.files[B].load).trailerUnits, 50, 'the load in it saved')
   -- A reload brings it back out once the car is back.
   local r, _, ra, rg = F.controller({ io = io })
   ra.pose = F.copy(a.pose); r:tick(0.1); r:vehicleSpawned(); r:tick(0.1); r:tick(0.1)
   T.check(r.trailerOut ~= nil, 'trailer back out'); T.eq(rg.trailers[r.trailerOut.id].model, 'boxutility', 'the same trailer')
-  T.eq(r.load.trailerUnits, 51, 'with its load')
+  T.eq(r.load.trailerUnits, 50, 'with its load')
   T.check(c:deliver(), 'delivered hitched')
   -- Storing it with a job in it: a warning first, then the load is lost and the fee charged. With no
   -- base it goes to the depot, for the depot's fee.
@@ -1874,6 +1875,21 @@ do
   -- Hitches are read from the car's part names.
   local h = TR.hitches({ parts = { a = 'semi_fifthwheel', b = 'pickup_gooseneck_hitch', c = 'van_tow_hitch', d = 'x_pintle_hitch' } })
   T.check(h.fifthwheel and h.gooseneck and h.ball, 'fifth wheel, gooseneck and ball'); T.eq(TR.hitches(nil).ball, nil, 'none without parts')
+end
+
+-- A load is split between the car and the trailer, each to the same share of its room.
+do
+  local TR = require('earthFreight/trailers')
+  T.eq(TR.split(102, 102, 100), 100, 'a full load fills the trailer')
+  T.eq(TR.split(51, 102, 100), 50, 'half a load: half the trailer'); T.eq(TR.split(10, 110, 100), 9, 'a tenth: a tenth of each, rounded')
+  T.eq(TR.split(1, 102, 100), 1, 'one unit goes where most of the room is')
+  T.eq(TR.split(60, 70, 20), 17, 'about the same share of each')
+  T.eq(TR.split(60, 70, 60), 51, 'never more in the car than it holds (10)')
+  T.eq(TR.split(5, 5, 0), 0, 'no trailer room: all in the car'); T.eq(TR.split(0, 10, 5), 0, 'no load')
+  T.eq(TR.split(3, 3, 3), 3, 'only the trailer has room')
+  T.eq(TR.hitchOf('tiltdeck', 'vehicles/tiltdeck/earth_freight_30ft_gooseneck_boxes.pc'), 'gooseneck', 'the hitch of a trailer for sale')
+  T.eq(TR.hitchOf('flatbed', 'vehicles/flatbed/logs.pc'), nil, 'none for one not for sale')
+  T.eq(TR.HITCH_SHARE.ball, 0.12, 'a ball hitch takes 12%'); T.eq(TR.HITCH_SHARE.fifthwheel, 0.2, 'a fifth wheel 20%')
 end
 
 -- Trailer parts cannot be changed: a part change made in the game's own parts menu is put back,

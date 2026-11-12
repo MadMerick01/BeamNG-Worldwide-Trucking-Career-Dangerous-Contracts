@@ -6,7 +6,7 @@
 -- parks the one out and hitches the other. Away from the base a haulier takes it there or brings it
 -- out for HAUL_FEE plus HAUL_PER_KM a km from the base; the depot, for players without a base or
 -- with its spot taken, costs DEPOT_FEE each way. While it is hitched its cargo space adds to the
--- car's, and a job loads the trailer first, then the car. Storing it with part of a job in it loses
+-- car's, and a job is split between the trailer and the car. Storing it with part of a job in it loses
 -- the whole job and costs the abandon fee. A stored trailer keeps the damage it had, which Repair
 -- trailer mends (at half price at the base, as for cars) and a sale takes off its price. Sell
 -- (stored only) pays SELL_SHARE of what was paid.
@@ -156,13 +156,41 @@ function M.spaceWith(storage, snapshot, maxKg)
   return space
 end
 
--- How a good loads into a hitched trailer and the car: the trailer is filled first, then the car.
--- Returns units, slots, kg in all, and how many of the units are in the trailer.
+-- How much of a good fits a hitched trailer and the car, each filled to its own room: units,
+-- slots and kg in all, and how many of the units fit the trailer (a full load).
 function M.fits(carSpace, trailerSpace, good)
   local inTrailer = trailerSpace and cargo.fits(trailerSpace, good) or 0
   local inCar = cargo.fits(carSpace, good)
   local units = inTrailer + inCar
   return units, units * good.slots, units * good.kg, inTrailer
+end
+
+-- How a load of units is split between the car and the trailer, when a full load is fullUnits of
+-- which fullTrailer go in the trailer: each gets the same share of its own room, so a part load
+-- never leaves the trailer heavy behind an empty car, and the car never carries more than it does
+-- on a full load. Returns the units in the trailer.
+function M.split(units, fullUnits, fullTrailer)
+  units, fullUnits, fullTrailer = units or 0, fullUnits or 0, fullTrailer or 0
+  if units <= 0 or fullTrailer <= 0 or fullUnits <= 0 then return 0 end
+  if units >= fullUnits then return math.min(fullTrailer, units) end
+  local inCar = fullUnits - fullTrailer
+  local trailer = math.floor(units * fullTrailer / fullUnits + 0.5)
+  trailer = math.max(trailer, units - inCar)
+  return math.max(0, math.min(trailer, fullTrailer, units))
+end
+
+-- The share of the trailer's load that rests on the hitch, by the hitch it uses: the load sits
+-- just ahead of the axles, close to the 60/40 rule (60% ahead of the axles, 40% behind). Too
+-- little weight on the hitch makes a trailer sway and jackknife; too much lifts the car's front.
+M.HITCH_SHARE = { ball = 0.12, gooseneck = 0.2, fifthwheel = 0.2 }
+
+-- The hitch a trailer for sale uses, by its model and .pc path; nil when not listed.
+function M.hitchOf(model, config)
+  if type(config) == 'table' then config = config.partConfigFilename end
+  if type(model) ~= 'string' or type(config) ~= 'string' then return nil end
+  local key = config:match('([^/\\]+)%.pc$')
+  local entry = key and forSale[model .. '/' .. key]
+  return entry and entry.hitch or nil
 end
 
 local function finite(n) return type(n) == 'number' and n == n and n ~= math.huge and n ~= -math.huge end
@@ -669,7 +697,9 @@ function M.attach(c)
     if good and good.kind == 'fluid' and units > 0 then
       fluid.litres, fluid.density = units * good.litres, good.kg / good.litres
     end
-    local ok, why = self.cargo:setWeightOn(out.id, trailerKg, {}, fluid)
+    local t = self.trailer
+    local hitch = t and M.hitchOf(t.model, t.config)
+    local ok, why = self.cargo:setWeightOn(out.id, trailerKg, {}, fluid, M.HITCH_SHARE[hitch or 'ball'])
     if not ok then self.diag:event('trailer_weight_failed', tostring(why), 'W') end
     return kg - trailerKg
   end
