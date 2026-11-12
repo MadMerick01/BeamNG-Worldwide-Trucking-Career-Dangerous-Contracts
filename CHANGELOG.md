@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Second-hand trucks no longer jump back to where you started.** If you bought your truck from the Buy second hand list, other cars appearing in the world, such as when you turned on AI traffic, could snap it back to the spot it first appeared, leaving your trailer behind. That cancelled your job, sent the trailer to your base or the depot, and could put a repair bill on the Garage tab. Now only your own truck being respawned makes it look worn again, so traffic and other cars leave it alone. Saves still work, and there's nothing you need to do.
+
 ## Build 192 · 12 Nov 2026
 
 - **Trailers tow steadily and stop jackknifing.** A load is now shared between your truck and your trailer, each carrying the same share of what it can take. Before, the trailer filled first, so a smaller load sat entirely in the trailer behind an empty truck. Your truck never carries more than it would on a full job, so splitting a load can't overload it.

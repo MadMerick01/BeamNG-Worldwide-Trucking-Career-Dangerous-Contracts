@@ -583,11 +583,26 @@ function M.attach(c)
       if not self.trailerSpawning and self.trailerOut then self.trailerOut.respawned = true end
       return
     end
-    self.partsCheckDue, self.respawned, self.wearDue = true, true, true
     -- Seen by a hire waiting for its vehicle, or for the car coming back: when the sightseeing car
     -- and the player's own car are both Moonhawks, the model alone does not tell them apart.
     if self.hire and (self.hire.stage == 'spawning' or self.hire.stage == 'swapping') then self.hire.respawned = true end
+    -- Someone else's vehicle spawning (the game's traffic, parked cars, another player) is not a
+    -- change to the player's car. Treating it as one re-applied a second-hand car's wear, and the
+    -- game applies wear with a reset, which put the car back where it was first spawned, leaving
+    -- its trailer behind.
+    if not self:ownVehicleSpawned(vehicleId) then return end
+    self.partsCheckDue, self.respawned, self.wearDue = true, true, true
     if self.secondHand then self.secondHand.spawned = true end
+  end
+
+  -- Whether a spawned vehicle is, or may be, the player's car: the car they are in, or the one they
+  -- own or are being billed for. Our own spawns (repairs, the saved car, a second-hand car) all
+  -- replace the car the player is in, so they keep its id.
+  function c:ownVehicleSpawned(vehicleId)
+    if vehicleId == nil or not self.ownedParts then return true end
+    if vehicleId == self.ownedParts.id or (self.pendingCar and vehicleId == self.pendingCar.id) then return true end
+    local current = self.garage and self.garage.playerId and self.garage:playerId()
+    return current == nil or current == vehicleId
   end
 
   -- Insert, and the game's own recovery, put the car back as new without a respawn: the tank is
