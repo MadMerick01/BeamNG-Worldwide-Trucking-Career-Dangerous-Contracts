@@ -972,7 +972,7 @@ test('Ship Day: the Town tab shows the ship, Go to port and the containers to ta
 test('Ship Day: the Town tab card folds to a summary and Go to port, and remembers it', () => {
   const town = html.slice(html.indexOf(`ng-if="tab === 'town'"`), html.indexOf(`ng-if="tab === 'garage'"`))
   assert.ok(town.includes(`ng-click="toggle('shipday')"`), 'the card has a fold')
-  const list = town.indexOf('<div ng-if="shipDayOpen()"'), repeat = town.indexOf('ng-repeat="b in data.shipDay.containers"')
+  const list = town.indexOf('<div ng-if="shipDayOpen()"'), repeat = town.indexOf('ng-repeat="b in data.shipDay.containers')
   assert.ok(list >= 0 && list < repeat, 'the containers only show when it is open')
   assert.ok(town.indexOf('Go to port (free)') < list, 'Go to port shows when it is folded')
   const saved = {}
@@ -1066,4 +1066,29 @@ test('Radio tab: opens the radio page in the browser, shows what it plays, and c
   assert.equal(a.commands.length, count, 'only the radio address')
   const panel = html.slice(html.indexOf(`ng-if="tab === 'radio'"`), html.indexOf(`ng-if="tab === 'heli'"`))
   for (const part of ['openRadio()', 'copyRadio()', 'data.radio.playing', 'Open radio', 'Radio Browser']) assert.ok(panel.includes(part), part)
+})
+
+// The HUD gets a fresh copy of the state up to four times a second. A list of rows without track by
+// throws its rows away and draws new ones each time, so a click that straddles an update lands on
+// a row that is gone and does nothing (the Book buttons on the Relocate tab missed about half the time).
+test('every list of rows with a button keeps its rows between updates', () => {
+  const open = /<(\w+)\b[^>]*\sng-repeat="([^"]+)"[^>]*>/g
+  const missing = []
+  let m
+  while ((m = open.exec(html))) {
+    if (!/\bin data\./.test(m[2])) continue
+    // The row's own markup: up to the tag that closes it.
+    let depth = 0, end = html.length
+    const tags = new RegExp('<(/?)' + m[1] + '\\b[^>]*?(/?)>', 'g')
+    tags.lastIndex = m.index
+    for (let t; (t = tags.exec(html));) {
+      if (t[1]) depth--
+      else if (!t[2]) depth++
+      if (depth === 0) { end = tags.lastIndex; break }
+    }
+    const row = html.slice(m.index, end)
+    if (/ng-click|ng-model/.test(row) && !/\btrack by\b/.test(m[2])) missing.push(m[2])
+  }
+  assert.deepEqual(missing, [])
+  assert.ok(html.includes('ng-repeat="d in data.shipping.destinations track by d.id"'))
 })

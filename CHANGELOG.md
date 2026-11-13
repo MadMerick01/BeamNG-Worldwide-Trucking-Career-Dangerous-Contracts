@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Booking a relocation works on the first press.** On the **Relocate** tab, about half the presses of **Book** next to a region or a town you searched for did nothing, so it looked as if the booking hadn't registered and you had to try again. The HUD redrew those rows several times a second (more often while BeamNG.Earth was still loading), and a click that landed during a redraw was lost. The rows now stay put between updates, so every press counts.
+- The same fix applies to the other lists with buttons: the job board and nearby towns on the **Town** tab, Ship Day containers, and the base and corp lists on the **Base** tab.
+- Saves still work. Players on a server get this when the server runs its update.
+
 ## Build 199 · 13 Nov 2026
 
 - **Street View, the radio and the base map open your web browser again.** Since BeamNG 0.40, pressing **Turn on**, **Open radio** or **Open base map** started the page but no browser window came up, so you had to copy the address by hand. Now the page opens straight away in your normal web browser, whichever one you use (Chrome, Edge, Firefox and so on). The address and its **Copy** button are still there in case it doesn't.
