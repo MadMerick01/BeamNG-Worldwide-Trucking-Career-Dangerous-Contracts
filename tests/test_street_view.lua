@@ -245,7 +245,8 @@ do
   T.check(c2:view().radio.feedback == nil, 'nothing claimed while off')
   T.eq(F.controller():view().radio, nil, 'no server, no radio')
   local page = require('earthFreight/radioPage').html
-  for _, part in ipairs({ 'radio-browser.info', "fetch('/position?radio='", 'Follow my truck', 'Play nearest', 'Next station', 'textContent' }) do
+  for _, part in ipairs({ 'radio-browser.info', "fetch('/position?radio='", 'Follow my truck', 'Push the volume knob', 'Tune: next station', 'Preset ', 'textContent',
+      "name: 'Psyndora Chill'", 'Add your own station', 'Remove' }) do
     T.check(page:find(part, 1, true) ~= nil, 'radio page has ' .. part)
   end
   T.check(page:find('innerHTML', 1, true) == nil, 'station names never go in as HTML')

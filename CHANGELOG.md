@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The radio page now looks like a classic dash radio.** It has a chrome front, a lit dial with a red needle that moves as you change station, and the station name glowing in amber. Push the Volume knob to turn the radio on or off, and turn it (drag up or down, or scroll) to change the volume. Press the Tune knob for the next station, or use the five preset buttons, which hold your favourites first and then the stations nearest to you. The Follow my truck switch sits just below the radio.
+- **Favourite stations on the radio.** The radio page has a new Favourites list above the stations near you. These stations play wherever you drive, and Follow my truck never switches away from them. It starts with Psyndora Chill, a chill-out station a player asked for. You can also add your own station under Add your own station: type a name and the stream's address, and it stays in your favourites in that browser until you press Remove. Saves still work, and there's nothing to set up.
+
 ## Build 194 · 13 Nov 2026
 
 - **New Radio tab: live local radio wherever you drive.** Press Open radio and a radio page opens in your web browser, like Street View does. It lists real radio stations around your truck, nearest first, from Radio Browser, a free list of internet radio. Press Play nearest or pick a station, and use Stop, Next station and the volume slider. As you drive it finds the stations around you, and with Follow my truck ticked it switches to a nearby station once you're far from the one you're listening to. The HUD's Radio tab shows what's playing.
