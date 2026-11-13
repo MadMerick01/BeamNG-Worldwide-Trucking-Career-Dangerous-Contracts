@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Street View, the radio and the base map open your web browser again.** Since BeamNG 0.40, pressing **Turn on**, **Open radio** or **Open base map** started the page but no browser window came up, so you had to copy the address by hand. Now the page opens straight away in your normal web browser, whichever one you use (Chrome, Edge, Firefox and so on). The address and its **Copy** button are still there in case it doesn't.
+- The **Street View** and **Radio** tabs now have a short tip under their buttons: play BeamNG in **Borderless** or **Windowed** mode (in the game's display options) so you can switch to the browser with Alt+Tab, or put the browser beside or on top of the game.
+- Saves still work. Players on a server get this when the server runs its update.
+
 ## Build 198 · 13 Nov 2026
 
 - **The server page's radio card now follows the action.** Renamed Server radio, it plays live radio from where the latest delivery in the live feed was made ("Listen to the radio where Sam just made a delivery"), then from each player base in turn ("Listen to the radio at Sam's base in Perth"), with a new station every 3 minutes. A fresh delivery is played next as soon as it shows up in the feed.

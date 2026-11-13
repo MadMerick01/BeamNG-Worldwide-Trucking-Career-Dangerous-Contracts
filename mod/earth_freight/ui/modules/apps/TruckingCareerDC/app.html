@@ -880,6 +880,7 @@
             <button type="button" ng-if="data.streetView.on" ng-click="openStreetView()" title="Opens the Street View page in your web browser again, if you closed it" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Open again</button>
             <button type="button" ng-if="data.streetView.on" ng-click="stopStreetView()" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Turn off</button>
           </div>
+          <div style="margin-top:6px;font-size:12px;color:#c9d6d2;">Opens in your web browser. Play BeamNG in Borderless or Windowed mode to switch with Alt+Tab, or put the browser beside or on top of the game.</div>
           <div ng-if="data.streetView.feedback" role="status" style="margin-top:6px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.streetView.feedback}}</div>
           <div ng-if="data.streetView.on && data.streetView.url" style="display:flex;gap:6px;margin-top:4px;font-size:12px;">
             <input aria-label="Street View address" type="text" readonly ng-value="data.streetView.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
@@ -907,6 +908,7 @@
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
             <button type="button" ng-click="openRadio()" ng-style="data.radio.open ? {} : {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">{{data.radio.open ? 'Open again' : 'Open radio'}}</button>
           </div>
+          <div style="margin-top:6px;font-size:12px;color:#c9d6d2;">Opens in your web browser. Play BeamNG in Borderless or Windowed mode to switch with Alt+Tab, or put the browser beside or on top of the game.</div>
           <div ng-if="data.radio.feedback" role="status" style="margin-top:6px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.radio.feedback}}</div>
           <div ng-if="data.radio.on && data.radio.url" style="display:flex;gap:6px;margin-top:4px;font-size:12px;">
             <input aria-label="Radio address" type="text" readonly ng-value="data.radio.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />

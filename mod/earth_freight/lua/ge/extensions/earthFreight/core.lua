@@ -4,6 +4,7 @@ local location = require('earthFreight/location')
 local config = require('earthFreight/config')
 local persistence = require('earthFreight/persistence')
 local diagnostics = require('earthFreight/diagnostics')
+local browser = require('earthFreight/browser')
 local hud = require('earthFreight/hud')
 local earthAdapter = require('earthFreight/earthAdapter')
 local garage = require('earthFreight/garage')
@@ -2677,32 +2678,13 @@ local function gamePaused()
   end
   return false
 end
--- Opens a page of this computer's own web server in the player's browser. The game's
--- openWebBrowser does not open http://127.0.0.1 addresses, so a one-line page that forwards to
--- the address is saved in the user folder and opened as a file, which Windows hands to the default
--- browser. openWebBrowser is the fallback. False when neither way is there.
+-- Opens a page of this computer's own web server in the player's default browser (browser.lua),
+-- and notes in the log which way worked. False when none did.
 local function gameOpenUrl(url)
-  local platform = rawget(_G, 'Engine') and Engine.Platform
-  local fs = rawget(_G, 'FS')
-  local write = rawget(_G, 'writeFile')
-  if type(platform) == 'table' or type(platform) == 'userdata' then
-    local ok, opened = pcall(function()
-      if type(write) ~= 'function' or not fs or type(platform.openFile) ~= 'function' then return false end
-      local path = '/settings/earthFreight/streetview.html'
-      if not fs:directoryExists('/settings/earthFreight') then fs:directoryCreate('/settings/earthFreight', true) end
-      local page = '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' .. url .. '">' ..
-        '<title>Street View</title><a href="' .. url .. '">Open Street View</a>'
-      if not write(path, page) then return false end
-      local real = fs:getFileRealPath(path)
-      if type(real) ~= 'string' or real == '' then return false end
-      platform.openFile(real)
-      return true
-    end)
-    if ok and opened then return true end
-  end
-  local browser = rawget(_G, 'openWebBrowser')
-  if type(browser) == 'function' then browser(url); return true end
-  return false
+  local opened, how = browser.open(url)
+  local logger = rawget(_G, 'log')
+  if type(logger) == 'function' then logger(opened and 'I' or 'W', 'earthFreight', 'browser: ' .. tostring(how)) end
+  return opened
 end
 
 local function ensure()
