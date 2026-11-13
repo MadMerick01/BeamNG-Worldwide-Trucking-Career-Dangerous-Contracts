@@ -39,6 +39,14 @@ class SiteTest(unittest.TestCase):
         for src in re.findall(r'<script src="([^"]+)"', self.html):
             self.assertRegex(src, r'^https://unpkg\.com/[a-z-]+@\d+\.\d+\.\d+/')
 
+    def test_base_radio_plays_only_secure_streams_on_a_press(self):
+        self.assertIn('id="radio-card"', self.html)
+        self.assertIn('radio-browser.info', self.html)
+        self.assertIn('is_https=true', self.html, 'the page is https, so only https streams can play')
+        self.assertNotIn('autoplay', self.html, 'nothing plays until the visitor presses Play')
+        bases = [b for b in self.stats.get('bases', []) if not b.get('outpost')]
+        self.assertTrue(all('latitude' in b and 'land' in b for b in bases), 'the sample has a biggest base with a place')
+
     def test_pages_workflow_publishes_the_site(self):
         workflow = (ROOT / '.github' / 'workflows' / 'pages.yml').read_text(encoding='utf-8')
         self.assertIn('path: site', workflow)
