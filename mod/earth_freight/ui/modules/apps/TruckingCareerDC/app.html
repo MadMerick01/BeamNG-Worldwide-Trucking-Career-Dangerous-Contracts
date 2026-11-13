@@ -920,7 +920,8 @@
           </label>
           <div ng-if="radio.note" role="status" style="margin-top:6px;font-size:13px;color:#f2c94c;">{{radio.note}}</div>
           <div ng-if="radio.status === 'nowhere'" role="status" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Your truck's position isn't known yet. Try again in a moment.</div>
-          <div ng-if="radio.status === 'offline'" role="status" style="margin-top:6px;font-size:13px;color:#eb5757;">Couldn't reach the radio list. Check your internet connection and try again.</div>
+          <div ng-if="radio.status === 'offline'" role="status" style="margin-top:6px;font-size:13px;color:#eb5757;">Couldn't reach the radio list. Check your internet connection and try again.
+            <div ng-if="radio.problems.length" style="margin-top:4px;font-size:11px;color:#c9d6d2;user-select:text;">What each server said: <span ng-repeat="p in radio.problems track by $index">{{p}}{{$last ? '' : '; '}}</span></div></div>
           <div ng-if="radio.status === 'none'" role="status" style="margin-top:6px;font-size:13px;color:#c9d6d2;">No stations found near here.</div>
         </div>
         <div ng-if="radio.stations.length" class="ef-sec">

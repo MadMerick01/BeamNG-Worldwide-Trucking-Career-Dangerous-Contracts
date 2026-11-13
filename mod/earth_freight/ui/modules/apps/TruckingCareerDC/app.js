@@ -25,8 +25,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   // many metres round the truck until enough turn up. A new list after driving RADIO_REFRESH_METRES;
   // Follow my truck changes station once the one playing is RADIO_FAR_METRES behind.
   var RADIO_STORE = 'earthFreight.radio'
-  var RADIO_SERVERS = ['https://de1.api.radio-browser.info', 'https://fi1.api.radio-browser.info',
-    'https://at1.api.radio-browser.info', 'https://all.api.radio-browser.info']
+  // Each server is tried over https, then plain http in case the game's browser can't make the secure
+  // connection; the one that answers is tried first next time. RADIO_WAIT_MS is how long one may take.
+  var RADIO_HOSTS = ['de1', 'de2', 'fi1', 'at1', 'nl1', 'all'].map(function (h) { return h + '.api.radio-browser.info' })
+  var RADIO_SERVERS = RADIO_HOSTS.map(function (h) { return 'https://' + h }).concat(RADIO_HOSTS.map(function (h) { return 'http://' + h }))
+  var RADIO_WAIT_MS = 8000
   var RADIO_RINGS = [50000, 150000, 400000, 1500000], RADIO_ENOUGH = 5, RADIO_LIST = 15
   var RADIO_REFRESH_METRES = 25000, RADIO_FAR_METRES = 150000, RADIO_MIN_ASK_MS = 60000
   var RADIO_TEST_COUNT = 6, RADIO_TEST_MS = 10000
@@ -900,10 +903,26 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       var radioGet = function (path) {
         if (typeof fetch !== 'function') return Promise.reject(new Error('no fetch'))
+        var order = radio.server ? [radio.server].concat(RADIO_SERVERS.filter(function (s) { return s !== radio.server })) : RADIO_SERVERS
+        var problems = []
         var attempt = function (i) {
-          if (i >= RADIO_SERVERS.length) return Promise.reject(new Error('no radio server answered'))
-          return fetch(RADIO_SERVERS[i] + path).then(function (r) { if (!r.ok) throw new Error('radio ' + r.status); return r.json() })
-            .catch(function () { return attempt(i + 1) })
+          if (i >= order.length) {
+            var failed = new Error('no radio server answered')
+            failed.problems = problems
+            return Promise.reject(failed)
+          }
+          var base = order[i]
+          var answer = fetch(base + path).then(function (r) { if (!r.ok) throw new Error('answered ' + r.status); return r.json() })
+          var LATE = {}
+          var late = new Promise(function (resolve) { setTimeout(function () { resolve(LATE) }, RADIO_WAIT_MS) })
+          return Promise.race([answer, late]).then(function (json) {
+            if (json === LATE) throw new Error('no answer in ' + RADIO_WAIT_MS / 1000 + ' s')
+            radio.server = base
+            return json
+          }).catch(function (e) {
+            problems.push(base.replace('.api.radio-browser.info', '') + ': ' + String((e && e.message) || e).slice(0, 80))
+            return attempt(i + 1)
+          })
         }
         return attempt(0)
       }
@@ -916,7 +935,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var at = here()
         if (!at) { radio.status = 'nowhere'; return Promise.resolve() }
         radio.used = true
-        radio.status = 'looking'; radio.asked = Date.now()
+        radio.status = 'looking'; radio.asked = Date.now(); radio.problems = null
         var ring = function (i) {
           var metres = RADIO_RINGS[i]
           return radioGet('/json/stations/search?has_geo_info=true&hidebroken=true&order=clickcount&reverse=true&limit=100' +
@@ -933,7 +952,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
             radio.status = found.length ? 'listed' : 'none'
             followTruck()
           })
-        }, function () { radioApply(function () { radio.status = 'offline' }) })
+        }, function (e) { radioApply(function () { radio.status = 'offline'; radio.problems = (e && e.problems) || [String((e && e.message) || e)] }) })
       }
       var sound = function () {
         if (kept.radioSound) return kept.radioSound
