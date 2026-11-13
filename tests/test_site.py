@@ -44,6 +44,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('radio-browser.info', self.html)
         self.assertIn('is_https=true', self.html, 'the page is https, so only https streams can play')
         self.assertNotIn('autoplay', self.html, 'nothing plays until the visitor presses Play')
+        self.assertIn('RADIO_TURN_MS = 3 * 60000', self.html, 'a new base of the leading corp every 3 minutes')
+        self.assertIn('b.outpost', self.html)
         bases = [b for b in self.stats.get('bases', []) if not b.get('outpost')]
         self.assertTrue(all('latitude' in b and 'land' in b for b in bases), 'the sample has a biggest base with a place')
 

@@ -170,7 +170,8 @@
             <div class="small muted" id="radio-where"></div>
           </div>
         </div>
-        <div class="small muted" id="radio-note" style="margin-top:6px;">The live radio station closest to the biggest base on Earth. It changes when another base takes the lead.</div>
+        <div class="small" id="radio-turn" style="margin-top:6px;color:var(--gold);"></div>
+        <div class="small muted" id="radio-note" style="margin-top:4px;">Live radio from around the bases of the corp holding the most land, a new base every 3 minutes. It changes when another corp takes the lead.</div>
         <audio id="radio-audio" preload="none"></audio>
       </section>
       <section>
@@ -530,12 +531,14 @@ function renderMap() {
   else if (points.length === 1) map.setView(points[0], 5)
 }
 
-// Base radio: the station nearest the biggest base (most land), from Radio Browser, a free list of internet radio
-// stations with where each one is. This page is served over https, so only https streams can play here. Nothing plays
-// until the visitor presses Play. A new station is only looked up when the leading base changes.
+// Base radio: the radio of the corp holding the most land. Each of its bases (its first base and its outposts) has
+// the station nearest to it, from Radio Browser, a free list of internet radio stations with where each one is, and
+// the card moves on to the next base's station every RADIO_TURN_MS. This page is served over https, so only https
+// streams can play here. Nothing plays until the visitor presses Play. Stations are only looked up for new bases.
 var RADIO_SERVERS = ['de1', 'de2', 'fi1', 'at1', 'nl1', 'all'].map(function (h) { return 'https://' + h + '.api.radio-browser.info' })
 var RADIO_RINGS = [50000, 200000, 800000, 3000000]
-var radio = { key: null, station: null, looking: false, playing: false, server: null }
+var RADIO_TURN_MS = 3 * 60000
+var radio = { corp: null, owner: null, picks: [], at: 0, turnAt: null, looking: false, playing: false, server: null, found: {} }
 function radioAsk(path) {
   var order = radio.server ? [radio.server].concat(RADIO_SERVERS.filter(function (s) { return s !== radio.server })) : RADIO_SERVERS
   function attempt(i) {
@@ -559,16 +562,18 @@ function nearestStation(list, at) {
   })
   return best
 }
-function biggestBase() {
-  var bases = (stats && Array.isArray(stats.bases) ? stats.bases : []).filter(function (b) { return !b.outpost && num(b.land) !== null && validPoint(b) })
-  bases.sort(function (a, b) { return b.land - a.land })
-  return bases[0] || null
+// The leading corp's bases: its first base (the one with the most land) and then its outposts, in the stats' order.
+function leadingCorp() {
+  var all = stats && Array.isArray(stats.bases) ? stats.bases : []
+  var lead = all.filter(function (b) { return !b.outpost && num(b.land) !== null }).sort(function (a, b) { return b.land - a.land })[0]
+  if (!lead) return null
+  return { owner: text(lead.name), bases: all.filter(function (b) { return text(b.name) === text(lead.name) && validPoint(b) }) }
 }
-function findRadio(base) {
-  var key = text(base.name) + '|' + base.latitude + '|' + base.longitude
-  if (key === radio.key || radio.looking) return
-  radio.key = key; radio.looking = true
-  var at = { latitude: base.latitude, longitude: base.longitude }
+function baseKey(b) { return b.latitude.toFixed(2) + ',' + b.longitude.toFixed(2) }
+function stationNear(b) {
+  var key = baseKey(b)
+  if (key in radio.found) return Promise.resolve(radio.found[key])
+  var at = { latitude: b.latitude, longitude: b.longitude }
   function ring(i) {
     return radioAsk('/json/stations/search?has_geo_info=true&hidebroken=true&is_https=true&order=clickcount&reverse=true&limit=100'
       + '&geo_lat=' + at.latitude.toFixed(3) + '&geo_long=' + at.longitude.toFixed(3) + '&geo_distance=' + RADIO_RINGS[i])
@@ -577,47 +582,82 @@ function findRadio(base) {
         return s || i + 1 >= RADIO_RINGS.length ? s : ring(i + 1)
       })
   }
-  ring(0).then(function (s) {
-    radio.looking = false
-    var was = radio.playing
-    radio.station = s
-    if (was) playRadio(true)
+  return ring(0).then(function (s) { radio.found[key] = s; return s }, function () { return null })
+}
+// A new leading corp, or a corp whose bases changed: each base's station is looked up, one base at a time.
+function tuneCorp(corp) {
+  var key = corp.owner + '|' + corp.bases.map(baseKey).join(';')
+  if (key === radio.corp || radio.looking) return
+  radio.looking = true
+  var picks = [], seen = {}
+  function step(i) {
+    if (i >= corp.bases.length) return Promise.resolve()
+    var b = corp.bases[i]
+    return stationNear(b).then(function (s) {
+      if (s && !seen[s.url]) { seen[s.url] = true; picks.push({ town: text(b.town) || 'A base', station: s }) }
+      return step(i + 1)
+    })
+  }
+  step(0).then(function () {
+    var changed = corp.owner !== radio.owner
+    radio.looking = false; radio.corp = key; radio.owner = corp.owner; radio.picks = picks
+    if (changed || radio.at >= picks.length) radio.at = 0
+    radio.turnAt = Date.now() + RADIO_TURN_MS
+    if (radio.playing) playRadio(true)
     showRadio()
-  }, function () { radio.looking = false; radio.key = null; radio.station = null; showRadio() })
+  })
 }
+function currentPick() { return radio.picks[radio.at] || null }
 function showRadio() {
-  var base = biggestBase(), s = radio.station
-  $('radio-card').hidden = !base
-  if (!base) return
-  $('radio-title').textContent = 'Radio ' + (text(base.town) || 'base') + ' \u00b7 ' + text(base.name) + "'s base"
+  var corp = leadingCorp(), pick = currentPick(), s = pick && pick.station
+  $('radio-card').hidden = !corp
+  if (!corp) return
+  $('radio-title').textContent = 'Radio ' + (pick ? pick.town : 'base') + ' · ' + corp.owner + (corp.bases.length > 1 ? "'s corp" : "'s base")
   var st = $('radio-station')
-  st.textContent = s ? s.name : (radio.looking ? 'Tuning\u2026' : 'No station found')
+  st.textContent = s ? s.name : (radio.looking ? 'Tuning…' : 'No station found')
   st.className = 'station' + (radio.playing ? '' : ' off')
-  $('radio-where').textContent = s ? [s.place, Math.round(s.km) + ' km from the base'].filter(Boolean).join(' \u00b7 ') : ''
+  $('radio-where').textContent = s ? [s.place, Math.round(s.km) + ' km from the base'].filter(Boolean).join(' · ') : ''
   $('radio-play').disabled = !s
-  $('radio-icon').textContent = radio.playing ? '\u25a0' : '\u25b6'
+  $('radio-icon').textContent = radio.playing ? '■' : '▶'
   $('radio-play').setAttribute('aria-label', (radio.playing ? 'Stop ' : 'Play ') + (s ? s.name : 'the base radio'))
+  showTurn(Date.now())
 }
-function playRadio(on) {
-  var a = $('radio-audio')
-  if (!on || !radio.station) { a.pause(); a.removeAttribute('src'); a.load(); radio.playing = false; showRadio(); return }
-  a.src = radio.station.url
-  radio.playing = true
-  var go = a.play()
-  if (go && go.catch) go.catch(function () { radio.playing = false; $('radio-note').textContent = 'This station won\u2019t play right now. Try again later.'; showRadio() })
-  if (/^[0-9a-f-]{36}$/i.test(radio.station.id)) radioAsk('/json/url/' + radio.station.id).catch(function () {})
+function showTurn(now) {
+  var n = radio.picks.length
+  $('radio-turn').textContent = n > 1 && radio.turnAt
+    ? 'Base ' + (radio.at + 1) + ' of ' + n + ' · next base in ' + radioClock(Math.max(0, radio.turnAt - now)) : ''
+}
+function radioClock(ms) { var s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2) }
+// Every RADIO_TURN_MS the card moves on to the next base's station, and plays it if the radio is on.
+function turnRadio(now) {
+  if (radio.picks.length < 2 || !radio.turnAt || now < radio.turnAt) return
+  radio.at = (radio.at + 1) % radio.picks.length
+  radio.turnAt = now + RADIO_TURN_MS
+  if (radio.playing) playRadio(true)
   showRadio()
 }
+function playRadio(on) {
+  var a = $('radio-audio'), pick = currentPick()
+  if (!on || !pick) { a.pause(); a.removeAttribute('src'); a.load(); radio.playing = false; showRadio(); return }
+  a.src = pick.station.url
+  radio.playing = true
+  $('radio-note').textContent = NOTE
+  var go = a.play()
+  if (go && go.catch) go.catch(function () { radio.playing = false; $('radio-note').textContent = 'This station won’t play right now. Try again later.'; showRadio() })
+  if (/^[0-9a-f-]{36}$/i.test(pick.station.id)) radioAsk('/json/url/' + pick.station.id).catch(function () {})
+  showRadio()
+}
+var NOTE = 'Live radio from around the bases of the corp holding the most land, a new base every 3 minutes. It changes when another corp takes the lead.'
 function renderRadio() {
-  var base = biggestBase()
-  if (base) findRadio(base)
+  var corp = leadingCorp()
+  if (corp) tuneCorp(corp)
   showRadio()
 }
 $('radio-play').addEventListener('click', function () { playRadio(!radio.playing) })
 $('radio-audio').addEventListener('error', function () {
   if (!radio.playing) return
   radio.playing = false
-  $('radio-note').textContent = 'This station won\u2019t play right now. Try again later.'
+  $('radio-note').textContent = 'This station won’t play right now. Try again later.'
   showRadio()
 })
 
@@ -659,6 +699,8 @@ setInterval(function () {
   var c = $('ship-countdown')
   if (c && stats && stats.ship) c.textContent = until(stats.ship.sailsAt, now)
   renderStatus(now)
+  turnRadio(now)
+  showTurn(now)
 }, 1000)
 </script>
 </body>

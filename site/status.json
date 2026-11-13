@@ -34,6 +34,7 @@
   ],
   "bases": [
     { "name": "Sam", "town": "Perth", "latitude": -31.95, "longitude": 115.86, "radiusKm": 975.0, "land": 1.6 },
+    { "name": "Sam", "town": "Kalgoorlie", "latitude": -30.75, "longitude": 121.47, "radiusKm": 420.0, "outpost": true },
     { "name": "MadMerick", "town": "Parramatta", "latitude": -33.82, "longitude": 151.0, "radiusKm": 966.0, "land": 1.1 }
   ],
   "race": { "win": 50, "left": 7257600, "leader": "Sam", "leaderLand": 1.6 },
