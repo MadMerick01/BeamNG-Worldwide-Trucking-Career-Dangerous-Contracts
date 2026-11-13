@@ -44,10 +44,12 @@ class SiteTest(unittest.TestCase):
         self.assertIn('radio-browser.info', self.html)
         self.assertIn('is_https=true', self.html, 'the page is https, so only https streams can play')
         self.assertNotIn('autoplay', self.html, 'nothing plays until the visitor presses Play')
-        self.assertIn('RADIO_TURN_MS = 3 * 60000', self.html, 'a new base of the leading corp every 3 minutes')
-        self.assertIn('b.outpost', self.html)
-        bases = [b for b in self.stats.get('bases', []) if not b.get('outpost')]
-        self.assertTrue(all('latitude' in b and 'land' in b for b in bases), 'the sample has a biggest base with a place')
+        self.assertIn('RADIO_TURN_MS = 3 * 60000', self.html, 'a new station every 3 minutes')
+        self.assertIn('just made a delivery', self.html)
+        self.assertIn("'s base", self.html)
+        self.assertTrue(all('latitude' in b for b in self.stats.get('bases', [])), 'the sample bases have a place')
+        last = [e for e in self.stats.get('feed', []) if e.get('kind') == 'delivery'][0]
+        self.assertTrue('latitude' in last and 'longitude' in last and last.get('name'), 'the latest delivery says who and where')
 
     def test_pages_workflow_publishes_the_site(self):
         workflow = (ROOT / '.github' / 'workflows' / 'pages.yml').read_text(encoding='utf-8')
