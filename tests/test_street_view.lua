@@ -211,4 +211,54 @@ do
   T.check(cb2:view().baseMap.feedback == nil, 'nothing claimed while off')
 end
 
+-- The Radio: the same server, at /radio. The page passes what it plays in ?radio=, for the HUD.
+do
+  local lib = fakeSocket()
+  local opened = {}
+  local c = F.controller({ streetView = SV.new({ socket = lib }), openUrl = function(url) opened[#opened + 1] = url; return true end })
+  c:tick(0.1)
+  T.check(c:view().radio ~= nil and not c:view().radio.open, 'HUD offers the radio, not open yet')
+  T.check(c:openRadio(), 'radio opens')
+  T.eq(opened[1], 'http://127.0.0.1:47170/radio', 'its page opened in the browser')
+  T.eq(c:view().radio.url, 'http://127.0.0.1:47170/radio', 'HUD has its address')
+  T.check(c:view().radio.feedback:find('opening in your web browser', 1, true) ~= nil, 'and says where it went')
+  local pageReq, posReq = lib.client(get('/radio')), lib.client(get('/position?radio=Lithgow%20Community+Radio'))
+  lib.queue = { pageReq, posReq }
+  c:tick(0.1); c:tick(0.1)
+  T.eq(body(pageReq), require('earthFreight/radioPage').html, 'the radio page')
+  T.check(body(posReq):find('"ok":', 1, true) ~= nil, 'the position as usual')
+  T.eq(c:view().radio.playing, 'Lithgow Community Radio', 'the HUD shows what is playing')
+  T.check(c:view().radio.open, 'and that the page is open')
+  local stopped = lib.client(get('/position?radio='))
+  lib.queue = { stopped }
+  c:tick(0.1); c:tick(0.1)
+  T.eq(c:view().radio.playing, nil, 'stopped')
+  T.check(c:view().radio.open, 'page still open')
+  T.eq(c.streetView:radio(c.clock + 30), nil, 'a page gone quiet is closed')
+  local plain = lib.client(get('/position'))
+  lib.queue = { plain }
+  c:tick(0.1); c:tick(0.1)
+  T.check(c:view().radio.open, 'Street View asking does not change the radio')
+  local busy = fakeSocket(); busy.busy = true
+  local c2 = F.controller({ streetView = SV.new({ socket = busy }) })
+  T.check(not c2:openRadio(), 'busy port fails')
+  T.check(c2:view().radio.feedback == nil, 'nothing claimed while off')
+  T.eq(F.controller():view().radio, nil, 'no server, no radio')
+  local page = require('earthFreight/radioPage').html
+  for _, part in ipairs({ 'radio-browser.info', "fetch('/position?radio='", 'Follow my truck', 'Play nearest', 'Next station', 'textContent' }) do
+    T.check(page:find(part, 1, true) ~= nil, 'radio page has ' .. part)
+  end
+  T.check(page:find('innerHTML', 1, true) == nil, 'station names never go in as HTML')
+end
+
+-- What the radio page says it plays: decoded, plain text, short.
+do
+  T.eq(SV.radioParam('/position'), nil, 'nothing said')
+  T.eq(SV.radioParam('/position?radio='), '', 'stopped')
+  T.eq(SV.radioParam('/position?x=1&radio=Triple%20J%2B'), 'Triple J+', 'decoded')
+  T.eq(SV.radioParam('/position?radio=%3Cb%3EHi%3C%2Fb%3E%0A'), 'bHi/b', 'no markup or control characters')
+  T.eq(#SV.radioParam('/position?radio=' .. string.rep('a', 200)), 60, 'at most 60 characters')
+  T.eq(SV.radioParam('/position?radio=' .. string.rep('a', 59) .. '%C3%A9'), string.rep('a', 59), 'never half a letter')
+end
+
 T.done('street view')

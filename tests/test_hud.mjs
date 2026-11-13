@@ -330,7 +330,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
 })
 test('the Tips tab is gone and shipping has its own Relocate tab', () => {
   const a = app()
-  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli', 'home', 'streetview'])
+  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli', 'home', 'streetview', 'radio'])
   assert.ok(!html.includes(`tab === 'tips'`), 'no Tips tab')
   const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'relocate'"`))
   const shipping = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`))
@@ -918,8 +918,8 @@ test('real businesses: the job card names the business, counts down the last met
 
 test('Street View has its own tab with sightseeing, and the header only shows a marker while it is on', () => {
   const a = app()
-  assert.equal(a.scope.tabs.at(-1).label, 'Street View')
-  const panel = html.slice(html.indexOf(`ng-if="tab === 'streetview'"`), html.indexOf(`ng-if="tab === 'heli'"`))
+  assert.equal(a.scope.tabs.at(-2).label, 'Street View')
+  const panel = html.slice(html.indexOf(`ng-if="tab === 'streetview'"`), html.indexOf(`ng-if="tab === 'radio'"`))
   for (const part of ['openStreetView()', 'stopStreetView()', 'copyStreetView()', 'goSightseeing()', 'Turn on', 'Turn off', 'Open again'])
     assert.ok(panel.includes(part), part + ' on the Street View tab')
   const header = html.slice(0, html.indexOf('<div ng-if="data.sightseeing.on"'))
@@ -933,7 +933,7 @@ test('Street View has its own tab with sightseeing, and the header only shows a 
 
 test('tabs sit in two rows: the job on top, the extras below', () => {
   const a = app()
-  assert.deepEqual(JSON.parse(JSON.stringify(a.scope.tabRows.map(r => r.map(t => t.id)))), [['route', 'town', 'garage', 'relocate'], ['heli', 'home', 'streetview']])
+  assert.deepEqual(JSON.parse(JSON.stringify(a.scope.tabRows.map(r => r.map(t => t.id)))), [['route', 'town', 'garage', 'relocate'], ['heli', 'home', 'streetview', 'radio']])
   assert.ok(html.includes('ng-repeat="row in tabRows"') && html.includes('ng-repeat="t in row"'))
 })
 test('Ship Day: the Town tab shows the ship, Go to port and the containers to take', () => {
@@ -1049,4 +1049,21 @@ test('the While you were away card: places read as 1st, 2nd, 3rd, and Got it clo
   a.scope.dismissAway()
   assert.equal(a.commands.at(-1), fixed('dismissAway()'))
   assert.ok(html.includes('WHILE YOU WERE AWAY') && html.includes('ng-click="dismissAway()"'), 'the card and its button')
+})
+test('Radio tab: opens the radio page in the browser, shows what it plays, and copies only its address', () => {
+  const a = app()
+  a.scope.data = { state: 'TRUCK_IDLE' }
+  a.scope.openRadio()
+  assert.ok(!a.commands.includes(fixed('openRadio()')), 'nothing without the radio')
+  a.scope.data = { state: 'TRUCK_IDLE', radio: { on: true, url: 'http://127.0.0.1:47170/radio', playing: 'Lithgow FM', open: true } }
+  a.scope.openRadio()
+  assert.equal(a.commands.at(-1), fixed('openRadio()'))
+  a.scope.copyRadio()
+  assert.equal(a.commands.at(-1), 'setClipboard("http://127.0.0.1:47170/radio")')
+  const count = a.commands.length
+  a.scope.data.radio.url = 'http://evil.example/radio")x("'
+  a.scope.copyRadio()
+  assert.equal(a.commands.length, count, 'only the radio address')
+  const panel = html.slice(html.indexOf(`ng-if="tab === 'radio'"`), html.indexOf(`ng-if="tab === 'heli'"`))
+  for (const part of ['openRadio()', 'copyRadio()', 'data.radio.playing', 'Open radio', 'Radio Browser']) assert.ok(panel.includes(part), part)
 })

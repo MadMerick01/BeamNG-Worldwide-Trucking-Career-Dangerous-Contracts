@@ -4,11 +4,30 @@
 -- the game: the browser fetches the pictures from Google.
 -- The same server serves the Base map (/bases, baseMapPage.lua): an overhead map of the bases' circles
 -- and the truck, whose data (/basemap) the page asks for every few seconds.
+-- And the Radio (/radio, radioPage.lua): live stations near the truck, played by the browser. It asks
+-- /position?radio=<station> every few seconds, so the HUD can show what is playing.
 -- Driven from the game's frame: every call is non-blocking (timeouts of 0), so a slow or stuck
 -- browser never holds the game up. The socket library is injected so tests can fake it.
 local page = require('earthFreight/streetViewPage')
 local baseMapPage = require('earthFreight/baseMapPage')
-local M = { HOST = '127.0.0.1', PORT = 47170, MAX_CLIENTS = 8, MAX_REQUEST = 8192, CLIENT_SECONDS = 5 }
+local radioPage = require('earthFreight/radioPage')
+local M = { HOST = '127.0.0.1', PORT = 47170, MAX_CLIENTS = 8, MAX_REQUEST = 8192, CLIENT_SECONDS = 5, RADIO_SECONDS = 20 }
+
+-- The station the Radio page says it is playing: decoded from the address, plain text, at most 60 characters.
+function M.radioParam(path)
+  local query = path:match('%?([^#]*)')
+  if not query then return nil end
+  for pair in query:gmatch('[^&]+') do
+    local k, v = pair:match('^([^=]*)=?(.*)$')
+    if k == 'radio' then
+      v = v:gsub('%+', ' '):gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
+      v = v:gsub('[%c<>]', ''):gsub('^%s+', ''):gsub('%s+$', '')
+      if #v > 60 then v = v:sub(1, 60):gsub('[\128-\191]+$', ''):gsub('[\192-\255]$', '') end
+      return v
+    end
+  end
+  return nil
+end
 
 local function encode(value)
   local t = type(value)
@@ -121,6 +140,8 @@ function M.new(env)
     if not method then return response('400 Bad Request', 'text/plain', 'Bad request') end
     if not allowedHost(head) then return response('403 Forbidden', 'text/plain', 'Forbidden') end
     if method ~= 'GET' then return response('405 Method Not Allowed', 'text/plain', 'GET only') end
+    local radio = M.radioParam(path)
+    if radio then s.radioPlaying, s.radioSeen = radio ~= '' and radio or nil, s.clock end
     path = path:match('^[^?#]*')
     if path == '/' or path == '/index.html' then
       return response('200 OK', 'text/html; charset=utf-8', page.html)
@@ -130,6 +151,8 @@ function M.new(env)
       return response('200 OK', 'text/html; charset=utf-8', baseMapPage.html)
     elseif path == '/basemap' then
       return json(baseMap)
+    elseif path == '/radio' then
+      return response('200 OK', 'text/html; charset=utf-8', radioPage.html)
     end
     return response('404 Not Found', 'text/plain', 'Not found')
   end
@@ -141,6 +164,7 @@ function M.new(env)
 
   -- Called every frame. position() and baseMap() build the JSON bodies; each is only called when a page asks.
   function s:poll(now, position, baseMap)
+    self.clock = now
     if not server then return end
     for _ = 1, M.MAX_CLIENTS do
       if #self.clients >= M.MAX_CLIENTS then break end
@@ -170,6 +194,12 @@ function M.new(env)
       end
       if finished or now - c.since > M.CLIENT_SECONDS then closeClient(i) end
     end
+  end
+
+  -- The Radio page's station, while the page is still asking; nil once it has gone quiet or stopped.
+  function s:radio(now)
+    if not self.on or not self.radioSeen or (now or self.clock or 0) - self.radioSeen > M.RADIO_SECONDS then return nil end
+    return { playing = self.radioPlaying }
   end
 
   return s

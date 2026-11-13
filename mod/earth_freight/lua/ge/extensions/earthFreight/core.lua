@@ -2066,6 +2066,36 @@ function M.new(deps)
     return true
   end
 
+  -- The Radio: the same little web server, at its /radio page, opened in the browser. The game's own
+  -- browser can't fetch from the web, so the music plays in the player's browser instead.
+  function c:openRadio()
+    if not self.streetView then return false end
+    local ok, why = self.streetView:start()
+    if not ok then
+      self.radioFeedback = why == 'port_busy'
+        and 'The radio could not start: something else on your computer is using port ' .. self.streetView.port .. '.'
+        or 'The radio could not start in this version of BeamNG.'
+      self.diag:event('radio', tostring(why), 'W')
+      return false
+    end
+    self:rememberStreetView(true)
+    local url = self.streetView:url() .. 'radio'
+    local okOpen, opened = false, false
+    if self.openUrl then okOpen, opened = pcall(self.openUrl, url) end
+    self.radioFeedback = (okOpen and opened ~= false)
+      and 'The radio is opening in your web browser. If it does not, copy the address below into your browser.'
+      or 'To listen, copy the address below into your web browser.'
+    self.diag:event('radio', 'started')
+    return true
+  end
+
+  function c:radioView()
+    if not self.streetView then return nil end
+    local live = self.streetView.radio and self.streetView:radio(self.clock) or nil
+    return { on = self.streetView.on, url = self.streetView:url() .. 'radio', feedback = self.streetView.on and self.radioFeedback or nil,
+      open = live ~= nil, playing = live and live.playing or nil }
+  end
+
   function c:baseMapView()
     if not self.streetView then return nil end
     return { on = self.streetView.on, url = self.streetView:url() .. 'bases', feedback = self.streetView.on and self.baseMapFeedback or nil }
@@ -2313,6 +2343,7 @@ function M.new(deps)
       shortages = trade.shortages,
       streetView = self:streetViewView(),
       baseMap = self:baseMapView(),
+      radio = self:radioView(),
       sightseeing = self:sightseeingView(current),
       gpsAllowed = self.adapter.setDestination ~= nil and self.state == 'READY' and self.arrived and not self.hire,
       gpsFeedback = self.gpsFeedback,
@@ -2873,6 +2904,7 @@ end
 function M.openStreetView() return safely(function() return ensure():openStreetView() end) end
 function M.stopStreetView() return safely(function() return ensure():stopStreetView() end) end
 function M.openBaseMap() return safely(function() return ensure():openBaseMap() end) end
+function M.openRadio() return safely(function() return ensure():openRadio() end) end
 function M.onExtensionUnloaded()
   -- The web server lets go of its port, so the next load can open it again.
   if active and active.streetView then pcall(function() active.streetView:stop() end) end

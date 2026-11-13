@@ -895,6 +895,26 @@
           <div ng-if="data.sightseeing.feedback" role="status" style="margin-top:4px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.sightseeing.feedback}}</div>
         </div>
       </div>
+      <div ng-if="tab === 'radio'">
+        <div ng-if="!data.radio" style="color:#c9d6d2;">The radio is not available in this version of BeamNG.</div>
+        <div ng-if="data.radio" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <div style="flex:1;font-weight:bold;color:#a7e5c9;">Local radio</div>
+            <div ng-style="{color: data.radio.playing ? '#6fcf97' : '#7d8b88'}" style="font-size:13px;font-weight:bold;">{{data.radio.playing ? 'On air' : (data.radio.open ? 'Open' : 'Off')}}</div>
+          </div>
+          <div ng-if="data.radio.playing" style="margin-top:4px;font-size:16px;font-weight:bold;overflow-wrap:anywhere;">&#9835; {{data.radio.playing}}</div>
+          <div style="margin-top:2px;font-size:13px;">Live radio stations near your truck, wherever you are on Earth, in your web browser. As you drive, it finds the stations around you and can switch to a nearby one on its own. The music keeps playing with the browser in the background.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+            <button type="button" ng-click="openRadio()" ng-style="data.radio.open ? {} : {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">{{data.radio.open ? 'Open again' : 'Open radio'}}</button>
+          </div>
+          <div ng-if="data.radio.feedback" role="status" style="margin-top:6px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.radio.feedback}}</div>
+          <div ng-if="data.radio.on && data.radio.url" style="display:flex;gap:6px;margin-top:4px;font-size:12px;">
+            <input aria-label="Radio address" type="text" readonly ng-value="data.radio.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
+            <button type="button" aria-label="Copy the radio address" ng-click="copyRadio()">Copy</button>
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Play, Stop, Next station, the volume and Follow my truck are on the radio page. Stations come from Radio Browser, a free list of internet radio, and use about 60 MB of internet an hour.</div>
+        </div>
+      </div>
       <div ng-if="tab === 'heli'">
         <div ng-if="!data.heli" style="color:#c9d6d2;">Heli flights open once you are in your car at your start or last save.</div>
         <div ng-if="data.heli && !data.heli.hired" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">

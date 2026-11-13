@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New Radio tab: live local radio wherever you drive.** Press Open radio and a radio page opens in your web browser, like Street View does. It lists real radio stations around your truck, nearest first, from Radio Browser, a free list of internet radio. Press Play nearest or pick a station, and use Stop, Next station and the volume slider. As you drive it finds the stations around you, and with Follow my truck ticked it switches to a nearby station once you're far from the one you're listening to. The HUD's Radio tab shows what's playing.
+- The radio plays in your web browser because the game's own browser can't reach internet radio. Keep the radio page open: the music carries on with it in the background. It needs an internet connection and uses about 60 MB an hour. If a station won't play, the radio moves on to the next one. Saves still work, and there's nothing to set up.
+
 ## Build 193 · 12 Nov 2026
 
 - **Big loads now pay less for their weight.** A load still pays more the heavier it is, but less so: a 16 t trailer load pays about 4.5 times what the starter Burnside's full load pays, where it used to pay 6.6 times. The Burnside's own pay is the same, and a small truck with a 2.5 t load earns about a seventh less. A 20 km run with 16 t of parts now pays about $41,000 instead of $60,000.

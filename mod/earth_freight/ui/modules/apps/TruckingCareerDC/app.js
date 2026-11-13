@@ -164,7 +164,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
         { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Base' },
-        { id: 'streetview', label: 'Street View' }]
+        { id: 'streetview', label: 'Street View' }, { id: 'radio', label: 'Radio' }]
       // Two rows of tabs: the job on top, the extras below, each sharing its row's width.
       scope.tabRows = [scope.tabs.slice(0, 4), scope.tabs.slice(4)]
       scope.tab = kept.tab
@@ -558,6 +558,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.returnToJob = function () { if (scope.data.sightseeing && scope.data.sightseeing.returnAllowed) core('returnToJob()') }
       // Opens the Base map (circles, borders and the truck, from the same little web server) in the browser.
       scope.openBaseMap = function () { if (scope.data.baseMap) core('openBaseMap()') }
+      scope.openRadio = function () { if (scope.data.radio) core('openRadio()') }
       scope.stopStreetView = function () { if (scope.data.streetView && scope.data.streetView.on) core('stopStreetView()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
@@ -676,6 +677,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.copyBaseMap = function () {
         var url = scope.data && scope.data.baseMap && scope.data.baseMap.url
         if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/bases$/.test(url)) call('setClipboard("' + url + '")')
+      }
+      scope.copyRadio = function () {
+        var url = scope.data && scope.data.radio && scope.data.radio.url
+        if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/radio$/.test(url)) call('setClipboard("' + url + '")')
       }
       // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
       scope.openKofi = function () {
