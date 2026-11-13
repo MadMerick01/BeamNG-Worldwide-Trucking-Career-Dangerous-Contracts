@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 196 · 13 Nov 2026
+
 - No changes in the game. **The live server page now has a Base radio card.** It plays the live radio station closest to the biggest base on Earth, with a Play button, and it changes station when another base takes the lead in the land race.
 
 ## Build 195 · 13 Nov 2026
