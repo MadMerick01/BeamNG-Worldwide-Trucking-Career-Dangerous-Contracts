@@ -238,8 +238,13 @@ local function today()
   return t
 end
 
-function W.feed(kind, text)
-  table.insert(W.stats.feed, 1, { at = W.env.now(), kind = kind, text = text })
+-- place (deliveries): { name, town, latitude, longitude }, who and the town centre it happened in, for the page's radio.
+function W.feed(kind, text, place)
+  local e = { at = W.env.now(), kind = kind, text = text }
+  if type(place) == 'table' then
+    e.name, e.town, e.latitude, e.longitude = place.name, place.town, place.latitude, place.longitude
+  end
+  table.insert(W.stats.feed, 1, e)
   while #W.stats.feed > W.FEED_MAX do table.remove(W.stats.feed) end
   W.saveStats()
 end
@@ -291,6 +296,26 @@ function W.onWhere(pid, data)
   W.statsChanged = true
 end
 
+-- A { latitude, longitude } from a game, checked: lat, lon or nil.
+local function spotOf(t)
+  if type(t) ~= 'table' then return nil end
+  local lat, lon = tonumber(t.latitude), tonumber(t.longitude)
+  if not lat or not lon or math.abs(lat) > 90 or math.abs(lon) > 180 then return nil end
+  return lat, lon
+end
+
+-- Where a delivery happened, for the feed: the drop-off's town centre (ends[2]) when the game sent it, else the town the
+-- player's game last said they were in. Both are already public on the page, to a kilometre or so.
+local function deliveredAt(p, ends, town)
+  local lat, lon = spotOf(type(ends) == 'table' and ends[2] or nil)
+  local w = p.where or {}
+  if not lat then lat, lon, town = w.latitude, w.longitude, w.town or town
+  else town = town or w.town end
+  if not lat or not lon then return { name = clean(p.name, 32) or 'A trucker' } end
+  return { name = clean(p.name, 32) or 'A trucker', town = town,
+    latitude = math.floor(lat * 100 + 0.5) / 100, longitude = math.floor(lon * 100 + 0.5) / 100 }
+end
+
 -- Counts a delivery for today and the leaderboard.
 local function counted(p, pay, container)
   local t = today()
@@ -318,7 +343,7 @@ function W.onDelivered(pid, data)
     text = name .. ' delivered ' .. (what or 'a load') .. (from and (' from ' .. from) or '') .. (to and (' to ' .. to) or '') .. paid .. '.'
   end
   counted(p, pay, false)
-  W.feed('delivery', text)
+  W.feed('delivery', text, deliveredAt(p, d.ends, to))
   if d.kind == 'job' or d.kind == 'drop' then W.commission(p, pay, d.ends, d.toll) end
 end
 
@@ -352,13 +377,6 @@ function W.km(a, b)
   local dLat, dLon = (b.latitude - a.latitude) * r, (b.longitude - a.longitude) * r
   local h = math.sin(dLat / 2) ^ 2 + math.cos(a.latitude * r) * math.cos(b.latitude * r) * math.sin(dLon / 2) ^ 2
   return 2 * 6371.0088 * math.asin(math.min(1, math.sqrt(h)))
-end
-
-local function spotOf(t)
-  if type(t) ~= 'table' then return nil end
-  local lat, lon = tonumber(t.latitude), tonumber(t.longitude)
-  if not lat or not lon or math.abs(lat) > 90 or math.abs(lon) > 180 then return nil end
-  return lat, lon
 end
 
 -- A base's members or join requests as kept: career key -> { name, id, at }. Anything odd is dropped.
@@ -1817,7 +1835,7 @@ function W.onShipDone(pid, data)
   if fresh then
     counted(p, pay, true)
     W.feed('delivery', string.format('%s delivered container %d from %s to %s%s.', clean(p.name, 32) or 'A trucker',
-      math.floor(d.n), from, town, pay and (' for ' .. dollars(pay)) or ''))
+      math.floor(d.n), from, town, pay and (' for ' .. dollars(pay)) or ''), deliveredAt(p, d.ends, clean(d.town, 40)))
     W.commission(p, pay, d.ends, d.toll)
   end
 end

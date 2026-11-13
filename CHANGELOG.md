@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The server page's radio card now follows the action.** Renamed Server radio, it plays live radio from where the latest delivery in the live feed was made ("Listen to the radio where Sam just made a delivery"), then from each player base in turn ("Listen to the radio at Sam's base in Perth"), with a new station every 3 minutes. A fresh delivery is played next as soon as it shows up in the feed.
+- The server now notes the town each delivery was made in, so the page knows where to tune. Server owners need to run the server update to get this; until then the card plays the bases only. Saves still work and players don't need a new download.
+
 ## Build 197 · 13 Nov 2026
 
 - No changes in the game. **The server page's Base radio now plays the whole leading corp.** It used to play only the station near the corp's first base. Now it plays the corp holding the most land, moving to the station near each of its bases in turn: a new base every 3 minutes, with a countdown on the card.

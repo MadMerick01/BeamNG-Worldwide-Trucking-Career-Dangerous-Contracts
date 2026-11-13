@@ -18,10 +18,10 @@
     { "name": "Jonno", "town": "Bormio", "region": "Stelvio Pass, Italy", "latitude": 46.47, "longitude": 10.37, "doing": "Dangerous contract: Stelvio Pass" }
   ],
   "feed": [
-    { "at": "2026-11-08T18:58:00Z", "kind": "delivery", "text": "Sam delivered container 4 from Valparaíso to Casablanca for $31,240." },
+    { "at": "2026-11-08T18:58:00Z", "kind": "delivery", "text": "Sam delivered container 4 from Valparaíso to Casablanca for $31,240.", "name": "Sam", "town": "Casablanca", "latitude": -33.32, "longitude": -71.41 },
     { "at": "2026-11-08T18:51:00Z", "kind": "join", "text": "Ruby joined the server." },
-    { "at": "2026-11-08T18:44:00Z", "kind": "delivery", "text": "Jonno finished the Stelvio Pass dangerous contract in 14:32." },
-    { "at": "2026-11-08T18:30:00Z", "kind": "delivery", "text": "MadMerick delivered container 2 from Valparaíso to Limache for $28,900." },
+    { "at": "2026-11-08T18:44:00Z", "kind": "delivery", "text": "Jonno finished the Stelvio Pass dangerous contract in 14:32.", "name": "Jonno", "town": "Bormio", "latitude": 46.47, "longitude": 10.37 },
+    { "at": "2026-11-08T18:30:00Z", "kind": "delivery", "text": "MadMerick delivered container 2 from Valparaíso to Limache for $28,900.", "name": "MadMerick", "town": "Limache", "latitude": -33.0, "longitude": -71.27 },
     { "at": "2026-11-08T18:02:00Z", "kind": "ship", "text": "Ship Day! The MV Pacific Star has docked at Valparaíso, Chile with 20 containers." },
     { "at": "2026-11-08T17:40:00Z", "kind": "season", "text": "Season 1 has begun. Everyone starts with a rusty Burnside and $6,000." }
   ],
