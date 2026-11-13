@@ -1737,6 +1737,8 @@ do
   local w = c:view().where
   T.eq(w.title, 'Penrith', 'in a town, its name'); T.eq(w.area, 'Australia', 'and its country from the mod')
   T.eq(w.street, nil, 'no street without Earth'); T.eq(w.fromEarth, false, 'the mod filled it in')
+  T.check(type(w.latitude) == 'number' and type(w.longitude) == 'number', 'roughly where, for the Radio tab')
+  T.eq(w.latitude, math.floor(w.latitude * 100 + 0.5) / 100, 'to about a kilometre')
   a.names = { street = 'High Street', place = 'Penrith', region = 'New South Wales', country = 'Australia' }
   w = c:view().where
   T.eq(w.street, 'High Street', "Earth's street"); T.eq(w.area, 'New South Wales, Australia', "Earth's state and country")

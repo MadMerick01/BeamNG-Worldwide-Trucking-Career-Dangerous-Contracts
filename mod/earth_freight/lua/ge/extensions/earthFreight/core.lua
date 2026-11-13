@@ -1998,7 +1998,10 @@ function M.new(deps)
       if part and part ~= title and part ~= area[#area] then area[#area + 1] = part end
     end
     if #area == 0 and anchor and anchor.region then area[1] = anchor.region end
-    return { title = title, area = table.concat(area, ', '), street = earth and earth.street or nil, fromEarth = earth ~= nil }
+    -- Roughly where (to about a kilometre), for the Radio tab's stations near the truck.
+    local round = function(v) return location.finite(v) and math.floor(v * 100 + 0.5) / 100 or nil end
+    return { title = title, area = table.concat(area, ', '), street = earth and earth.street or nil, fromEarth = earth ~= nil,
+      latitude = round(current.latitude), longitude = round(current.longitude) }
   end
 
   -- Where the car is, for the Street View page: the live position, which way it points, and its

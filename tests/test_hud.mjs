@@ -330,7 +330,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
 })
 test('the Tips tab is gone and shipping has its own Relocate tab', () => {
   const a = app()
-  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli', 'home', 'streetview'])
+  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli', 'home', 'streetview', 'radio'])
   assert.ok(!html.includes(`tab === 'tips'`), 'no Tips tab')
   const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'relocate'"`))
   const shipping = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`))
@@ -918,8 +918,8 @@ test('real businesses: the job card names the business, counts down the last met
 
 test('Street View has its own tab with sightseeing, and the header only shows a marker while it is on', () => {
   const a = app()
-  assert.equal(a.scope.tabs.at(-1).label, 'Street View')
-  const panel = html.slice(html.indexOf(`ng-if="tab === 'streetview'"`), html.indexOf(`ng-if="tab === 'heli'"`))
+  assert.equal(a.scope.tabs.at(-2).label, 'Street View')
+  const panel = html.slice(html.indexOf(`ng-if="tab === 'streetview'"`), html.indexOf(`ng-if="tab === 'radio'"`))
   for (const part of ['openStreetView()', 'stopStreetView()', 'copyStreetView()', 'goSightseeing()', 'Turn on', 'Turn off', 'Open again'])
     assert.ok(panel.includes(part), part + ' on the Street View tab')
   const header = html.slice(0, html.indexOf('<div ng-if="data.sightseeing.on"'))
@@ -933,7 +933,7 @@ test('Street View has its own tab with sightseeing, and the header only shows a 
 
 test('tabs sit in two rows: the job on top, the extras below', () => {
   const a = app()
-  assert.deepEqual(JSON.parse(JSON.stringify(a.scope.tabRows.map(r => r.map(t => t.id)))), [['route', 'town', 'garage', 'relocate'], ['heli', 'home', 'streetview']])
+  assert.deepEqual(JSON.parse(JSON.stringify(a.scope.tabRows.map(r => r.map(t => t.id)))), [['route', 'town', 'garage', 'relocate'], ['heli', 'home', 'streetview', 'radio']])
   assert.ok(html.includes('ng-repeat="row in tabRows"') && html.includes('ng-repeat="t in row"'))
 })
 test('Ship Day: the Town tab shows the ship, Go to port and the containers to take', () => {
@@ -1049,4 +1049,145 @@ test('the While you were away card: places read as 1st, 2nd, 3rd, and Got it clo
   a.scope.dismissAway()
   assert.equal(a.commands.at(-1), fixed('dismissAway()'))
   assert.ok(html.includes('WHILE YOU WERE AWAY') && html.includes('ng-click="dismissAway()"'), 'the card and its button')
+})
+
+// A pretend radio for the Radio tab: each new Audio records what it was asked to play, and the
+// test fires its events by hand.
+function radioWorld(answers) {
+  const sounds = [], asked = []
+  class Audio {
+    constructor() { this.listeners = {}; this.played = []; this.paused = true; sounds.push(this) }
+    addEventListener(name, fn) { (this.listeners[name] = this.listeners[name] || []).push(fn) }
+    fire(name) { for (const fn of this.listeners[name] || []) fn() }
+    play() { this.played.push(this.src); this.paused = false; return Promise.resolve() }
+    pause() { this.paused = true }
+    removeAttribute(k) { if (k === 'src') this.src = undefined }
+    load() {}
+  }
+  const fetch = url => {
+    asked.push(url)
+    const answer = answers(url)
+    if (answer instanceof Error) return Promise.reject(answer)
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(answer) })
+  }
+  return { sounds, asked, extra: { Audio, fetch } }
+}
+const station = (name, lat, lon, more) => ({ stationuuid: '00000000-0000-0000-0000-00000000000' + (more && more.n || 0), name,
+  url_resolved: 'http://stream.example/' + encodeURIComponent(name), codec: 'MP3', bitrate: 128, state: 'New South Wales', country: 'Australia',
+  geo_lat: lat, geo_long: lon, ...(more || {}) })
+const settle = () => new Promise(r => setImmediate(r))
+const lithgow = { state: 'TRUCK_IDLE', where: { title: 'Lithgow', area: 'New South Wales, Australia', latitude: -33.48, longitude: 150.16 } }
+
+test('Radio: stations near the truck, nearest first, without HLS playlists, repeats or far-away ones', () => {
+  const a = app()
+  const here = { latitude: -33.48, longitude: 150.16 }
+  const list = a.scope.readStations([
+    station('Far FM', -33.87, 151.21), station('Lithgow Local', -33.49, 150.15), station('lithgow local', -33.49, 150.15),
+    station('HLS Radio', -33.48, 150.16, { hls: 1 }), station('No Place', null, null), station('Bad Link', -33.48, 150.16, { url_resolved: 'javascript:x', url: '' }),
+    station('Perth', -31.95, 115.86)
+  ], here, 150000)
+  assert.deepEqual([...list.map(s => s.name)], ['Lithgow Local', 'Far FM'])
+  assert.equal(list[0].place, 'New South Wales, Australia')
+  assert.equal(a.scope.radioDistance(list[0]), '1 km')
+  assert.equal(a.scope.radioDistance({ distanceMetres: 400 }), 'here')
+  assert.equal(a.scope.radioDistance(list[1]), '106 km')
+  assert.ok(Math.abs(a.scope.metresBetween({ latitude: 0, longitude: 0 }, { latitude: 0, longitude: 1 }) - 111195) < 10)
+})
+test('Radio: finds stations round the truck, widening the circle until enough turn up, and plays one', async () => {
+  const w = radioWorld(url => {
+    if (url.includes('/json/url/')) return { ok: true }
+    if (url.includes('geo_distance=50000')) return [station('Lithgow Local', -33.49, 150.15, { n: 1 })]
+    return [1, 2, 3, 4, 5].map(n => station('Station ' + n, -33.48 + n / 10, 150.16, { n: n + 1 })).concat([station('Lithgow Local', -33.49, 150.15, { n: 1 })])
+  })
+  const storage = new Map()
+  const a = app({ getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v) }, null, w.extra)
+  a.state(lithgow)
+  assert.equal(w.asked.length, 0, 'nothing asked until the player uses the radio')
+  await a.scope.findStations(); await settle()
+  assert.match(w.asked[0], /^https:\/\/de1\.api\.radio-browser\.info\/json\/stations\/search\?.*geo_lat=-33\.480&geo_long=150\.160&geo_distance=50000/)
+  assert.match(w.asked[1], /geo_distance=150000/, 'one station is not enough: a wider circle')
+  assert.equal(a.scope.radio.status, 'listed')
+  assert.equal(a.scope.radio.stations[0].name, 'Lithgow Local')
+  assert.equal(a.scope.radio.stations.length, 6)
+  a.scope.radioPlay(a.scope.radio.stations[0])
+  const sound = w.sounds[0]
+  assert.equal(sound.played[0], 'http://stream.example/Lithgow%20Local')
+  assert.equal(a.scope.radio.sound, 'tuning')
+  sound.fire('playing')
+  assert.equal(a.scope.radio.sound, 'on')
+  assert.ok(w.asked.some(u => u.endsWith('/json/url/00000000-0000-0000-0000-000000000001')), 'the listen is counted')
+  a.scope.radio.volume = 0.8; a.scope.radioVolume()
+  assert.equal(sound.volume, 0.8)
+  assert.deepEqual(JSON.parse(storage.get('earthFreight.radio')), { volume: 0.8, follow: true })
+  a.scope.radioNext()
+  assert.equal(a.scope.radio.playing.name, a.scope.radio.stations[1].name)
+  // A rebuilt app finds the radio still playing.
+  a.remount()
+  assert.equal(a.scope.radio.playing.name, a.scope.radio.stations[1].name)
+  a.scope.radioStop()
+  assert.ok(sound.paused && a.scope.radio.playing === null && a.scope.radio.sound === 'off')
+})
+test('Radio: a station that will not play says so, and an unreachable list says so', async () => {
+  const w = radioWorld(() => [1, 2, 3, 4, 5].map(n => station('Station ' + n, -33.48, 150.16 + n / 100, { n, codec: 'AAC+' })))
+  const a = app(null, null, w.extra)
+  a.state(lithgow)
+  await a.scope.findStations(); await settle()
+  a.scope.radioPlay(a.scope.radio.stations[0])
+  w.sounds[0].fire('error')
+  assert.equal(a.scope.radio.playing, null)
+  assert.equal(a.scope.radio.note, "Station 1 won't play in the game (AAC+). Try another station.")
+  const off = app(null, null, radioWorld(() => new Error('offline')).extra)
+  off.state(lithgow)
+  await off.scope.findStations(); await settle()
+  assert.equal(off.scope.radio.status, 'offline')
+  const nowhere = app(null, null, w.extra)
+  nowhere.state({ state: 'TRUCK_IDLE' })
+  await nowhere.scope.findStations()
+  assert.equal(nowhere.scope.radio.status, 'nowhere')
+})
+test('Radio: Follow my truck tunes in to a nearby station after a long drive', async () => {
+  const w = radioWorld(url => {
+    if (url.includes('/json/url/')) return {}
+    return url.includes('geo_lat=-33.480')
+      ? [1, 2, 3, 4, 5].map(n => station('Lithgow ' + n, -33.48, 150.16, { n }))
+      : [1, 2, 3, 4, 5].map(n => station('Dubbo ' + n, -32.25, 148.6, { n: n + 5 }))
+  })
+  const a = app(null, null, w.extra)
+  a.state(lithgow)
+  await a.scope.findStations(); await settle()
+  a.scope.radioPlay(a.scope.radio.stations[0])
+  a.advance(61000)
+  a.state({ state: 'TRUCK_IDLE', where: { title: 'Dubbo', latitude: -32.25, longitude: 148.6 } })
+  await settle(); await settle()
+  assert.equal(a.scope.radio.stations[0].name, 'Dubbo 1', 'a new list after the drive')
+  assert.equal(a.scope.radio.playing.name, 'Dubbo 1')
+  assert.match(a.scope.radio.note, /^Out of range of the last station\. Tuned in to Dubbo 1/)
+  // With Follow off, the station stays.
+  a.scope.radioFollow()
+  a.scope.radioPlay(a.scope.radio.stations[1])
+  assert.equal(a.scope.radio.playing.name, 'Dubbo 2')
+  const panel = html.slice(html.indexOf(`ng-if="tab === 'radio'"`), html.indexOf(`ng-if="tab === 'heli'"`))
+  for (const part of ['findStations()', 'radioPlay(', 'radioStop()', 'radioNext()', 'radioVolume()', 'radioFollow()', 'radioTest()', 'Radio Browser'])
+    assert.ok(panel.includes(part), part + ' on the Radio tab')
+})
+test('Radio: the stream test tries a few stations silently and counts which kinds play', async () => {
+  const codecs = ['MP3', 'MP3', 'AAC', 'AAC', 'OGG', 'MP3', 'MP3', 'MP3']
+  const w = radioWorld(() => codecs.map((codec, n) => station('S' + n, -33.48, 150.16 + n / 1000, { n, codec })))
+  const a = app(null, null, w.extra)
+  a.state(lithgow)
+  await a.scope.findStations(); await settle()
+  a.scope.radioTest()
+  assert.equal(a.scope.radio.test.results.length, 6)
+  // Up to three of a kind, so other kinds get tried too.
+  assert.deepEqual([...a.scope.radio.test.results.map(r => r.codec)], ['MP3', 'MP3', 'AAC', 'AAC', 'OGG', 'MP3'])
+  w.sounds[0].fire('playing'); await settle()
+  assert.equal(w.sounds[0].volume, 0, 'silent')
+  w.sounds[1].fire('playing'); await settle()
+  w.sounds[2].fire('error'); await settle()
+  w.sounds[3].fire('error'); await settle()
+  w.sounds[4].fire('playing'); await settle()
+  a.timeouts.at(-1).fn(); await settle()
+  assert.equal(a.scope.radio.test.running, false)
+  assert.deepEqual([...a.scope.radio.test.results.map(r => r.result)], ['plays', 'plays', 'refused', 'refused', 'plays', 'silent'])
+  assert.deepEqual(JSON.parse(JSON.stringify(a.scope.radio.test.byKind)), [{ codec: 'MP3', played: 2, tried: 3 }, { codec: 'AAC', played: 0, tried: 2 }, { codec: 'OGG', played: 1, tried: 1 }])
 })
