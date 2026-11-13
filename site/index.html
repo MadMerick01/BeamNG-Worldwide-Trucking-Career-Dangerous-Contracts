@@ -78,6 +78,18 @@
   td.wealth { font-weight: 600; }
   .board-wrap { overflow-x: auto; }
   .note { color: var(--faint); font-size: 13px; margin: 8px 0 0; }
+  /* Base radio: a little dash radio playing the station nearest the biggest base. */
+  .radio { border: 2px solid var(--gold); background: linear-gradient(180deg, #17150f, #0e0d0a); }
+  .radio h2 { color: var(--gold); }
+  .radio .set { display: flex; align-items: center; gap: 12px; }
+  .radio .play { flex: none; width: 54px; height: 54px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px; color: #111;
+    background: repeating-conic-gradient(from 0deg, #f8f8f8 0deg 5deg, #a0a0a0 5deg 10deg); box-shadow: 0 4px 8px rgba(0,0,0,.6), 0 0 0 2px #2a2a2a; }
+  .radio .play span { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4a4a4a, #050505); color: #ffb347; }
+  .radio .play:disabled { opacity: .45; cursor: default; }
+  .radio .play:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .radio .readout { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 6px; background: #070807; border: 1px solid #333; }
+  .radio .station { font: 700 18px/1.2 "Courier New", ui-monospace, monospace; color: #ffb347; text-shadow: 0 0 8px rgba(255,179,71,.45); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .radio .station.off { color: #7a6238; text-shadow: none; }
   .bar { height: 6px; margin-top: 4px; border-radius: 3px; background: var(--line); overflow: hidden; }
   .bar span { display: block; height: 100%; background: var(--gold); }
   .empty { color: var(--faint); font-style: italic; }
@@ -148,6 +160,18 @@
       <section>
         <h2>Driving now</h2>
         <ul class="list" id="online"><li class="empty">Nobody on right now.</li></ul>
+      </section>
+      <section class="radio" id="radio-card" hidden>
+        <h2 id="radio-title">Base radio</h2>
+        <div class="set">
+          <button type="button" class="play" id="radio-play" disabled aria-label="Play the base radio"><span id="radio-icon">&#9654;</span></button>
+          <div class="readout">
+            <div class="station off" id="radio-station">Tuning&hellip;</div>
+            <div class="small muted" id="radio-where"></div>
+          </div>
+        </div>
+        <div class="small muted" id="radio-note" style="margin-top:6px;">The live radio station closest to the biggest base on Earth. It changes when another base takes the lead.</div>
+        <audio id="radio-audio" preload="none"></audio>
       </section>
       <section>
         <h2>Land race</h2>
@@ -506,6 +530,97 @@ function renderMap() {
   else if (points.length === 1) map.setView(points[0], 5)
 }
 
+// Base radio: the station nearest the biggest base (most land), from Radio Browser, a free list of internet radio
+// stations with where each one is. This page is served over https, so only https streams can play here. Nothing plays
+// until the visitor presses Play. A new station is only looked up when the leading base changes.
+var RADIO_SERVERS = ['de1', 'de2', 'fi1', 'at1', 'nl1', 'all'].map(function (h) { return 'https://' + h + '.api.radio-browser.info' })
+var RADIO_RINGS = [50000, 200000, 800000, 3000000]
+var radio = { key: null, station: null, looking: false, playing: false, server: null }
+function radioAsk(path) {
+  var order = radio.server ? [radio.server].concat(RADIO_SERVERS.filter(function (s) { return s !== radio.server })) : RADIO_SERVERS
+  function attempt(i) {
+    if (i >= order.length) return Promise.reject(new Error('no radio server answered'))
+    return fetch(order[i] + path).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json() })
+      .then(function (j) { radio.server = order[i]; return j }, function () { return attempt(i + 1) })
+  }
+  return attempt(0)
+}
+// The nearest station with a secure stream from a Radio Browser answer, or null.
+function nearestStation(list, at) {
+  var best = null
+  ;(Array.isArray(list) ? list : []).forEach(function (s) {
+    var url = s && String(s.url_resolved || s.url || '')
+    if (!s || typeof s.name !== 'string' || !s.name.trim() || !/^https:\/\/[^\s"'<>]+$/i.test(url) || s.hls === 1 || /\.m3u8(\?|$)/i.test(url)) return
+    var p = { latitude: parseFloat(s.geo_lat), longitude: parseFloat(s.geo_long) }
+    if (!validPoint(p)) return
+    var km = kmBetween(at, p)
+    if (!best || km < best.km) best = { id: String(s.stationuuid || ''), name: s.name.trim().replace(/\s+/g, ' ').slice(0, 60), url: url, km: km,
+      place: [s.state, s.country].filter(function (x) { return x && String(x).trim() }).join(', ').slice(0, 60) }
+  })
+  return best
+}
+function biggestBase() {
+  var bases = (stats && Array.isArray(stats.bases) ? stats.bases : []).filter(function (b) { return !b.outpost && num(b.land) !== null && validPoint(b) })
+  bases.sort(function (a, b) { return b.land - a.land })
+  return bases[0] || null
+}
+function findRadio(base) {
+  var key = text(base.name) + '|' + base.latitude + '|' + base.longitude
+  if (key === radio.key || radio.looking) return
+  radio.key = key; radio.looking = true
+  var at = { latitude: base.latitude, longitude: base.longitude }
+  function ring(i) {
+    return radioAsk('/json/stations/search?has_geo_info=true&hidebroken=true&is_https=true&order=clickcount&reverse=true&limit=100'
+      + '&geo_lat=' + at.latitude.toFixed(3) + '&geo_long=' + at.longitude.toFixed(3) + '&geo_distance=' + RADIO_RINGS[i])
+      .then(function (list) {
+        var s = nearestStation(list, at)
+        return s || i + 1 >= RADIO_RINGS.length ? s : ring(i + 1)
+      })
+  }
+  ring(0).then(function (s) {
+    radio.looking = false
+    var was = radio.playing
+    radio.station = s
+    if (was) playRadio(true)
+    showRadio()
+  }, function () { radio.looking = false; radio.key = null; radio.station = null; showRadio() })
+}
+function showRadio() {
+  var base = biggestBase(), s = radio.station
+  $('radio-card').hidden = !base
+  if (!base) return
+  $('radio-title').textContent = 'Radio ' + (text(base.town) || 'base') + ' \u00b7 ' + text(base.name) + "'s base"
+  var st = $('radio-station')
+  st.textContent = s ? s.name : (radio.looking ? 'Tuning\u2026' : 'No station found')
+  st.className = 'station' + (radio.playing ? '' : ' off')
+  $('radio-where').textContent = s ? [s.place, Math.round(s.km) + ' km from the base'].filter(Boolean).join(' \u00b7 ') : ''
+  $('radio-play').disabled = !s
+  $('radio-icon').textContent = radio.playing ? '\u25a0' : '\u25b6'
+  $('radio-play').setAttribute('aria-label', (radio.playing ? 'Stop ' : 'Play ') + (s ? s.name : 'the base radio'))
+}
+function playRadio(on) {
+  var a = $('radio-audio')
+  if (!on || !radio.station) { a.pause(); a.removeAttribute('src'); a.load(); radio.playing = false; showRadio(); return }
+  a.src = radio.station.url
+  radio.playing = true
+  var go = a.play()
+  if (go && go.catch) go.catch(function () { radio.playing = false; $('radio-note').textContent = 'This station won\u2019t play right now. Try again later.'; showRadio() })
+  if (/^[0-9a-f-]{36}$/i.test(radio.station.id)) radioAsk('/json/url/' + radio.station.id).catch(function () {})
+  showRadio()
+}
+function renderRadio() {
+  var base = biggestBase()
+  if (base) findRadio(base)
+  showRadio()
+}
+$('radio-play').addEventListener('click', function () { playRadio(!radio.playing) })
+$('radio-audio').addEventListener('error', function () {
+  if (!radio.playing) return
+  radio.playing = false
+  $('radio-note').textContent = 'This station won\u2019t play right now. Try again later.'
+  showRadio()
+})
+
 function render() {
   var now = Date.now()
   $('sample').hidden = !(stats && stats.sample === true)
@@ -515,6 +630,7 @@ function render() {
   renderOnline()
   renderFeed(now)
   renderRace()
+  renderRadio()
   renderBoard()
   renderMap()
 }
