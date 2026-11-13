@@ -896,62 +896,27 @@
         </div>
       </div>
       <div ng-if="tab === 'radio'">
-        <div style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+        <div ng-if="!data.radio" style="color:#c9d6d2;">The radio is not available in this version of BeamNG.</div>
+        <div ng-if="data.radio" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
           <div style="display:flex;align-items:baseline;gap:8px;">
             <div style="flex:1;font-weight:bold;color:#a7e5c9;">Local radio</div>
-            <div ng-style="{color: radio.sound === 'on' ? '#6fcf97' : (radio.sound === 'tuning' ? '#f2c94c' : '#7d8b88')}" style="font-size:13px;font-weight:bold;">{{radio.sound === 'on' ? 'On air' : (radio.sound === 'tuning' ? 'Tuning in...' : 'Off')}}</div>
+            <div ng-style="{color: data.radio.playing ? '#6fcf97' : '#7d8b88'}" style="font-size:13px;font-weight:bold;">{{data.radio.playing ? 'On air' : (data.radio.open ? 'Open' : 'Off')}}</div>
           </div>
-          <div ng-if="radio.playing" style="margin-top:4px;">
-            <div style="font-size:16px;font-weight:bold;overflow-wrap:anywhere;">{{radio.playing.name}}</div>
-            <div style="font-size:12px;color:#c9d6d2;">{{radio.playing.place}}<span ng-if="radio.playing.distanceMetres != null"> &middot; {{radioDistance(radio.playing)}}</span></div>
-          </div>
-          <div ng-if="!radio.playing" style="margin-top:2px;font-size:13px;">Live radio stations near your truck, wherever you are on Earth. As you drive, the list changes to the stations around you.</div>
+          <div ng-if="data.radio.playing" style="margin-top:4px;font-size:16px;font-weight:bold;overflow-wrap:anywhere;">&#9835; {{data.radio.playing}}</div>
+          <div style="margin-top:2px;font-size:13px;">Live radio stations near your truck, wherever you are on Earth, in your web browser. As you drive, it finds the stations around you and can switch to a nearby one on its own. The music keeps playing with the browser in the background.</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
-            <button type="button" ng-if="!radio.stations.length" ng-click="findStations()" ng-disabled="radio.status === 'looking'" style="padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{radio.status === 'looking' ? 'Looking...' : 'Find stations near me'}}</button>
-            <button type="button" ng-if="radio.stations.length && !radio.playing" ng-click="radioPlay(radio.stations[0])" style="padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Play nearest</button>
-            <button type="button" ng-if="radio.playing" ng-click="radioStop()" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Stop</button>
-            <button type="button" ng-if="radio.stations.length > 1" ng-click="radioNext()" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Next station</button>
+            <button type="button" ng-click="openRadio()" ng-style="data.radio.open ? {} : {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">{{data.radio.open ? 'Open again' : 'Open radio'}}</button>
           </div>
-          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;">Volume
-            <input type="range" min="0" max="1" step="0.05" ng-model="radio.volume" ng-change="radioVolume()" aria-label="Radio volume" style="flex:1;min-width:0;" />
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:13px;cursor:pointer;">
-            <input type="checkbox" ng-checked="radio.follow" ng-click="radioFollow()" /> Follow my truck: switch to a nearby station when this one is far behind
-          </label>
-          <div ng-if="radio.note" role="status" style="margin-top:6px;font-size:13px;color:#f2c94c;">{{radio.note}}</div>
-          <div ng-if="radio.status === 'nowhere'" role="status" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Your truck's position isn't known yet. Try again in a moment.</div>
-          <div ng-if="radio.status === 'offline'" role="status" style="margin-top:6px;font-size:13px;color:#eb5757;">Couldn't reach the radio list. Check your internet connection and try again.
-            <div ng-if="radio.problems.length" style="margin-top:4px;font-size:11px;color:#c9d6d2;user-select:text;">What each server said: <span ng-repeat="p in radio.problems track by $index">{{p}}{{$last ? '' : '; '}}</span></div></div>
-          <div ng-if="radio.status === 'none'" role="status" style="margin-top:6px;font-size:13px;color:#c9d6d2;">No stations found near here.</div>
-        </div>
-        <div ng-if="radio.stations.length" class="ef-sec">
-          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('radiolist')" aria-expanded="{{isOpen('radiolist')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('radiolist') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Stations near you</div><span class="ef-sum">{{radio.stations.length}} &middot; nearest {{radioDistance(radio.stations[0])}}</span></div></div>
-          <div ng-if="isOpen('radiolist')">
-            <div ng-repeat="s in radio.stations" style="display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0;border-bottom:1px solid rgba(86,141,122,.3);">
-              <div style="flex:1;min-width:0;"><span ng-style="isPlaying(s) ? {color:'#6fcf97',fontWeight:'bold'} : {}">{{s.name}}</span> <span style="color:#7d8b88;font-size:12px;">{{s.place}}</span></div>
-              <div style="flex:none;color:#c9d6d2;font-size:12px;">{{radioDistance(s)}}</div>
-              <button type="button" ng-click="isPlaying(s) ? radioStop() : radioPlay(s)" style="flex:none;padding:2px 8px;font-size:12px;">{{isPlaying(s) ? 'Stop' : 'Play'}}</button>
-            </div>
-            <button type="button" class="ef-link" ng-click="findStations()" ng-disabled="radio.status === 'looking'" style="margin-top:4px;">{{radio.status === 'looking' ? 'Looking...' : 'Look again'}}</button>
+          <div ng-if="data.radio.feedback" role="status" style="margin-top:6px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.radio.feedback}}</div>
+          <div ng-if="data.radio.on && data.radio.url" style="display:flex;gap:6px;margin-top:4px;font-size:12px;">
+            <input aria-label="Radio address" type="text" readonly ng-value="data.radio.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
+            <button type="button" aria-label="Copy the radio address" ng-click="copyRadio()">Copy</button>
           </div>
+          <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Play, Stop, Next station, the volume and Follow my truck are on the radio page. Stations come from Radio Browser, a free list of internet radio, and use about 60 MB of internet an hour.</div>
         </div>
-        <div ng-if="radio.stations.length" class="ef-sec">
-          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('radiotest')" aria-expanded="{{isOpen('radiotest', !!radio.test)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('radiotest', !!radio.test) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Stream test</div><span class="ef-sum"><span ng-if="!radio.test">does radio work in your game?</span><span ng-if="radio.test.running">testing...</span><span ng-if="radio.test && !radio.test.running">done</span></span></div></div>
-          <div ng-if="isOpen('radiotest', !!radio.test)" style="padding:0 0 8px 18px;font-size:13px;">
-            <div style="color:#c9d6d2;">Tries {{radio.stations.length < 6 ? radio.stations.length : 6}} of these stations one at a time, silently, to see which kinds of stream the game can play. Takes up to a minute.</div>
-            <button type="button" ng-click="radioTest()" ng-disabled="radio.test.running" style="margin-top:6px;padding:5px 10px;">{{radio.test.running ? 'Testing...' : (radio.test ? 'Test again' : 'Run the test')}}</button>
-            <div ng-if="radio.test.problem" style="margin-top:4px;color:#eb5757;">{{radio.test.problem}}</div>
-            <div ng-repeat="r in radio.test.results" style="display:flex;gap:8px;padding:2px 0;">
-              <div style="flex:1;min-width:0;">{{r.name}} <span style="color:#7d8b88;font-size:12px;">{{r.codec || 'unknown'}}<span ng-if="r.bitrate"> {{r.bitrate}}k</span></span></div>
-              <div ng-style="{color: r.result === 'plays' ? '#6fcf97' : (r.result ? '#eb5757' : '#7d8b88')}" style="flex:none;font-weight:bold;">{{r.result === 'plays' ? 'Plays' : (r.result === 'refused' ? 'Won\'t play' : (r.result === 'silent' ? 'No sound in 10 s' : '...'))}}</div>
-            </div>
-            <div ng-if="radio.test && !radio.test.running && radio.test.results.length" style="margin-top:4px;color:#a7e5c9;">By kind: <span ng-repeat="c in radio.test.byKind">{{c.codec}} {{c.played}} of {{c.tried}}{{$last ? '' : ' &middot; '}}</span></div>
-          </div>
-        </div>
-        <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Stations from Radio Browser, a free list of internet radio. Each station streams its own broadcast; some may be off air.</div>
       </div>
       <div ng-if="tab === 'heli'">
-        <div ng-if="!data.heli"style="color:#c9d6d2;">Heli flights open once you are in your car at your start or last save.</div>
+        <div ng-if="!data.heli" style="color:#c9d6d2;">Heli flights open once you are in your car at your start or last save.</div>
         <div ng-if="data.heli && !data.heli.hired" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
           <div style="font-weight:bold;color:#a7e5c9;">Hire a helicopter</div>
           <div style="font-size:13px;">Fly a Bell 407 anywhere and scout towns and their jobs, for ${{data.heli.fee | number:0}} until you go back to your car. Flying high can turn up a &ldquo;don&rsquo;t ask questions&rdquo; beacon worth ${{data.heli.beaconPay | number:0}}. <button type="button" class="ef-link" ng-click="toggle('howheli')" aria-expanded="{{isOpen('howheli')}}">{{isOpen('howheli') ? 'Hide' : 'Details'}}</button></div>

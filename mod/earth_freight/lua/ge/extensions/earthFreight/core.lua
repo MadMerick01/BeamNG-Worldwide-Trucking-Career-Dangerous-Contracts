@@ -1998,10 +1998,7 @@ function M.new(deps)
       if part and part ~= title and part ~= area[#area] then area[#area + 1] = part end
     end
     if #area == 0 and anchor and anchor.region then area[1] = anchor.region end
-    -- Roughly where (to about a kilometre), for the Radio tab's stations near the truck.
-    local round = function(v) return location.finite(v) and math.floor(v * 100 + 0.5) / 100 or nil end
-    return { title = title, area = table.concat(area, ', '), street = earth and earth.street or nil, fromEarth = earth ~= nil,
-      latitude = round(current.latitude), longitude = round(current.longitude) }
+    return { title = title, area = table.concat(area, ', '), street = earth and earth.street or nil, fromEarth = earth ~= nil }
   end
 
   -- Where the car is, for the Street View page: the live position, which way it points, and its
@@ -2067,6 +2064,36 @@ function M.new(deps)
       or 'To see the base map, copy the address below into your web browser.'
     self.diag:event('base_map', 'started')
     return true
+  end
+
+  -- The Radio: the same little web server, at its /radio page, opened in the browser. The game's own
+  -- browser can't fetch from the web, so the music plays in the player's browser instead.
+  function c:openRadio()
+    if not self.streetView then return false end
+    local ok, why = self.streetView:start()
+    if not ok then
+      self.radioFeedback = why == 'port_busy'
+        and 'The radio could not start: something else on your computer is using port ' .. self.streetView.port .. '.'
+        or 'The radio could not start in this version of BeamNG.'
+      self.diag:event('radio', tostring(why), 'W')
+      return false
+    end
+    self:rememberStreetView(true)
+    local url = self.streetView:url() .. 'radio'
+    local okOpen, opened = false, false
+    if self.openUrl then okOpen, opened = pcall(self.openUrl, url) end
+    self.radioFeedback = (okOpen and opened ~= false)
+      and 'The radio is opening in your web browser. If it does not, copy the address below into your browser.'
+      or 'To listen, copy the address below into your web browser.'
+    self.diag:event('radio', 'started')
+    return true
+  end
+
+  function c:radioView()
+    if not self.streetView then return nil end
+    local live = self.streetView.radio and self.streetView:radio(self.clock) or nil
+    return { on = self.streetView.on, url = self.streetView:url() .. 'radio', feedback = self.streetView.on and self.radioFeedback or nil,
+      open = live ~= nil, playing = live and live.playing or nil }
   end
 
   function c:baseMapView()
@@ -2316,6 +2343,7 @@ function M.new(deps)
       shortages = trade.shortages,
       streetView = self:streetViewView(),
       baseMap = self:baseMapView(),
+      radio = self:radioView(),
       sightseeing = self:sightseeingView(current),
       gpsAllowed = self.adapter.setDestination ~= nil and self.state == 'READY' and self.arrived and not self.hire,
       gpsFeedback = self.gpsFeedback,
@@ -2876,6 +2904,7 @@ end
 function M.openStreetView() return safely(function() return ensure():openStreetView() end) end
 function M.stopStreetView() return safely(function() return ensure():stopStreetView() end) end
 function M.openBaseMap() return safely(function() return ensure():openBaseMap() end) end
+function M.openRadio() return safely(function() return ensure():openRadio() end) end
 function M.onExtensionUnloaded()
   -- The web server lets go of its port, so the next load can open it again.
   if active and active.streetView then pcall(function() active.streetView:stop() end) end

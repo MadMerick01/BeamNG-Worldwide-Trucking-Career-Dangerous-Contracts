@@ -21,18 +21,6 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     server: 'https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/',
     discord: 'https://discord.gg/eYJCfXNGbP'
   }
-  // The Radio tab's stations, from Radio Browser's servers (any one answers), searched in circles this
-  // many metres round the truck until enough turn up. A new list after driving RADIO_REFRESH_METRES;
-  // Follow my truck changes station once the one playing is RADIO_FAR_METRES behind.
-  var RADIO_STORE = 'earthFreight.radio'
-  // Each server is tried over https, then plain http in case the game's browser can't make the secure
-  // connection; the one that answers is tried first next time. RADIO_WAIT_MS is how long one may take.
-  var RADIO_HOSTS = ['de1', 'de2', 'fi1', 'at1', 'nl1', 'all'].map(function (h) { return h + '.api.radio-browser.info' })
-  var RADIO_SERVERS = RADIO_HOSTS.map(function (h) { return 'https://' + h }).concat(RADIO_HOSTS.map(function (h) { return 'http://' + h }))
-  var RADIO_WAIT_MS = 8000
-  var RADIO_RINGS = [50000, 150000, 400000, 1500000], RADIO_ENOUGH = 5, RADIO_LIST = 15
-  var RADIO_REFRESH_METRES = 25000, RADIO_FAR_METRES = 150000, RADIO_MIN_ASK_MS = 60000
-  var RADIO_TEST_COUNT = 6, RADIO_TEST_MS = 10000
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
   // The Town tab's Distance filter, kept the same way: any, short, medium or long.
@@ -45,7 +33,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   // Which folding sections the player opened or closed, by name, kept the same way. Nearby and the
   // heli's towns and jobs start open; the rest start closed.
   var FOLDS = 'earthFreight.hudFolds'
-  var FOLD_DEFAULTS = { nearby: true, helitowns: true, heliboard: true, radiolist: true }
+  var FOLD_DEFAULTS = { nearby: true, helitowns: true, heliboard: true }
   var storedFolds = function () {
     try {
       var v = JSON.parse(window.localStorage.getItem(FOLDS) || '{}')
@@ -570,6 +558,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.returnToJob = function () { if (scope.data.sightseeing && scope.data.sightseeing.returnAllowed) core('returnToJob()') }
       // Opens the Base map (circles, borders and the truck, from the same little web server) in the browser.
       scope.openBaseMap = function () { if (scope.data.baseMap) core('openBaseMap()') }
+      scope.openRadio = function () { if (scope.data.radio) core('openRadio()') }
       scope.stopStreetView = function () { if (scope.data.streetView && scope.data.streetView.on) core('stopStreetView()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
@@ -688,6 +677,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.copyBaseMap = function () {
         var url = scope.data && scope.data.baseMap && scope.data.baseMap.url
         if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/bases$/.test(url)) call('setClipboard("' + url + '")')
+      }
+      scope.copyRadio = function () {
+        var url = scope.data && scope.data.radio && scope.data.radio.url
+        if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/radio$/.test(url)) call('setClipboard("' + url + '")')
       }
       // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
       scope.openKofi = function () {
@@ -852,220 +845,6 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           } else core('noBusiness("' + want.key + '")')
         }, function () { /* No answer from the web: the town's usual drop-off stays for this game. */ })
       }
-      // The Radio tab: live radio stations near the truck, from Radio Browser, a free and open list of
-      // internet radio stations with where each one is (www.radio-browser.info). The music comes straight
-      // from each station; the mod ships none. Nothing plays until the player presses Play. With Follow my
-      // truck on, a station left far behind gives way to the nearest one. The player's own volume and
-      // Follow choice are kept in the browser's storage; the sound itself is kept out here, so it keeps
-      // playing when BeamNG rebuilds the app.
-      var radio = kept.radio || (kept.radio = (function () {
-        var saved = {}
-        try { saved = JSON.parse(window.localStorage.getItem(RADIO_STORE) || '{}') || {} } catch (e) {}
-        return {
-          stations: [], status: 'idle', note: null, playing: null, sound: 'off', at: null, asked: null, used: false,
-          volume: typeof saved.volume === 'number' && saved.volume >= 0 && saved.volume <= 1 ? saved.volume : 0.5,
-          follow: saved.follow !== false, test: null
-        }
-      })())
-      scope.radio = radio
-      var saveRadio = function () {
-        try { window.localStorage.setItem(RADIO_STORE, JSON.stringify({ volume: radio.volume, follow: radio.follow })) } catch (e) {}
-      }
-      kept.radioApply = function (fn) { if (!disposed) scope.$evalAsync(fn) }
-      var radioApply = function (fn) { if (kept.radioApply) kept.radioApply(fn) }
-      scope.metresBetween = function (a, b) {
-        var r = Math.PI / 180, dLat = (b.latitude - a.latitude) * r, dLon = (b.longitude - a.longitude) * r
-        var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(a.latitude * r) * Math.cos(b.latitude * r) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
-        return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(h)))
-      }
-      // Radio Browser's answer, as the stations the HUD lists: ones with a place and a stream the game's
-      // browser might play (no HLS playlists), nearest first, one of each name.
-      scope.readStations = function (list, here, metres) {
-        var seen = {}, out = []
-        ;(Array.isArray(list) ? list : []).forEach(function (s) {
-          if (!s || typeof s.name !== 'string' || !s.name.trim()) return
-          var url = String(s.url_resolved || s.url || '')
-          if (!/^https?:\/\//i.test(url) || s.hls === 1 || /\.m3u8(\?|$)/i.test(url)) return
-          var lat = parseFloat(s.geo_lat), lon = parseFloat(s.geo_long)
-          if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return
-          var name = s.name.trim().replace(/\s+/g, ' ').slice(0, 60), key = name.toLowerCase()
-          if (seen[key]) return
-          var away = scope.metresBetween(here, { latitude: lat, longitude: lon })
-          if (metres && away > metres) return
-          seen[key] = true
-          out.push({ id: String(s.stationuuid || ''), name: name, url: url, codec: String(s.codec || '').toUpperCase().slice(0, 12),
-            bitrate: s.bitrate > 0 ? Math.round(s.bitrate) : null, place: [s.state, s.country].filter(function (p) { return p && String(p).trim() }).join(', ').slice(0, 60),
-            latitude: lat, longitude: lon, distanceMetres: away })
-        })
-        out.sort(function (a, b) { return a.distanceMetres - b.distanceMetres })
-        return out.slice(0, RADIO_LIST)
-      }
-      var radioGet = function (path) {
-        if (typeof fetch !== 'function') return Promise.reject(new Error('no fetch'))
-        var order = radio.server ? [radio.server].concat(RADIO_SERVERS.filter(function (s) { return s !== radio.server })) : RADIO_SERVERS
-        var problems = []
-        var attempt = function (i) {
-          if (i >= order.length) {
-            var failed = new Error('no radio server answered')
-            failed.problems = problems
-            return Promise.reject(failed)
-          }
-          var base = order[i]
-          var answer = fetch(base + path).then(function (r) { if (!r.ok) throw new Error('answered ' + r.status); return r.json() })
-          var LATE = {}
-          var late = new Promise(function (resolve) { setTimeout(function () { resolve(LATE) }, RADIO_WAIT_MS) })
-          return Promise.race([answer, late]).then(function (json) {
-            if (json === LATE) throw new Error('no answer in ' + RADIO_WAIT_MS / 1000 + ' s')
-            radio.server = base
-            return json
-          }).catch(function (e) {
-            problems.push(base.replace('.api.radio-browser.info', '') + ': ' + String((e && e.message) || e).slice(0, 80))
-            return attempt(i + 1)
-          })
-        }
-        return attempt(0)
-      }
-      var here = function () {
-        var w = (kept.last || {}).where
-        return w && typeof w.latitude === 'number' && typeof w.longitude === 'number' ? { latitude: w.latitude, longitude: w.longitude } : null
-      }
-      // The stations around where the truck is: a small circle first, wider ones until a few turn up.
-      scope.findStations = function () {
-        var at = here()
-        if (!at) { radio.status = 'nowhere'; return Promise.resolve() }
-        radio.used = true
-        radio.status = 'looking'; radio.asked = Date.now(); radio.problems = null
-        var ring = function (i) {
-          var metres = RADIO_RINGS[i]
-          return radioGet('/json/stations/search?has_geo_info=true&hidebroken=true&order=clickcount&reverse=true&limit=100' +
-            '&geo_lat=' + at.latitude.toFixed(3) + '&geo_long=' + at.longitude.toFixed(3) + '&geo_distance=' + metres)
-            .then(function (list) {
-              var found = scope.readStations(list, at, metres)
-              if (found.length >= RADIO_ENOUGH || i + 1 >= RADIO_RINGS.length) return found
-              return ring(i + 1).then(function (wider) { return wider.length > found.length ? wider : found })
-            })
-        }
-        return ring(0).then(function (found) {
-          radioApply(function () {
-            radio.stations = found; radio.at = at
-            radio.status = found.length ? 'listed' : 'none'
-            followTruck()
-          })
-        }, function (e) { radioApply(function () { radio.status = 'offline'; radio.problems = (e && e.problems) || [String((e && e.message) || e)] }) })
-      }
-      var sound = function () {
-        if (kept.radioSound) return kept.radioSound
-        if (typeof Audio !== 'function') return null
-        var a = kept.radioSound = new Audio()
-        a.preload = 'none'
-        a.addEventListener('playing', function () { radioApply(function () { radio.sound = 'on' }) })
-        a.addEventListener('waiting', function () { radioApply(function () { if (radio.playing) radio.sound = 'tuning' }) })
-        a.addEventListener('error', function () {
-          radioApply(function () {
-            if (!radio.playing) return
-            radio.note = radio.playing.name + ' won\'t play in the game' + (radio.playing.codec ? ' (' + radio.playing.codec + ')' : '') + '. Try another station.'
-            radio.playing = null; radio.sound = 'off'
-          })
-        })
-        return a
-      }
-      scope.radioPlay = function (s) {
-        if (!s) return
-        var a = sound()
-        if (!a) { radio.note = 'This version of the game can\'t play sound from the HUD.'; return }
-        radio.playing = s; radio.sound = 'tuning'; radio.note = null
-        a.src = s.url
-        a.volume = radio.volume
-        var started = a.play()
-        if (started && started.catch) started.catch(function () {})
-        // Counts the listen on Radio Browser, as its rules ask; the answer is not needed.
-        if (s.id && /^[0-9a-f-]{36}$/i.test(s.id)) radioGet('/json/url/' + s.id).catch(function () {})
-      }
-      scope.radioStop = function () {
-        var a = kept.radioSound
-        if (a) { a.pause(); a.removeAttribute('src'); if (a.load) a.load() }
-        radio.playing = null; radio.sound = 'off'
-      }
-      scope.radioNext = function () {
-        var list = radio.stations
-        if (!list.length) return
-        var i = -1
-        for (var k = 0; k < list.length; k++) if (radio.playing && list[k].id === radio.playing.id) i = k
-        scope.radioPlay(list[(i + 1) % list.length])
-      }
-      scope.radioVolume = function () {
-        var v = Number(radio.volume)
-        radio.volume = isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.5
-        if (kept.radioSound) kept.radioSound.volume = radio.volume
-        saveRadio()
-      }
-      scope.radioFollow = function () { radio.follow = !radio.follow; saveRadio(); followTruck() }
-      scope.isPlaying = function (s) { return !!(radio.playing && s && radio.playing.id === s.id && radio.playing.name === s.name) }
-      // Driven far from the station playing: the nearest one in the new list takes over.
-      var followTruck = function () {
-        var at = here()
-        if (!radio.follow || !radio.playing || !at || !radio.stations.length) return
-        if (scope.metresBetween(at, radio.playing) <= RADIO_FAR_METRES) return
-        var next = radio.stations[0]
-        if (next.id === radio.playing.id) return
-        scope.radioPlay(next)
-        radio.note = 'Out of range of the last station. Tuned in to ' + next.name + (next.place ? ', ' + next.place : '') + '.'
-      }
-      // On each update: once the player has used the radio, a new list is fetched after a long drive.
-      var radioTrack = function () {
-        var at = here()
-        if (!radio.used || !at || radio.status === 'looking') return
-        if (radio.asked && Date.now() - radio.asked < RADIO_MIN_ASK_MS) return
-        if (!radio.at || scope.metresBetween(at, radio.at) > RADIO_REFRESH_METRES) scope.findStations()
-      }
-      scope.radioCodecs = function () {
-        var t = radio.test
-        if (!t) return []
-        var by = {}, order = []
-        t.results.forEach(function (r) {
-          var c = r.codec || 'unknown'
-          if (!by[c]) { by[c] = { codec: c, played: 0, tried: 0 }; order.push(c) }
-          if (r.result) by[c].tried++
-          if (r.result === 'plays') by[c].played++
-        })
-        return order.map(function (c) { return by[c] })
-      }
-      // The stream test: each of a handful of the stations listed is started silently, one after the
-      // other, and marked as playing, refused by the game, or silent for too long. It tells whether the
-      // game's built-in browser can play live radio, and which kinds of stream.
-      scope.radioTest = function () {
-        if (radio.test && radio.test.running) return
-        if (typeof Audio !== 'function') { radio.test = { running: false, results: [], problem: 'This version of the game can\'t play sound from the HUD.' }; return }
-        var picks = [], codecs = {}
-        radio.stations.forEach(function (s) { if (picks.length < RADIO_TEST_COUNT && (codecs[s.codec] || 0) < 3) { picks.push(s); codecs[s.codec] = (codecs[s.codec] || 0) + 1 } })
-        radio.stations.forEach(function (s) { if (picks.length < RADIO_TEST_COUNT && picks.indexOf(s) < 0) picks.push(s) })
-        if (!picks.length) return
-        var test = radio.test = { running: true, results: picks.map(function (s) { return { name: s.name, codec: s.codec || '', bitrate: s.bitrate, result: null } }) }
-        var one = function (i) {
-          if (i >= picks.length) { radioApply(function () { test.running = false; test.byKind = scope.radioCodecs() }); return }
-          var probe = new Audio(), finished = false
-          var finish = function (result) {
-            if (finished) return
-            finished = true
-            probe.pause(); probe.removeAttribute('src'); if (probe.load) probe.load()
-            radioApply(function () { test.results[i].result = result })
-            one(i + 1)
-          }
-          probe.volume = 0
-          probe.addEventListener('playing', function () { finish('plays') })
-          probe.addEventListener('error', function () { finish('refused') })
-          setTimeout(function () { finish('silent') }, RADIO_TEST_MS)
-          probe.src = picks[i].url
-          var started = probe.play()
-          if (started && started.catch) started.catch(function () { finish('refused') })
-        }
-        one(0)
-      }
-      scope.radioDistance = function (s) {
-        if (!s || typeof s.distanceMetres !== 'number') return ''
-        return s.distanceMetres < 1000 ? 'here' : Math.round(s.distanceMetres / 1000) + ' km'
-      }
       scope.$on('EarthFreightState', function (event, data) {
         if (disposed || !data || typeof data.state !== 'string') return
         lastMessage = Date.now()
@@ -1077,7 +856,6 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           kept.last = data
           scope.data = data
           if (data.load && data.load.lookup) scope.lookUpBusiness(data.load.lookup)
-          radioTrack()
         })
       })
       mount(true)
