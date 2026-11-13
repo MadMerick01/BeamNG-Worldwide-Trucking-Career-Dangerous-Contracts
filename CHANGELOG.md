@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 194 · 13 Nov 2026
+
 - **New Radio tab: live local radio wherever you drive.** Press Open radio and a radio page opens in your web browser, like Street View does. It lists real radio stations around your truck, nearest first, from Radio Browser, a free list of internet radio. Press Play nearest or pick a station, and use Stop, Next station and the volume slider. As you drive it finds the stations around you, and with Follow my truck ticked it switches to a nearby station once you're far from the one you're listening to. The HUD's Radio tab shows what's playing.
 - The radio plays in your web browser because the game's own browser can't reach internet radio. Keep the radio page open: the music carries on with it in the background. It needs an internet connection and uses about 60 MB an hour. If a station won't play, the radio moves on to the next one. Saves still work, and there's nothing to set up.
 
