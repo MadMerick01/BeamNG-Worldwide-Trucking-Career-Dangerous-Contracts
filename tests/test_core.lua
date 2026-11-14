@@ -688,6 +688,68 @@ do
   T.eq(c.owedDamage, 3000, 'its settling adds nothing'); T.eq(c.lastDamage.damage, 3000, 'just what is owed')
 end
 
+-- Fuel at a petrol station pump: the continent's real price, petrol and diesel apart; the game's
+-- own pump prompt is charged too, and what the money does not cover goes back out of the tank.
+do
+  local c, io, a, g, _, f = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(f.shown, 1, 'the game\'s gas stations are turned on once')
+  -- Out of town, at a pump.
+  a.pose = location.destination(F.PENRITH, 0, 1900); c:tick(0.1)
+  f.pump = { brand = 'Ampol', name = 'Ampol Foodary' }
+  c:tick(2.1); c:fuelReading(1, 20, 50, 'diesel'); c:tick(0.1)
+  local r = c:view().refuel
+  T.check(r.atPump, 'at the pump'); T.eq(r.station, 'Ampol', 'the station by its brand')
+  T.eq(r.continent, 'Oceania', 'Australia is Oceania'); T.eq(r.fuelType, 'Diesel', 'a diesel car')
+  T.eq(r.pricePerLitre, fuel.price('Oceania', 'diesel'), 'the continent\'s diesel price')
+  T.check(r.pricePerLitre == fuel.PRICES.Oceania.diesel, 'no town markup at a pump')
+  T.check(r.allowed, 'Refuel offered at the pump, out of town'); T.eq(c:view().town, nil, 'no town panel')
+  local before = c:view().balance
+  T.check(c:refuel(), 'refuel sent at the pump')
+  c:fuelSet(1, f.sets[#f.sets].serial, 20, 50, 50)
+  T.eq(c:view().balance, before - fuel.cost(30, fuel.PRICES.Oceania.diesel), 'charged the pump price')
+  -- The game's own Refuel prompt fills 20 L: charged at the pump price.
+  c:tick(2.1); c:fuelReading(1, 30, 50, 'diesel')
+  before = c:view().balance
+  c:tick(2.1); c:fuelReading(1, 50, 50, 'diesel')
+  T.eq(c:view().balance, before - fuel.cost(20, fuel.PRICES.Oceania.diesel), 'the game\'s own pump is charged')
+  T.check(c:view().fuelFeedback:find('Filled 20.0 L at Ampol', 1, true), 'told what the pump cost')
+  -- Short of money: only what is paid for stays in the tank.
+  c:tick(2.1); c:fuelReading(1, 10, 50, 'diesel')
+  c.profile.progression.balance = 15
+  local sets = #f.sets
+  c:tick(2.1); c:fuelReading(1, 50, 50, 'diesel')
+  local paid = math.floor(15 / fuel.PRICES.Oceania.diesel)
+  T.eq(#f.sets, sets + 1, 'the tank is set back'); T.near(f.sets[#f.sets].litres, 10 + paid, 1e-9, 'to what was paid for')
+  T.eq(f.sets[#f.sets].serial, 0, 'setting it back is not a refuel'); T.near(c.fuel.litres, 10 + paid, 1e-9, 'kept as paid for')
+  T.check(c:view().balance >= 0, 'never below zero'); T.check(c:view().fuelFeedback:find('the rest went back', 1, true), 'told why')
+  -- Away from the pump the tank rising is not charged (a reset, another mod).
+  c.profile.progression.balance = 1000
+  f.pump = nil; c:tick(2.1); c:fuelReading(1, 10, 50, 'diesel'); c:tick(2.1); c:fuelReading(1, 40, 50, 'diesel')
+  T.eq(c:view().balance, 1000, 'no pump, no charge')
+  T.check(not c:view().refuel.allowed, 'no Refuel away from pumps and towns')
+  T.eq(c:view().refuel.problem, 'Stop at a petrol station pump, or in a town, to refuel.', 'told where to go')
+end
+
+-- Prices: one per continent, from the country; the rest of the world pays the average.
+do
+  T.eq(fuel.continent('Germany'), 'Europe', 'Germany is Europe'); T.eq(fuel.continent('Mexico'), 'North America', 'Mexico is North America')
+  T.eq(fuel.continent('Saudi Arabia'), 'Asia', 'the Middle East is Asia'); T.eq(fuel.continent('Death Road'), 'South America', 'Death Road is in Bolivia')
+  T.eq(fuel.continent('Antarctica'), nil, 'Antarctica has no roads')
+  T.eq(fuel.price(nil, 'diesel'), fuel.WORLD.diesel, 'world average elsewhere')
+  T.eq(fuel.TOWN_PRICE_TIMES, 5, 'towns cost 5 times the pump price')
+  T.eq(fuel.price('Europe', 'gasoline', true), math.floor(fuel.PRICES.Europe.gasoline * 500 + 0.5) / 100, 'towns cost 5 times as much')
+  local was = fuel.PRICE_PERCENT; fuel.PRICE_PERCENT = 50
+  T.eq(fuel.price('Europe', 'diesel'), math.floor(fuel.PRICES.Europe.diesel * 50 + 0.5) / 100, 'one setting scales every price')
+  fuel.PRICE_PERCENT = was
+  -- Every country in the place list has a continent.
+  local missing = {}
+  for _, p in ipairs(places.list) do
+    if p.region and p.region ~= 'Antarctica' and not fuel.continent(p.region) then missing[p.region] = true end
+  end
+  T.eq(next(missing), nil, 'every country has a continent')
+end
+
 -- Fuel: read from the car, Refuel fills it in a town, charged for what went in.
 do
   local c, io, a, g, _, f = F.controller()
@@ -696,19 +758,21 @@ do
   T.check(not c:view().town.refuelAllowed, 'no Refuel without a reading')
   c:fuelReading(1, 20, 50); c:tick(0.1)
   local quote = c:view().town.refuel
-  T.near(quote.litres, 30, 1e-9, 'fills the tank'); T.eq(quote.cost, fuel.cost(30), 'priced per litre')
+  T.near(quote.litres, 30, 1e-9, 'fills the tank'); T.eq(quote.cost, fuel.cost(30, fuel.price('Oceania', 'gasoline', true)), 'priced per litre at the town price')
   T.check(c:view().town.refuelAllowed, 'Refuel offered in town')
+  T.check(c:view().refuel.warning:find('5 times the pump price', 1, true), 'warned to use a pump instead')
+  T.check(not c:view().refuel.atPump, 'not at a pump')
   T.check(c:refuel(), 'refuel sent'); T.near(f.sets[1].litres, 50, 1e-9, 'tank set to full')
   T.check(not c:refuel(), 'one refuel at a time'); T.eq(c:view().fuelFeedback, 'Refuelling...', 'told on the Garage tab')
   local before = c:view().balance
   c:fuelSet(1, f.sets[1].serial, 20, 50, 50)
-  T.eq(c:view().balance, before - fuel.cost(30), 'charged for 30 L')
+  T.eq(c:view().balance, before - fuel.cost(30, fuel.price('Oceania', 'gasoline', true)), 'charged for 30 L')
   T.check(c:view().fuelFeedback:find('Refuelled 30.0 L'), 'told what it cost'); T.eq(c:view().tradeFeedback, nil, 'not on the Town tab')
   T.check(c:view().town.refuel.full, 'tank now full'); T.check(not c:view().town.refuelAllowed, 'nothing to fill')
-  c:fuelSet(1, f.sets[1].serial, 20, 50, 50); T.eq(c:view().balance, before - fuel.cost(30), 'a repeated answer is not charged twice')
+  c:fuelSet(1, f.sets[1].serial, 20, 50, 50); T.eq(c:view().balance, before - fuel.cost(30, fuel.price('Oceania', 'gasoline', true)), 'a repeated answer is not charged twice')
   -- Short of money: fills as far as it goes.
-  c.profile.progression.balance = 21; c:fuelReading(1, 10, 50)
-  T.near(c:view().town.refuel.litres, 10, 1e-9, 'only what the money buys')
+  c.profile.progression.balance = 50; c:fuelReading(1, 10, 50)
+  T.near(c:view().town.refuel.litres, math.floor(50 / fuel.price('Oceania', 'gasoline', true)), 1e-9, 'only what the money buys')
   -- Away from a town there is no Refuel.
   a.pose = location.destination(F.PENRITH, 0, 1900); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.eq(c:view().town, nil, 'no town panel out of town'); T.check(not c:refuel(), 'no refuel out of town')

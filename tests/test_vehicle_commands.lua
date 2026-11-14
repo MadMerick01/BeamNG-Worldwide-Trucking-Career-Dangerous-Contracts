@@ -167,7 +167,7 @@ do
   local world = { energyStorage = { getStorages = function() return storages end } }
   T.check(f:read(), 'read sent')
   local replies = run(vehicle.commands[1], world)
-  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.fuelReading(7, 15.000, 60.000) end', 'reports litres and capacity')
+  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.fuelReading(7, 15.000, 60.000, "gasoline") end', 'reports litres, capacity and fuel')
   T.check(f:set(45, 3), 'set sent')
   replies = run(vehicle.commands[2], world)
   T.eq(replies[1], 'if earthFreight_core then earthFreight_core.fuelSet(7, 3, 15.000, 45.000, 60.000) end', 'reports before and after')
@@ -176,8 +176,35 @@ do
   T.check(f:set(500, 4), 'over-full request sent'); run(vehicle.commands[3], world)
   T.eq(storages.main.remainingVolume, 40, 'never past full')
   replies = run(vehicle.commands[1], {})
-  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.fuelReading(7, 0.000, 0.000) end', 'a car with no tank reads empty')
+  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.fuelReading(7, 0.000, 0.000, "gasoline") end', 'a car with no tank reads empty')
   T.eq(select(2, f:set(-1)), 'invalid_litres', 'negative litres refused')
-  T.eq(fuel.cost(10), math.floor(10 * fuel.PRICE_PER_LITRE + 0.5), 'cost per litre')
+  T.eq(fuel.cost(10, 1.25), 13, 'cost per litre, to the dollar'); T.eq(fuel.cost(10, nil), 0, 'no price, no cost')
+  -- A diesel tank says so.
+  storages.main.energyType = 'diesel'; f:read()
+  replies = run(vehicle.commands[#vehicle.commands], world)
+  T.check(replies[1]:find('"diesel"', 1, true), 'a diesel car reads as diesel')
+end
+-- The pump the car stands at: the nearest within reach, from the game's gas station list.
+do
+  local pos = { x = 0, y = 0, z = 0 }
+  local vehicle = { getPosition = function() return pos end }
+  local gathered, gen = 0, 1
+  local f = fuel.new({ player = function() return vehicle end, generation = function() return gen end,
+    pumps = function()
+      gathered = gathered + 1
+      return { { x = 30, y = 0, z = 0, name = 'Far', energy = { diesel = true } },
+               { x = 4, y = 3, z = 0, name = 'Shell Newtown', brand = 'Shell', energy = { gasoline = true } } }
+    end,
+    stationsShown = function() return false end, showStations = function() end })
+  local p = f:pumpNear(0)
+  T.eq(p and p.brand, 'Shell', 'the pump within reach'); T.near(p.metres, 5, 1e-9, 'its distance')
+  f:pumpNear(1); T.eq(gathered, 1, 'the list is kept between looks')
+  gen = 2; f:pumpNear(1.5); T.eq(gathered, 2, 'gathered again when the stations change')
+  f:pumpNear(1.5 + fuel.STATIONS_EVERY_SECONDS); T.eq(gathered, 3, 'and every few seconds')
+  pos = { x = 100, y = 0, z = 0 }; T.eq(f:pumpNear(20), nil, 'none in reach')
+  T.check(f:showStations(), 'the freeroam gas stations are turned on when off')
+  local broken = fuel.new({ player = function() return vehicle end, pumps = function() error('no POIs') end,
+    generation = function() error('none') end, stationsShown = function() return true end, showStations = function() end })
+  T.eq(broken:pumpNear(0), nil, 'a broken station list is no pump'); T.check(not broken:showStations(), 'already on: left alone')
 end
 T.done('vehicle commands')

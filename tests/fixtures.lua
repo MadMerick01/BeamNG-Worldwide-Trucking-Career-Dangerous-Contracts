@@ -230,6 +230,9 @@ function F.fuel()
   local f = { reads = 0, sets = {} }
   function f:read() self.reads = self.reads + 1; return true end
   function f:set(litres, serial) self.sets[#self.sets + 1] = { litres = litres, serial = serial }; return true end
+  -- The pump the car stands at (set f.pump), and the game's freeroam gas stations setting.
+  function f:pumpNear() return self.pump end
+  function f:showStations() self.shown = (self.shown or 0) + 1; return true end
   return f
 end
 -- Stand-in for the helicopter's game side: the player's vehicle stands at player, ground metres up.

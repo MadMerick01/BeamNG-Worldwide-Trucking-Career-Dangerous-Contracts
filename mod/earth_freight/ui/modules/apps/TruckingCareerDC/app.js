@@ -464,7 +464,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         arrow.transform = 'rotate(' + turn + 'deg)'
         return arrow
       }
-      scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }
+      scope.refuel = function () { if (scope.data.refuel && scope.data.refuel.allowed) core('refuel()') }
       scope.abandonJob = function () { if (scope.data.abandonAllowed) core('abandonJob()') }
       // Heli flights: hire asks Lua to confirm, and so does Back to my car.
       scope.hireHeli = function () { if (scope.data.heli && scope.data.heli.hireAllowed) core('hireHeli()') }
