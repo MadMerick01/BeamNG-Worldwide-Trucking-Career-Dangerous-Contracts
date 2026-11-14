@@ -682,6 +682,12 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var url = scope.data && scope.data.radio && scope.data.radio.url
         if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/radio$/.test(url)) call('setClipboard("' + url + '")')
       }
+      // The Copy link button under the HUD's title: copies MadMerick's Ko-fi page for the player to paste
+      // into their browser. It doesn't open the browser, so the game stays in front.
+      scope.copySupport = function () {
+        call('setClipboard("' + KOFI + '")')
+        scope.hud.supportCopied = true
+      }
       // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
       scope.openKofi = function () {
         call('if openWebBrowser then openWebBrowser("' + KOFI + '") end setClipboard("' + KOFI + '")')

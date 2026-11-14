@@ -1050,6 +1050,19 @@ test('the While you were away card: places read as 1st, 2nd, 3rd, and Got it clo
   assert.equal(a.commands.at(-1), fixed('dismissAway()'))
   assert.ok(html.includes('WHILE YOU WERE AWAY') && html.includes('ng-click="dismissAway()"'), 'the card and its button')
 })
+test('the coffee line sits under the title and its Buy MadMerick a coffee button copies the Ko-fi link without opening anything', () => {
+  const a = app()
+  const count = a.commands.length
+  a.scope.copySupport()
+  assert.equal(a.commands.length, count + 1, 'one command')
+  assert.equal(a.commands.at(-1), 'setClipboard("https://ko-fi.com/madmerick")')
+  assert.equal(a.scope.hud.supportCopied, true)
+  const main = html.indexOf('<div ng-if="!hud.minimised && !intro.open">'), title = html.indexOf('WORLDWIDE TRUCKING', main)
+  const at = html.indexOf('ng-click="copySupport()"'), where = html.indexOf('data.where.title', main)
+  assert.ok(title < at && at < where, 'under the title, above where you are')
+  assert.equal(html.split('copySupport()').length, 2, 'once')
+  for (const part of ['This mod will always be free to play', 'Buy MadMerick a coffee', 'Ko-fi link copied', 'Paste it into your web browser. Thank you!']) assert.ok(html.includes(part), part)
+})
 test('Radio tab: opens the radio page in the browser, shows what it plays, and copies only its address', () => {
   const a = app()
   a.scope.data = { state: 'TRUCK_IDLE' }
