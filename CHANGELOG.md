@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Relocating, towing or resetting your car no longer fills the tank for free.** The game refills the tank whenever it resets the car, which happens when you relocate, use Tow car here, press Insert or use the recovery menu. The mod now quietly puts your fuel back to where it was, just as it already did after a repair or a part change. Saves still work.
+
 ## Build 209 · 14 Nov 2026
 
 - **Fill up at real petrol stations, at real prices.** BeamNG.earth's petrol stations, with their canopies and pumps, now sell fuel at that continent's real pump price. Petrol and diesel are priced separately, and the mod knows which one your truck takes. For example, diesel is $1.62 a litre in North America and $2.49 in Europe. Prices are November 2026 averages for North America, South America, Europe, Africa, Asia and Oceania.

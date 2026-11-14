@@ -1908,9 +1908,21 @@ function M.new(deps)
     if self.fuel and self.fuel.restore then return end
     litres = math.min(litres, capacity)
     local before = self.fuel
-    if before and before.at and before.vehicleId == vehicleId and self.pump and not self.refuelPending
-        and self.profile and litres > before.litres + fuel.PUMP_MARGIN_LITRES then
-      litres = self:chargePumpFill(vehicleId, before.litres, litres)
+    if before and before.at and before.vehicleId == vehicleId and not self.refuelPending and self.profile
+        and litres > before.litres + fuel.PUMP_MARGIN_LITRES then
+      if self.pump then
+        litres = self:chargePumpFill(vehicleId, before.litres, litres)
+      elseif not self.pendingCar and self.ownedParts and self.ownedParts.id == vehicleId then
+        -- Away from a pump the tank only rises when the game resets the car (a relocation, a tow,
+        -- Insert or the recovery menu), which fills it: put back, free and quietly, as the damage is.
+        local ok, why = self.fuelTank:set(before.litres, 0)
+        if ok then
+          self.diag:event('fuel_reset_undone', string.format('%.1f L back to %.1f L', litres, before.litres))
+          litres = before.litres
+        else
+          self.diag:event('fuel_restore_failed', tostring(why), 'W')
+        end
+      end
     end
     fuelType = (fuelType == 'diesel' and 'diesel') or (fuelType == 'gasoline' and 'gasoline') or (before and before.fuelType)
     self.fuel = { vehicleId = vehicleId, litres = litres, capacity = capacity, at = self.clock, fuelType = fuelType }
