@@ -654,7 +654,7 @@ end
 -- The car drops onto its springs after a part change, a reset or a new load, and a heavy part can
 -- bend a little on the way down: what it picks up settling is not damage, only what comes after.
 do
-  local c, io, a, g = F.controller({ settle = 4 })
+  local c, io, a, g = F.controller({ settle = true })
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   F.advance(c, 5)
   c:addMoney(10000)
@@ -941,6 +941,30 @@ do
   T.eq(c.booking, nil, 'the booking is used up on landing'); T.eq(c.stranded, nil, 'and the stranding forgiven')
   T.eq(c:view().flash.title, 'RELOCATED TO COROICO', 'told they arrived')
   T.check(c:view().saveAllowed, 'Save works')
+end
+
+-- A relocation: BeamNG.Earth puts the car down while the terrain loads, and it bumps on the way
+-- down. That is not damage; the damage it had before stays, and a crash once it has settled counts.
+do
+  local shipping = require('earthFreight/shipping')
+  local W = require('earthFreight/workshop')
+  local c, _, a, g = F.controller({ settle = true })
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  F.advance(c, 5)
+  g.damage = 1000; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 1000, 'a crash before leaving')
+  local coroico = shipping.get('coroico')
+  T.check(c:bookShipping('coroico'), 'booked'); T.check(c:teleportToBooking(), 'teleport asked')
+  a.pose = location.destination(coroico, 0, 500); c:tick(0.1)
+  T.eq(c:view().flash.title, 'RELOCATED TO COROICO', 'arrived')
+  g.damage = 1800; c:tick(0.1); F.advance(c, W.SETTLE_SECONDS + 2); g.damage = 3000; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 1000, 'the landing adds nothing, even a while after')
+  T.eq(c.owedDamage, 0, 'and owes nothing')
+  -- Earth placing it again with a reset: the crash from before is still owed, the bump is not.
+  c:vehicleReset(1); g.damage = 200; c:tick(0.1)
+  T.eq(c.owedDamage, 1000, 'the crash from before is still owed'); T.eq(c.lastDamage.damage, 1000, 'and nothing more')
+  F.advance(c, W.LANDING_SETTLE_SECONDS); g.damage = 700; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 1500, 'a crash once it has settled counts')
 end
 
 -- A booked relocation that lands, then reads back at the old spot for a moment while BeamNG.Earth
