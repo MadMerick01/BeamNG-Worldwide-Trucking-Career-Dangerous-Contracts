@@ -651,6 +651,43 @@ do
   T.check(c:buyParts(), 'parts paid'); T.eq(c.owedDamage, 800, 'the later crash is still owed')
 end
 
+-- The car drops onto its springs after a part change, a reset or a new load, and a heavy part can
+-- bend a little on the way down: what it picks up settling is not damage, only what comes after.
+do
+  local c, io, a, g = F.controller({ settle = 4 })
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  F.advance(c, 5)
+  c:addMoney(10000)
+  -- A part change: the car bounces and the game reads damage, even a lot, while it settles.
+  g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
+  T.check(c.pendingParts ~= nil, 'a parts bill'); T.eq(c.pendingParts.repair, 0, 'nothing to repair on it')
+  g.damage = 300; c:tick(0.1); g.damage = 20000; c:tick(0.5)
+  T.eq(c.lastDamage.damage, 0, 'settling is not damage'); T.eq(c:view().insurance, nil, 'no insurance offer')
+  -- The game may still show the old car's damage just after the respawn: its drop is no reset.
+  g.damage = 0; c:tick(0.1); g.damage = 300; c:tick(0.1)
+  T.eq(c.owedDamage, 0, 'nothing owed'); T.check(not (c:view().flash and c:view().flash.title == 'REPAIR STILL OWED'), 'no repair warning')
+  F.advance(c, 4)
+  T.eq(c.lastDamage.damage, 0, 'still none once it has settled'); T.check(c:buyParts(), 'paid'); T.eq(c.owedDamage, 0, 'with no repair owed')
+  -- Trying another part, and putting it back, owes nothing either.
+  g:fit('turbo', nil); c:vehicleSpawned(); c:tick(0.1); g.damage = 900; c:tick(0.1)
+  g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1); g.damage = 400; F.advance(c, 5)
+  T.eq(c.pendingParts, nil, 'back to the paid parts'); T.eq(c.owedDamage, 0, 'nothing owed'); T.eq(c.lastDamage.damage, 0, 'no damage')
+  -- A crash after it has settled counts as usual.
+  g.damage = 2400; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 2000, 'only the crash counts')
+  -- A new load: the car sinks and bounces, and keeps the damage it had.
+  c:startSettle(true); g.damage = 2700; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 2000, 'the crash is kept, the settling is not')
+  T.eq(c.owedDamage, 0, 'and it is no reset')
+  F.advance(c, 5); g.damage = 3700; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 3000, 'later damage counts again')
+  -- Insert still owes the damage it clears.
+  c:vehicleReset(1); g.damage = 0; c:tick(0.1)
+  T.eq(c.owedDamage, 3000, 'a reset is not a free repair')
+  g.damage = 500; c:tick(0.1)
+  T.eq(c.owedDamage, 3000, 'its settling adds nothing'); T.eq(c.lastDamage.damage, 3000, 'just what is owed')
+end
+
 -- Fuel: read from the car, Refuel fills it in a town, charged for what went in.
 do
   local c, io, a, g, _, f = F.controller()
