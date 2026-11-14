@@ -681,6 +681,31 @@ function M.attach(c)
       win = r.win, leader = r.leader, leaderLand = r.leaderLand, daysLeft = left and math.max(1, math.ceil(left / 86400)) or nil }
   end
 
+  -- The Land Race and Leaderboard tab on a server: the land race (each corp holding land, most first, the player's own
+  -- marked), the season leaderboard the server sends (wwtcBoard) and the last season's winner. nil off a server, so a
+  -- single player game never asks the internet for any of it.
+  function c:standingsView()
+    local mp = self.mp
+    if not mp or mp.state ~= 'server' then return nil end
+    local race = self:landView()
+    local corps = {}
+    for _, b in ipairs(mp.bases or {}) do
+      if (b.land or 0) > 0 then
+        corps[#corps + 1] = { name = b.name, town = b.town, outposts = #(b.outposts or {}), members = #(b.members or {}),
+          land = b.land, mine = (b.mine or b.corp) or nil }
+      end
+    end
+    table.sort(corps, function(a, b) if a.land ~= b.land then return a.land > b.land end return a.name < b.name end)
+    while #corps > 10 do
+      local cut = corps[#corps]
+      if cut.mine and #corps > 1 then table.remove(corps, #corps - 1) else table.remove(corps) end
+    end
+    local board = mp.board
+    return { race = race, corps = corps, season = board and board.season, day = board and board.day,
+      truckers = board and board.truckers, board = board and board.board or nil, me = board and board.me or nil,
+      winner = board and board.winner or nil, waiting = board == nil or nil }
+  end
+
   -- The newest base's town of a corp entry.
   local function newestTown(entry)
     local list = entry.outposts or {}

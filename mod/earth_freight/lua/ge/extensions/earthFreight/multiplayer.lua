@@ -131,6 +131,43 @@ function M.cleanRace(r, now)
     leader = M.cleanText(r.leader, 32), leaderLand = percent(r.leaderLand) }
 end
 
+-- The season's leaderboard from the server, checked (wwtcBoard): the top truckers by wealth with their place, base town,
+-- deliveries and season wins, which one is this player, this player's own row when they're further down, and the
+-- last season's winner. nil if it's missing.
+local function boardRow(r)
+  if type(r) ~= 'table' then return nil end
+  local rank, wealth = tonumber(r.rank), money(r.wealth)
+  if not rank or rank < 1 or rank > 100000 or rank ~= math.floor(rank) or not wealth then return nil end
+  local deliveries, wins = tonumber(r.deliveries), tonumber(r.wins)
+  return { rank = rank, name = M.cleanText(r.name, 32) or 'A trucker', baseTown = M.cleanText(r.baseTown, 40), wealth = wealth,
+    deliveries = deliveries and deliveries >= 0 and deliveries < 1e9 and math.floor(deliveries) or 0,
+    wins = wins and wins >= 1 and wins < 1000 and math.floor(wins) or nil, mine = r.mine == true }
+end
+function M.cleanBoard(d)
+  if type(d) ~= 'table' or type(d.board) ~= 'table' then return nil end
+  local board = {}
+  for _, r in ipairs(d.board) do
+    local row = boardRow(r)
+    if row and #board < 20 then board[#board + 1] = row end
+  end
+  local w, winner = d.winner, nil
+  if type(w) == 'table' and tonumber(w.season) then
+    local members = {}
+    for _, m in ipairs(type(w.members) == 'table' and w.members or {}) do
+      local name = M.cleanText(m, 32)
+      if name and #members < 32 then members[#members + 1] = name end
+    end
+    winner = { season = math.floor(tonumber(w.season)), owner = M.cleanText(w.owner, 32) or 'A trucker', town = M.cleanText(w.town, 40),
+      members = #members > 0 and members or nil, land = percent(w.land) }
+  end
+  local season, day, truckers = tonumber(d.season), tonumber(d.day), tonumber(d.truckers)
+  local me = boardRow(d.me)
+  if me then me.mine = true end
+  return { season = season and season >= 1 and math.floor(season) or nil, day = day and day >= 1 and day < 100000 and math.floor(day) or nil,
+    truckers = truckers and truckers >= 0 and truckers < 1e6 and math.floor(truckers) or nil,
+    board = board, me = me, winner = winner }
+end
+
 -- The server's "while you were away" summary, checked: how long ago this player left, their leaderboard place now and
 -- then, the turf tolls paid to them (the biggest payers by name) and what happened to their corp. nil if it's empty.
 local function whole(v, max)
@@ -336,6 +373,13 @@ function M.new(deps)
       self.corpWait = wait and wait > 0 and { seconds = math.min(wait, 7 * 86400), at = self.now or 0 } or nil
       self.race = M.cleanRace(d.race, self.now)
       return true
+    elseif event == 'wwtcBoard' then
+      -- The season's leaderboard, for the Land Race and Leaderboard tab.
+      local d = decode(data)
+      local board = M.cleanBoard(d)
+      if not board then return false end
+      self.board = board
+      return true
     elseif event == 'wwtcOutpostDone' then
       -- The answer to openBase(): { ok, why, by, town }.
       local d = decode(data)
@@ -535,7 +579,7 @@ function M.game()
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
     for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow',
         'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission', 'wwtcRejoined',
-        'wwtcCorpDone', 'wwtcAway', 'wwtcOutpostDone' }) do
+        'wwtcCorpDone', 'wwtcAway', 'wwtcOutpostDone', 'wwtcBoard' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true

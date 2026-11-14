@@ -924,6 +924,69 @@
           <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Play, Stop, Next station, the volume and Follow my truck are on the radio page. Stations come from Radio Browser, a free list of internet radio, and use about 60 MB of internet an hour.</div>
         </div>
       </div>
+      <div ng-if="tab === 'race'">
+        <div style="margin:0 0 8px;padding:8px 10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-size:13px;"><b>Watch the race from anywhere.</b> <span style="color:#c9d6d2;">Open this page on your phone or PC to follow the land race and leaderboard when you're out of the game.</span></div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+            <input aria-label="The live server page's address" type="text" readonly ng-value="liveAddress" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
+            <button type="button" ng-click="copyLiveAddress()" title="Copies the live server page's address" style="flex:none;padding:4px 10px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{intro.liveCopied ? 'Copied' : 'Copy address'}}</button>
+          </div>
+          <div ng-if="intro.liveCopied" role="status" style="margin-top:3px;font-size:12px;color:#6fcf97;">Copied. Paste it into your browser.</div>
+        </div>
+        <div ng-if="data.standings">
+          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px;font-size:13px;">
+            <span style="flex:1;color:#c9d6d2;"><span ng-if="data.standings.season">Season {{data.standings.season}}<span ng-if="data.standings.day">, day {{data.standings.day}}</span></span><span ng-if="data.standings.race.daysLeft"> &middot; {{raceDays(data.standings.race.daysLeft)}}</span></span>
+            <span style="font-size:12px;color:#7d8b88;">live from the server</span>
+          </div>
+          <div class="ef-sec">
+            <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('landrace')" aria-expanded="{{isOpen('landrace')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('landrace') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Land race</div><span class="ef-sum">{{raceSummary(data.standings)}}</span></div></div>
+            <div ng-if="isOpen('landrace')" class="ef-sb">
+              <div ng-if="data.standings.race.win" style="font-size:13px;">First to own <b>{{data.standings.race.win}}%</b> of Earth's land wins the season.</div>
+              <div ng-if="!data.standings.corps.length" style="font-size:13px;color:#c9d6d2;">Nobody holds any land yet. Buy a base on the Base tab to start.</div>
+              <div ng-repeat="b in data.standings.corps">
+                <div style="display:flex;gap:8px;align-items:baseline;padding:3px 4px 0;margin:0 -4px;font-size:13px;border-radius:4px;" ng-style="b.mine ? {background:'rgba(111,207,151,.1)'} : {}">
+                  <b style="flex:none;">{{b.mine ? (b.members ? 'Your corp' : 'You') : b.name}}</b>
+                  <span style="flex:1;min-width:0;color:#c9d6d2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{b.town}}<span ng-if="b.outposts"> + {{b.outposts}} more {{b.outposts === 1 ? 'base' : 'bases'}}</span><span ng-if="b.members"> &middot; {{b.members + 1}} truckers</span></span>
+                  <span style="flex:none;font-size:12px;color:#f2c94c;">{{b.land}}%</span>
+                </div>
+                <div aria-hidden="true" style="height:6px;border-radius:3px;background:#33423f;overflow:hidden;margin:3px 0 4px;"><span ng-style="{width: landWidth(b.land, data.standings.race.win)}" style="display:block;height:100%;background:#f2c94c;"></span></div>
+              </div>
+              <div ng-if="data.standings.winner" style="margin-top:4px;font-size:12px;color:#7d8b88;">Last winner: {{data.standings.winner.owner}}<span ng-if="data.standings.winner.members"> ({{data.standings.winner.members.join(', ')}})</span><span ng-if="data.standings.winner.town"> from {{data.standings.winner.town}}</span>, Season {{data.standings.winner.season}}<span ng-if="data.standings.winner.land != null">, with {{data.standings.winner.land}}%</span>.</div>
+            </div>
+          </div>
+          <div class="ef-sec">
+            <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('leaderboard')" aria-expanded="{{isOpen('leaderboard')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('leaderboard') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Season leaderboard</div><span class="ef-sum">{{boardSummary(data.standings)}}</span></div></div>
+            <div ng-if="isOpen('leaderboard')" class="ef-sb" style="padding-left:4px;">
+              <div ng-if="data.standings.waiting" style="font-size:13px;color:#c9d6d2;">Waiting for the server's leaderboard&hellip;</div>
+              <div ng-if="!data.standings.waiting && !data.standings.board.length" style="font-size:13px;color:#c9d6d2;">Nobody on the leaderboard yet.</div>
+              <table ng-if="data.standings.board.length" style="width:100%;border-collapse:collapse;font-size:13px;">
+                <tr><th style="padding:3px 2px;"></th><th style="padding:3px 2px;text-align:left;font-size:11px;font-weight:normal;color:#7d8b88;">Trucker</th><th style="padding:3px 2px;text-align:right;font-size:11px;font-weight:normal;color:#7d8b88;">Wealth</th><th style="padding:3px 2px;text-align:right;font-size:11px;font-weight:normal;color:#7d8b88;">Runs</th></tr>
+                <tr ng-repeat="r in data.standings.board.concat(data.standings.me ? [data.standings.me] : [])" ng-style="r.mine ? {background:'rgba(111,207,151,.1)'} : {}">
+                  <td style="padding:3px 2px;" ng-style="{color: r.rank <= 3 ? '#f2c94c' : '#f2f6f5'}">{{r.rank}}</td>
+                  <td style="padding:3px 2px;"><b>{{r.mine ? 'You' : r.name}}</b> <span ng-if="r.baseTown" style="font-size:11px;color:#7d8b88;">{{r.baseTown}}</span> <span ng-if="r.wins" style="font-size:11px;color:#f2c94c;">&#9733; {{r.wins}} {{r.wins === 1 ? 'win' : 'wins'}}</span></td>
+                  <td style="padding:3px 2px;text-align:right;">${{r.wealth | number:0}}</td>
+                  <td style="padding:3px 2px;text-align:right;">{{r.deliveries}}</td>
+                </tr>
+              </table>
+              <div style="margin-top:4px;font-size:12px;color:#7d8b88;">Wealth is cash plus your truck, trailer and base. Runs are deliveries.</div>
+            </div>
+          </div>
+        </div>
+        <div ng-if="!data.standings && data.online" style="font-size:13px;color:#c9d6d2;">Joining the server&hellip; the land race and leaderboard show here once your career is in.</div>
+        <div ng-if="!data.online" style="padding:8px 10px;border:2px solid #f2c94c;border-radius:8px;background:rgba(242,201,76,.06);font-size:13px;">
+          <div style="font-weight:bold;color:#f2c94c;">The land race is online only</div>
+          <div style="margin-top:2px;">Online, everyone trucks on the same Earth. Buy a base, grow your turf and race the other truckers to own Earth's land. Your single player career stays on this PC.</div>
+          <div style="margin-top:8px;font-weight:bold;color:#f2c94c;">How to play online</div>
+          <ol style="margin:4px 0 0;padding-left:20px;">
+            <li>Install <b>BeamMP</b> from beammp.com and sign in.</li>
+            <li>Keep the <b>BeamNG.Earth app</b> running, the same version as the server.</li>
+            <li>Start BeamNG from the BeamMP launcher, open the server browser's BeamNG.Earth tab and join <b>WW Trucking Career | MadMerick</b>. The server sends its own copy of this mod.</li>
+          </ol>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"><button type="button" ng-click="openLink('discord')" title="Opens the Discord invite in your browser and copies the link" style="padding:5px 12px;">Discord</button></div>
+          <div ng-if="intro.linkOpened === 'discord'" role="status" style="margin-top:4px;font-size:12px;color:#7d8b88;">The link is copied too, in case your browser didn't open.</div>
+          <div style="margin-top:8px;font-size:12px;color:#7d8b88;">Single player doesn't use your internet for any of this. The race and leaderboard are on the web page above.</div>
+        </div>
+      </div>
       <div ng-if="tab === 'heli'">
         <div ng-if="!data.heli" style="color:#c9d6d2;">Heli flights open once you are in your car at your start or last save.</div>
         <div ng-if="data.heli && !data.heli.hired" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">

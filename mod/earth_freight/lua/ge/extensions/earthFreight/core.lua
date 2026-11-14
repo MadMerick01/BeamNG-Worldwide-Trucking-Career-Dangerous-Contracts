@@ -2387,6 +2387,8 @@ function M.new(deps)
       turf = self.turf or nil,
       -- The land race on a server: the share of Earth's land the player's corp holds, and who leads.
       land = self:landView(),
+      -- The Land Race and Leaderboard tab's race and season leaderboard, on a server only.
+      standings = self:standingsView(),
       shortages = trade.shortages,
       streetView = self:streetViewView(),
       baseMap = self:baseMapView(),

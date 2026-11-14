@@ -33,7 +33,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   // Which folding sections the player opened or closed, by name, kept the same way. Nearby and the
   // heli's towns and jobs start open; the rest start closed.
   var FOLDS = 'earthFreight.hudFolds'
-  var FOLD_DEFAULTS = { nearby: true, helitowns: true, heliboard: true }
+  var FOLD_DEFAULTS = { nearby: true, helitowns: true, heliboard: true, landrace: true, leaderboard: true }
   var storedFolds = function () {
     try {
       var v = JSON.parse(window.localStorage.getItem(FOLDS) || '{}')
@@ -164,9 +164,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
         { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Base' },
-        { id: 'streetview', label: 'Street View' }, { id: 'radio', label: 'Radio' }]
-      // Two rows of tabs: the job on top, the extras below, each sharing its row's width.
-      scope.tabRows = [scope.tabs.slice(0, 4), scope.tabs.slice(4)]
+        { id: 'streetview', label: 'Street View' }, { id: 'radio', label: 'Radio' }, { id: 'race', label: 'Land Race and Leaderboard' }]
+      // Rows of tabs: the job on top, the extras below, each sharing its row's width, and the land race on its own.
+      scope.tabRows = [scope.tabs.slice(0, 4), scope.tabs.slice(4, 8), scope.tabs.slice(8)]
       scope.tab = kept.tab
       scope.setTab = function (id) { scope.tab = kept.tab = id }
       // Marks a tab that has something waiting for the player.
@@ -689,6 +689,31 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         scope.hud.supportCopied = true
       }
       // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
+      // The Land Race and Leaderboard tab: the live server page's address, copied for the player to open on their
+      // phone or PC and follow the race out of the game. Copying only, so nothing opens over the game.
+      scope.liveAddress = LINKS.server
+      scope.copyLiveAddress = function () {
+        call('setClipboard("' + LINKS.server + '")')
+        scope.intro.liveCopied = true
+      }
+      scope.raceDays = function (n) { return n === 1 ? '1 day left' : n + ' days left' }
+      // The leaderboard's line when folded: the player's place, how far behind the leader, or who leads.
+      scope.boardSummary = function (st) {
+        var board = (st && st.board) || []
+        if (!board.length) return st && st.waiting ? 'waiting for the server' : 'nobody yet'
+        var mine = st.me || board.filter(function (r) { return r.mine })[0]
+        var top = board[0]
+        if (mine && mine.rank === 1) return "you're 1st"
+        if (mine) return "you're " + scope.ordinal(mine.rank) + ', $' + (top.wealth - mine.wealth).toLocaleString('en-US') + ' behind ' + top.name
+        return top.name + ' leads, $' + top.wealth.toLocaleString('en-US')
+      }
+      scope.raceSummary = function (st) {
+        var r = st && st.race
+        if (!r || !r.leader) return 'nobody holds land yet'
+        return r.leader + ' leads with ' + r.leaderLand + '% of ' + r.win + '%'
+      }
+      // A land bar's width: the share against what wins, so the bar fills at the win.
+      scope.landWidth = function (land, win) { return Math.max(1, Math.min(100, win > 0 ? land / win * 100 : 0)) + '%' }
       scope.openKofi = function () {
         call('if openWebBrowser then openWebBrowser("' + KOFI + '") end setClipboard("' + KOFI + '")')
         scope.intro.kofiOpened = true
