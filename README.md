@@ -52,7 +52,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 ## Multiplayer
 
-Drive the career with friends on a BeamMP server running BeamNG.Earth. Each player's career is kept on the server, apart from their single-player one. To host one, download `worldwide-trucking-server.zip` from the [latest release](../../releases/latest) and follow [MULTIPLAYER-SETUP.md](docs/MULTIPLAYER-SETUP.md). Players only need BeamNG.Earth's app: the server sends them the mod.
+Drive the career with friends on MadMerick's BeamMP server running BeamNG.Earth. Each player's career is kept on the server, apart from their single-player one. You only need BeamNG.Earth's app: the server sends you the mod when you join. How to join is on the HUD's **Play online** screen and in the [Discord](https://discord.gg/eYJCfXNGbP). The online server is run by MadMerick only, and its code isn't published.
 
 ## Updating
 
