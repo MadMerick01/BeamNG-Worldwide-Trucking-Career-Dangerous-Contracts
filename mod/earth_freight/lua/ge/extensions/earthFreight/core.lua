@@ -624,7 +624,10 @@ function M.new(deps)
       fluid.density = good.kg / good.litres
     end
     local ok, why, detail = self.cargo:setWeight(kg, cargo.partsFor(space, good), fluid)
-    if ok then self.appliedWeight = key
+    if ok then
+      self.appliedWeight = key
+      -- The car sinks under the new weight and bounces: see workshop.SETTLE_SECONDS.
+      if self.startSettle then self:startSettle(true) end
     else self.diag:event('weight_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W') end
   end
 

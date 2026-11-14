@@ -253,6 +253,8 @@ function F.controller(options)
     streetView = options.streetView, openUrl = options.openUrl, multiplayer = options.multiplayer,
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
+  -- Damage set in a test is a crash, not the car settling after a spawn: no settle time unless asked for.
+  c.settleSeconds = options.settle or 0
   return c, io, adapter, garage, cargo, fuel, logs
 end
 -- Puts a job on every board, first: a good from wherever the board is to the place given. Returns its id.
