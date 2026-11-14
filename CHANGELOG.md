@@ -10,6 +10,8 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - Online, the tab shows the land race (every corp holding land, with its share and a bar towards the winning share, yours highlighted) and the season leaderboard (the top 10 by wealth, with your own place even if you're further down). It comes straight from the server you're on, so it uses no extra internet, and it updates as things change.
 - In single player, the tab shows nothing from the internet. It explains that the land race is online only, lists the steps to join the server, and has a Discord button.
 - Saves still work. Players on a server see the leaderboard once the server runs its update. Until then the tab says it's waiting for the server.
+- **The server's name shows cleanly when it has BeamMP colour codes.** A server owner can style the name in the BeamMP server browser with codes such as ^l (bold) and ^f (white). Those codes now only change how the name looks in the server browser: the server's web page and the "how to join" steps on the HUD's **Play online** screen show the plain name, for example "A WW Trucking Career | MadMerick", instead of "^l^fA WW Trucking Career…".
+- Saves still work. Server owners need to run the server update to get this.
 
 ## Build 201 · 14 Nov 2026
 

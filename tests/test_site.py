@@ -30,6 +30,11 @@ class SiteTest(unittest.TestCase):
         self.assertIn('trucking-server-stats/main/status.json', self.html, 'live stats come from the stats repo')
         self.assertIn("'status.json'", self.html, 'with the sample as the fallback')
 
+    def test_server_name_is_shown_without_colour_codes(self):
+        script = self.html[self.html.rindex('<script>'):]
+        self.assertIn("$('server-name').textContent = plainName(s.server.name)", script)
+        self.assertIn("$('join-name').textContent = plainName(s.server.name)", script)
+
     def test_player_text_is_never_put_in_as_html(self):
         script = self.html[self.html.rindex('<script>'):]
         self.assertNotIn('innerHTML', script)

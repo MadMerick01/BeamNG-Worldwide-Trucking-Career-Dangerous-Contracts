@@ -731,7 +731,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         return {
           status: s.sample !== true && info.online === true && fresh ? 'online' : 'offline', at: now,
           players: Array.isArray(s.players) ? Math.min(s.players.length, 999) : null, max: whole(info.maxPlayers),
-          name: short(info.name, 60), season: s.season && whole(s.season.number), day: s.season && whole(s.season.day),
+          name: short(typeof info.name === 'string' ? info.name.replace(/\^[0-9a-z]/gi, '') : null, 60), season: s.season && whole(s.season.number), day: s.season && whole(s.season.day),
           truckers: s.season && whole(s.season.truckers)
         }
       }

@@ -1303,6 +1303,14 @@ function W.awayMessage(key)
   return W.env.encode({ v = W.PROTO, since = since, place = place, was = a.place, of = of, tolls = tolls, news = news })
 end
 
+-- A server name without BeamMP's ^ colour and style codes (^0-^9, ^a-^f, ^l bold, ^r reset and so on),
+-- which only the server browser understands; nil when nothing is left.
+function W.plainName(name)
+  if type(name) ~= 'string' then return nil end
+  name = name:gsub('%^[%w]', ''):gsub('^%s+', ''):gsub('%s+$', '')
+  return name ~= '' and name or nil
+end
+
 -- The stats file the page reads.
 function W.status()
   local now = W.env.clock()
@@ -1360,7 +1368,7 @@ function W.status()
   end
   return {
     version = 1, updated = W.env.now(),
-    server = { name = W.env.setting and W.env.setting('name') or nil, online = true,
+    server = { name = W.env.setting and W.plainName(W.env.setting('name')) or nil, online = true,
       maxPlayers = W.env.setting and W.env.setting('maxPlayers') or nil },
     season = { number = W.SEASON, day = math.floor((now - W.stats.started) / 86400) + 1, truckers = truckers },
     today = { deliveries = t.deliveries or 0, earned = t.earned or 0 },

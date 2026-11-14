@@ -484,6 +484,16 @@ do
   c.mp.claim = quiet
 end
 
+-- The server's name goes on the page without BeamMP's ^ colour and style codes.
+do
+  local W, env = server()
+  env.setting = function(which) return which == 'name' and '^l^fA WW Trucking Career | MadMerick' or 20 end
+  T.eq(W.status().server.name, 'A WW Trucking Career | MadMerick', 'bold and white codes taken out')
+  T.eq(W.plainName('^1Red ^rand ^nplain^r '), 'Red and plain', 'any colour or style code')
+  T.eq(W.plainName('^l^f'), nil, 'nothing left is no name')
+  T.eq(W.plainName(nil), nil, 'no name')
+end
+
 -- The server page's stats: who's on and where, the feed, today's totals and the leaderboard; sent to GitHub.
 do
   local W, env = server(nil, { [1] = 'a1' })

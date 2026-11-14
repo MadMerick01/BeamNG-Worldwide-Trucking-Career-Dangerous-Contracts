@@ -1026,6 +1026,7 @@ test('Play online shows whether the server is up and how many are on it, from it
   assert.equal(read({ updated: '2026-11-10T18:49:00Z', server: { online: true }, sample: true }, now).status, 'offline', 'the sample is not the server')
   assert.equal(read(null, now).status, 'offline')
   assert.equal(read({ server: { name: 'x'.repeat(200), maxPlayers: -3 } }, now).name.length, 60)
+  assert.equal(read({ server: { name: '^l^fA WW Trucking Career | MadMerick' } }, now).name, 'A WW Trucking Career | MadMerick', 'no BeamMP colour codes')
 })
 test('Play online says when the status cannot be reached, and opens its two links', async () => {
   const a = app(null, null, { fetch: () => Promise.reject(new Error('offline')) })
