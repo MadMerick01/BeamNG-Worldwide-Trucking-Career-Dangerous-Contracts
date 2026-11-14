@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 202 · 14 Nov 2026
+
 - **The server's name shows cleanly when it has BeamMP colour codes.** A server owner can style the name in the BeamMP server browser with codes such as ^l (bold) and ^f (white). Those codes now only change how the name looks in the server browser: the server's web page and the "how to join" steps on the HUD's **Play online** screen show the plain name, for example "A WW Trucking Career | MadMerick", instead of "^l^fA WW Trucking Career…".
 - Saves still work. Server owners need to run the server update to get this.
 
