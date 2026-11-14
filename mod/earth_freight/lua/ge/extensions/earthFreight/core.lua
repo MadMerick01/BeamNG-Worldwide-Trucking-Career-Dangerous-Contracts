@@ -206,6 +206,7 @@ function M.new(deps)
     -- A puncture not yet repaired; a reload respawns the car, so its tyre repair is owed instead.
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
+    self.pump, self.pumpBill = nil, nil
     self.ourRespawn, self.rawDamage = nil, nil
     self.autoSave, self.gpsTown, self.gpsContract, self.gpsFeedback = nil, nil, nil, nil
     self.configuration, self.configError = config.load(deps.io)
@@ -1837,12 +1838,24 @@ function M.new(deps)
   end
 
   -- Fuel. The car is asked for its tank every READ_EVERY_SECONDS once arrived; the answer comes back
-  -- through fuelReading. Refuel fills the tank as far as the money goes, inside a place's arrival
-  -- circle, stopped, and is charged when the car reports how much went in.
+  -- through fuelReading. Refuel fills the tank as far as the money goes, stopped at a petrol station
+  -- pump or inside a place's arrival circle, and is charged when the car reports how much went in.
+  -- Filling up with the game's own Refuel prompt at a pump is charged too, from the readings.
   function c:watchFuel()
-    if not self.fuelTank or self.state ~= 'READY' or not self.arrived or self.partsCheckDue or self.hire or self.onFoot then return end
+    if not self.fuelTank or self.state ~= 'READY' or not self.arrived or self.partsCheckDue or self.hire or self.onFoot then
+      self.pump, self.pumpBill = nil, nil
+      return
+    end
     if self.fuelReadAt and self.clock - self.fuelReadAt < fuel.READ_EVERY_SECONDS then return end
     self.fuelReadAt = self.clock
+    -- Earth only lists its stations with the game's freeroam gas stations on: turned on once.
+    if not self.stationsAsked and self.fuelTank.showStations then
+      self.stationsAsked = true
+      if self.fuelTank:showStations() then self.diag:event('gas_stations_shown', 'freeroam setting turned on') end
+    end
+    local pump = self.fuelTank.pumpNear and self.fuelTank:pumpNear(self.clock) or nil
+    if not pump then self.pumpBill = nil end
+    self.pump = pump
     local ok, why = self.fuelTank:read()
     if not ok then self.diag:event('fuel_read_failed', tostring(why), 'W') end
     -- The fluid containers' real size, once per car: a fitted tank's, or a tanker's own.
@@ -1850,13 +1863,57 @@ function M.new(deps)
     if self.cargo and self.cargo.readTanks and not self.tankReading then self.cargo:readTanks(space.tankParts) end
   end
 
-  function c:fuelReading(vehicleId, litres, capacity)
+  -- What fuel costs here: the continent from the nearest town's country, the car's fuel (petrol
+  -- until it says diesel), and whether that is at a pump or a town's dearer Refuel.
+  function c:fuelPrice()
+    local sample = self.lastSample
+    local nearest = sample and sample.valid and (places.nearest(sample, 1)[1] or {}).place
+    local continent = fuel.continent(nearest and nearest.region)
+    local fuelType = self.fuel and self.fuel.fuelType == 'diesel' and 'diesel' or 'gasoline'
+    local atPump = self.pump ~= nil
+    return { perLitre = fuel.price(continent, fuelType, not atPump), pumpPerLitre = fuel.price(continent, fuelType, false),
+      continent = continent, fuelType = fuelType, atPump = atPump }
+  end
+
+  -- The game's own pump prompt put fuel in: charged at the pump's price, as far as the money goes;
+  -- what the money does not cover is taken back out of the tank.
+  function c:chargePumpFill(vehicleId, before, after)
+    local price = self:fuelPrice().pumpPerLitre
+    local added = after - before
+    local balance = self.profile and self.profile.progression.balance or 0
+    local paid = math.min(added, math.floor(balance / price))
+    local cost = math.min(fuel.cost(paid, price), balance)
+    if cost > 0 then self:spend(cost, 'fuel') end
+    local bill = self.pumpBill or { litres = 0, cost = 0 }
+    bill.litres, bill.cost = bill.litres + paid, bill.cost + cost
+    self.pumpBill = bill
+    local station = self.pump and (self.pump.brand or self.pump.name) or 'the pump'
+    self.fuelFeedback = 'Filled ' .. string.format('%.1f', bill.litres) .. ' L at ' .. station .. ' for ' .. dollars(bill.cost)
+      .. ' (' .. string.format('$%.2f', price) .. ' a litre).'
+    self.diag:event('pump_fill', string.format('%.1f L of %.1f, %d', paid, added, cost))
+    if paid < added then
+      local ok = self.fuelTank:set(before + paid, 0)
+      if ok then self.fuel.restore = nil end
+      self.fuelFeedback = self.fuelFeedback .. ' You could only pay for ' .. string.format('%.1f', paid) .. ' L, so the rest went back.'
+      return before + paid
+    end
+    return after
+  end
+
+  function c:fuelReading(vehicleId, litres, capacity, fuelType)
     if not location.finite(litres) or not location.finite(capacity) or capacity <= 0 or litres < 0 then return end
     local current = self.lastSample and self.lastSample.vehicle and self.lastSample.vehicle.id
     if current ~= nil and vehicleId ~= current then return end
     -- A reading taken before a respawn's restore has gone in would undo it.
     if self.fuel and self.fuel.restore then return end
-    self.fuel = { vehicleId = vehicleId, litres = math.min(litres, capacity), capacity = capacity, at = self.clock }
+    litres = math.min(litres, capacity)
+    local before = self.fuel
+    if before and before.at and before.vehicleId == vehicleId and self.pump and not self.refuelPending
+        and self.profile and litres > before.litres + fuel.PUMP_MARGIN_LITRES then
+      litres = self:chargePumpFill(vehicleId, before.litres, litres)
+    end
+    fuelType = (fuelType == 'diesel' and 'diesel') or (fuelType == 'gasoline' and 'gasoline') or (before and before.fuelType)
+    self.fuel = { vehicleId = vehicleId, litres = litres, capacity = capacity, at = self.clock, fuelType = fuelType }
   end
 
   -- Nil until the car has reported its tank: fuel from a save is only litres to put back, with no
@@ -1864,26 +1921,41 @@ function M.new(deps)
   function c:refuelQuote()
     local f = self.fuel
     if not f or not f.at or not f.capacity or self.clock - f.at > fuel.STALE_SECONDS then return nil end
+    local price = self:fuelPrice()
     local wanted = math.max(0, f.capacity - f.litres)
     local balance = self.profile and self.profile.progression.balance or 0
-    local litres = math.min(wanted, math.floor(balance / fuel.PRICE_PER_LITRE))
-    return { wanted = wanted, litres = litres, cost = fuel.cost(litres), full = wanted <= fuel.FULL_MARGIN_LITRES }
+    local litres = math.min(wanted, math.floor(balance / price.perLitre))
+    return { wanted = wanted, litres = litres, cost = fuel.cost(litres, price.perLitre), full = wanted <= fuel.FULL_MARGIN_LITRES,
+      price = price }
+  end
+
+  -- Why Refuel is not possible now, or nil: stopped at a pump, or in a town as for a job.
+  function c:refuelProblem()
+    if not self.pump then
+      local problem = self:tradeProblem(self:here())
+      if problem == 'Drive into a town to find a job.' then return 'Stop at a petrol station pump, or in a town, to refuel.' end
+      return problem
+    end
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Fuel is unavailable right now.' end
+    if self.hire then return self:awayText() end
+    if self.onFoot then return ON_FOOT end
+    if not self.odometer:stopped() then return 'Stop at the pump to refuel.' end
+    return nil
   end
 
   function c:refuel()
-    local place = self:here()
-    local problem = self:tradeProblem(place)
+    local problem = self:refuelProblem()
     local quote = self:refuelQuote()
     if not problem and not quote then problem = 'Could not read your fuel gauge. Try again in a moment.' end
     if not problem and quote.full then problem = 'Your tank is already full.' end
-    if not problem and quote.litres <= 0 then problem = 'Not enough money for fuel: ' .. string.format('$%.2f', fuel.PRICE_PER_LITRE) .. ' a litre.' end
+    if not problem and quote.litres <= 0 then problem = 'Not enough money for fuel: ' .. string.format('$%.2f', quote.price.perLitre) .. ' a litre.' end
     if not problem and self.refuelPending then problem = 'Refuelling...' end
     if problem then
       self.fuelFeedback = problem
       return false
     end
     self.refuelSerial = self.refuelSerial + 1
-    self.refuelPending = { serial = self.refuelSerial, at = self.clock }
+    self.refuelPending = { serial = self.refuelSerial, at = self.clock, price = quote.price.perLitre, town = not quote.price.atPump }
     local ok, why = self.fuelTank:set(self.fuel.litres + quote.litres, self.refuelSerial)
     if not ok then
       self.refuelPending = nil
@@ -1902,12 +1974,37 @@ function M.new(deps)
     if pending and serial == pending.serial then
       self.refuelPending = nil
       local litres = math.max(0, after - before)
-      local cost = math.min(fuel.cost(litres), self.profile and self.profile.progression.balance or 0)
+      local cost = math.min(fuel.cost(litres, pending.price), self.profile and self.profile.progression.balance or 0)
       if cost > 0 then self:spend(cost, 'fuel') end
       self.fuelFeedback = 'Refuelled ' .. string.format('%.1f', litres) .. ' L for ' .. dollars(cost) .. '.'
+      if pending.town then self.fuelFeedback = self.fuelFeedback .. ' A petrol station pump would have cost a fifth of that.' end
       self.diag:event('refuelled', string.format('%.1f L, %d', litres, cost))
     end
-    if capacity > 0 then self.fuel = { vehicleId = vehicleId, litres = math.min(after, capacity), capacity = capacity, at = self.clock } end
+    if capacity > 0 then
+      self.fuel = { vehicleId = vehicleId, litres = math.min(after, capacity), capacity = capacity, at = self.clock,
+        fuelType = self.fuel and self.fuel.fuelType or nil }
+    end
+  end
+
+  -- The Garage tab's Fuel section: where you can fill up, at what price, and whether Refuel works.
+  function c:refuelView()
+    if not self.profile then return nil end
+    local quote = self:refuelQuote()
+    local price = self:fuelPrice()
+    local problem = self:refuelProblem()
+    return {
+      atPump = price.atPump, station = self.pump and (self.pump.brand or self.pump.name) or nil,
+      continent = price.continent or 'Rest of the world', fuelType = price.fuelType == 'diesel' and 'Diesel' or 'Petrol',
+      pricePerLitre = price.perLitre, pumpPricePerLitre = price.pumpPerLitre, townTimes = fuel.TOWN_PRICE_TIMES,
+      litres = quote and quote.litres or nil, cost = quote and quote.cost or nil, full = quote and quote.full or nil,
+      reading = quote == nil, problem = problem,
+      -- Away from a pump: the town's Refuel costs TOWN_PRICE_TIMES the pump price, and says so.
+      warning = not price.atPump and ('Town fuel costs ' .. fuel.TOWN_PRICE_TIMES .. ' times the pump price: '
+        .. string.format('$%.2f', price.perLitre) .. ' a litre here, ' .. string.format('$%.2f', price.pumpPerLitre)
+        .. ' at a petrol station. Fill up at a pump instead.') or nil,
+      allowed = problem == nil and self.fuelTank ~= nil and quote ~= nil and not quote.full and quote.litres > 0
+        and not self.refuelPending and not self.hire and not self.onFoot,
+    }
   end
 
   function c:tick(dtReal)
@@ -2200,7 +2297,7 @@ function M.new(deps)
         jobs = self:boardView(place, problem == nil and not self.load), distance = self.jobDistance or 'any',
         delivery = delivery,
         refuel = refuel and { litres = refuel.litres, cost = refuel.cost, full = refuel.full } or nil,
-        refuelAllowed = problem == nil and self.fuelTank ~= nil and refuel ~= nil and not refuel.full and refuel.litres > 0
+        refuelAllowed = self:refuelProblem() == nil and self.fuelTank ~= nil and refuel ~= nil and not refuel.full and refuel.litres > 0
           and not self.refuelPending and not self.hire and not self.onFoot,
       }
     end
@@ -2381,7 +2478,8 @@ function M.new(deps)
       unsavedSpending = self.profile and math.max(0, self.savedBalance - self.profile.progression.balance) or 0,
       -- Cargo space from the boxes on the car, the fuel in the tank, and trading.
       space = { slots = space.slots, kg = space.kg, boxes = space.boxes, boot = space.boot, litres = space.litres, tanks = space.tanks },
-      fuel = self.fuel and { litres = self.fuel.litres, capacity = self.fuel.capacity, pricePerLitre = fuel.PRICE_PER_LITRE } or nil,
+      fuel = self.fuel and { litres = self.fuel.litres, capacity = self.fuel.capacity, pricePerLitre = self:fuelPrice().perLitre } or nil,
+      refuel = self:refuelView(),
       here = trade.here, region = trade.region, where = trade.where, nearby = trade.nearby, town = trade.town, load = trade.load, bestJob = trade.bestJob,
       -- Whose turf the truck is in, for the line under the town name (the same check as the turf messages).
       turf = self.turf or nil,
@@ -2892,8 +2990,8 @@ function M.setFindable(on) return safely(function() return ensure():setFindable(
 function M.cancelShipping() return safely(function() return ensure():cancelShipping() end) end
 function M.setPlayerName(name) return safely(function() return ensure():setPlayerName(name) end) end
 -- The player car's answers to fuel.lua's commands.
-function M.fuelReading(vehicleId, litres, capacity)
-  return safely(function() if active then active:fuelReading(vehicleId, litres, capacity) end end)
+function M.fuelReading(vehicleId, litres, capacity, fuelType)
+  return safely(function() if active then active:fuelReading(vehicleId, litres, capacity, fuelType) end end)
 end
 function M.fuelSet(vehicleId, serial, before, after, capacity)
   return safely(function() if active then active:fuelSet(vehicleId, serial, before, after, capacity) end end)

@@ -158,7 +158,7 @@ test('town buttons only send fixed commands, with plain ids, when Lua enabled th
   a.state({ state: 'READY', town: {}, load: { to: 'X' } })
   a.scope.takeJob({ id: 'food_gn1', allowed: true })
   assert.equal(a.commands.length, 1, 'not with a job on board')
-  a.state({ state: 'READY', town: { refuelAllowed: true, delivery: { allowed: true } } })
+  a.state({ state: 'READY', town: { delivery: { allowed: true } }, refuel: { allowed: true } })
   a.scope.takeJob({ id: 'food_gn2153471', allowed: true })
   assert.equal(a.commands.at(-1), fixed("takeJob('food_gn2153471', 100)"), 'a full load unless the slider moved')
   a.scope.shares.food_gn2153471 = '50'
