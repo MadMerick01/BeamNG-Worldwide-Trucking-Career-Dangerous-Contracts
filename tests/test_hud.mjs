@@ -1061,7 +1061,7 @@ test('the coffee line sits under the title and its Copy link button copies the K
   const at = html.indexOf('ng-click="copySupport()"'), where = html.indexOf('data.where.title', main)
   assert.ok(title < at && at < where, 'under the title, above where you are')
   assert.equal(html.split('copySupport()').length, 2, 'once')
-  for (const part of ['This mod is always free', 'Buy MadMerick a coffee', 'Copy Ko-fi link', 'Paste it into your web browser']) assert.ok(html.includes(part), part)
+  for (const part of ['This mod will always be free to play', 'Buy MadMerick a coffee', 'Copy Ko-fi link', 'Paste it into your web browser']) assert.ok(html.includes(part), part)
 })
 test('Radio tab: opens the radio page in the browser, shows what it plays, and copies only its address', () => {
   const a = app()
