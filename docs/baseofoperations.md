@@ -366,7 +366,7 @@ from about 4,750 km to about 1,380 km. Cash, trucks, bases and corps stay as the
 
 - The share of **Earth's land** each corp holds, **Antarctica left out**, worked out with the same turf borders as the
   tolls, so land a rival has pushed into counts for the rival.
-- The server cuts the land into 1° squares (made by `tools/make_land.py` from Natural Earth's land map) and counts the
+- The server cuts the land into 1° squares (made offline from Natural Earth's land map) and counts the
   squares whose middle is in each corp's turf. One full circle on land covers about 5% of it.
 - Shown on the HUD under the town name, on the Base tab, on the Base map and on the web page.
 
