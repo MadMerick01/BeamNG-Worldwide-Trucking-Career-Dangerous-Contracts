@@ -2090,6 +2090,14 @@ function M.new(deps)
     return true
   end
 
+  -- The coffee button under the HUD's title: MadMerick's support page, opened in the player's
+  -- browser the same way as Street View. The HUD copies the link too, in case it does not open.
+  function c:openSupport()
+    local okOpen, opened = false, false
+    if self.openUrl then okOpen, opened = pcall(self.openUrl, browser.SUPPORT) end
+    return okOpen and opened ~= false
+  end
+
   function c:radioView()
     if not self.streetView then return nil end
     local live = self.streetView.radio and self.streetView:radio(self.clock) or nil
@@ -2887,6 +2895,7 @@ function M.openStreetView() return safely(function() return ensure():openStreetV
 function M.stopStreetView() return safely(function() return ensure():stopStreetView() end) end
 function M.openBaseMap() return safely(function() return ensure():openBaseMap() end) end
 function M.openRadio() return safely(function() return ensure():openRadio() end) end
+function M.openSupport() return safely(function() return ensure():openSupport() end) end
 function M.onExtensionUnloaded()
   -- The web server lets go of its port, so the next load can open it again.
   if active and active.streetView then pcall(function() active.streetView:stop() end) end

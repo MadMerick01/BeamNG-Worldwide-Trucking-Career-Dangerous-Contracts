@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **A coffee button on the HUD.** Under the WORLDWIDE TRUCKING title there's now a short line, "This mod is always free", with a gold **Buy MadMerick a coffee** button. Pressing it opens MadMerick's Ko-fi page (ko-fi.com/madmerick) in your normal web browser and copies the link too, in case the browser doesn't come up. The mod stays free, and the button is only there for anyone who'd like to chip in.
+- Saves still work. Players on a server get this when the server runs its update.
+
 ## Build 200 · 13 Nov 2026
 
 - **Booking a relocation works on the first press.** On the **Relocate** tab, about half the presses of **Book** next to a region or a town you searched for did nothing, so it looked as if the booking hadn't registered and you had to try again. The HUD redrew those rows several times a second (more often while BeamNG.Earth was still loading), and a click that landed during a redraw was lost. The rows now stay put between updates, so every press counts.
