@@ -6,6 +6,11 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **A Land Race and Leaderboard tab on the HUD.** It sits on its own row under the other tabs. At the top is the live server page's web address with a **Copy address** button, so you can open the page on your phone or PC and follow the race when you're out of the game. Copying doesn't open anything over the game.
+- Online, the tab shows the land race (every corp holding land, with its share and a bar towards the winning share, yours highlighted) and the season leaderboard (the top 10 by wealth, with your own place even if you're further down). It comes straight from the server you're on, so it uses no extra internet, and it updates as things change.
+- In single player, the tab shows nothing from the internet. It explains that the land race is online only, lists the steps to join the server, and has a Discord button.
+- Saves still work. Players on a server see the leaderboard once the server runs its update. Until then the tab says it's waiting for the server.
+
 ## Build 201 · 14 Nov 2026
 
 - **A coffee button on the HUD.** Under the WORLDWIDE TRUCKING title there's now a short line, "This mod will always be free to play", with a small, soft gold **Buy MadMerick a coffee** button. Pressing it copies MadMerick's Ko-fi link (ko-fi.com/madmerick), the button changes to **Ko-fi link copied**, and a note underneath asks you to paste it into your web browser. It doesn't open anything or take you out of the game. The mod stays free, and the button is only there for anyone who'd like to chip in.

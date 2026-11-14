@@ -1563,6 +1563,8 @@ function W.onJoin(pid, data)
   W.sendCommission(key)
   W.sendShip(pid)
   if save then W.boardCareer(p, save) end
+  p.boardSent = nil
+  W.sendBoardToAll()
   local away = W.awayMessage(key)
   if away then W.env.send(pid, 'wwtcAway', away) end
   W.feed('join', (clean(p.name, 32) or 'A trucker') .. ' joined the server.')
@@ -1865,6 +1867,46 @@ end
 function W.sendPlayersToAll()
   for pid, p in pairs(W.players) do
     if p.key then W.env.send(pid, 'wwtcPlayers', W.playersMessage(pid)) end
+  end
+end
+
+-- The HUD's Land Race and Leaderboard tab: the season's leaderboard (the top BOARD_MAX by wealth, as on the server
+-- page), this player's place when they're further down, and the last season's winner. The land race itself comes
+-- with the bases (wwtcBases).
+W.BOARD_MAX = 10
+function W.boardMessage(pid)
+  local p = W.players[pid]
+  local me = p and p.key
+  local all = {}
+  for key, e in pairs(W.stats.board) do
+    local wealth = (e.balance or 0) + (e.truckValue or 0) + (e.trailerValue or 0) + (e.baseValue or 0)
+    all[#all + 1] = { key = key, name = clean(e.name, 32) or 'A trucker', baseTown = clean(e.baseTown, 40), wealth = wealth,
+      deliveries = e.deliveries or 0, wins = W.winsOf(key) > 0 and W.winsOf(key) or nil }
+  end
+  table.sort(all, function(a, b) if a.wealth ~= b.wealth then return a.wealth > b.wealth end return a.name < b.name end)
+  local board, mine = {}, nil
+  for i, e in ipairs(all) do
+    local row = { rank = i, name = e.name, baseTown = e.baseTown, wealth = e.wealth, deliveries = e.deliveries, wins = e.wins,
+      mine = (me ~= nil and e.key == me) or nil }
+    if i <= W.BOARD_MAX then board[#board + 1] = row end
+    if row.mine then mine = row end
+  end
+  local last = W.winners and W.winners[1]
+  return W.env.encode({ v = W.PROTO, season = W.SEASON, day = math.floor((W.env.clock() - W.stats.started) / 86400) + 1,
+    truckers = #all, board = board, me = mine and mine.rank > W.BOARD_MAX and mine or nil,
+    winner = last and { season = last.season, owner = last.owner, town = last.town, members = last.members, land = last.land } or nil })
+end
+
+-- Sends each player the leaderboard when theirs has changed since they last had it (checked every timer tick).
+function W.sendBoardToAll()
+  for pid, p in pairs(W.players) do
+    if p.key then
+      local text = W.boardMessage(pid)
+      if text ~= p.boardSent then
+        p.boardSent = text
+        W.env.send(pid, 'wwtcBoard', text)
+      end
+    end
   end
 end
 
@@ -2247,7 +2289,7 @@ if MP and MP.RegisterEvent then
   WWTC_onClaim = guarded('claim', W.onClaim)
   WWTC_onRelease = guarded('release', W.onRelease)
   WWTC_onShipDone = guarded('ship delivered', W.onShipDone)
-  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.seasonTick(); W.statsTick(); W.restartTick(); W.sendPlayersToAll(); W.announceTick() end)
+  WWTC_onShipTimer = guarded('ship', function() W.shipTick(); W.seasonTick(); W.statsTick(); W.restartTick(); W.sendPlayersToAll(); W.sendBoardToAll(); W.announceTick() end)
   WWTC_onWhere = guarded('where', W.onWhere)
   WWTC_onDelivered = guarded('delivered', W.onDelivered)
   WWTC_onFind = guarded('find', W.onFind)

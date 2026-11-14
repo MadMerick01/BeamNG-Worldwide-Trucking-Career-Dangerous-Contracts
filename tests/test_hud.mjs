@@ -330,7 +330,7 @@ test('the HUD keeps money, Save, the message and the load outside the tabs', () 
 })
 test('the Tips tab is gone and shipping has its own Relocate tab', () => {
   const a = app()
-  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli', 'home', 'streetview', 'radio'])
+  assert.deepEqual([...a.scope.tabs.map(t => t.id)], ['route', 'town', 'garage', 'relocate', 'heli', 'home', 'streetview', 'radio', 'race'])
   assert.ok(!html.includes(`tab === 'tips'`), 'no Tips tab')
   const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'relocate'"`))
   const shipping = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`))
@@ -918,7 +918,7 @@ test('real businesses: the job card names the business, counts down the last met
 
 test('Street View has its own tab with sightseeing, and the header only shows a marker while it is on', () => {
   const a = app()
-  assert.equal(a.scope.tabs.at(-2).label, 'Street View')
+  assert.equal(a.scope.tabs.at(-3).label, 'Street View')
   const panel = html.slice(html.indexOf(`ng-if="tab === 'streetview'"`), html.indexOf(`ng-if="tab === 'radio'"`))
   for (const part of ['openStreetView()', 'stopStreetView()', 'copyStreetView()', 'goSightseeing()', 'Turn on', 'Turn off', 'Open again'])
     assert.ok(panel.includes(part), part + ' on the Street View tab')
@@ -931,9 +931,10 @@ test('Street View has its own tab with sightseeing, and the header only shows a 
   a.scope.setTab('streetview'); assert.equal(a.scope.tab, 'streetview')
 })
 
-test('tabs sit in two rows: the job on top, the extras below', () => {
+test('tabs sit in three rows: the job on top, the extras below, and the land race on its own', () => {
   const a = app()
-  assert.deepEqual(JSON.parse(JSON.stringify(a.scope.tabRows.map(r => r.map(t => t.id)))), [['route', 'town', 'garage', 'relocate'], ['heli', 'home', 'streetview', 'radio']])
+  assert.deepEqual(JSON.parse(JSON.stringify(a.scope.tabRows.map(r => r.map(t => t.id)))), [['route', 'town', 'garage', 'relocate'], ['heli', 'home', 'streetview', 'radio'], ['race']])
+  assert.equal(a.scope.tabs.at(-1).label, 'Land Race and Leaderboard')
   assert.ok(html.includes('ng-repeat="row in tabRows"') && html.includes('ng-repeat="t in row"'))
 })
 test('Ship Day: the Town tab shows the ship, Go to port and the containers to take', () => {
@@ -1104,4 +1105,28 @@ test('every list of rows with a button keeps its rows between updates', () => {
   }
   assert.deepEqual(missing, [])
   assert.ok(html.includes('ng-repeat="d in data.shipping.destinations track by d.id"'))
+})
+
+test('Land Race and Leaderboard tab: copies the live page address, shows the race online, and only join steps in single player', () => {
+  const a = app()
+  const count = a.commands.length
+  a.scope.copyLiveAddress()
+  assert.equal(a.commands.length, count + 1, 'one command')
+  assert.equal(a.commands.at(-1), 'setClipboard("https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/")', 'copies only, opens nothing')
+  assert.equal(a.scope.intro.liveCopied, true)
+  const panel = html.slice(html.indexOf(`ng-if="tab === 'race'"`), html.indexOf(`ng-if="tab === 'heli'"`))
+  const address = panel.indexOf('copyLiveAddress()'), online = panel.indexOf('ng-if="data.standings"'), single = panel.indexOf('ng-if="!data.online"')
+  assert.ok(address >= 0 && address < online && online < single, 'the address on top, then the race, then single player')
+  for (const part of ['Copy address', 'Land race', 'Season leaderboard', 'How to play online', 'The land race is online only'])
+    assert.ok(panel.includes(part), part)
+  for (const gone of ['Ship Day', 'Driving now', 'Live feed']) assert.ok(!panel.includes(gone), gone + ' is not on this tab')
+  assert.ok(!panel.includes('fetch') && !panel.includes('checkServer'), 'nothing is fetched from the web')
+  const st = { race: { win: 50, leader: 'Sam', leaderLand: 1.6 }, board: [{ rank: 1, name: 'Sam', wealth: 550950 }, { rank: 2, name: 'Me', wealth: 530800, mine: true }] }
+  assert.equal(a.scope.raceSummary(st), 'Sam leads with 1.6% of 50%')
+  assert.equal(a.scope.boardSummary(st), "you're 2nd, $20,150 behind Sam")
+  assert.equal(a.scope.boardSummary({ board: [{ rank: 1, name: 'Sam', wealth: 1000 }], me: { rank: 14, wealth: 400, mine: true } }), "you're 14th, $600 behind Sam")
+  assert.equal(a.scope.boardSummary({ board: [{ rank: 1, name: 'Sam', wealth: 1000 }] }), 'Sam leads, $1,000')
+  assert.equal(a.scope.boardSummary({ waiting: true }), 'waiting for the server')
+  assert.equal(a.scope.raceSummary({ race: {} }), 'nobody holds land yet')
+  assert.equal(a.scope.landWidth(25, 50), '50%'); assert.equal(a.scope.landWidth(0, 50), '1%')
 })

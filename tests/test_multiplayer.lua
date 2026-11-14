@@ -372,7 +372,8 @@ do
   local W2, env2 = server(env.files)
   env2.time = env.time
   W2.onHello(1); W2.onJoin(1, J.encode({ v = 1 }))
-  local after = J.decode(env2.sent[#env2.sent].data)
+  local after
+  for _, m in ipairs(env2.sent) do if m.event == 'wwtcShip' then after = J.decode(m.data) end end
   T.check(#after.taken == 1 and after.taken[1].state == 'delivered', 'a restart keeps the ship\'s containers')
   local kept = J.decode(env.files[W.seasonDir() .. '/ships.json'])
   T.eq(kept.ship, 1, 'the ship is kept on disk'); T.eq(#kept.boxes, 1, 'with its containers')
@@ -1399,5 +1400,59 @@ do
   local v = c:view().away
   T.check(v ~= nil and v.tolls.amount == 1500 and v.place == 3, 'shown on the HUD once back on the road')
   T.check(c:dismissAway(), 'Got it'); T.eq(c:view().away, nil, 'closes it')
+end
+-- The Land Race and Leaderboard tab: the server sends each player the season's leaderboard when it changes, the game
+-- checks it, and the HUD gets it with the land race on a server only.
+do
+  local W, env = server()
+  W.SHIP_CONTAINERS = 0
+  W.onHello(1); W.onJoin(1, J.encode({ v = 1 }))
+  W.onHello(2); W.onJoin(2, J.encode({ v = 1 }))
+  local key1 = W.players[1].key
+  W.stats.board = {}
+  for i = 1, 12 do W.stats.board['k' .. i] = { name = 'T' .. i, balance = i * 1000, deliveries = i, baseTown = i == 12 and 'Perth' or nil } end
+  W.stats.board[key1] = { name = 'player1', balance = 500, truckValue = 100, deliveries = 3 }
+  env.sent = {}
+  W.sendBoardToAll()
+  local function boardFor(pid)
+    for _, m in ipairs(env.sent) do if m.pid == pid and m.event == 'wwtcBoard' then return J.decode(m.data) end end
+  end
+  local b1, b2 = boardFor(1), boardFor(2)
+  T.check(b1 ~= nil and b2 ~= nil, 'each player gets the leaderboard')
+  T.eq(#b1.board, W.BOARD_MAX, 'the top ten'); T.eq(b1.board[1].name, 'T12', 'richest first')
+  T.eq(b1.board[1].rank, 1, 'with their place'); T.eq(b1.board[1].baseTown, 'Perth', 'and base town')
+  T.eq(b1.truckers, 13, 'out of everyone on the board')
+  T.eq(b1.me.rank, 13, 'a player further down gets their own place'); T.eq(b1.me.wealth, 600, 'and wealth'); T.eq(b1.me.mine, true, 'b1.me.mine')
+  T.eq(b2.me, nil, 'a player not on the board has no row')
+  for _, r in ipairs(b2.board) do T.check(not r.mine, 'and none is marked theirs') end
+  T.eq(b1.season, W.SEASON, 'the season')
+  env.sent = {}
+  W.sendBoardToAll()
+  T.eq(#env.sent, 0, 'nothing is sent again until it changes')
+  W.stats.board.k1.balance = 99000
+  W.sendBoardToAll()
+  T.eq(boardFor(1).board[1].name, 'T1', 'a change is sent on the next tick')
+  -- The game checks what it gets.
+  local clean = MPC.cleanBoard({ season = 2, day = 3, truckers = 5, board = { { rank = 1, name = 'Sam\nX', wealth = 5000, deliveries = 4, wins = 1 },
+    { rank = 'x', wealth = 1 }, { rank = 2, name = 'Me', wealth = -5 }, { rank = 3, name = 'You', wealth = 100, mine = true } },
+    winner = { season = 1, owner = 'Kez', town = 'Wichita', members = { 'Ruby', 7 }, land = 50.4 } })
+  T.eq(#clean.board, 2, 'bad rows are dropped'); T.eq(clean.board[1].name, 'Sam X', 'names are one line')
+  T.eq(clean.board[1].wins, 1, 'clean.board[1].wins'); T.eq(clean.board[2].mine, true, 'the player\'s own row')
+  T.eq(clean.winner.owner, 'Kez', 'clean.winner.owner'); T.eq(#clean.winner.members, 1, 'winner members are names only')
+  T.eq(MPC.cleanBoard({}), nil, 'no board, nothing')
+  -- The HUD: the race and the board on a server, nothing in single player.
+  local c = F.controller()
+  T.eq(c:view().standings, nil, 'single player has no standings, so nothing is asked for')
+  c.mp = { state = 'server', now = 0, board = clean, race = { win = 50, left = 86400 * 3, at = 0, leader = 'Sam', leaderLand = 1.6 },
+    bases = { { name = 'Sam', town = 'Perth', land = 1.6, outposts = { {} }, members = {} },
+      { name = 'player1', town = 'Parramatta', land = 1.1, mine = true, members = {} },
+      { name = 'Ruby', town = 'Lithgow', land = 0, members = {} } } }
+  local st = c:standingsView()
+  T.check(st ~= nil, 'a server has standings')
+  T.eq(#st.corps, 2, 'corps holding land'); T.eq(st.corps[1].name, 'Sam', 'most first'); T.eq(st.corps[1].outposts, 1, 'st.corps[1].outposts')
+  T.eq(st.corps[2].mine, true, 'yours marked'); T.eq(st.race.daysLeft, 3, 'days left'); T.eq(#st.board, 2, 'the leaderboard')
+  T.eq(st.season, 2, 'st.season'); T.eq(st.waiting, nil, 'st.waiting')
+  c.mp.board = nil
+  T.eq(c:standingsView().waiting, true, 'until the leaderboard comes, it says it is waiting')
 end
 T.done('multiplayer careers')
