@@ -43,6 +43,9 @@ M.RESET_DAMAGE_DROP = 1
 -- bounces; a heavy part or load can bend a little on the way down. For SETTLE_SECONDS whatever
 -- damage it shows is taken as how it stands, not as damage: only damage on top of that is billed.
 M.SETTLE_SECONDS = 4
+-- After a teleport, such as a relocation, BeamNG.Earth puts the car down while the terrain is still
+-- loading and may move it again as it does; it settles for this long instead.
+M.LANDING_SETTLE_SECONDS = 15
 -- How long the HUD app has to show the parts bill box before a corner pop-up shows it instead.
 M.BILL_FALLBACK_SECONDS = 1.5
 -- How long a second-hand car has to spawn before its sale is dropped.
@@ -109,15 +112,18 @@ function M.attach(c)
     return { id = vehicle.id, damage = vehicle.damage + self.owedDamage + self.punctureDamage }
   end
 
-  -- Starts (or restarts) the settle time: see SETTLE_SECONDS. A spawned or reset car starts with
-  -- no damage; with keep (a change of load), the damage it has now stays as it was.
-  function c:startSettle(keep)
+  -- Starts (or extends) the settle time: SETTLE_SECONDS, or seconds. A spawned or reset car starts
+  -- with no damage; with keep (a change of load, a teleport), the damage it has now stays as it was.
+  function c:startSettle(keep, seconds)
+    if self.settleOff then return end
     local carried = 0
     if keep and self.garage then
       local now = self:vehicleDamage()
       carried = now and now.damage or 0
     end
-    self.settleUntil, self.settleCarried = (self.clock or 0) + (self.settleSeconds or M.SETTLE_SECONDS), carried
+    local untilAt = (self.clock or 0) + (seconds or M.SETTLE_SECONDS)
+    self.settleUntil = math.max(untilAt, self.settleUntil or untilAt)
+    self.settleCarried = carried
   end
 
   -- The player vehicle's damage as the game reads it, less what it picked up settling after its

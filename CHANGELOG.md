@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Relocating no longer shows damage the truck doesn't have.** After **Teleport** on a relocation, BeamNG.Earth puts your truck down while the ground is still loading, and it can drop or bump as it lands. The game counted that as damage, so you could arrive with a repair to pay. For the first 15 seconds after any teleport, those bumps no longer count. Damage your truck already had before you left still counts, and so does any crash after you've landed.
+- Saves still work. Players on a server get this when the server runs its update.
+
 ## Build 206 · 14 Nov 2026
 
 - **Fitting a part no longer shows damage the truck doesn't have.** After you change a part, the game rebuilds your truck and drops it onto its springs. With a heavy part or load it bounces, and the game counted that bounce as damage. The repair price on the **Garage** tab went up, the insurance offer could pop up, and swapping parts back and forth could flash **REPAIR STILL OWED** and keep adding to the bill. For the first few seconds after a part change, a reset, or a load going on or off, the truck is now left to settle, and only damage after that counts. Real crashes still count as before, and pressing Insert still doesn't fix your truck for free.

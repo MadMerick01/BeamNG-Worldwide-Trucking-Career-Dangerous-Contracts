@@ -740,6 +740,8 @@ function M.new(deps)
   -- anything else strands the player until they go back or book shipping. A dangerous contract not
   -- yet started is relocated to its start by a teleport that lands there, and starts.
   function c:teleported(from, to)
+    -- Earth drops the car in while the terrain loads: its bumps on the way down are not damage.
+    if self.startSettle then self:startSettle(true, workshop.LANDING_SETTLE_SECONDS) end
     -- Earth still settling the car in at a booking that just landed: not a teleport.
     if not self.booking and not self.load and self:settling(to) then
       if self.stranded then self:settled(to)
