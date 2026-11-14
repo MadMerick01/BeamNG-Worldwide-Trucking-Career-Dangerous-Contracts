@@ -6,7 +6,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
-- **A coffee button on the HUD.** Under the WORLDWIDE TRUCKING title there's now a short line, "This mod will always be free to play", with a gold **Buy MadMerick a coffee** button. Pressing it copies MadMerick's Ko-fi link (ko-fi.com/madmerick), the button changes to **Ko-fi link copied**, and a note underneath asks you to paste it into your web browser. It doesn't open anything or take you out of the game. The mod stays free, and the button is only there for anyone who'd like to chip in.
+- **A coffee button on the HUD.** Under the WORLDWIDE TRUCKING title there's now a short line, "This mod will always be free to play", with a small, soft gold **Buy MadMerick a coffee** button. Pressing it copies MadMerick's Ko-fi link (ko-fi.com/madmerick), the button changes to **Ko-fi link copied**, and a note underneath asks you to paste it into your web browser. It doesn't open anything or take you out of the game. The mod stays free, and the button is only there for anyone who'd like to chip in.
 - Saves still work. Players on a server get this when the server runs its update.
 
 ## Build 200 · 13 Nov 2026
