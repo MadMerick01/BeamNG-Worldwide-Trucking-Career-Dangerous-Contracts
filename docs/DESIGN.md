@@ -191,6 +191,8 @@ Fuel costs money. BeamNG already simulates fuel use, so the mod reads the tank l
 
 **Real petrol stations and prices (MadMerick, 14 Nov).** BeamNG.Earth builds real stations (Overture places and OSM `amenity=fuel`) and lists their pumps in the game's own gas station POIs, so the stock Refuel prompt works there, in BeamMP too. `fuel.lua` finds the pump within `PUMP_METRES` (10 m) from `gameplay_rawPois` and turns on the game's `enableGasStationsInFreeroam` setting once (Earth lists its stations only with it on). Prices are one row per continent in `fuel.PRICES`, petrol and diesel apart, refreshed by hand about monthly from GlobalPetrolPrices.com; the continent comes from the nearest town's country (`fuel.CONTINENT_OF`; Mexico, Central America and the Caribbean are North America, the Middle East Asia, Russia and Turkey Europe), anywhere else pays `fuel.WORLD`. `PRICE_PERCENT` scales them all. At a pump, Refuel and the stock prompt are charged at the pump price; a stock fill the money does not cover is set back to what was paid for. The town Refuel stays as a backup at `TOWN_PRICE_TIMES` (5) the pump price, with a warning to use a pump.
 
+**No free fill on a reset (MadMerick, 14 Nov).** The game fills the tank whenever it resets the car: Earth's teleport on a relocation, Tow car here (`safeTeleport`), Insert and the recovery menu. A reading that rises by more than `PUMP_MARGIN_LITRES` away from a pump, with no Refuel pending and no car on trial, is set back to the last reading, free and without a message, as the damage owed is kept. Repairs, part changes, claims and car swaps already put the fuel back through `beforeRespawn` and `afterRespawn`.
+
 ### Pay modifiers
 
 The generator scores every place once for how hard it is to get to:
