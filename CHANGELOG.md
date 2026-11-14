@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 206 · 14 Nov 2026
+
 - **Fitting a part no longer shows damage the truck doesn't have.** After you change a part, the game rebuilds your truck and drops it onto its springs. With a heavy part or load it bounces, and the game counted that bounce as damage. The repair price on the **Garage** tab went up, the insurance offer could pop up, and swapping parts back and forth could flash **REPAIR STILL OWED** and keep adding to the bill. For the first few seconds after a part change, a reset, or a load going on or off, the truck is now left to settle, and only damage after that counts. Real crashes still count as before, and pressing Insert still doesn't fix your truck for free.
 - Saves still work. Players on a server get this when the server runs its update.
 
