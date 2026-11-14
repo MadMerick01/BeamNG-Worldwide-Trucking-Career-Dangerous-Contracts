@@ -906,6 +906,45 @@ do
   T.check(c:view().saveAllowed, 'Save works')
 end
 
+-- A booked relocation that lands, then reads back at the old spot for a moment while BeamNG.Earth
+-- finishes placing the car, then settles a little way from where it first read: the booking was
+-- used up by the first reading, but the player is where they paid to go, so they are not stranded
+-- with "You teleported without booking a relocation".
+do
+  local shipping = require('earthFreight/shipping')
+  local c, _, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local coroico = shipping.get('coroico')
+  T.check(c:bookShipping('coroico'), 'booked'); T.check(c:teleportToBooking(), 'teleport asked')
+  a.pose = location.destination(coroico, 90, 2500); c:tick(0.1)
+  T.eq(c.booking, nil, 'the first reading near the booking uses it up')
+  a.pose = F.copy(F.PENRITH); c:tick(0.1)
+  a.pose = location.destination(coroico, 270, 1000); c:tick(0.1); c:tick(0.6)
+  T.eq(c.stranded, nil, 'settled at the booking: not stranded')
+  T.eq(c:view().flash.title, 'RELOCATED TO COROICO', 'still told they arrived')
+  T.check(c:view().saveAllowed, 'Save works')
+  -- The grace is only for settling in: after it, a teleport away and back strands as ever.
+  c:tick(Core.LANDING_GRACE_SECONDS or 120)
+  a.pose = shipping.get('bormio'); c:tick(0.1)
+  T.check(c.stranded ~= nil, 'a later unbooked teleport still strands')
+  a.pose = location.destination(coroico, 90, 3000); c:tick(0.1); c:tick(0.6)
+  T.check(c.stranded ~= nil, 'and near the old booking is not where they left from')
+end
+
+-- The same, but the stray reading comes first after landing and the car never reads back where it
+-- first landed: still not stranded once it is at the booking.
+do
+  local shipping = require('earthFreight/shipping')
+  local c, _, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local coroico = shipping.get('coroico')
+  T.check(c:bookShipping('coroico'), 'booked'); T.check(c:teleportToBooking(), 'teleport asked')
+  a.pose = location.destination(coroico, 0, 3000); c:tick(0.1)
+  a.pose = shipping.get('bormio'); c:tick(0.1)
+  a.pose = location.destination(coroico, 180, 1500); c:tick(0.1); c:tick(0.6)
+  T.eq(c.stranded, nil, 'not stranded at the booking')
+end
+
 -- Shipping: book with an empty car, teleport to the coordinates, arrive with the booking used up.
 do
   local shipping = require('earthFreight/shipping')
