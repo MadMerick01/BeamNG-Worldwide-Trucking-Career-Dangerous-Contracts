@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- No changes in the game. The old server downloads are being removed from earlier releases on the Releases page; every release keeps its mod download.
+
 ## Build 203 · 14 Nov 2026
 
 - **The online server is MadMerick's own.** The Releases page no longer has a server download, and the README no longer explains how to host a server. You still join MadMerick's server the same way, from the HUD's **Play online** screen, and the mod download is unchanged.
