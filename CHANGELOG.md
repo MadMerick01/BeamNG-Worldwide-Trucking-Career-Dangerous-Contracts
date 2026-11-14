@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 204 · 14 Nov 2026
+
 - No changes in the game. The old server downloads are being removed from earlier releases on the Releases page; every release keeps its mod download.
 
 ## Build 203 · 14 Nov 2026
