@@ -723,10 +723,23 @@ do
   T.eq(#f.sets, sets + 1, 'the tank is set back'); T.near(f.sets[#f.sets].litres, 10 + paid, 1e-9, 'to what was paid for')
   T.eq(f.sets[#f.sets].serial, 0, 'setting it back is not a refuel'); T.near(c.fuel.litres, 10 + paid, 1e-9, 'kept as paid for')
   T.check(c:view().balance >= 0, 'never below zero'); T.check(c:view().fuelFeedback:find('the rest went back', 1, true), 'told why')
-  -- Away from the pump the tank rising is not charged (a reset, another mod).
+  -- Away from the pump the tank rising is the game resetting the car (a relocation, a tow,
+  -- Insert): not charged, and put back to what it was.
   c.profile.progression.balance = 1000
-  f.pump = nil; c:tick(2.1); c:fuelReading(1, 10, 50, 'diesel'); c:tick(2.1); c:fuelReading(1, 40, 50, 'diesel')
+  f.pump = nil; c:tick(2.1); c:fuelReading(1, 10, 50, 'diesel')
+  local setsBefore = #f.sets
+  c:tick(2.1); c:fuelReading(1, 50, 50, 'diesel')
   T.eq(c:view().balance, 1000, 'no pump, no charge')
+  T.eq(#f.sets, setsBefore + 1, 'a reset\'s free fill is undone'); T.near(f.sets[#f.sets].litres, 10, 1e-9, 'back to 10 L')
+  T.eq(f.sets[#f.sets].serial, 0, 'free, not a refuel'); T.near(c.fuel.litres, 10, 1e-9, 'the tank counts as 10 L')
+  c:fuelSet(1, 0, 50, 10, 50); T.eq(c:view().balance, 1000, 'putting it back costs nothing')
+  -- Burning fuel, or a small wobble in the reading, is left alone.
+  c:tick(2.1); c:fuelReading(1, 9.5, 50, 'diesel'); c:tick(2.1); c:fuelReading(1, 10, 50, 'diesel')
+  T.eq(#f.sets, setsBefore + 1, 'no set back for a small rise')
+  -- Trying out another car: its own full tank is not touched.
+  c.pendingCar = { id = 1, fromId = 1 }
+  c:tick(2.1); c:fuelReading(1, 50, 50, 'diesel'); T.eq(#f.sets, setsBefore + 1, 'a car on trial keeps its fuel')
+  c.pendingCar = nil
   T.check(not c:view().refuel.allowed, 'no Refuel away from pumps and towns')
   T.eq(c:view().refuel.problem, 'Stop at a petrol station pump, or in a town, to refuel.', 'told where to go')
 end
@@ -771,7 +784,7 @@ do
   T.check(c:view().town.refuel.full, 'tank now full'); T.check(not c:view().town.refuelAllowed, 'nothing to fill')
   c:fuelSet(1, f.sets[1].serial, 20, 50, 50); T.eq(c:view().balance, before - fuel.cost(30, fuel.price('Oceania', 'gasoline', true)), 'a repeated answer is not charged twice')
   -- Short of money: fills as far as it goes.
-  c.profile.progression.balance = 50; c:fuelReading(1, 10, 50)
+  c.profile.progression.balance = 50; c:fuelReading(1, 12, 50)
   T.near(c:view().town.refuel.litres, math.floor(50 / fuel.price('Oceania', 'gasoline', true)), 1e-9, 'only what the money buys')
   -- Away from a town there is no Refuel.
   a.pose = location.destination(F.PENRITH, 0, 1900); c:tick(0.1); c:tick(0.6); c:tick(0.6)
