@@ -44,6 +44,10 @@ local NEARBY_COUNT = 6
 local FLASH_SECONDS = 8
 -- After Teleport there, the button waits this long for Earth to load the terrain and place the car.
 local TELEPORT_WAIT_SECONDS = 30
+-- After a booked relocation lands, BeamNG.Earth can still read the car somewhere else for a moment
+-- (back where it left, or off a little) before it settles. For this long, any jump that ends near the
+-- booked place is that settling, not a teleport, and being near it frees a player stranded meanwhile.
+M.LANDING_GRACE_SECONDS = 120
 -- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
 -- been stopped this long and nothing else is going on.
 local AUTOSAVE_SECONDS = 3
@@ -197,7 +201,7 @@ function M.new(deps)
     self.teleportAskedAt, self.teleportFeedback, self.contractTeleportAt, self.bookingTeleportAt = nil, nil, nil, nil
     -- Shipping booked and not yet used, and where an unbooked teleport left from. Neither is saved:
     -- Save waits until both are settled.
-    self.booking, self.stranded, self.shippingFeedback, self.lastDriven = nil, nil, nil, nil
+    self.booking, self.stranded, self.shippingFeedback, self.lastDriven, self.landing = nil, nil, nil, nil, nil
     self.shippingSearch = nil
     -- A puncture not yet repaired; a reload respawns the car, so its tyre repair is owed instead.
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
@@ -662,6 +666,21 @@ function M.new(deps)
     self:applyWeight(true)
   end
 
+  local function coordinates(p) return string.format('%.5f, %.5f', p.latitude, p.longitude) end
+
+  -- The place a booked relocation just landed at, while the car may still be settling in there
+  -- (LANDING_GRACE_SECONDS), or nil.
+  function c:recentLanding()
+    local l = self.landing
+    if l and self.clock - l.at <= M.LANDING_GRACE_SECONDS then return l end
+  end
+
+  -- Whether a point is the place a booked relocation just landed at.
+  function c:settling(point)
+    local l = self:recentLanding()
+    return l ~= nil and shipping.arrived(point, l)
+  end
+
   -- Driving. Distance counts only once the player has arrived. A teleport-sized jump never counts;
   -- one longer than a short hop goes through teleported. While stranded nothing counts.
   function c:drive(sample, dt)
@@ -692,6 +711,10 @@ function M.new(deps)
       self:landAtBooking('')
       return
     end
+    if self.stranded and self:settling(sample) then
+      self:settled(sample)
+      return
+    end
     if self.stranded then
       if shipping.returned(sample, self.stranded) then self:unstrand() end
       return
@@ -702,8 +725,6 @@ function M.new(deps)
     if self.load then self.load.drivenKm = self.load.drivenKm + metres / 1000 end
     self:roadPuncture(sample, metres, dt)
   end
-
-  local function coordinates(p) return string.format('%.5f, %.5f', p.latitude, p.longitude) end
 
   function c:unstrand()
     self.stranded = nil
@@ -716,6 +737,12 @@ function M.new(deps)
   -- anything else strands the player until they go back or book shipping. A dangerous contract not
   -- yet started is relocated to its start by a teleport that lands there, and starts.
   function c:teleported(from, to)
+    -- Earth still settling the car in at a booking that just landed: not a teleport.
+    if not self.booking and not self.load and self:settling(to) then
+      if self.stranded then self:settled(to)
+      else self.diag:event('landing_settled', coordinates(from) .. ' -> ' .. coordinates(to)) end
+      return
+    end
     -- The trailer is left behind, so it goes into the garage.
     local trailerNote = self:trailerTeleported()
     if trailerNote ~= '' then self.trailerFeedback = trailerNote:gsub('^ ', '') end
@@ -741,10 +768,13 @@ function M.new(deps)
       self:unstrand()
       if lost ~= '' then self:showFlash('cancelled', 'LOAD LOST', 'You are back where you teleported from.' .. lost) end
     else
-      self.stranded = self.stranded or from
+      -- Straight after landing at a booking, the place left from is the booking, not wherever Earth
+      -- read the car for a moment on the way in.
+      local landed = self:recentLanding()
+      self.stranded = self.stranded or (landed and location.copy(landed)) or from
       self:showFlash('cancelled', 'RELOCATION NOT BOOKED', 'Deliveries and driving do not count until you go back to '
         .. coordinates(self.stranded) .. ' (copy them on the Route tab), or book a relocation on the Relocate tab.' .. lost)
-      self.diag:event('stranded', coordinates(self.stranded), 'W')
+      self.diag:event('stranded', coordinates(self.stranded) .. ' (' .. coordinates(from) .. ' -> ' .. coordinates(to) .. ')', 'W')
     end
   end
 
@@ -753,6 +783,7 @@ function M.new(deps)
   function c:landAtBooking(lost)
     local b = self.booking
     self.booking, self.stranded, self.bookingTeleportAt = nil, nil, nil
+    self.landing = { latitude = b.latitude, longitude = b.longitude, at = self.clock, name = b.name, region = b.region }
     local paid = ''
     if b.offer then
       self.offer = { latitude = b.latitude, longitude = b.longitude, name = b.name, fee = b.fee }
@@ -762,7 +793,17 @@ function M.new(deps)
     self:showFlash(lost ~= '' and 'cancelled' or 'delivered', 'RELOCATED TO ' .. b.name:upper(),
       'Welcome to ' .. b.region .. '. Find a load in town.' .. paid .. lost)
     self:autoSaveSoon('your relocation')
-    self.diag:event('shipped', b.id)
+    local here = self.lastSample and self.lastSample.valid and location.valid(self.lastSample) and self.lastSample
+    self.diag:event('shipped', b.id .. (here and (' at ' .. coordinates(here)) or ''))
+  end
+
+  -- A stranding while Earth settled the car in at the booking it just landed at is undone.
+  function c:settled(point)
+    local l = self.landing
+    self.stranded = nil
+    self:showFlash('delivered', 'RELOCATED TO ' .. l.name:upper(), 'Welcome to ' .. l.region .. '. Find a load in town.')
+    self:autoSaveSoon('your relocation')
+    self.diag:event('landing_settled', coordinates(point))
   end
 
   -- What the player is told while on foot. (Away in a helicopter or the sightseeing car: c:awayText.)
