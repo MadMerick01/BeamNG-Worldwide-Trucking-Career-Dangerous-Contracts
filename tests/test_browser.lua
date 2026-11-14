@@ -54,16 +54,4 @@ do -- not Windows: only the game's own opener
   T.check(ok and how == 'openWebBrowser' and asked == URL, 'openWebBrowser off Windows')
 end
 
-do -- the support page, exactly, and nothing that only looks like it
-  T.eq(B.SUPPORT, 'https://ko-fi.com/madmerick', 'the Ko-fi page')
-  T.check(B.safe(B.SUPPORT), 'is opened')
-  for _, other in ipairs({ 'https://ko-fi.com/someoneelse', 'https://ko-fi.com/madmerick" & calc', 'https://ko-fi.com/madmerick/x', 'http://ko-fi.com/madmerick' }) do
-    T.check(not B.safe(other), 'not ' .. other)
-  end
-  B._reset()
-  local calls = {}
-  local ok, how = B.open(B.SUPPORT, { windows = true, ffi = fakeFfi(42, calls) })
-  T.check(ok and how == 'shell', 'Windows opens it in the default browser'); T.eq(calls[1], 'open ' .. B.SUPPORT, 'the Ko-fi page')
-end
-
 T.done('browser')

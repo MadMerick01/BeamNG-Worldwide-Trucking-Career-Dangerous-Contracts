@@ -262,15 +262,4 @@ do
   T.eq(SV.radioParam('/position?radio=' .. string.rep('a', 59) .. '%C3%A9'), string.rep('a', 59), 'never half a letter')
 end
 
--- In the game: the coffee button opens the support page through the same opener.
-do
-  local opened = {}
-  local c = F.controller({ openUrl = function(url) opened[#opened + 1] = url; return true end })
-  T.check(c:openSupport(), 'the coffee button opens the browser')
-  T.eq(opened[1], 'https://ko-fi.com/madmerick', 'at the Ko-fi page')
-  T.check(not F.controller({ openUrl = function() return false end }):openSupport(), 'false when the browser did not open')
-  T.check(not F.controller({ openUrl = function() error('blocked') end }):openSupport(), 'and when the opener failed')
-  T.check(not F.controller({}):openSupport(), 'and with no opener')
-end
-
 T.done('street view')

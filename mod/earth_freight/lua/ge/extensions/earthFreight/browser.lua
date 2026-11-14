@@ -5,21 +5,16 @@
 -- game's openWebBrowser does not open http://127.0.0.1 addresses, so neither brings up a browser
 -- any more. Windows' own ShellExecute, called through LuaJIT's ffi, opens the address in the
 -- default browser with no console window. Then os.execute's start command, which flashes a console
--- window for a moment, and last openWebBrowser. Only addresses on this computer, and MadMerick's
--- one fixed support page, are opened, so nothing typed or fetched can reach the shell.
+-- window for a moment, and last openWebBrowser. Only addresses on this computer are opened, so
+-- nothing typed or fetched can reach the shell.
 --
 -- The game's pieces are injected (env), so tests can stand in for them.
 local M = {}
 
 local SW_SHOWNORMAL = 1
 
--- MadMerick's support page, opened by the coffee button under the HUD's title.
-M.SUPPORT = 'https://ko-fi.com/madmerick'
-
--- Only this computer's own pages, http://127.0.0.1:<port>/<letters, digits, slashes>, and the
--- support page above, exactly.
+-- Only this computer's own pages: http://127.0.0.1:<port>/<letters, digits, slashes>.
 function M.safe(url)
-  if url == M.SUPPORT then return true end
   return type(url) == 'string' and url:match('^http://127%.0%.0%.1:%d+/[%w/%-_]*$') ~= nil
 end
 

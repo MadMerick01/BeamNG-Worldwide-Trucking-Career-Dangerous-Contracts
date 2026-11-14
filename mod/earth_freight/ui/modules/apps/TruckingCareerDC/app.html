@@ -165,10 +165,10 @@
       <button type="button" ng-click="setMinimised(true)" title="Minimise to a small strip with your money, job and where you are" aria-label="Minimise" style="padding:1px 9px;border:1px solid #568d7a;border-radius:4px;">&#8211;</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
-      <div style="flex:1;min-width:0;font-size:12px;color:#7d8b88;">This mod is always free</div>
-      <button type="button" ng-click="openSupport()" class="ef-coffee" title="Opens ko-fi.com/madmerick in your web browser and copies the link"><span aria-hidden="true">&#9749;</span> Buy MadMerick a coffee</button>
+      <div style="flex:1;min-width:0;font-size:12px;color:#7d8b88;">This mod is always free. <span style="color:#f2c94c;"><span aria-hidden="true">&#9749;</span> Buy MadMerick a coffee</span></div>
+      <button type="button" ng-click="copySupport()" class="ef-coffee" title="Copies ko-fi.com/madmerick so you can paste it into your web browser">{{hud.supportCopied ? 'Copied' : 'Copy Ko-fi link'}}</button>
     </div>
-    <div ng-if="hud.supportOpened" role="status" style="font-size:12px;color:#7d8b88;">Thank you! Ko-fi is opening in your browser. The link is copied too, in case it doesn't.</div>
+    <div ng-if="hud.supportCopied" role="status" style="font-size:12px;color:#7d8b88;">Thank you! <span style="white-space:nowrap;">ko-fi.com/madmerick</span> is copied. Paste it into your web browser.</div>
 
     <div>
     <div ng-if="data.where" style="margin-top:4px;">
