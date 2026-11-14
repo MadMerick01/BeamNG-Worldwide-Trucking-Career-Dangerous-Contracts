@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The server's name shows cleanly when it has BeamMP colour codes.** A server owner can style the name in the BeamMP server browser with codes such as ^l (bold) and ^f (white). Those codes now only change how the name looks in the server browser: the server's web page and the "how to join" steps on the HUD's **Play online** screen show the plain name, for example "A WW Trucking Career | MadMerick", instead of "^l^fA WW Trucking Career…".
+- Saves still work. Server owners need to run the server update to get this.
+
 ## Build 201 · 14 Nov 2026
 
 - **A coffee button on the HUD.** Under the WORLDWIDE TRUCKING title there's now a short line, "This mod will always be free to play", with a small, soft gold **Buy MadMerick a coffee** button. Pressing it copies MadMerick's Ko-fi link (ko-fi.com/madmerick), the button changes to **Ko-fi link copied**, and a note underneath asks you to paste it into your web browser. It doesn't open anything or take you out of the game. The mod stays free, and the button is only there for anyone who'd like to chip in.
