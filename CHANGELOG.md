@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 210 · 14 Nov 2026
+
 - **Relocating, towing or resetting your car no longer fills the tank for free.** The game refills the tank whenever it resets the car, which happens when you relocate, use Tow car here, press Insert or use the recovery menu. The mod now quietly puts your fuel back to where it was, just as it already did after a repair or a part change. Saves still work.
 
 ## Build 209 · 14 Nov 2026
