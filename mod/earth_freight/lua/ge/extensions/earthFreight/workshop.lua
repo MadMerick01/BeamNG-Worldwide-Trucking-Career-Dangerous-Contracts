@@ -39,6 +39,13 @@ M.TOW_FEE = 0
 M.TOW_RANGE = 50
 -- A drop in the car's damage bigger than this, with no repair or respawn, is the game resetting it.
 M.RESET_DAMAGE_DROP = 1
+-- After the car is spawned or reset, or its load's weight goes on, it drops onto its springs and
+-- bounces; a heavy part or load can bend a little on the way down. For SETTLE_SECONDS whatever
+-- damage it shows is taken as how it stands, not as damage: only damage on top of that is billed.
+M.SETTLE_SECONDS = 4
+-- After a teleport, such as a relocation, BeamNG.Earth puts the car down while the terrain is still
+-- loading and may move it again as it does; it settles for this long instead.
+M.LANDING_SETTLE_SECONDS = 15
 -- How long the HUD app has to show the parts bill box before a corner pop-up shows it instead.
 M.BILL_FALLBACK_SECONDS = 1.5
 -- How long a second-hand car has to spawn before its sale is dropped.
@@ -100,9 +107,36 @@ end
 
 function M.attach(c)
   function c:inspectDamage()
-    local vehicle, why = self.garage:inspect()
+    local vehicle, why = self:vehicleDamage()
     if not vehicle then return nil, why end
     return { id = vehicle.id, damage = vehicle.damage + self.owedDamage + self.punctureDamage }
+  end
+
+  -- Starts (or extends) the settle time: SETTLE_SECONDS, or seconds. A spawned or reset car starts
+  -- with no damage; with keep (a change of load, a teleport), the damage it has now stays as it was.
+  function c:startSettle(keep, seconds)
+    if self.settleOff then return end
+    local carried = 0
+    if keep and self.garage then
+      local now = self:vehicleDamage()
+      carried = now and now.damage or 0
+    end
+    local untilAt = (self.clock or 0) + (seconds or M.SETTLE_SECONDS)
+    self.settleUntil = math.max(untilAt, self.settleUntil or untilAt)
+    self.settleCarried = carried
+  end
+
+  -- The player vehicle's damage as the game reads it, less what it picked up settling after its
+  -- last spawn, reset or change of load. While it settles, it keeps the damage it had before.
+  function c:vehicleDamage()
+    local vehicle, why = self.garage:inspect()
+    if not vehicle then return nil, why end
+    if self.settleUntil and (self.clock or 0) < self.settleUntil then
+      self.settleBaseline = { id = vehicle.id, damage = math.max(0, vehicle.damage - (self.settleCarried or 0)) }
+    end
+    local base = self.settleBaseline
+    local offset = base and base.id == vehicle.id and base.damage or 0
+    return { id = vehicle.id, damage = math.max(0, vehicle.damage - offset) }
   end
 
   -- What the player's own car is worth, when vehicleId is that car: its price plus the parts
@@ -584,6 +618,8 @@ function M.attach(c)
       return
     end
     self.partsCheckDue, self.respawned, self.wearDue = true, true, true
+    -- The new car drops onto its springs: see SETTLE_SECONDS.
+    self:startSettle()
     -- Seen by a hire waiting for its vehicle, or for the car coming back: when the sightseeing car
     -- and the player's own car are both Moonhawks, the model alone does not tell them apart.
     if self.hire and (self.hire.stage == 'spawning' or self.hire.stage == 'swapping') then self.hire.respawned = true end
@@ -598,6 +634,7 @@ function M.attach(c)
     if not owned or vehicleId ~= owned.id then return end
     if self.fuel and self.fuel.vehicleId == owned.id then self.fuel.restore = true end
     self.appliedWeight, self.respawned = nil, true
+    self:startSettle()
   end
 
   -- Called every tick: when the car's damage drops with no repair or respawn of ours going on, the
@@ -613,7 +650,7 @@ function M.attach(c)
       self.rawDamage = nil
       return
     end
-    local raw, owned = self.garage:inspect(), self.ownedParts
+    local raw, owned = self:vehicleDamage(), self.ownedParts
     if not raw and owned and not self.ourRespawn and not self.insurancePending then return end
     if not raw or not owned or raw.id ~= owned.id or self.ourRespawn or self.insurancePending then
       self.rawDamage = nil

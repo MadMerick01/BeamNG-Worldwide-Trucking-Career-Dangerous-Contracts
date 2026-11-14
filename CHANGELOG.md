@@ -10,6 +10,33 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - Online, the tab shows the land race (every corp holding land, with its share and a bar towards the winning share, yours highlighted) and the season leaderboard (the top 10 by wealth, with your own place even if you're further down). It comes straight from the server you're on, so it uses no extra internet, and it updates as things change.
 - In single player, the tab shows nothing from the internet. It explains that the land race is online only, lists the steps to join the server, and has a Discord button.
 - Saves still work. Players on a server see the leaderboard once the server runs its update. Until then the tab says it's waiting for the server.
+
+## Build 207 · 14 Nov 2026
+
+- **Relocating no longer shows damage the truck doesn't have.** After **Teleport** on a relocation, BeamNG.Earth puts your truck down while the ground is still loading, and it can drop or bump as it lands. The game counted that as damage, so you could arrive with a repair to pay. For the first 15 seconds after any teleport, those bumps no longer count. Damage your truck already had before you left still counts, and so does any crash after you've landed.
+- Saves still work. Players on a server get this when the server runs its update.
+
+## Build 206 · 14 Nov 2026
+
+- **Fitting a part no longer shows damage the truck doesn't have.** After you change a part, the game rebuilds your truck and drops it onto its springs. With a heavy part or load it bounces, and the game counted that bounce as damage. The repair price on the **Garage** tab went up, the insurance offer could pop up, and swapping parts back and forth could flash **REPAIR STILL OWED** and keep adding to the bill. For the first few seconds after a part change, a reset, or a load going on or off, the truck is now left to settle, and only damage after that counts. Real crashes still count as before, and pressing Insert still doesn't fix your truck for free.
+- Saves still work. Players on a server get this when the server runs its update.
+
+## Build 205 · 14 Nov 2026
+
+- **A relocation you paid for no longer leaves you stranded when you get there.** Sometimes, after pressing **Teleport** on a booked relocation, you arrived at the right place but got "You teleported without booking a relocation", with driving and deliveries switched off. While BeamNG.Earth finishes putting your car down, it can briefly report the car somewhere else (often back where you started) before it settles. The game took that blip as a second, unbooked teleport. For two minutes after you arrive, those blips are now ignored, and if one did strand you, you're freed the moment your car is back at your booked destination. Teleporting somewhere else without a booking still strands you as before.
+- Saves still work. Players on a server get this when the server runs its update.
+
+## Build 204 · 14 Nov 2026
+
+- No changes in the game. The old server downloads are being removed from earlier releases on the Releases page; every release keeps its mod download.
+
+## Build 203 · 14 Nov 2026
+
+- **The online server is MadMerick's own.** The Releases page no longer has a server download, and the README no longer explains how to host a server. You still join MadMerick's server the same way, from the HUD's **Play online** screen, and the mod download is unchanged.
+- Saves and online careers still work. Nothing to do for players.
+
+## Build 202 · 14 Nov 2026
+
 - **The server's name shows cleanly when it has BeamMP colour codes.** A server owner can style the name in the BeamMP server browser with codes such as ^l (bold) and ^f (white). Those codes now only change how the name looks in the server browser: the server's web page and the "how to join" steps on the HUD's **Play online** screen show the plain name, for example "A WW Trucking Career | MadMerick", instead of "^l^fA WW Trucking Career…".
 - Saves still work. Server owners need to run the server update to get this.
 

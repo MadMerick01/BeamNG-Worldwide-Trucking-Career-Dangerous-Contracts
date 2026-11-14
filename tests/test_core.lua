@@ -651,6 +651,43 @@ do
   T.check(c:buyParts(), 'parts paid'); T.eq(c.owedDamage, 800, 'the later crash is still owed')
 end
 
+-- The car drops onto its springs after a part change, a reset or a new load, and a heavy part can
+-- bend a little on the way down: what it picks up settling is not damage, only what comes after.
+do
+  local c, io, a, g = F.controller({ settle = true })
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  F.advance(c, 5)
+  c:addMoney(10000)
+  -- A part change: the car bounces and the game reads damage, even a lot, while it settles.
+  g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
+  T.check(c.pendingParts ~= nil, 'a parts bill'); T.eq(c.pendingParts.repair, 0, 'nothing to repair on it')
+  g.damage = 300; c:tick(0.1); g.damage = 20000; c:tick(0.5)
+  T.eq(c.lastDamage.damage, 0, 'settling is not damage'); T.eq(c:view().insurance, nil, 'no insurance offer')
+  -- The game may still show the old car's damage just after the respawn: its drop is no reset.
+  g.damage = 0; c:tick(0.1); g.damage = 300; c:tick(0.1)
+  T.eq(c.owedDamage, 0, 'nothing owed'); T.check(not (c:view().flash and c:view().flash.title == 'REPAIR STILL OWED'), 'no repair warning')
+  F.advance(c, 4)
+  T.eq(c.lastDamage.damage, 0, 'still none once it has settled'); T.check(c:buyParts(), 'paid'); T.eq(c.owedDamage, 0, 'with no repair owed')
+  -- Trying another part, and putting it back, owes nothing either.
+  g:fit('turbo', nil); c:vehicleSpawned(); c:tick(0.1); g.damage = 900; c:tick(0.1)
+  g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1); g.damage = 400; F.advance(c, 5)
+  T.eq(c.pendingParts, nil, 'back to the paid parts'); T.eq(c.owedDamage, 0, 'nothing owed'); T.eq(c.lastDamage.damage, 0, 'no damage')
+  -- A crash after it has settled counts as usual.
+  g.damage = 2400; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 2000, 'only the crash counts')
+  -- A new load: the car sinks and bounces, and keeps the damage it had.
+  c:startSettle(true); g.damage = 2700; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 2000, 'the crash is kept, the settling is not')
+  T.eq(c.owedDamage, 0, 'and it is no reset')
+  F.advance(c, 5); g.damage = 3700; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 3000, 'later damage counts again')
+  -- Insert still owes the damage it clears.
+  c:vehicleReset(1); g.damage = 0; c:tick(0.1)
+  T.eq(c.owedDamage, 3000, 'a reset is not a free repair')
+  g.damage = 500; c:tick(0.1)
+  T.eq(c.owedDamage, 3000, 'its settling adds nothing'); T.eq(c.lastDamage.damage, 3000, 'just what is owed')
+end
+
 -- Fuel: read from the car, Refuel fills it in a town, charged for what went in.
 do
   local c, io, a, g, _, f = F.controller()
@@ -904,6 +941,69 @@ do
   T.eq(c.booking, nil, 'the booking is used up on landing'); T.eq(c.stranded, nil, 'and the stranding forgiven')
   T.eq(c:view().flash.title, 'RELOCATED TO COROICO', 'told they arrived')
   T.check(c:view().saveAllowed, 'Save works')
+end
+
+-- A relocation: BeamNG.Earth puts the car down while the terrain loads, and it bumps on the way
+-- down. That is not damage; the damage it had before stays, and a crash once it has settled counts.
+do
+  local shipping = require('earthFreight/shipping')
+  local W = require('earthFreight/workshop')
+  local c, _, a, g = F.controller({ settle = true })
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  F.advance(c, 5)
+  g.damage = 1000; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 1000, 'a crash before leaving')
+  local coroico = shipping.get('coroico')
+  T.check(c:bookShipping('coroico'), 'booked'); T.check(c:teleportToBooking(), 'teleport asked')
+  a.pose = location.destination(coroico, 0, 500); c:tick(0.1)
+  T.eq(c:view().flash.title, 'RELOCATED TO COROICO', 'arrived')
+  g.damage = 1800; c:tick(0.1); F.advance(c, W.SETTLE_SECONDS + 2); g.damage = 3000; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 1000, 'the landing adds nothing, even a while after')
+  T.eq(c.owedDamage, 0, 'and owes nothing')
+  -- Earth placing it again with a reset: the crash from before is still owed, the bump is not.
+  c:vehicleReset(1); g.damage = 200; c:tick(0.1)
+  T.eq(c.owedDamage, 1000, 'the crash from before is still owed'); T.eq(c.lastDamage.damage, 1000, 'and nothing more')
+  F.advance(c, W.LANDING_SETTLE_SECONDS); g.damage = 700; c:tick(0.1)
+  T.eq(c.lastDamage.damage, 1500, 'a crash once it has settled counts')
+end
+
+-- A booked relocation that lands, then reads back at the old spot for a moment while BeamNG.Earth
+-- finishes placing the car, then settles a little way from where it first read: the booking was
+-- used up by the first reading, but the player is where they paid to go, so they are not stranded
+-- with "You teleported without booking a relocation".
+do
+  local shipping = require('earthFreight/shipping')
+  local c, _, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local coroico = shipping.get('coroico')
+  T.check(c:bookShipping('coroico'), 'booked'); T.check(c:teleportToBooking(), 'teleport asked')
+  a.pose = location.destination(coroico, 90, 2500); c:tick(0.1)
+  T.eq(c.booking, nil, 'the first reading near the booking uses it up')
+  a.pose = F.copy(F.PENRITH); c:tick(0.1)
+  a.pose = location.destination(coroico, 270, 1000); c:tick(0.1); c:tick(0.6)
+  T.eq(c.stranded, nil, 'settled at the booking: not stranded')
+  T.eq(c:view().flash.title, 'RELOCATED TO COROICO', 'still told they arrived')
+  T.check(c:view().saveAllowed, 'Save works')
+  -- The grace is only for settling in: after it, a teleport away and back strands as ever.
+  c:tick(Core.LANDING_GRACE_SECONDS or 120)
+  a.pose = shipping.get('bormio'); c:tick(0.1)
+  T.check(c.stranded ~= nil, 'a later unbooked teleport still strands')
+  a.pose = location.destination(coroico, 90, 3000); c:tick(0.1); c:tick(0.6)
+  T.check(c.stranded ~= nil, 'and near the old booking is not where they left from')
+end
+
+-- The same, but the stray reading comes first after landing and the car never reads back where it
+-- first landed: still not stranded once it is at the booking.
+do
+  local shipping = require('earthFreight/shipping')
+  local c, _, a = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local coroico = shipping.get('coroico')
+  T.check(c:bookShipping('coroico'), 'booked'); T.check(c:teleportToBooking(), 'teleport asked')
+  a.pose = location.destination(coroico, 0, 3000); c:tick(0.1)
+  a.pose = shipping.get('bormio'); c:tick(0.1)
+  a.pose = location.destination(coroico, 180, 1500); c:tick(0.1); c:tick(0.6)
+  T.eq(c.stranded, nil, 'not stranded at the booking')
 end
 
 -- Shipping: book with an empty car, teleport to the coordinates, arrive with the booking used up.

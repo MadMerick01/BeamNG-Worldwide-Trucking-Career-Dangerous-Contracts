@@ -1,5 +1,5 @@
 -- Careers on a BeamMP server. On a server running the Worldwide Trucking server plugin
--- (server/WorldwideTrucking/main.lua), the career is the server's: it is fetched on joining, kept in a folder of its
+-- (MadMerick's own server), the career is the server's: it is fetched on joining, kept in a folder of its
 -- own on this PC while playing (never the single-player save folder), and every save is sent back to the server.
 -- On a server without the plugin, the multiplayer career is kept on this PC only, again apart from the single-player
 -- one. The messages and frames are described at the top of the server plugin. No game globals here: the game's
