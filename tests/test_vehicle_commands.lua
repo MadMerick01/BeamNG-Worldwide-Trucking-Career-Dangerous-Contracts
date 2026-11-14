@@ -207,4 +207,15 @@ do
     generation = function() error('none') end, stationsShown = function() return true end, showStations = function() end })
   T.eq(broken:pumpNear(0), nil, 'a broken station list is no pump'); T.check(not broken:showStations(), 'already on: left alone')
 end
+-- Turning on the game's gas stations also has the game gather its POIs again, so Earth's pumps show.
+do
+  local value, cleared = false, 0
+  local oldSettings, oldPois = rawget(_G, 'settings'), rawget(_G, 'gameplay_rawPois')
+  settings = { getValue = function() return value end, setValue = function(_, v) value = v end }
+  gameplay_rawPois = { clear = function() cleared = cleared + 1 end }
+  local f = fuel.new()
+  T.check(f:showStations(), 'turned on'); T.eq(value, true, 'the setting is on'); T.eq(cleared, 1, 'the POIs are gathered again')
+  T.check(not f:showStations(), 'already on: nothing to do'); T.eq(cleared, 1, 'not gathered again')
+  settings, gameplay_rawPois = oldSettings, oldPois
+end
 T.done('vehicle commands')

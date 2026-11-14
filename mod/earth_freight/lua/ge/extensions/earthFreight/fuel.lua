@@ -139,7 +139,12 @@ local function defaults()
     generation = function() return gameplay_rawPois and gameplay_rawPois.getRawPoiGeneration and gameplay_rawPois.getRawPoiGeneration() end,
     -- Shows the game's gas stations outside career; Earth only lists its stations with it on.
     stationsShown = function() return settings.getValue('enableGasStationsInFreeroam') end,
-    showStations = function() settings.setValue('enableGasStationsInFreeroam', true) end,
+    -- Turning it on is not seen until the game gathers its POIs again (Earth clears them the same
+    -- way when its stations change), so the pumps and their Refuel prompt show without a restart.
+    showStations = function()
+      settings.setValue('enableGasStationsInFreeroam', true)
+      if gameplay_rawPois and gameplay_rawPois.clear then gameplay_rawPois.clear() end
+    end,
   }
 end
 
