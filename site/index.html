@@ -225,6 +225,8 @@ var map = null, layer = null
 
 function $(id) { return document.getElementById(id) }
 function text(value) { return value === null || value === undefined ? '' : String(value) }
+// A server name without BeamMP's ^ colour and style codes (^l bold, ^f white and so on).
+function plainName(value) { return text(value).replace(/\^[0-9a-z]/gi, '').trim() }
 function num(value) { return typeof value === 'number' && isFinite(value) ? value : null }
 function money(value) { var n = num(value); return n === null ? '–' : '$' + Math.round(n).toLocaleString('en-US') }
 function count(value) { var n = num(value); return n === null ? '–' : Math.round(n).toLocaleString('en-US') }
@@ -311,7 +313,7 @@ function renderTiles() {
   var season = s.season && num(s.season.number)
   var day = s.season && num(s.season.day)
   $('t-season').textContent = season === null ? '–' : season + (day !== null ? ' · day ' + day : '')
-  if (s.server && s.server.name) { $('server-name').textContent = text(s.server.name); $('join-name').textContent = text(s.server.name) }
+  if (s.server && plainName(s.server.name)) { $('server-name').textContent = plainName(s.server.name); $('join-name').textContent = plainName(s.server.name) }
   if (s.server && s.server.earthVersion) $('earth-version').textContent = text(s.server.earthVersion)
 }
 
