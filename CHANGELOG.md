@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 205 · 14 Nov 2026
+
 - **A relocation you paid for no longer leaves you stranded when you get there.** Sometimes, after pressing **Teleport** on a booked relocation, you arrived at the right place but got "You teleported without booking a relocation", with driving and deliveries switched off. While BeamNG.Earth finishes putting your car down, it can briefly report the car somewhere else (often back where you started) before it settles. The game took that blip as a second, unbooked teleport. For two minutes after you arrive, those blips are now ignored, and if one did strand you, you're freed the moment your car is back at your booked destination. Teleporting somewhere else without a booking still strands you as before.
 - Saves still work. Players on a server get this when the server runs its update.
 
