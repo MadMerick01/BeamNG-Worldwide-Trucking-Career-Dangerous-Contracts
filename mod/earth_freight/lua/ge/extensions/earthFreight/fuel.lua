@@ -10,19 +10,19 @@
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
--- Real pump prices in US dollars a litre, one per continent, refreshed about monthly by hand from
--- GlobalPetrolPrices.com (October 2026 averages; check them before each release).
-M.PRICES_FROM = 'October 2026'
+-- Real pump prices in US dollars a litre, one per continent (petrol is octane 95, diesel regular),
+-- averaged per continent by MadMerick from GlobalPetrolPrices.com (14 Nov 2026); refresh about monthly.
+M.PRICES_FROM = 'November 2026'
 M.PRICES = {
-  ['North America'] = { gasoline = 1.10, diesel = 1.25 },
-  ['South America'] = { gasoline = 1.40, diesel = 1.30 },
-  ['Europe'] = { gasoline = 2.05, diesel = 2.10 },
-  ['Africa'] = { gasoline = 1.40, diesel = 1.40 },
-  ['Asia'] = { gasoline = 1.35, diesel = 1.30 },
-  ['Oceania'] = { gasoline = 1.45, diesel = 1.50 },
+  ['North America'] = { gasoline = 1.14, diesel = 1.62 },
+  ['South America'] = { gasoline = 1.25, diesel = 1.35 },
+  ['Europe'] = { gasoline = 2.23, diesel = 2.49 },
+  ['Africa'] = { gasoline = 1.58, diesel = 1.71 },
+  ['Asia'] = { gasoline = 1.24, diesel = 1.29 },
+  ['Oceania'] = { gasoline = 1.58, diesel = 1.79 },
 }
 -- Anywhere not on the list (Antarctica, the open sea): the world average.
-M.WORLD = { gasoline = 1.55, diesel = 1.55 }
+M.WORLD = { gasoline = 1.50, diesel = 1.71 }
 -- Scales every price: 100 as is, 80 a fifth cheaper.
 M.PRICE_PERCENT = 100
 -- A town's Refuel button, away from any pump: this many times that continent's pump price, so

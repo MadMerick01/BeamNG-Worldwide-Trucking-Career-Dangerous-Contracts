@@ -6,7 +6,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
-- **Fill up at real petrol stations, at real prices.** BeamNG.earth's petrol stations, with their canopies and pumps, now sell fuel at that continent's real pump price. Petrol and diesel are priced separately, and the mod knows which one your truck takes. For example, diesel is $1.25 a litre in North America and $2.10 in Europe. Prices are October 2026 averages for North America, South America, Europe, Africa, Asia and Oceania.
+- **Fill up at real petrol stations, at real prices.** BeamNG.earth's petrol stations, with their canopies and pumps, now sell fuel at that continent's real pump price. Petrol and diesel are priced separately, and the mod knows which one your truck takes. For example, diesel is $1.62 a litre in North America and $2.49 in Europe. Prices are November 2026 averages for North America, South America, Europe, Africa, Asia and Oceania.
 - Stop at a pump and press **Refuel** on the Garage tab, or use the pump's own Refuel prompt. Both charge the pump price. If you can't pay for everything that went in, the extra fuel is taken back out of the tank. Before this, the pump's own prompt filled you up for free.
 - **The town Refuel button still works, but costs 5 times the pump price.** The Fuel section warns you about that and tells you to use a pump instead. It used to be a flat $2.10 a litre everywhere.
 - The mod turns on BeamNG's "gas stations in freeroam" setting for you, so the pumps show up. This works in single player and online. Your saves still work, and there's nothing you need to do.
