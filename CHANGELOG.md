@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 214 · 15 Nov 2026
+
 - **New: Your cars, five car slots for every player from the start.** The Garage tab now has a Your cars section. It shows the car you're driving in slot 1 and up to four parked cars in slots 2 to 5, each with its worth, fuel and any repair it needs. You don't need a base for any of it.
 - When you buy a car, new or second hand, the bill offers Keep it in slot N whenever a slot is free. You pay the full price and your old car is parked there instead of traded in. When all five slots are full, the bill only offers the trade-in.
 - Press Drive on a parked car and a driver brings it to you, wherever you are, for $250. The car you were in is parked in its slot. Each car keeps its own parts, fuel, wear and repair bill. You can't change cars during a job, and you need to be stopped in your own car.
