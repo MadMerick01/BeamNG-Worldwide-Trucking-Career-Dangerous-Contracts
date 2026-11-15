@@ -1131,3 +1131,34 @@ test('Land Race and Leaderboard tab: copies the live page address, shows the rac
   assert.equal(a.scope.raceSummary({ race: {} }), 'nobody holds land yet')
   assert.equal(a.scope.landWidth(25, 50), '50%'); assert.equal(a.scope.landWidth(0, 50), '1%')
 })
+test('Fuel runs: the Route tab card loads a run and sets the GPS to the depot only when Lua allows it', () => {
+  assert.match(html, /ng-click="takeFuelRun\(r\)"/)
+  assert.match(html, /ng-click="gpsToDepot\(\)"/)
+  assert.match(html, /ng-repeat="r in data\.fuelRuns\.runs track by r\.id"/)
+  const a = app()
+  const run = { id: 'fuelrun_gn123', to: 'Oberon', pay: 260000, units: 1200, allowed: false }
+  const fuelRuns = { hub: { id: 'gn9', name: 'Richmond' }, runs: [run] }
+  a.state({ state: 'READY', fuelRuns })
+  let count = a.commands.length
+  a.scope.takeFuelRun(run); a.scope.gpsToDepot()
+  assert.equal(a.commands.length, count, 'refused when not allowed')
+  a.state({ state: 'READY', gpsAllowed: true, fuelRuns: { ...fuelRuns, runs: [{ ...run, allowed: true }] } })
+  a.scope.takeFuelRun({ ...run, allowed: true })
+  assert.equal(a.commands.at(-1), fixed("takeFuelRun('fuelrun_gn123')"))
+  a.scope.gpsToDepot()
+  assert.equal(a.commands.at(-1), fixed('gpsToDepot()'))
+  count = a.commands.length
+  a.scope.takeFuelRun({ ...run, id: "x'); evil(", allowed: true })
+  assert.equal(a.commands.length, count, 'only plain ids')
+})
+test('Fuel runs: the HUD looks for a depot that suits loading fuel', () => {
+  const a = app()
+  const elements = [
+    { type: 'node', id: 1, lat: 1, lon: 1, tags: { amenity: 'fuel', name: 'Truck Stop' } },
+    { type: 'way', id: 2, center: { lat: 1, lon: 1 }, tags: { industrial: 'fuel_depot', name: 'Ampol Terminal' } },
+    { type: 'node', id: 3, lat: 1, lon: 1, tags: { shop: 'supermarket', name: 'Coles' } }
+  ]
+  const list = a.scope.businessCandidates(elements, 'gn9:fuelhub', 'fuelhub')
+  assert.equal(list.map(b => b.name).join('|'), 'Ampol Terminal|Truck Stop', 'a fuel terminal first, then a truck stop, never a shop')
+  assert.equal(list[0].kind, 'terminal')
+})

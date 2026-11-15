@@ -434,6 +434,19 @@ Decided by MadMerick on 25 Oct: the board is four jobs, parts (light), bricks (h
 - **Old saves:** food stays a known good, so a food job in an older save still loads and delivers.
 - **Needs checking in game:** the fluid tank part names, that the stock tanks carry a fluid container, and how the slosh feels. `tools/probe_fluid_tank.lua`, run once in the game console with a tank fitted, prints the car's cargo containers.
 
+## Fuel runs as built
+
+Decided by MadMerick on 15 Nov: long fuel hauls, 60 km and more, as the reason to leave the big cities (which BeamNG.Earth draws roughly) for the countryside. Code in `fuelruns.lua`.
+
+- **Where they load:** a depot in a quiet regional town: a town of 5,000 to 50,000 people (`town` size) with at most one other town or city within 10 km, so never a city or one of its suburbs. Katoomba or Richmond for Sydney, Stockerau or Tulln for Vienna, Las Flores for Los Angeles. The HUD looks up a real fuel terminal, depot or truck stop there in OpenStreetMap (as for business drop-offs, key `town:fuelhub`), within 4 km of the town; without one the run loads anywhere in the town. Loading is stopped within 40 m of the depot's spot.
+- **Where they go:** a petrol station (the same business lookup as a town fuel job) in a quiet village or town 60 to 200 km away by road, never a city; the town centre when none is found. The card offers one run in each of two bands, 60 to 120 km and 120 to 200 km, each picked from the six towns in the band with the highest region boost, so runs lean into steep, remote country. They change after every job.
+- **The card:** a Fuel runs section on the Route tab, hidden while on a job. It names the nearest depot within 100 km of the truck (kept while the truck is within 8 km of it), its distance and direction, a GPS button to it, and the two runs with their distance, region and pay for this truck. Load is on each run, allowed only at the depot. Without a tank, the runs say it needs a tanker.
+- **Pay:** the town job curve up to 20 km, then each km pays 90% of an average km of a 20 km job, in a straight line (a town job only grows with the square root). Then times 1.2, the fuel run bonus, and the region road bonus and base bonus of a town job. No town need, shortage or jackpot. The 34,000 L long tanker of fuel pays about $51,500 over 20 km as a town job and about $284,000 over 100 km as a fuel run in flat country. The turf toll applies as on a town job.
+- **Spills:** the game does not leak a tank's fluid, so crash damage stands in for it. Damage the truck and its trailer take with the load on spills nothing up to 1,000 (a scrape), then a growing share up to 75% of the load at 30,000 (a major crash). The pay drops by the share spilled. A repair puts nothing back. The job card shows the litres lost.
+- **Wait:** the next fuel run can be loaded 10 minutes after one is delivered (wall clock, saved).
+- **Saves:** the load keeps `fuelRun` and the crash damage counted so far; the progression keeps when the last run was delivered. Older saves load unchanged.
+- **Needs checking in game:** how long the runs take, the pay per hour against town jobs, and that the depots found are sensible.
+
 ## Heli flights as built
 
 Decided by MadMerick on 28 Oct: a fun, hire-anytime way to fly over the world, never a rival to the trucks. First built with loads on the tow hook (Build 90); MadMerick found the sling load far too hard to fly, so on 28 Oct it became a sightseeing hire with "don't ask questions" jobs.

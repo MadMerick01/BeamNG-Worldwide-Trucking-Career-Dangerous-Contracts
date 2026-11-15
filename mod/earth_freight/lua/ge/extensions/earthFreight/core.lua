@@ -29,6 +29,7 @@ local business = require('earthFreight/business')
 local multiplayer = require('earthFreight/multiplayer')
 local shipday = require('earthFreight/shipday')
 local magnate = require('earthFreight/magnate')
+local fuelruns = require('earthFreight/fuelruns')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -159,6 +160,7 @@ function M.new(deps)
   flights.attach(c)
   trailers.attach(c)
   home.attach(c)
+  fuelruns.attach(c)
 
   function c:transition(nextState, reason)
     if self.state == nextState and self.reason == reason then return end
@@ -1335,7 +1337,8 @@ function M.new(deps)
     -- teleport to the start leaves the trailer behind.
     local units, slots, kg, inTrailer = trailers.fits(self:space(), not job.contract and self:trailerSpace() or nil, good)
     -- Ends inside the player's base circle pay more (magnate.lua).
-    local quote = jobs.quote(job, units, self.needs, self.now(), self:baseShareFunction())
+    local quote = job.fuelRun and fuelruns.quote(job, units, self:baseShareFunction())
+      or jobs.quote(job, units, self.needs, self.now(), self:baseShareFunction())
     quote.units, quote.slots, quote.kg, quote.trailerUnits = units, slots, kg, inTrailer
     -- Delivering in someone else's turf pays them the toll: at the drop-off town, or for an off-road drop the town it
     -- was taken in (what the server checks). Dangerous contracts pay none.
@@ -1453,7 +1456,7 @@ function M.new(deps)
   -- percent-encoded. Only taken for the town job on board, and only while it has none.
   function c:setBusiness(key, name, kind, latitude, longitude)
     local wanted = self:businessWanted()
-    if not wanted or key ~= wanted.key then return false end
+    if not wanted or key ~= wanted.key then return self:setFuelDepot(key, name, kind, latitude, longitude) end
     local town = places.get(self.load.to)
     local found = business.clean({ name = business.decode(name), kind = kind, latitude = latitude, longitude = longitude }, town)
     if not found then
@@ -1470,7 +1473,7 @@ function M.new(deps)
   -- The HUD looked and found nothing that fits: the town's usual drop-off stays, and is remembered.
   function c:noBusiness(key)
     local wanted = self:businessWanted()
-    if not wanted or key ~= wanted.key then return false end
+    if not wanted or key ~= wanted.key then return self:noFuelDepot(key) end
     self:rememberBusiness(wanted.key, { none = true })
     self.diag:event('business', 'none:' .. wanted.key)
     return true
@@ -1527,7 +1530,7 @@ function M.new(deps)
     end
     local ok, why = self.adapter:setDestination(place, place.name)
     self.diag:event('gps', ok and ('town:' .. place.id) or tostring(why), ok and 'I' or 'W')
-    self.gpsTown, self.gpsContract = ok and place.id or nil, nil
+    self.gpsTown, self.gpsContract, self.gpsDepot = ok and place.id or nil, nil, nil
     self.gpsFeedback = ok and ('The GPS is set to ' .. place.name .. '.')
       or ('Could not set the GPS. Paste ' .. coordinates(place) .. ' into the BeamNG.Earth map instead.')
     return ok == true
@@ -1543,7 +1546,7 @@ function M.new(deps)
     end
     local ok, why = self.adapter:setDestination(section.start, section.name .. ' start')
     self.diag:event('gps', ok and ('contract_start:' .. section.id) or tostring(why), ok and 'I' or 'W')
-    self.gpsTown, self.gpsContract = nil, ok and section.id or nil
+    self.gpsTown, self.gpsContract, self.gpsDepot = nil, ok and section.id or nil, nil
     self.gpsFeedback = ok and ('The GPS is set to the start of ' .. section.name .. ', ' .. section.region .. '.')
       or ('Could not set the GPS. Paste ' .. coordinates(section.start) .. ' into the BeamNG.Earth map instead.')
     return ok == true
@@ -1690,6 +1693,13 @@ function M.new(deps)
       return false
     end
     local load, good = self.load, goods.get(self.load.good)
+    -- A fuel run pays less what it spilled, toll included, and the depot needs a while for the next one.
+    local spilled = self:spilled()
+    if spilled > 0 then
+      load.pay = fuelruns.payAfterSpill(load.pay, spilled)
+      if load.toll then load.toll.amount = fuelruns.payAfterSpill(load.toll.amount, spilled) end
+    end
+    if load.fuelRun then self.profile.progression.fuelRunAt = math.floor(self.now()) end
     self:addMoney(load.pay)
     jobs.delivered(self.needs, place, good, self.now())
     self:finishJob()
@@ -1707,9 +1717,10 @@ function M.new(deps)
       self.offer = nil
     end
     refund = refund .. self:payDebtFrom(load.pay)
-    self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' to '
+    local spillLine = spilled > 0 and (' ' .. math.floor(spilled * 100 + 0.5) .. '% of it spilled on the way, which came off the pay.') or ''
+    self:showFlash('delivered', (load.fuelRun and 'FUEL RUN DELIVERED: +' or 'DELIVERED: +') .. dollars(load.pay), amount(good, load.units) .. ' to '
       .. (load.business and (load.business.name .. ', ') or '') .. place.name
-      .. '. ' .. self:named('Nice driving') .. '.' .. tollLine(load) .. refund)
+      .. '. ' .. self:named('Nice driving') .. '.' .. spillLine .. tollLine(load) .. refund)
     self.tradeFeedback = nil
     self:autoSaveSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> %s for %d', good.id, load.units, place.id, load.pay))
@@ -2052,6 +2063,7 @@ function M.new(deps)
     self:watchTrailer()
     self:afterRespawn()
     self:watchFuel()
+    self:watchSpill()
     self:watchInsurance()
     self:watchTow()
     self:watchTimedSave()
@@ -2300,7 +2312,7 @@ function M.new(deps)
       local delivery
       if self.load and not self.load.drop and self.load.to == place.id then
         local why = self:deliveryProblem(place)
-        delivery = { pay = self.load.pay, problem = why, allowed = problem == nil and why == nil }
+        delivery = { pay = self:loadPay(), problem = why, allowed = problem == nil and why == nil }
       end
       local refuel = self:refuelQuote()
       town = {
@@ -2346,7 +2358,7 @@ function M.new(deps)
       local good, to, from = goods.get(self.load.good), places.get(self.load.to), places.get(self.load.from)
       loadView = {
         good = good.name, goodId = good.id, units = self.load.units or self.load.slots, slots = self.load.slots,
-        kg = self.load.kg, pay = self.load.pay, drivenKm = self.load.drivenKm,
+        kg = self.load.kg, pay = self:loadPay(), drivenKm = self.load.drivenKm, fuelRun = self:fuelRunLoadView(),
         -- A fluid load's slots are its litres.
         litres = good.kind == 'fluid' and self.load.slots or nil,
         from = from.name, to = to.name, destination = location.copy(self.load.business or to),
@@ -2371,6 +2383,7 @@ function M.new(deps)
       nearby = nearby, town = town, load = loadView,
       bestJob = not self.load and anchor and self:bestJob(anchor) or nil,
       shortages = anchor and self:shortagesNear(anchor, now) or {},
+      fuelRuns = self:fuelRunsView(current),
       abandonAllowed = self.load ~= nil, abandonArmed = self.abandonArmed, abandonFee = jobs.ABANDON_FEE,
     }
   end
@@ -2499,7 +2512,7 @@ function M.new(deps)
       land = self:landView(),
       -- The Land Race and Leaderboard tab's race and season leaderboard, on a server only.
       standings = self:standingsView(),
-      shortages = trade.shortages,
+      shortages = trade.shortages, fuelRuns = trade.fuelRuns,
       streetView = self:streetViewView(),
       baseMap = self:baseMapView(),
       radio = self:radioView(),
@@ -2646,7 +2659,7 @@ function M.new(deps)
     local saved, why = self:record({
       base = self.profile.base, resume = location.copy(fresh),
       progression = { balance = progression.balance, totalDistanceKm = progression.totalDistanceKm, lastPunctureKm = progression.lastPunctureKm,
-        jobsDone = progression.jobsDone, contractsDone = copy(progression.contractsDone),
+        jobsDone = progression.jobsDone, contractsDone = copy(progression.contractsDone), fuelRunAt = progression.fuelRunAt,
         towOwed = progression.towOwed, insuranceOwed = progression.insuranceOwed },
       vehicle = { model = fresh.vehicle and fresh.vehicle.model, config = self:savedVehicleConfig(),
         -- The car's name, for the start page before the car is back and for the car once it is.
@@ -2948,6 +2961,8 @@ function M.takeJob(job, share)
   return safely(function() return ensure():takeJob(id(job), s) end)
 end
 function M.setJobDistance(distance) return safely(function() return ensure():setJobDistance(distance) end) end
+function M.takeFuelRun(job) return safely(function() return ensure():takeFuelRun(id(job)) end) end
+function M.gpsToDepot() return safely(function() return ensure():gpsToDepot() end) end
 function M.deliverJob() return safely(function() return ensure():deliver() end) end
 -- The HUD's answer about a real business for the job's town (see business.lua). The key, kind and
 -- coordinates are checked here; the name comes percent-encoded and is decoded and checked by the controller.

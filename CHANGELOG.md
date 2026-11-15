@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New: fuel runs, long hauls out into the country.** A new Fuel runs section on the Route tab shows the nearest fuel depot, in a quiet regional town away from the big cities, and two runs from it: one 60 to 120 km out and one 120 to 200 km out, to a petrol station in a small country town. Press GPS to drive to the depot, then Load when you're stopped there. You need a tanker: a truck with a fluid tank or a tanker trailer.
+- Fuel runs pay more the further you go, so they're worth the drive. A full long tanker earns about $284,000 for a 100 km run in flat country, against about $51,500 for a 20 km town job. Steep country and your base add their bonuses on top. After you deliver one, the depot needs 10 minutes to fill the next.
+- Drive carefully on a fuel run: a crash spills fuel, and the pay drops by the share you lost. The job card shows how many litres have spilled. Fuel runs save and resume like any job, and your saves still work.
+
 ## Build 211 · 14 Nov 2026
 
 - **Petrol station pumps now show up straight away.** When the mod turns on the game's petrol stations for you, it now also reloads the game's list of stations, so the pumps and their Refuel prompt appear without restarting. Saves still work.

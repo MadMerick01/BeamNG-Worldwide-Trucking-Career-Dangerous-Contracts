@@ -67,6 +67,8 @@ local function progression(p)
   if p.jobsDone ~= nil and not integer(p.jobsDone, 0) then return nil end
   if p.towOwed ~= nil and not integer(p.towOwed, 1) then return nil end
   if p.insuranceOwed ~= nil and not integer(p.insuranceOwed, 1) then return nil end
+  -- When the last fuel run was delivered (wall-clock seconds); an odd one is dropped, not refused.
+  local fuelRunAt = integer(p.fuelRunAt, 0) and p.fuelRunAt or nil
   local done
   if p.contractsDone ~= nil then
     if type(p.contractsDone) ~= 'table' then return nil end
@@ -79,7 +81,7 @@ local function progression(p)
     end
   end
   return { balance = p.balance, totalDistanceKm = p.totalDistanceKm, lastPunctureKm = p.lastPunctureKm, jobsDone = p.jobsDone,
-    contractsDone = done, towOwed = p.towOwed, insuranceOwed = p.insuranceOwed }
+    contractsDone = done, towOwed = p.towOwed, insuranceOwed = p.insuranceOwed, fuelRunAt = fuelRunAt }
 end
 
 -- A saved position, with the altitude and heading when present. Returns a clean copy, or nil and why.
@@ -137,6 +139,9 @@ local function load(l)
         or type(b.kind) ~= 'string' or not optionalString(b.kind) then return nil end
     shop = { name = b.name, kind = b.kind, latitude = b.latitude, longitude = b.longitude }
   end
+  -- A fuel run (fuelruns.lua) and the crash damage counted against it so far, for its spill.
+  if l.fuelRun ~= nil and (l.fuelRun ~= true or l.drop ~= nil) then return nil end
+  local crash = l.fuelRun and amount(l.crashDamage) and l.crashDamage or nil
   -- The turf toll the job's pay already had taken off (Magnate 2): who it goes to and how much. Dropped if odd.
   local toll
   if type(l.toll) == 'table' and type(l.toll.owner) == 'string' and optionalString(l.toll.owner) and integer(l.toll.amount, 0) then
@@ -146,7 +151,7 @@ local function load(l)
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
     pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop, ship = container,
-    toll = toll }
+    toll = toll, fuelRun = l.fuelRun, crashDamage = crash }
 end
 
 -- A "don't ask questions" job found and not yet picked up: its pickup and drop spots, which line
