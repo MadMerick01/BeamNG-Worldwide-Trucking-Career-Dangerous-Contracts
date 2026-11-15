@@ -744,6 +744,36 @@ do
   T.eq(c:view().refuel.problem, 'Stop at a petrol station pump, or in a town, to refuel.', 'told where to go')
 end
 
+-- In game the car can answer a Refuel before its tanks show the new level (MadMerick, 15 Nov: "Refuelled
+-- 0.0 L for $0", then the tank went back down). The next reading that shows the fuel charges it, and
+-- the free-fill check does not take it back out.
+do
+  local c, io, a, g, _, f = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c:fuelReading(1, 10, 100); c:tick(0.1)
+  local quote = c:view().town.refuel
+  T.check(c:view().town.refuelAllowed, 'town Refuel offered')
+  local before, price = c:view().balance, fuel.price('Oceania', 'gasoline', true)
+  T.check(c:refuel(), 'refuel sent'); local set = f.sets[#f.sets]
+  T.near(set.litres, 10 + quote.litres, 1e-9, 'asked for the quoted litres')
+  c:fuelSet(1, set.serial, 10, 10, 100)
+  T.eq(c:view().balance, before, 'nothing charged while the tanks still read the old level')
+  T.eq(c:view().fuelFeedback, 'Refuelling...', 'still refuelling'); T.check(not c:refuel(), 'not twice')
+  local sets = #f.sets
+  c:tick(2.1); c:fuelReading(1, 10 + quote.litres, 100)
+  T.eq(#f.sets, sets, 'the new fuel is not taken back out')
+  T.eq(c:view().balance, before - fuel.cost(quote.litres, price), 'charged once the reading shows it')
+  T.check(c:view().fuelFeedback:find(string.format('Refuelled %.1f L', quote.litres), 1, true), 'told what went in')
+  T.near(c.fuel.litres, 10 + quote.litres, 1e-9, 'the tank keeps it')
+  c:tick(2.1); c:fuelReading(1, 10 + quote.litres, 100)
+  T.eq(c:view().balance, before - fuel.cost(quote.litres, price), 'charged only once')
+  -- A Refuel the tanks never show gives up, uncharged.
+  c:fuelReading(1, 20, 100); before = c:view().balance
+  T.check(c:refuel(), 'sent again'); c:fuelSet(1, f.sets[#f.sets].serial, 20, 20, 100)
+  for _ = 1, 6 do c:tick(2.1); c:fuelReading(1, 20, 100) end
+  T.eq(c:view().balance, before, 'not charged'); T.check(c:view().fuelFeedback:find('did not go through', 1, true), 'told it failed')
+end
+
 -- Prices: one per continent, from the country; the rest of the world pays the average.
 do
   T.eq(fuel.continent('Germany'), 'Europe', 'Germany is Europe'); T.eq(fuel.continent('Mexico'), 'North America', 'Mexico is North America')
