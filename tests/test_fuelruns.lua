@@ -29,16 +29,18 @@ do
   T.eq(fuelruns.quote({ good = 'fuel', from = penrith.id, to = far.id, km = 100 }, 0).pay, 0, 'nothing for no load')
 end
 
--- Spills: nothing for a scrape, then a growing share up to the cap.
+-- Earth's places answer: the nearest open, named station near the town.
 do
-  T.eq(fuelruns.spillShare(0), 0, 'no damage, no spill'); T.eq(fuelruns.spillShare(900), 0, 'a scrape spills nothing')
-  T.check(fuelruns.spillShare(5000) > 0 and fuelruns.spillShare(5000) < 0.2, 'a dent spills a little')
-  T.eq(fuelruns.spillShare(30000), fuelruns.MAX_SPILL, 'a major crash spills the most')
-  T.eq(fuelruns.spillShare(90000), fuelruns.MAX_SPILL, 'and no more')
-  T.eq(fuelruns.payAfterSpill(1000, 0.25), 750, 'pay drops by the share spilled')
-  T.eq(fuelruns.payAfterSpill(1000, 0), 1000, 'nothing spilled, full pay')
-  T.eq(fuelruns.cooldownLeft(nil, 50), 0, 'never delivered: no wait')
-  T.eq(fuelruns.cooldownLeft(100, 100 + fuelruns.COOLDOWN_SECONDS - 5), 5, 'seconds left')
+  local town = { id = 't', latitude = -33.7, longitude = 150.3 }
+  local list = {
+    { name = 'Shut', lat = -33.7, lon = 150.3, open = 'permanently_closed' },
+    { name = 'Far', lat = -33.0, lon = 150.3 },
+    { name = 'Ampol Katoomba', lat = -33.701, lon = 150.301, open = 'open' },
+  }
+  local b = fuelruns.stationFrom(list, town)
+  T.eq(b and b.name, 'Ampol Katoomba', 'the first open station near the town'); T.eq(b and b.kind, 'fuel', 'as a fuel station')
+  T.eq(fuelruns.stationFrom({}, town), nil, 'none')
+  T.eq(fuelruns.stationFrom(nil, town), nil, 'no list')
 end
 
 -- Depots: quiet regional towns, never a big city or its suburbs.
@@ -68,7 +70,7 @@ do
   T.check(not sydney or not fuelruns.isHub(sydney), 'Sydney itself is never a depot')
 end
 
--- The controller: the card, loading at the depot, a spill, save and resume, delivery and the wait.
+-- The controller on an older Earth: the card, GPS, loading at the depot, save and resume, delivery.
 do
   local c, io, a, g, w = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
@@ -109,32 +111,98 @@ do
   T.eq(c:view().fuelRuns, nil, 'the card is hidden while on a job')
   T.check(c:view().load.fuelRun ~= nil, 'the job card says fuel run')
   T.check(not c:takeFuelRun(run.id), 'one run at a time')
-  -- A crash spills fuel.
-  c:tick(1)
+  -- A crash changes nothing.
   g.damage = 8000; c:tick(1)
-  local share = c:spilled()
-  T.check(share > 0, 'a crash spills fuel'); T.eq(c:view().load.pay, fuelruns.payAfterSpill(run.pay, share), 'the job card shows less pay')
-  T.eq(c:view().load.fuelRun.spilledPercent, math.floor(share * 100 + 0.5), 'and how much spilled')
+  T.eq(c:view().load.pay, run.pay, 'a crash does not change the pay')
   g.damage = 0; c:tick(1)
-  T.eq(c:spilled(), share, 'a repair puts nothing back')
   -- Saved mid-run, and back after a reload.
   T.check(c:manualSave(), 'saved mid-run')
-  T.check(io.files[A].load.fuelRun, 'the save keeps the fuel run'); T.check(io.files[A].load.crashDamage > 0, 'and its spill')
+  T.check(io.files[A].load.fuelRun, 'the save keeps the fuel run')
   local r = F.controller({ io = io, adapter = a, garage = g })
   r:tick(0.1); r:tick(0.6); r:tick(0.6)
-  T.check(r.load and r.load.fuelRun, 'the run resumes'); T.near(r:spilled(), share, 1e-9, 'with its spill')
+  T.check(r.load and r.load.fuelRun, 'the run resumes'); T.eq(r.load.pay, run.pay, 'with its pay')
   -- Delivered at the station's town.
   local before = r.profile.progression.balance
   F.drive(r, a, places.get(r.load.to))
-  local pay = r:loadPay()
-  T.check(r:deliver(), 'delivered'); T.eq(r.profile.progression.balance, before + pay, 'paid less what spilled')
+  T.check(r:deliver(), 'delivered'); T.eq(r.profile.progression.balance, before + run.pay, 'paid in full')
   T.check(r:view().flash.title:find('FUEL RUN DELIVERED') ~= nil, 'the message says so')
-  T.check(r:view().flash.text:find('spilled') ~= nil, 'and mentions the spill')
-  T.check(r.profile.progression.fuelRunAt ~= nil, 'the wait starts')
-  T.check(r:manualSave(), 'saved'); T.eq(io.files[A].progression.fuelRunAt, r.profile.progression.fuelRunAt, 'the wait is saved')
-  -- Back at a depot, the next run waits.
+  -- No wait for the next one.
   local next = r:view().fuelRuns
-  T.check(next and next.cooldownSeconds > 0, 'the next fuel run waits')
+  T.check(next and next.hub and (next.problem == nil or not next.problem:find('Ready in')), 'the next fuel run needs no wait')
+end
+
+-- With BeamNG.Earth's places and multi-stop GPS: runs only to towns with a real station, delivered
+-- at its pumps; GPS on a run shows the depot then the station; Teleport takes the truck to the depot.
+do
+  local a = F.adapter()
+  a.asks, a.routes = {}, {}
+  function a:canFindStations() return true end
+  function a:findStations(point, metres, done) self.asks[#self.asks + 1] = { point = point, metres = metres, done = done }; return true end
+  function a:setRoute(stops) if self.noRoute then return false, 'route_missing' end self.routes[#self.routes + 1] = stops; return true end
+  local c, io, _, g = F.controller({ adapter = a })
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c:tanksRead(c.ownedParts.id, 12000)
+  local v = c:view()
+  local hub = places.get(v.fuelRuns.hub.id)
+  T.eq(#v.fuelRuns.runs, 0, 'no runs until Earth says where the stations are')
+  c:tick(0.1)
+  T.eq(#a.asks, fuelruns.STATION_ASKS, 'Earth is asked a few towns at a time')
+  T.check(c:view().fuelRuns.finding, 'the card says it is finding stations')
+  T.eq(a.asks[1].metres, fuelruns.STATION_METRES, 'round the town')
+  -- The first town has none; every other one has a station 200 m from its middle.
+  local none = a.asks[1].point
+  local answered, guard = 0, 0
+  while answered < #a.asks and guard < 200 do
+    guard = guard + 1
+    for i = answered + 1, #a.asks do
+      local ask = a.asks[i]
+      if i == 1 then ask.done({}, true, nil)
+      else
+        local at = location.destination(ask.point, 0, 200)
+        ask.done({ { name = 'Station ' .. i, lat = at.latitude, lon = at.longitude, open = 'open' } }, true, nil)
+      end
+      answered = i
+    end
+    c:tick(0.1)
+  end
+  v = c:view()
+  T.check(#v.fuelRuns.runs >= 1, 'runs on offer once the stations are known')
+  for _, run in ipairs(v.fuelRuns.runs) do
+    T.check(run.toId ~= none.id, 'never to a town with no station')
+    T.check(run.station and run.station:find('^Station') ~= nil, 'each names its station')
+  end
+  T.check(not c.stationAsks or next(c.stationAsks) == nil, 'nothing left to ask')
+  local asked = #a.asks; c:tick(0.1); T.eq(#a.asks, asked, 'each town is asked once')
+  -- GPS on a run: the whole run as one route.
+  local run = v.fuelRuns.runs[1]
+  T.check(c:gpsToRun(run.id), 'GPS on the run')
+  local route = a.routes[#a.routes]
+  T.eq(#route, 2, 'two stops'); T.eq(route[1].name, hub.name, 'the depot first')
+  T.check(route[2].name:find(run.station, 1, true) == 1, 'then the station')
+  T.check(c:view().fuelRuns.runs[1].gps, 'the run\'s GPS button lights')
+  a.noRoute = true
+  T.check(c:gpsToRun(run.id), 'an older Earth: GPS still set')
+  T.check(a.gps[#a.gps].name:find(run.station, 1, true) == 1, 'straight to the station')
+  -- Teleport to the depot: free, and not stranded when it lands.
+  local money = c.profile.progression.balance
+  T.check(c:view().fuelRuns.teleportAllowed, 'Teleport is offered away from the depot')
+  T.check(c:teleportToDepot(), 'teleport asked')
+  T.eq(c.profile.progression.balance, money, 'free')
+  T.near(a.teleports[#a.teleports].latitude, hub.latitude, 1e-9, 'to the depot town')
+  T.check(c:view().fuelRuns.teleporting, 'the card says it is on the way')
+  a.pose = F.copy(hub); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(c.booking, nil, 'landed'); T.eq(c.stranded, nil, 'not stranded')
+  v = c:view()
+  T.check(v.fuelRuns.atDepot, 'at the depot'); T.check(not v.fuelRuns.teleportAllowed, 'no teleport once there')
+  -- Loaded, then delivered at the station's pumps.
+  run = v.fuelRuns.runs[1]
+  T.check(c:takeFuelRun(run.id), 'loaded')
+  T.eq(c.load.business and c.load.business.name, run.station, 'delivered at the station')
+  T.check(a.gps[#a.gps].name:find(run.station, 1, true) == 1, 'the GPS goes to the station')
+  F.drive(c, a, c.load.business)
+  local before = c.profile.progression.balance
+  T.check(c:deliver(), 'delivered at the pumps'); T.eq(c.profile.progression.balance, before + run.pay, 'paid in full')
+  local _ = io; local _ = g
 end
 
 T.done('fuel runs')

@@ -6,9 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
-- **New: fuel runs, long hauls out into the country.** A new Fuel runs section on the Route tab shows the nearest fuel depot, in a quiet regional town away from the big cities, and two runs from it: one 60 to 120 km out and one 120 to 200 km out, to a petrol station in a small country town. Press GPS to drive to the depot, then Load when you're stopped there. You need a tanker: a truck with a fluid tank or a tanker trailer.
-- Fuel runs pay more the further you go, so they're worth the drive. A full long tanker earns about $284,000 for a 100 km run in flat country, against about $51,500 for a 20 km town job. Steep country and your base add their bonuses on top. After you deliver one, the depot needs 10 minutes to fill the next.
-- Drive carefully on a fuel run: a crash spills fuel, and the pay drops by the share you lost. The job card shows how many litres have spilled. Fuel runs save and resume like any job, and your saves still work.
+- **New: fuel runs, long hauls out into the country.** A new Fuel runs section on the Route tab shows the nearest fuel depot, in a quiet regional town away from the big cities, and two runs from it: one 60 to 120 km out and one 120 to 200 km out, to a petrol station in a small country town. Press GPS next to a run to see its whole route first: the depot, then the station. Press Teleport next to the depot to go straight there for free, then Load when you're stopped at it. You need a tanker: a truck with a fluid tank or a tanker trailer.
+- Fuel runs pay more the further you go, so they're worth the drive. A full long tanker earns about $284,000 for a 100 km run in flat country, against about $51,500 for a 20 km town job. Steep country and your base add their bonuses on top. A crash doesn't change the pay, and you can start the next run as soon as you deliver.
+- With BeamNG.Earth 1.10 or newer, fuel runs only go to towns where Earth knows a real petrol station, and you deliver at its pumps. The GPS shows the depot and the station as one route. On an older Earth they still work: the mod finds a station online, or you deliver in the town centre. Fuel runs save and resume like any job, and your saves still work.
 
 ## Build 211 · 14 Nov 2026
 

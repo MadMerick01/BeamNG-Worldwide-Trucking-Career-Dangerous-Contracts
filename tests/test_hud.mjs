@@ -1147,6 +1147,16 @@ test('Fuel runs: the Route tab card loads a run and sets the GPS to the depot on
   assert.equal(a.commands.at(-1), fixed("takeFuelRun('fuelrun_gn123')"))
   a.scope.gpsToDepot()
   assert.equal(a.commands.at(-1), fixed('gpsToDepot()'))
+  a.scope.gpsToRun(run)
+  assert.equal(a.commands.at(-1), fixed("gpsToRun('fuelrun_gn123')"))
+  count = a.commands.length
+  a.scope.teleportToDepot()
+  assert.equal(a.commands.length, count, 'no teleport unless Lua allows it')
+  a.state({ state: 'READY', gpsAllowed: true, fuelRuns: { ...fuelRuns, teleportAllowed: true } })
+  a.scope.teleportToDepot()
+  assert.equal(a.commands.at(-1), fixed('teleportToDepot()'))
+  assert.match(html, /ng-click="teleportToDepot\(\)"/)
+  assert.match(html, /ng-click="gpsToRun\(r\)"/)
   count = a.commands.length
   a.scope.takeFuelRun({ ...run, id: "x'); evil(", allowed: true })
   assert.equal(a.commands.length, count, 'only plain ids')

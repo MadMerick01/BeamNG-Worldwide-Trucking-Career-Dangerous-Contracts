@@ -4,15 +4,15 @@
 -- board. Pay grows in a straight line with distance past 20 km, where a town job's only grows with
 -- the square root, times a flat bonus, so a long run pays more per hour than town jobs without
 -- being a money printer. The region and base bonuses come on top as for town jobs; shortages and
--- jackpots never do. A crash spills fuel, and the pay drops by the share spilled. Pure maths and
--- picks; the controller keeps the run, its depot and the spill. No game globals.
+-- jackpots never do. With BeamNG.Earth's places (its modding API 1.4 and later) a run is only offered
+-- to a town where Earth knows a real petrol station, delivered at its pumps, and its GPS shows the
+-- whole run, depot then station, as one route (API 1.2). On an older Earth the HUD's OpenStreetMap
+-- lookup and the town centre stand in. Pure maths and picks, and the controller's side below.
 local location = require('earthFreight/location')
 local places = require('earthFreight/places')
 local goods = require('earthFreight/goods')
 local jobs = require('earthFreight/jobs')
 local business = require('earthFreight/business')
-local trailers = require('earthFreight/trailers')
-local pricing = require('earthFreight/pricing')
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
@@ -34,20 +34,16 @@ M.QUIET_KM, M.HUB_NEIGHBOURS, M.HUB_REACH_KM = 10, 1, 100
 -- change after every job.
 M.BANDS = { { 60, 120 }, { 120, 200 } }
 M.PICK_FROM = 6
--- After a fuel run is delivered, the next can be loaded this many seconds later (wall clock).
-M.COOLDOWN_SECONDS = 600
 -- Loaded stopped within DEPOT_RADIUS metres of the depot's spot (a real fuel terminal, depot or
 -- truck stop the HUD found in OpenStreetMap), or anywhere in the town when it has none.
 M.DEPOT_RADIUS = 40
 -- A depot town stays the card's once the truck is within KEEP_HUB_KM of it, so a closer town over
 -- the hill doesn't take its place while the player is driving in to load.
 M.KEEP_HUB_KM = 8
--- How often, in seconds, the truck's damage is read for spills.
-M.SPILL_EVERY_SECONDS = 0.5
--- Spills: crash damage taken with the load on (the truck's and its trailer's, as BeamNG counts it:
--- about 1,000 is moderate, 30,000 major) spills nothing up to SPILL_FREE_DAMAGE, then a growing share
--- until SPILL_ALL_DAMAGE, which spills MAX_SPILL of the load. The pay drops by the share spilled.
-M.SPILL_FREE_DAMAGE, M.SPILL_ALL_DAMAGE, M.MAX_SPILL = 1000, 30000, 0.75
+-- Earth's places: each candidate town is asked once for petrol stations within STATION_METRES of
+-- its middle, at most STATION_ASKS at a time; a question with no answer is asked again after
+-- STATION_RETRY_SECONDS.
+M.STATION_METRES, M.STATION_ASKS, M.STATION_RETRY_SECONDS = 3000, 2, 120
 
 local function round10(n) return math.floor(n / 10 + 0.5) * 10 end
 
@@ -143,11 +139,17 @@ function M.pool(hub)
 end
 
 -- The runs on offer from a depot for a seed (the controller's count of jobs done): one station
--- from each band's pool, where it has any, nearest first.
-function M.offers(hub, seed)
+-- from each band's pool, where it has any, nearest first. hasStation, when given, keeps only the
+-- towns it says have a real station.
+function M.offers(hub, seed, hasStation)
   local out = {}
   seed = tostring(seed or 0)
-  for i, pool in ipairs(M.pool(hub)) do
+  for i, all in ipairs(M.pool(hub)) do
+    local pool = all
+    if hasStation then
+      pool = {}
+      for _, x in ipairs(all) do if hasStation(x.place) then pool[#pool + 1] = x end end
+    end
     if #pool > 0 then
       local x = pool[math.floor(jobs.hash01(hub.id .. ':' .. seed .. ':fuelrun:' .. i) * #pool) + 1]
       out[#out + 1] = { id = 'fuelrun_' .. x.place.id, good = 'fuel', from = hub.id, to = x.place.id, km = x.km, fuelRun = true }
@@ -168,38 +170,25 @@ function M.quote(job, units, shareAt)
     need = 1, road = road, baseBonus = extra > 0 and extra or nil, shortage = false, level = 'fuel' }
 end
 
--- The share of the load spilled after this much crash damage, 0 to MAX_SPILL.
-function M.spillShare(damage)
-  local over = (damage or 0) - M.SPILL_FREE_DAMAGE
-  if over <= 0 then return 0 end
-  return math.min(M.MAX_SPILL, M.MAX_SPILL * over / (M.SPILL_ALL_DAMAGE - M.SPILL_FREE_DAMAGE))
-end
-
--- What a run pays after a spill: the pay less the share spilled, in tens of dollars.
-function M.payAfterSpill(pay, share)
-  if not share or share <= 0 then return pay end
-  return math.max(10, round10(pay * (1 - share)))
-end
-
--- The seconds before the next fuel run can be loaded, 0 when it can.
-function M.cooldownLeft(lastAt, now)
-  if not lastAt or not now then return 0 end
-  return math.max(0, lastAt + M.COOLDOWN_SECONDS - now)
+-- The station Earth's places answer gives for a town: the nearest open, named petrol station
+-- within business.MAX_FROM_TOWN, as a business, or nil.
+function M.stationFrom(list, town)
+  for _, p in ipairs(type(list) == 'table' and list or {}) do
+    if type(p) == 'table' and p.open ~= 'permanently_closed' and p.open ~= 'temporarily_closed' then
+      local b = business.clean({ name = p.name, kind = 'fuel', latitude = p.lat, longitude = p.lon }, town)
+      if b then return b end
+    end
+  end
+  return nil
 end
 
 -- The business key the depot of a town is remembered under (business.lua), the same for everyone.
 function M.depotKey(hub) return business.key(hub.id, 'fuelhub') end
 
-local dollars = pricing.dollars
 local ON_FOOT = 'You are on foot. Get back in your car first.'
 
-local function clock(seconds)
-  seconds = math.max(0, math.ceil(seconds))
-  return string.format('%d:%02d', math.floor(seconds / 60), seconds % 60)
-end
-
--- The controller's side: the Fuel runs card, loading at the depot, the spill watch and the pay on
--- delivery. Delivery itself is a town job's (core.lua deliver), at the station or the town.
+-- The controller's side: the Fuel runs card, the stations, the GPS and teleport to the depot and
+-- loading there. Delivery itself is a town job's (core.lua deliver), at the station or the town.
 function M.attach(c)
   -- The depot town for the card: the one already shown while the truck is near it, else the nearest.
   function c:fuelHub(current)
@@ -263,10 +252,65 @@ function M.attach(c)
     return here ~= nil and here.id == hub.id
   end
 
-  -- The seconds before the next fuel run can be loaded.
-  function c:fuelCooldown()
-    local p = self.profile and self.profile.progression
-    return M.cooldownLeft(p and p.fuelRunAt, self.now())
+  -- Whether Earth's places can be asked for stations; without them, runs go to any town in the pool.
+  function c:earthStations()
+    return self.adapter.findStations ~= nil and self.adapter:canFindStations() == true
+  end
+
+  -- Whether a town has a known real petrol station (Earth's, or one the HUD found before).
+  function c:hasStation(town)
+    local known = self:businesses()[business.key(town.id, 'fuel')]
+    return known ~= nil and not known.none
+  end
+
+  -- Asks Earth for the petrol stations of the depot's candidate towns not yet known, a few at a time.
+  -- Each answer is remembered with the businesses, so a town is only asked once.
+  function c:watchStations()
+    if self.load or not self.fuelHubId or not self:earthStations() then return end
+    local hub = places.get(self.fuelHubId)
+    if not hub then return end
+    self.stationAsks = self.stationAsks or {}
+    local open = 0
+    for key, at in pairs(self.stationAsks) do
+      if self.clock - at < M.STATION_RETRY_SECONDS then open = open + 1 else self.stationAsks[key] = nil end
+    end
+    for _, band in ipairs(M.pool(hub)) do
+      for _, x in ipairs(band) do
+        if open >= M.STATION_ASKS then return end
+        local town = x.place
+        local key = business.key(town.id, 'fuel')
+        if not self:businesses()[key] and not self.stationAsks[key] then
+          local sent = self.adapter:findStations(town, M.STATION_METRES, function(found, done, failed)
+            self:stationsFound(town, found, done, failed)
+          end)
+          if sent then
+            self.stationAsks[key] = self.clock
+            open = open + 1
+          end
+        end
+      end
+    end
+  end
+
+  -- Earth answered for a town: a station is remembered as its fuel drop-off; a complete answer with
+  -- none marks the town as having none. A failed answer is asked again later.
+  function c:stationsFound(town, found, done, failed)
+    local key = business.key(town.id, 'fuel')
+    if failed then
+      self.diag:event('stations', 'failed:' .. key .. ':' .. tostring(failed), 'W')
+      return
+    end
+    local station = M.stationFrom(found, town)
+    if station then
+      self:rememberBusiness(key, station)
+      if self.stationAsks then self.stationAsks[key] = nil end
+      self.diag:event('stations', key .. ':found')
+    elseif done then
+      local known = self:businesses()[key]
+      if not known then self:rememberBusiness(key, { none = true }) end
+      if self.stationAsks then self.stationAsks[key] = nil end
+      self.diag:event('stations', key .. ':none')
+    end
   end
 
   -- Why a fuel run cannot be loaded now, or nil when it can.
@@ -274,8 +318,6 @@ function M.attach(c)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Fuel runs are unavailable right now.' end
     if self.load then return 'Deliver or abandon your job first.' end
     if not hub then return 'There is no fuel depot within ' .. M.HUB_REACH_KM .. ' km.' end
-    local wait = self:fuelCooldown()
-    if wait > 0 then return 'The depot is filling the next tanker. Ready in ' .. clock(wait) .. '.' end
     if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
     if not self:atFuelDepot(current, hub, depot) then
@@ -291,7 +333,8 @@ function M.attach(c)
   -- The runs on offer from the depot town now.
   function c:fuelRunOffers(hub)
     local p = self.profile and self.profile.progression
-    return M.offers(hub, p and p.jobsDone or 0)
+    local filter = self:earthStations() and function(town) return self:hasStation(town) end or nil
+    return M.offers(hub, p and p.jobsDone or 0, filter)
   end
 
   -- The Fuel runs card on the Route tab: the depot, how far, and the runs with what they pay this
@@ -311,8 +354,12 @@ function M.attach(c)
     out.distanceMetres = away
     out.direction = away and away > 0 and location.compassPoint(location.bearing(current, spot)) or nil
     out.atDepot = self:atFuelDepot(current, hub, depot)
-    out.cooldownSeconds = self:fuelCooldown()
     out.gps = self.gpsDepot == hub.id or nil
+    out.teleportAllowed = not out.atDepot and self:depotTripProblem(current, hub) == nil
+    out.teleporting = self.booking ~= nil and self.booking.id == 'depot' and self.bookingTeleportAt ~= nil
+      and self.clock - self.bookingTeleportAt < 30 or nil
+    out.stations = self:earthStations() or nil
+    out.finding = self:earthStations() and self.stationAsks ~= nil and next(self.stationAsks) ~= nil or nil
     out.lookup = self:fuelDepotWanted()
     out.problem = problem
     out.runs = {}
@@ -323,7 +370,8 @@ function M.attach(c)
         distanceMetres = job.km * 1000, pay = q.pay, units = q.units, kg = q.kg, litres = q.units * good.litres,
         road = road > 1.005 and road or nil,
         basePercent = q.baseBonus and math.floor(q.baseBonus / road * 100 + 0.5) or nil,
-        tollTo = q.toll and q.toll.owner or nil,
+        tollTo = q.toll and q.toll.owner or nil, station = self:station(to) and self:station(to).name or nil,
+        gps = self.gpsRun == job.id or nil,
         allowed = problem == nil and q.units > 0 }
     end
     return out
@@ -348,6 +396,74 @@ function M.attach(c)
     return ok == true
   end
 
+  -- The known station of a town, or nil.
+  function c:station(town)
+    local known = self:businesses()[business.key(town.id, 'fuel')]
+    return known and not known.none and business.clean(known, town) or nil
+  end
+
+  -- GPS on a run, to check the route before going: the whole run, depot then station, as one route
+  -- where Earth can plan through stops; else straight to the station (or its town).
+  function c:gpsToRun(jobId)
+    local current = self.lastSample and self.lastSample.valid and self.lastSample or nil
+    local hub = current and self:fuelHub(current)
+    local job
+    for _, j in ipairs(hub and self:fuelRunOffers(hub) or {}) do if j.id == jobId then job = j end end
+    if not job or not self.adapter.setDestination or self.state ~= 'READY' or not self.arrived or self.hire then
+      self.gpsFeedback = 'The GPS cannot be set right now.'
+      return false
+    end
+    local town = places.get(job.to)
+    local depot = self:fuelDepot(hub)
+    local start, stop = depot or hub, self:station(town) or town
+    local startName = depot and (depot.name .. ', ' .. hub.name) or hub.name
+    local stopName = stop ~= town and (stop.name .. ', ' .. town.name) or town.name
+    local ok, why, both
+    if self.adapter.setRoute then
+      ok, why = self.adapter:setRoute({ { point = start, name = startName }, { point = stop, name = stopName } })
+      both = ok
+    end
+    if not ok then ok, why = self.adapter:setDestination(stop, stopName) end
+    self.diag:event('gps', ok and ('fuel_run:' .. job.id .. (both and ':route' or '')) or tostring(why), ok and 'I' or 'W')
+    self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = nil, nil, nil, ok and job.id or nil
+    self.gpsFeedback = ok and (both and ('The GPS shows the whole run: ' .. startName .. ', then ' .. stopName .. '.')
+      or ('The GPS is set to ' .. stopName .. '.')) or 'Could not set the GPS.'
+    return ok == true
+  end
+
+  -- Why the truck cannot be teleported to the depot now, or nil.
+  function c:depotTripProblem(current, hub)
+    if not hub then return 'There is no fuel depot within ' .. M.HUB_REACH_KM .. ' km.' end
+    if not self.adapter.teleport then return 'BeamNG.Earth cannot teleport right now.' end
+    if self:atFuelDepot(current, hub, self:fuelDepot(hub)) then return 'You are at the depot.' end
+    if self.booking and self.booking.id == 'depot' then return nil end
+    return self:shippingProblem()
+  end
+
+  -- Teleport to the depot: a free relocation to the depot (or its town), and the teleport there, in
+  -- one press, so the player starts the run there.
+  function c:teleportToDepot()
+    local current = self.lastSample and self.lastSample.valid and self.lastSample or nil
+    local hub = current and self:fuelHub(current)
+    local problem = self:depotTripProblem(current, hub)
+    if not problem and not self.booking then
+      local depot = self:fuelDepot(hub)
+      local spot = depot or hub
+      if not self:book({ id = 'depot', name = depot and (depot.name .. ', ' .. hub.name) or hub.name, region = hub.region,
+        latitude = spot.latitude, longitude = spot.longitude }, true) then problem = self.shippingFeedback end
+    end
+    if problem then
+      self.tradeFeedback = problem
+      return false
+    end
+    -- The card stays on this depot while the truck is away.
+    self.fuelHubId = hub.id
+    local ok = self:teleportToBooking()
+    self.tradeFeedback = ok and ('Off to the depot in ' .. hub.name .. '. The terrain takes a few seconds to load.')
+      or (self.shippingFeedback or 'BeamNG.Earth did not take the teleport.')
+    return ok
+  end
+
   -- Loads a fuel run at the depot: the truck and its trailer filled with fuel, the pay locked in,
   -- and the GPS set to the station (or the town, until one is found).
   function c:takeFuelRun(jobId)
@@ -370,9 +486,9 @@ function M.attach(c)
     end
     local good, destination = goods.get(job.good), places.get(job.to)
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
-      from = hub.id, to = destination.id, drivenKm = 0, toll = quote.toll, fuelRun = true, crashDamage = 0 }
+      from = hub.id, to = destination.id, drivenKm = 0, toll = quote.toll, fuelRun = true }
     if (quote.trailerUnits or 0) > 0 then self.load.trailerUnits = quote.trailerUnits end
-    self.abandonArmed, self.spillSeen, self.gpsDepot = false, nil, nil
+    self.abandonArmed, self.gpsDepot, self.gpsRun = false, nil, nil
     self:applyWeight()
     self.tradeFeedback = nil
     local known = self:businesses()[business.key(destination.id, good.id)]
@@ -383,54 +499,11 @@ function M.attach(c)
     return true
   end
 
-  -- The share of the fuel run's load spilled so far, 0 when nothing has.
-  function c:spilled()
-    local load = self.load
-    return load and load.fuelRun and M.spillShare(load.crashDamage) or 0
-  end
-
-  -- What the job on board pays now: a fuel run less what it has spilled.
-  function c:loadPay()
-    local load = self.load
-    if not load then return 0 end
-    return load.fuelRun and M.payAfterSpill(load.pay, self:spilled()) or load.pay
-  end
-
-  -- Counts the crash damage the truck and its trailer take with fuel on board. A repair or a reset
-  -- lowers the damage, which spills nothing back: only rises count.
-  function c:watchSpill()
-    local load = self.load
-    if not load or not load.fuelRun or self.hire or self.onFoot or not self.garage or not self.ownedParts then
-      self.spillSeen = nil
-      return
-    end
-    if self.spillReadAt and self.clock - self.spillReadAt < M.SPILL_EVERY_SECONDS then return end
-    self.spillReadAt = self.clock
-    local car = self:vehicleDamage()
-    if not car or car.id ~= self.ownedParts.id then return end
-    local total = car.damage + (self.trailerOut and self.trailerOut.damage or 0)
-    local seen = self.spillSeen
-    if seen and total > seen then
-      local before = M.spillShare(load.crashDamage)
-      load.crashDamage = (load.crashDamage or 0) + total - seen
-      local after = M.spillShare(load.crashDamage)
-      if after > before and math.floor(after * 100) > math.floor(before * 100) then
-        local litres = math.floor(load.units * goods.get(load.good).litres * after + 0.5)
-        self:toast('warning', 'FUEL SPILLED', 'About ' .. litres .. ' L lost in the crash. The run now pays '
-          .. dollars(self:loadPay()) .. '.', 6)
-      end
-    end
-    self.spillSeen = total
-  end
-
-  -- The fuel run's part of the job card: what has spilled and what the full load paid.
+  -- The fuel run's part of the job card.
   function c:fuelRunLoadView()
     local load = self.load
     if not load or not load.fuelRun then return nil end
-    local share = self:spilled()
-    local litres = load.units * goods.get(load.good).litres
-    return { fullPay = load.pay, spilledPercent = math.floor(share * 100 + 0.5),
-      spilledLitres = math.floor(litres * share + 0.5), from = places.get(load.from).name }
+    return { from = places.get(load.from).name }
   end
 end
 

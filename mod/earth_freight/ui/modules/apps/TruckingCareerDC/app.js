@@ -456,6 +456,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         if (!f || scope.data.load || !run || !run.allowed || !plainId(run.id)) return
         core("takeFuelRun('" + run.id + "')")
       }
+      scope.gpsToRun = function (run) { if (scope.data.gpsAllowed && scope.data.fuelRuns && run && plainId(run.id)) core("gpsToRun('" + run.id + "')") }
+      scope.teleportToDepot = function () {
+        var f = scope.data.fuelRuns
+        if (f && f.teleportAllowed && !f.teleporting) core('teleportToDepot()')
+      }
       scope.gpsToDepot = function () { if (scope.data.gpsAllowed && scope.data.fuelRuns && scope.data.fuelRuns.hub) core('gpsToDepot()') }
       scope.deliverJob = function () {
         var d = scope.data
