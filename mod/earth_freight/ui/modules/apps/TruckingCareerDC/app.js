@@ -33,7 +33,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   // Which folding sections the player opened or closed, by name, kept the same way. Nearby and the
   // heli's towns and jobs start open; the rest start closed.
   var FOLDS = 'earthFreight.hudFolds'
-  var FOLD_DEFAULTS = { nearby: true, helitowns: true, heliboard: true, landrace: true, leaderboard: true }
+  var FOLD_DEFAULTS = { fuelruns: true, nearby: true, helitowns: true, heliboard: true, landrace: true, leaderboard: true }
   var storedFolds = function () {
     try {
       var v = JSON.parse(window.localStorage.getItem(FOLDS) || '{}')
@@ -450,6 +450,18 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         if (!scope.data.town || scope.data.load || !job || !job.allowed || !plainId(job.id)) return
         core("takeJob('" + job.id + "', " + scope.shareOf(job) + ')')
       }
+      // Fuel runs: loaded at the depot on the Fuel runs card, when Lua allows it.
+      scope.takeFuelRun = function (run) {
+        var f = scope.data.fuelRuns
+        if (!f || scope.data.load || !run || !run.allowed || !plainId(run.id)) return
+        core("takeFuelRun('" + run.id + "')")
+      }
+      scope.gpsToRun = function (run) { if (scope.data.gpsAllowed && scope.data.fuelRuns && run && plainId(run.id)) core("gpsToRun('" + run.id + "')") }
+      scope.teleportToDepot = function () {
+        var f = scope.data.fuelRuns
+        if (f && f.teleportAllowed && !f.teleporting) core('teleportToDepot()')
+      }
+      scope.gpsToDepot = function () { if (scope.data.gpsAllowed && scope.data.fuelRuns && scope.data.fuelRuns.hub) core('gpsToDepot()') }
       scope.deliverJob = function () {
         var d = scope.data
         var town = d.town && d.town.delivery && d.town.delivery.allowed
@@ -775,6 +787,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         if (t.shop === 'car_repair') return 'garage'
         if (/^(garden_centre|agrarian)$/.test(t.shop)) return 'garden'
         if (t.place === 'farm' || t.landuse === 'farmyard') return 'farm'
+        if (/^(fuel|fuel_depot|oil|oil_terminal|refinery|petroleum_terminal)$/.test(t.industrial)) return 'terminal'
         if (t.industrial === 'depot') return 'depot'
         if (t.building === 'warehouse' || /^(warehouse|logistics)$/.test(t.industrial)) return 'warehouse'
         if (t.man_made === 'works' || /^(factory|manufacturing)$/.test(t.industrial)) return 'factory'
@@ -786,6 +799,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         bricks: ['builders', 'hardware', 'warehouse', 'factory', 'depot'],
         water: ['farm', 'garden', 'supermarket', 'warehouse'],
         fuel: ['fuel', 'depot', 'farm'],
+        // Where a fuel run loads: a fuel terminal, a depot or a truck stop in the depot town.
+        fuelhub: ['terminal', 'depot', 'fuel'],
         other: ['warehouse', 'factory', 'depot', 'supermarket']
       }
       var businessQuery = function (lat, lon, metres) {
@@ -887,6 +902,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           kept.last = data
           scope.data = data
           if (data.load && data.load.lookup) scope.lookUpBusiness(data.load.lookup)
+          if (data.fuelRuns && data.fuelRuns.lookup) scope.lookUpBusiness(data.fuelRuns.lookup)
         })
       })
       mount(true)

@@ -198,4 +198,38 @@ do
   _G.beamngEarth_api = nil
 end
 
+-- Modding API 1.2 and 1.4: GPS through stops and the petrol stations round a point, each only when
+-- Earth has the feature.
+do
+  local features, calls = {}, {}
+  local api = {
+    version = function() return 1, 8 end,
+    has = function(name) return features[name] == true end,
+    gpsSetRoute = function(points) calls.route = points; return true end,
+    places = function(lat, lon, opts, cb) calls.places = { lat = lat, lon = lon, opts = opts }; calls.cb = cb; return 7 end,
+  }
+  local g = Adapter.new({ core = function() return nil end, api = function() return api end, module = function() end })
+  local stops = { { point = { latitude = 1, longitude = 2 }, name = 'Depot' }, { point = { latitude = 3, longitude = 4 }, name = 'Station' } }
+  local ok, why = g:setRoute(stops)
+  T.check(not ok and why == 'route_missing', 'no route on an Earth without it')
+  T.check(not g:canFindStations(), 'no stations on an Earth without places')
+  T.check(not g:findStations({ latitude = 1, longitude = 2 }, 3000, function() end), 'nothing asked')
+  features.gpsRoute, features.places = true, true
+  T.check(g:setRoute(stops), 'route set')
+  T.eq(calls.route[1].lat, 1, 'by name'); T.eq(calls.route[2][2], 4, 'and by position'); T.eq(calls.route[2].name, 'Station', 'named')
+  T.check(not g:setRoute({ stops[1] }), 'at least two stops')
+  T.check(g:canFindStations(), 'stations on Earth with places')
+  local got
+  T.check(g:findStations({ latitude = 1, longitude = 2 }, 9000, function(list, done, failed) got = { list = list, done = done, failed = failed } end), 'asked')
+  T.eq(calls.places.opts.categories[1], 'gas_station', 'for petrol stations'); T.eq(calls.places.opts.radius, 3000, 'within 3 km at most')
+  calls.cb({ places = { { name = 'X' } }, pending = true })
+  T.check(got.list[1].name == 'X' and not got.done, 'a first answer, more to come')
+  calls.cb({ places = {}, complete = true })
+  T.check(got.done and got.failed == nil, 'then complete')
+  calls.cb({ error = 'no map data' })
+  T.eq(got.failed, 'no map data', 'a failure says why')
+  api.gpsSetRoute = function() error('changed') end
+  T.check(not g:setRoute(stops), 'a changed route call is contained')
+end
+
 T.done('Earth adapter (mocked engine)')

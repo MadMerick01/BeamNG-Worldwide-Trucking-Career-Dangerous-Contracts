@@ -79,7 +79,7 @@ local function progression(p)
     end
   end
   return { balance = p.balance, totalDistanceKm = p.totalDistanceKm, lastPunctureKm = p.lastPunctureKm, jobsDone = p.jobsDone,
-    contractsDone = done, towOwed = p.towOwed, insuranceOwed = p.insuranceOwed }
+    contractsDone = done, towOwed = p.towOwed, insuranceOwed = p.insuranceOwed}
 end
 
 -- A saved position, with the altitude and heading when present. Returns a clean copy, or nil and why.
@@ -137,6 +137,8 @@ local function load(l)
         or type(b.kind) ~= 'string' or not optionalString(b.kind) then return nil end
     shop = { name = b.name, kind = b.kind, latitude = b.latitude, longitude = b.longitude }
   end
+  -- A fuel run (fuelruns.lua).
+  if l.fuelRun ~= nil and (l.fuelRun ~= true or l.drop ~= nil) then return nil end
   -- The turf toll the job's pay already had taken off (Magnate 2): who it goes to and how much. Dropped if odd.
   local toll
   if type(l.toll) == 'table' and type(l.toll.owner) == 'string' and optionalString(l.toll.owner) and integer(l.toll.amount, 0) then
@@ -146,7 +148,7 @@ local function load(l)
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
     pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop, ship = container,
-    toll = toll }
+    toll = toll, fuelRun = l.fuelRun }
 end
 
 -- A "don't ask questions" job found and not yet picked up: its pickup and drop spots, which line

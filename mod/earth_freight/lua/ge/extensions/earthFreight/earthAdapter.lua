@@ -203,6 +203,48 @@ function M.new(environment)
     return true
   end
 
+  -- Whether Earth's modding API has a feature (api.has, from API 1.1).
+  local function has(name)
+    local ok, yes = call('has', name)
+    return ok and yes == true
+  end
+
+  -- GPS through several stops (API 1.2, gpsSetRoute): stops is a list of { point, name }, the last one
+  -- the destination. Each is sent as { lat, lon, name } by position and by name. Returns true, or
+  -- false and why; on an older Earth, false and 'route_missing', so the caller sets one destination.
+  function a:setRoute(stops)
+    if type(stops) ~= 'table' or #stops < 2 or #stops > 11 then return false, 'invalid_route' end
+    if not has('gpsRoute') then return false, 'route_missing' end
+    local points = {}
+    for i, stop in ipairs(stops) do
+      if type(stop) ~= 'table' or not location.valid(stop.point) then return false, 'invalid_route' end
+      local name = type(stop.name) == 'string' and stop.name or nil
+      local lat, lon = stop.point.latitude, stop.point.longitude
+      points[i] = { lat, lon, name, lat = lat, lon = lon, name = name }
+    end
+    local ok, set, why = call('gpsSetRoute', points)
+    if ok and set == true then return true end
+    return false, 'route_refused', why ~= nil and tostring(why) or nil
+  end
+
+  -- Whether Earth can be asked for the places round a point (API 1.4, places).
+  function a:canFindStations() return has('places') end
+
+  -- Asks Earth for the petrol stations within metres of a point. done(list, finished, failed) is
+  -- called with the stations as Earth gives them ({ name, lat, lon, open, ... }, nearest first),
+  -- whether Earth has all it will find (more may come in a second answer while its map cells
+  -- download), and why it failed, if it did. Returns whether the question was sent.
+  function a:findStations(point, metres, done)
+    if not location.valid(point) or type(done) ~= 'function' or not has('places') then return false end
+    local opts = { radius = math.min(3000, metres or 3000), categories = { 'gas_station' }, limit = 20 }
+    local ok, sent = call('places', point.latitude, point.longitude, opts, function(result)
+      if type(result) ~= 'table' then return done({}, false, 'no_answer') end
+      if result.error ~= nil and result.error ~= false and result.error ~= '' then return done({}, false, tostring(result.error)) end
+      done(type(result.places) == 'table' and result.places or {}, result.pending ~= true, nil)
+    end)
+    return ok and sent ~= nil and sent ~= false
+  end
+
   -- Asks Earth to teleport the player to this point, exactly as its map's Go button does, so the
   -- place also shows in Earth's recent places under this name. Guarded like the reads. True only
   -- means Earth took the request: the terrain loads and the car is placed some seconds later, and
