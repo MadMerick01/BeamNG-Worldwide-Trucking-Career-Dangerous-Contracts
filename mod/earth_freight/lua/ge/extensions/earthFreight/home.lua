@@ -1,22 +1,18 @@
 -- The base of operations (the home, before the Magnate update): a spot on Earth the player buys,
--- where they park while they claim it. It keeps one car stored besides the one they drive. Swap cars
--- puts the stored car out in place of the active one, within HOME_METRES of the spot. Repairs there
--- cost REPAIR_SHARE of the usual price, and Relocate lists it at the usual fee. A car bill, with a
--- free space at the base, can keep the old car and send it there instead of trading it in.
+-- where they park while they claim it. Repairs within HOME_METRES of the spot cost REPAIR_SHARE of the
+-- usual price, a trailer parks there for free, and Relocate lists it at the usual fee. (Cars are no
+-- longer kept at the base: every player has Your cars, fleet.lua.)
 -- Around the town it is in is the base's circle of influence (magnate.lua): its size comes from
 -- the owner's best wealth and the region, and jobs with an end inside pay the owner more.
 local location = require('earthFreight/location')
 local pricing = require('earthFreight/pricing')
 local places = require('earthFreight/places')
-local persistence = require('earthFreight/persistence')
 local magnate = require('earthFreight/magnate')
 local M = {}
 
 M.PRICE = 250000
 M.HOME_METRES = 200
 M.REPAIR_SHARE = 0.5
--- How many cars home keeps besides the one the player drives.
-M.SPACES = persistence.HOME_SPACES
 -- How long the game waits for the server's answer before Buy can be pressed again.
 M.ASK_SECONDS = 15
 -- How often the game checks whose turf the truck is in, for the messages when it changes.
@@ -29,27 +25,16 @@ M.CORP_WAIT_HOURS = 24
 local MAX_INTEGER = 9007199254740991
 local dollars = pricing.dollars
 
--- The saved home and stored cars are cleaned by persistence.lua.
-M.cleanCar = persistence.storedCar
-
 function M.attach(c)
   -- The controller keeps:
   --   self.property: the home owned, as saved, or nil
-  --   self.storedCars: the cars kept there, a list of at most SPACES
 
   --   self.corp: on a server, the corp the player is a member of (Magnate 3), as saved:
   --     { owner, town, latitude, longitude }, the yard being the owner's spot. Kept in step with the server.
 
-  function c:storedCar() return self.storedCars and self.storedCars[1] or nil end
-
-  -- Where the player keeps a second car and trailer: their base's spot, or as a corp member its yard.
+  -- Where the player keeps a second trailer: their base's spot, or as a corp member its yard.
   function c:homeSpot()
     return self.property or self.corp or nil
-  end
-
-  -- Whether a car bill can send the old car home: a home (or corp yard) is there and has room.
-  function c:homeSpaceFree()
-    return self:homeSpot() ~= nil and #(self.storedCars or {}) < M.SPACES
   end
 
   -- How far the player is from home, or nil.
@@ -64,8 +49,8 @@ function M.attach(c)
     return d ~= nil and d <= M.HOME_METRES
   end
 
-  -- What the player is worth: cash, plus what their truck is worth, plus what they paid for their
-  -- trailers (and their parts) and their base.
+  -- What the player is worth: cash, plus what their truck and parked cars are worth, plus what they paid
+  -- for their trailers (and their parts) and their base.
   function c:wealth()
     local progression = self.profile and self.profile.progression
     if not progression then return 0 end
@@ -75,7 +60,8 @@ function M.attach(c)
       truck = type(saved) == 'table' and (saved.worth or saved.value) or 0
     end
     local trailer = self.trailerWorth and self:trailerWorth() or 0
-    return progression.balance + math.max(0, truck) + trailer + (self.property and self.property.paid or 0)
+    local parked = self.parkedWorth and self:parkedWorth() or 0
+    return progression.balance + math.max(0, truck) + parked + trailer + (self.property and self.property.paid or 0)
   end
 
   -- The town a spot belongs to, for a base's circle: { latitude, longitude, name, boost }, or nil until
@@ -276,7 +262,7 @@ function M.attach(c)
       latitude = p.latitude, longitude = p.longitude }
   end
 
-  -- Why the player cannot do anything at home now (claim or swap), or nil.
+  -- Why the player cannot buy a base now, or nil.
   local function busy(self)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not self.garage then
       return 'Your base is unavailable right now.'
@@ -369,7 +355,6 @@ function M.attach(c)
     local near = town and town.name
     self.property = { latitude = spot.latitude, longitude = spot.longitude, paid = M.PRICE,
       name = type(near) == 'string' and near ~= '' and #near <= 256 and not near:find('%c') and near or nil, town = town }
-    self.storedCars = self.storedCars or {}
     local circle = self:baseCircle()
     self.homeFeedback = 'This spot is your base of operations. You paid ' .. dollars(M.PRICE) .. '.'
     self.diag:event('home_bought', string.format('%.5f,%.5f', spot.latitude, spot.longitude))
@@ -378,112 +363,6 @@ function M.attach(c)
       or 'Jobs that start or end near your base pay you more.')
     self:autoSaveSoon('your base')
     return true
-  end
-
-  -- The active car as home keeps it: what Save would keep of it.
-  function c:activeCarRecord()
-    local owned = self.ownedParts
-    if not owned then return nil end
-    local fuelLitres = self.fuel and self.fuel.vehicleId == owned.id and self.fuel.litres or nil
-    local used = self:savedVehicleUsed()
-    return M.cleanCar({ config = self:savedVehicleConfig(), name = self:savedVehicleName(), damage = self:savedVehicleDamage(),
-      fuelLitres = fuelLitres, value = used and owned.value or nil, km = used and owned.km or nil, worth = self:carWorth() })
-  end
-
-  -- Why Swap cars cannot be pressed now, or nil.
-  function c:swapProblem()
-    if not self:homeSpot() then return 'Buy a base first.' end
-    if not self:storedCar() then return 'No car is stored at your base yet.' end
-    local problem = busy(self)
-    if problem then return problem end
-    if self.load then return 'Deliver or abandon your job before swapping cars.' end
-    if self:towDebtProblem() then return self:towDebtProblem() end
-    if not self:atHome() then
-      local d = self:homeDistance()
-      return 'Drive to your ' .. (self.property and 'base' or 'corp yard') .. ' to swap cars' .. (d and (': it is ' .. string.format('%.1f', d / 1000) .. ' km away.') or '.')
-    end
-    return nil
-  end
-
-  -- Puts the stored car out where the active one stands, and stores the active one at home. The
-  -- stored car comes back as a saved car does on loading: with its fuel, wear and the repair it owes.
-  function c:swapCars()
-    local problem = self:swapProblem()
-    if problem then
-      self.homeFeedback = problem
-      return false
-    end
-    local outgoing = self:activeCarRecord()
-    if not outgoing then
-      self.homeFeedback = 'Your car could not be stored. Try again in a moment.'
-      self.diag:event('swap_failed', 'unsaved_config', 'W')
-      return false
-    end
-    local stored = self:storedCar()
-    local config = stored.config
-    local model, configFile = config.model, config.partConfigFilename
-    local value, name
-    if self.garage.carValue then
-      local ok, v, n = pcall(self.garage.carValue, self.garage, model, configFile)
-      if ok then value, name = v, n end
-    end
-    local oldFuel, oldModel = self.fuel, self.ownedParts.model
-    self.arrivingModel, self.arrivingValue, self.arrivingConfigFile = model, value, configFile
-    self.arrivingName = stored.name or name
-    self.arrivingUsed = stored.value and { value = stored.value, km = stored.km } or nil
-    self.appliedWeight, self.tankReading = nil, nil
-    self.ourRespawn = true
-    self.fuel = stored.fuelLitres and { litres = stored.fuelLitres, restore = true } or nil
-    local ok, why, detail = self.garage:spawnConfig(model, config)
-    if not ok then
-      self.ourRespawn, self.fuel = nil, oldFuel
-      self.arrivingModel, self.arrivingValue, self.arrivingUsed, self.arrivingName, self.arrivingConfigFile = nil, nil, nil, nil, nil
-      self:applyWeight()
-      self.homeFeedback = 'Could not bring your stored car out. Try again in a moment.'
-      self.diag:event('swap_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
-      return false
-    end
-    self.storedCars = { outgoing }
-    -- The stored car owes the repair it was stored with; nothing the other car needed carries over.
-    self.owedDamage, self.punctureDamage = stored.damage or 0, 0
-    self.lastDamage, self.rawDamage, self.quote, self.repairFeedback = nil, nil, nil, nil
-    -- Each photo is of one car: both are taken again as the car stands still.
-    if self.garage.removePhoto then
-      self.garage:removePhoto(oldModel)
-      if model ~= oldModel then self.garage:removePhoto(model) end
-    end
-    self.photoModel, self.photoStamp, self.homeCard = nil, nil, nil
-    self:photoSoon()
-    self.homeFeedback = 'Swapped. Your ' .. tostring(outgoing.name or oldModel) .. ' is stored at your ' .. (self.property and 'base.' or 'corp yard.')
-    self.diag:event('cars_swapped', tostring(oldModel) .. ' -> ' .. tostring(model))
-    self:autoSaveSoon('swapping cars')
-    return true
-  end
-
-  -- The stored car's card: its name, worth, picture and the repair it owes. Worked out once per car.
-  function c:storedCarCard()
-    local car = self:storedCar()
-    if not car then return nil end
-    local known = self.homeCard
-    if not known or known.from ~= car then
-      local model, configFile = car.config.model, car.config.partConfigFilename
-      local value, name, preview
-      if self.garage and self.garage.carValue then
-        local ok, v, n = pcall(self.garage.carValue, self.garage, model, configFile)
-        if ok then value, name = v, n end
-      end
-      -- The game's own picture: our photo of a model is of the car being driven.
-      if self.garage and self.garage.preview then
-        local ok, found = pcall(self.garage.preview, self.garage, model, configFile)
-        if ok and type(found) == 'string' then preview = found end
-      end
-      -- What it was worth with its parts when it was parked, else its price.
-      value = car.worth or car.value or value
-      known = { from = car, name = car.name or name or model, value = value, preview = preview, km = car.km,
-        repair = car.damage and pricing.repairCost(car.damage, value) or 0 }
-      self.homeCard = known
-    end
-    return { name = known.name, value = known.value, preview = known.preview, km = known.km, repair = known.repair }
   end
 
   -- ----- Corps (Magnate 3) -----------------------------------------------------------------------------------------
@@ -498,24 +377,10 @@ function M.attach(c)
     return nil
   end
 
-  -- Leaving a corp, or being removed: the car in the yard is traded in (as a car bill would), and trailers there go
-  -- to the depot for free.
-  local function tradeInStored(self)
-    local card = self:storedCarCard()
-    if not card then return nil end
-    local pay = math.max(0, math.floor((card.value or 0) * pricing.CAR_TRADE_IN_SHARE - (card.repair or 0) + 0.5))
-    return pay, card.name
-  end
-
+  -- Leaving a corp, or being removed: trailers in the yard go to the depot for free.
   function c:corpGone(was)
     self.corp, self.leaveArmed = nil, nil
     local lines = {}
-    local pay, name = tradeInStored(self)
-    if pay then
-      self.storedCars, self.homeCard = {}, nil
-      if pay > 0 then self:addMoney(pay) end
-      lines[#lines + 1] = string.format('Your %s in the yard was traded in for %s.', name or 'car', dollars(pay))
-    end
     local moved = false
     for _, t in ipairs({ self.trailer, self.spareTrailer }) do
       if t and t.stored and t.at == 'base' then t.at, moved = 'depot', true end
@@ -545,7 +410,7 @@ function M.attach(c)
       local now = { latitude = yard.latitude, longitude = yard.longitude, owner = b.name, town = b.town }
       self.corp = now
       if not was then
-        self:showFlash('delivered', 'YOU JOINED A CORP', string.format('You are in %s\'s corp. Jobs in its turf pay you up to +%d%%, you pay no toll there, you get an equal share of the tolls others pay there, and its base keeps a car and a trailer for you.',
+        self:showFlash('delivered', 'YOU JOINED A CORP', string.format('You are in %s\'s corp. Jobs in its turf pay you up to +%d%%, you pay no toll there, you get an equal share of the tolls others pay there, and its base keeps a trailer for you.',
           b.name or 'their', magnate.percent(magnate.MEMBER_SHARE)))
         self.diag:event('corp_joined', tostring(b.name))
         self:autoSaveSoon('joining the corp')
@@ -606,7 +471,7 @@ function M.attach(c)
 
   function c:cancelJoin() return corpSend(self, 'cancel', {}, 'Taking your request back...') end
 
-  -- Leave corp asks once first, saying what happens to what's in the yard.
+  -- Leave corp asks once first.
   function c:leaveCorp()
     if not self.corp then
       self.homeFeedback = 'You are not in a corp.'
@@ -614,9 +479,7 @@ function M.attach(c)
     end
     if not self.leaveArmed then
       self.leaveArmed = true
-      local pay, name = tradeInStored(self)
       self.homeFeedback = string.format('Leave %s\'s corp? You can\'t join another for %d hours.', self.corp.owner or 'the', M.CORP_WAIT_HOURS)
-        .. (pay and string.format(' Your %s in the yard is traded in for %s.', name or 'car', dollars(pay)) or '')
         .. ' Press Yes, leave to go ahead.'
       return false
     end
@@ -809,7 +672,7 @@ function M.attach(c)
   function c:homeView(current)
     if self.state ~= 'READY' or not self.arrived or not self.profile or self.error then return nil end
     local view = { price = M.PRICE, radiusMetres = M.HOME_METRES, repairShare = math.floor(M.REPAIR_SHARE * 100 + 0.5),
-      spaces = M.SPACES, feedback = self.homeFeedback }
+      feedback = self.homeFeedback }
     -- On a server, everyone else's bases, nearest first.
     local others = {}
     local joinProblem = self:joinProblem()
@@ -850,20 +713,12 @@ function M.attach(c)
           members = #names > 0 and table.concat(names, ', ') or nil, radiusKm = base and math.floor(base.radiusKm + 0.5) or nil,
           share = magnate.MEMBER_SHARE, percent = magnate.percent(magnate.MEMBER_SHARE), distanceMetres = d, here = d ~= nil and d <= M.HOME_METRES,
           leaveArmed = self.leaveArmed or nil }
-        local owned = self.ownedParts
-        view.active = owned and { name = owned.name or owned.model, value = self:carWorth() } or nil
-        view.stored = self:storedCarCard()
-        local swap = self:swapProblem()
-        view.swapAllowed, view.swapProblem = swap == nil, view.stored and swap or nil
       end
       return view
     end
     local d = current and location.distance(current, p) or nil
     view.owned = { latitude = p.latitude, longitude = p.longitude, name = p.name, paid = p.paid, distanceMetres = d,
       here = d ~= nil and d <= M.HOME_METRES }
-    local owned = self.ownedParts
-    view.active = owned and { name = owned.name or owned.model, value = self:carWorth() } or nil
-    view.stored = self:storedCarCard()
     if self.mp and self.mp.state == 'server' then
       local mine
       for _, b in ipairs(self.mp.bases or {}) do if b.mine then mine = b end end
@@ -881,8 +736,6 @@ function M.attach(c)
         nextKm = next, nextWealth = next and math.ceil((magnate.wealthFor(next, circle.boost) - (circle.memberWealth or 0)) / 1000) * 1000 or nil,
         maxKm = magnate.MAX_KM, commission = self.mp ~= nil and self.mp.state == 'server' or nil, inside = current and location.distance(current, circle) <= circle.radiusKm * 1000 or false }
     end
-    local problem = self:swapProblem()
-    view.swapAllowed, view.swapProblem = problem == nil, view.stored and problem or nil
     return view
   end
 end

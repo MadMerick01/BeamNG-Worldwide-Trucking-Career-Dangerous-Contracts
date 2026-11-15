@@ -886,13 +886,13 @@ function M.attach(c)
     return self.pendingCar ~= nil and not self.load and self:canAfford(self.pendingCar.cost) and self:debtOwed() == 0
   end
 
-  -- Keep and store at home: allowed with a home that has room.
+  -- Keep the old car: allowed with a free slot in Your cars.
   function c:keepCarAllowed()
-    return self.pendingCar ~= nil and self:homeSpaceFree() and not self.load and self:canAfford(self.pendingCar.keepCost)
+    return self.pendingCar ~= nil and self:carSlotFree() and not self.load and self:canAfford(self.pendingCar.keepCost)
       and self:debtOwed() == 0
   end
 
-  -- The player's car as home keeps it, from the parts paid for, after another car has taken its place.
+  -- The player's car as Your cars keeps it parked, from the parts paid for, after another car has taken its place.
   function c:oldCarRecord(pending)
     local owned = self.ownedParts
     if not owned or type(owned.config) ~= 'table' then return nil end
@@ -907,7 +907,7 @@ function M.attach(c)
       worth = pricing.carWorth(owned) })
   end
 
-  -- Pays the car bill. With keep, the old car is sent home instead of traded in.
+  -- Pays the car bill. With keep, the old car is parked in a free slot of Your cars instead of traded in.
   function c:buyCar(keep)
     if not self.profile or self.error then
       self.carFeedback = 'Buying cars is unavailable right now. Check the status above.'
@@ -937,8 +937,8 @@ function M.attach(c)
     end
     local cost, kept = pending.cost, nil
     if keep then
-      if not self:homeSpaceFree() then
-        self.carFeedback = self.property and 'Your base has no room for another car.' or 'You need a base to keep your old car.'
+      if not self:carSlotFree() then
+        self.carFeedback = 'Every slot in Your cars is taken. Sell a parked car first, or trade this one in.'
         return false
       end
       kept = self:oldCarRecord(pending)
@@ -954,8 +954,8 @@ function M.attach(c)
       return false
     end
     if kept then
-      self.storedCars = { kept }
-      self.homeCard = nil
+      self.storedCars = self.storedCars or {}
+      self.storedCars[#self.storedCars + 1] = kept
     end
     -- Later part changes are priced against what was paid for, so the car keeps its own Value. A
     -- second-hand car's value is its price, and it keeps the kilometres it came with.
@@ -977,7 +977,7 @@ function M.attach(c)
     self.photoModel, self.photoStamp = nil, nil
     self.owedDamage, self.punctureDamage, self.fuel = 0, 0, nil
     self.carFeedback = 'Bought ' .. tostring(pending.name) .. ' for ' .. dollars(cost) .. '.'
-      .. (kept and (' Your ' .. tostring(kept.name or kept.config.model) .. ' is stored at your base.') or '')
+      .. (kept and (' Your ' .. tostring(kept.name or kept.config.model) .. ' is parked in slot ' .. tostring(#self.storedCars + 1) .. ' of Your cars.') or '')
     self:autoSaveSoon('buying your car')
     self:photoSoon()
     return true
@@ -1036,8 +1036,8 @@ function M.attach(c)
     for slot, offer in ipairs(offers) do
       local cost = math.max(0, offer.price - tradeIn)
       local sold = self.soldUsed[offer.id] == true
-      -- With room at home, the old car can be kept instead: the full price.
-      local keepCost = self:homeSpaceFree() and offer.price or nil
+      -- With a free slot in Your cars, the old car can be kept instead: the full price.
+      local keepCost = self:carSlotFree() and offer.price or nil
       list[slot] = { slot = slot, name = offer.name, preview = offer.preview, price = offer.price, newPrice = offer.newPrice,
         share = offer.share, km = offer.km, cost = cost, keepCost = keepCost, sold = sold, short = cost > balance and cost - balance or nil,
         allowed = problem == nil and not sold and self:canAfford(cost) }

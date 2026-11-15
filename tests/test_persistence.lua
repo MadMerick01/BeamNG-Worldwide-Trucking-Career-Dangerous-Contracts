@@ -143,14 +143,14 @@ do
     T.eq(P.validate(s), nil, 'invalid damage rejected')
   end
 end
--- A corp member's yard (Magnate 3): a car can be stored there without a base of their own; never both.
+-- A corp member's yard (Magnate 3), never with a base of their own. Parked cars (Your cars) need neither.
 do
   local car = { config = { model = 'pickup' }, name = 'Pickup' }
   local s = F.save(1); s.storedCars = { car }
-  T.eq(select(2, P.validate(s)), 'invalid_home', 'a stored car needs a base or a corp yard')
+  T.check(P.validate(s) ~= nil, 'a parked car needs no base or corp yard')
   s.corp = { latitude = -33.75, longitude = 150.69, owner = 'MadMerick', town = 'Penrith' }
   local clean = P.validate(s)
-  T.check(clean ~= nil and clean.corp.owner == 'MadMerick', 'a member keeps a car in the corp yard')
+  T.check(clean ~= nil and clean.corp.owner == 'MadMerick', 'a member with a parked car')
   s.property = { latitude = -33.75, longitude = 150.69, paid = 250000 }
   T.eq(select(2, P.validate(s)), 'invalid_corp', 'a base owner is never in a corp')
   s.property = nil; s.corp = { latitude = 200, longitude = 0 }
