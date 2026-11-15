@@ -6,6 +6,14 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New: Your cars, five car slots for every player from the start.** The Garage tab now has a Your cars section. It shows the car you're driving in slot 1 and up to four parked cars in slots 2 to 5, each with its worth, fuel and any repair it needs. You don't need a base for any of it.
+- When you buy a car, new or second hand, the bill offers Keep it in slot N whenever a slot is free. You pay the full price and your old car is parked there instead of traded in. When all five slots are full, the bill only offers the trade-in.
+- Press Drive on a parked car and a driver brings it to you, wherever you are, for $250. The car you were in is parked in its slot. Each car keeps its own parts, fuel, wear and repair bill. You can't change cars during a job, and you need to be stopped in your own car.
+- Press Sell on a parked car to free its slot. It pays the trade-in price: half of what the car is worth, less any repair it needs. You confirm before it sells.
+- Parked cars now count towards your wealth, so a car you keep doesn't make you look poorer. That means your base's circle, the price of an insurance claim and your wealth on the server leaderboard all include them. The server needs updating for its leaderboard to count them.
+- Your base and corp yard no longer keep a car. If you had a car stored at your base or corp yard, it's in slot 2 of Your cars now, with nothing lost. Leaving a corp no longer trades in your car. Your base still gives half-price repairs, a free spot for a second trailer and its circle.
+- Your saves still work. Once you have two or more parked cars, though, an older build can't load that save, so don't go back to an older download.
+
 ## Build 213 · 15 Nov 2026
 
 - **Fixed: the Refuel button emptied your tank instead of filling it.** Pressing Refuel said "Refuelled 0.0 L for $0", then the fuel you had just put in was taken back out. The fill now stays in the tank, and you're charged for what actually went in. Saves still work.

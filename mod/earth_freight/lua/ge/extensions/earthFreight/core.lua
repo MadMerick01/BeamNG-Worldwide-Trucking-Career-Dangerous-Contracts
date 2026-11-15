@@ -24,6 +24,7 @@ local flights = require('earthFreight/flights')
 local aircraft = require('earthFreight/aircraft')
 local trailers = require('earthFreight/trailers')
 local home = require('earthFreight/home')
+local fleet = require('earthFreight/fleet')
 local streetView = require('earthFreight/streetView')
 local business = require('earthFreight/business')
 local multiplayer = require('earthFreight/multiplayer')
@@ -160,6 +161,7 @@ function M.new(deps)
   flights.attach(c)
   trailers.attach(c)
   home.attach(c)
+  fleet.attach(c)
   fuelruns.attach(c)
 
   function c:transition(nextState, reason)
@@ -234,10 +236,12 @@ function M.new(deps)
     self.spareTrailer = self.profile and trailers.clean(self.profile.spareTrailer) or nil
     self.trailerOut, self.trailerRestored, self.foreignTrailer, self.trailersOpen = nil, nil, nil, false
     self.trailerFeedback, self.storeArmed, self.sellArmed = nil, false, false
-    -- The home owned and the car stored there; like money, a home bought since the last Save is not kept.
+    -- The home owned; like money, a home bought since the last Save is not kept.
     self.property = self.profile and copy(self.profile.property) or nil
-    self.storedCars = self.profile and copy(self.profile.storedCars) or nil
-    -- On a server, the corp the player is a member of (its yard keeps their second car and trailer).
+    -- Your cars: the parked ones (a car kept at a base or corp yard before Your cars is one of them now).
+    self.storedCars = self.profile and copy(self.profile.storedCars) or {}
+    self.carCards, self.fleetFeedback = nil, nil
+    -- On a server, the corp the player is a member of (its yard keeps their second trailer).
     self.corp = self.profile and copy(self.profile.corp) or nil
     self.homeFeedback, self.homeCard, self.corpSeen, self.leaveArmed, self.corpAskedAt = nil, nil, nil, nil, nil
     -- A trailer stored before trailers had a place (the garage that went everywhere) is at the base,
@@ -2557,9 +2561,9 @@ function M.new(deps)
       carChange = self.pendingCar and {
         name = self.pendingCar.name, price = self.pendingCar.price, extras = self.pendingCar.extras,
         tradeIn = self.pendingCar.tradeIn, repair = self.pendingCar.repair, cost = self.pendingCar.cost,
-        -- With a home: what keeping the old car costs, or that home is full.
-        keepCost = self:homeSpaceFree() and self.pendingCar.keepCost or nil,
-        homeFull = self:homeSpot() ~= nil and not self:homeSpaceFree() or nil,
+        -- With a free slot in Your cars: what keeping the old car costs, or that every slot is taken.
+        keepCost = self:carSlotFree() and self.pendingCar.keepCost or nil,
+        slotsFull = not self:carSlotFree() or nil, keepSlot = self:carSlotFree() and #self:parkedCars() + 2 or nil,
         oldName = self.ownedParts and self.ownedParts.name or nil,
         used = self.pendingCar.used and { km = self.pendingCar.used.km, newPrice = self.pendingCar.used.newPrice } or nil,
       } or nil,
@@ -2575,6 +2579,7 @@ function M.new(deps)
       shipDay = self:shipView(current),
       away = self:awayView(),
       home = self:homeView(current),
+      fleet = self:fleetView(),
       repairAtHome = self:homeSpot() ~= nil and self:atHome() or nil,
       stranded = self.stranded and current and {
         latitude = self.stranded.latitude, longitude = self.stranded.longitude,
@@ -2945,7 +2950,18 @@ function M.swapTrailers() return safely(function() return ensure():swapTrailers(
 function M.switchTrailer() return safely(function() return ensure():switchTrailer() end) end
 function M.sellTrailer() return safely(function() return ensure():sellTrailer() end) end
 function M.claimHome() return safely(function() return ensure():claimHome() end) end
-function M.swapCars() return safely(function() return ensure():swapCars() end) end
+-- Your cars (fleet.lua): index is the parked car's place in the list, from 1.
+local function parkedIndex(index)
+  return type(index) == 'number' and index == math.floor(index) and index >= 1 and index <= fleet.SLOTS
+end
+function M.swapCars(index)
+  if not parkedIndex(index) then return false end
+  return safely(function() return ensure():swapCars(index) end)
+end
+function M.sellParkedCar(index)
+  if not parkedIndex(index) then return false end
+  return safely(function() return ensure():sellParkedCar(index) end)
+end
 -- Corps (home.lua): base is a base's number, who a member's or request's.
 function M.askToJoin(base) return safely(function() return ensure():askToJoin(tonumber(base)) end) end
 function M.cancelJoin() return safely(function() return ensure():cancelJoin() end) end

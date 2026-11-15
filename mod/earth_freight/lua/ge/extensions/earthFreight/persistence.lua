@@ -194,29 +194,29 @@ local function property(p)
 end
 
 -- The corp the player is a member of, on a server (Magnate 3): its owner's name, town and the yard,
--- the owner's spot where members keep a car and a trailer. Returns a clean copy, or nil.
+-- the owner's spot where members keep a trailer. Returns a clean copy, or nil.
 local function corp(c)
   if type(c) ~= 'table' or not location.valid(c) or not optionalString(c.owner) or not optionalString(c.town) then return nil end
   return { latitude = c.latitude, longitude = c.longitude, owner = c.owner, town = c.town }
 end
 M.cleanCorp = corp
 
--- A car stored at home, kept as the active car is: its config, name, the damage it owes, its fuel,
+-- A parked car (Your cars, fleet.lua), kept as the active car is: its config, name, the damage it owes, its fuel,
 -- and for a second-hand car what was paid for it and its kilometres. Returns a clean copy, or nil.
 function M.storedCar(car)
   if type(car) ~= 'table' then return nil end
   local config = plainConfig(car.config)
   if not config or not optionalString(car.name) or not amount(car.damage) or not amount(car.fuelLitres)
       or not amount(car.value) or not amount(car.km) or not amount(car.worth) then return nil end
-  -- worth: what it was worth with its parts when it was parked, for its card at home.
+  -- worth: what it was worth with its parts when it was parked, for its card in Your cars.
   return { config = config, name = car.name, damage = car.damage, fuelLitres = car.fuelLitres, value = car.value, km = car.km,
     worth = car.worth }
 end
 
--- How many cars home keeps besides the one the player drives.
-M.HOME_SPACES = 1
+-- How many cars a player keeps parked besides the one they drive, base or not.
+M.PARKED_SLOTS = 4
 local function storedCars(list)
-  if type(list) ~= 'table' or #list > M.HOME_SPACES then return nil end
+  if type(list) ~= 'table' or #list > M.PARKED_SLOTS then return nil end
   local out = {}
   for i = 1, #list do
     out[i] = M.storedCar(list[i])
@@ -297,7 +297,7 @@ function M.validate(s)
     recent = needs(s.needs)
     if not recent then return nil, 'invalid_needs' end
   end
-  -- A home, and the cars stored there, which only a home can have.
+  -- A home, and the parked cars (any player can have them; before Your cars only a base or corp yard kept one).
   local home, stored = nil, nil
   if s.property ~= nil then
     home = property(s.property)
@@ -307,13 +307,12 @@ function M.validate(s)
     stored = storedCars(s.storedCars)
     if not stored then return nil, 'invalid_home' end
   end
-  -- A member's yard: a car can be stored there instead of at a base of their own.
+  -- A member's corp yard.
   local member = nil
   if s.corp ~= nil then
     member = corp(s.corp)
     if not member or home then return nil, 'invalid_corp' end
   end
-  if stored and #stored > 0 and not home and not member then return nil, 'invalid_home' end
   return {
     schemaVersion = M.SCHEMA, profileId = 'default', generation = s.generation,
     base = location.copy(s.base), resume = resume, progression = p,

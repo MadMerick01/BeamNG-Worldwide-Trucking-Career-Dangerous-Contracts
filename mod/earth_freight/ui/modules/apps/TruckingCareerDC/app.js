@@ -33,7 +33,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   // Which folding sections the player opened or closed, by name, kept the same way. Nearby and the
   // heli's towns and jobs start open; the rest start closed.
   var FOLDS = 'earthFreight.hudFolds'
-  var FOLD_DEFAULTS = { fuelruns: true, nearby: true, helitowns: true, heliboard: true, landrace: true, leaderboard: true }
+  var FOLD_DEFAULTS = { fuelruns: true, nearby: true, helitowns: true, heliboard: true, landrace: true, leaderboard: true, fleet: true }
   var storedFolds = function () {
     try {
       var v = JSON.parse(window.localStorage.getItem(FOLDS) || '{}')
@@ -587,11 +587,22 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.buyParts = function () { if (scope.data.buyPartsAllowed) core('buyParts()') }
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
       scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar(false)') }
-      // Keep and store at base: the old car goes to the base instead of being traded in.
+      // Keep: the old car is parked in a free slot of Your cars instead of being traded in.
       scope.keepCar = function () { if (scope.data.keepCarAllowed) core('buyCar(true)') }
-      // Home: Buy this spot asks to confirm on the HUD first; Swap cars needs no confirm.
+      // Home: Buy this spot asks to confirm on the HUD first.
       scope.claimHome = function () { if (scope.data.home && scope.data.home.claimAllowed) core('claimHome()') }
-      scope.swapCars = function () { if (scope.data.home && scope.data.home.swapAllowed) core('swapCars()') }
+      // Your cars: car is a parked car from data.fleet.parked; its index is its place in the list, from 1. Drive needs no
+      // confirm (the fee shows on the button); Sell asks to confirm first.
+      var parked = function (car) { return car && Number.isInteger(car.index) && car.index >= 1 && car.index <= 9 }
+      scope.swapCars = function (car) { if (parked(car) && car.driveAllowed) core('swapCars(' + car.index + ')') }
+      scope.sellParkedCar = function (car) { if (parked(car) && car.sellAllowed) core('sellParkedCar(' + car.index + ')') }
+      // The empty slots' numbers, after the car being driven and the parked ones.
+      scope.fleetEmpty = function (f) {
+        var out = []
+        if (!f) return out
+        for (var n = f.used + 1; n <= f.slots; n++) out.push(n)
+        return out
+      }
       // Corps: base and who are numbers from the server.
       var num = function (n) { n = Number(n); return isFinite(n) && n > 0 ? String(Math.floor(n)) : null }
       scope.askToJoin = function (id) { if (num(id)) core('askToJoin(' + num(id) + ')') }

@@ -1650,8 +1650,8 @@ do
   T.check(not c:view().home.claimAllowed, 'not without the money'); T.eq(c:view().home.short, Home.PRICE - 100000, 'told how short')
   T.check(not c:claimHome(), 'refused when short'); T.eq(c:view().balance, 100000, 'nothing paid')
   T.eq(c:view().shipping.home, nil, 'no home on Relocate yet')
-  -- Without a home a car bill only trades in.
-  c:openUsedCars(true); T.eq(c:view().usedCars.offers[1].keepCost, nil, 'no keep price without a home')
+  -- Without a home a car bill can still keep the old car: Your cars has a free slot.
+  c:openUsedCars(true); T.eq(c:view().usedCars.offers[1].keepCost, c:view().usedCars.offers[1].price, 'a keep price without a home')
   c:openUsedCars(false)
   c.profile.progression.balance = 400000
   c.load = { good = 'food' }; T.eq(c:claimProblem(), nil, 'a job does not stop buying a home'); c.load = nil
@@ -1659,8 +1659,8 @@ do
   T.near(c.property.latitude, spot.latitude, 1e-12, 'where the car is parked')
   T.check(not c:claimHome(), 'only one home'); T.eq(c:view().balance, 400000 - Home.PRICE, 'not charged twice')
   local v = c:view().home
-  T.check(v.owned and v.owned.here, 'at home'); T.eq(v.stored, nil, 'nothing stored yet')
-  T.check(not v.swapAllowed, 'nothing to swap')
+  T.check(v.owned and v.owned.here, 'at home'); T.eq(#c:view().fleet.parked, 0, 'nothing parked yet')
+  T.eq(c:view().fleet.slots, 5, 'five slots'); T.eq(c:view().fleet.used, 1, 'one used, by the car being driven')
   F.advance(c, 4); T.check(io.files[A] and io.files[A].property, 'saved itself with the home')
   T.eq(io.files[A].property.paid, Home.PRICE, 'with what was paid')
   -- A second-hand car, keeping the old one: the full price, and the old car goes home with its damage.
@@ -1672,27 +1672,38 @@ do
   T.check(c:buyUsedCar(slot), 'car brought out'); c:vehicleSpawned(); c:tick(0.1)
   local bill = c:view().carChange
   T.eq(bill.keepCost, offer.price, 'the bill offers keeping the old car'); T.check(bill.keepCost > bill.cost, 'it costs more than the trade-in')
-  T.check(c:view().keepCarAllowed, 'and can be paid'); T.eq(bill.homeFull, nil, 'home has room')
+  T.check(c:view().keepCarAllowed, 'and can be paid'); T.eq(bill.slotsFull, nil, 'a slot is free'); T.eq(bill.keepSlot, 2, 'slot 2')
   local before = c:view().balance
   T.check(c:buyCar(true), 'bought, keeping the old car')
   T.eq(c:view().balance, before - offer.price, 'paid the full price')
   T.eq(c.ownedParts.model, 'sport', 'driving the new car')
   local stored = c.storedCars[1]
-  T.eq(stored.config.model, 'pickup', 'the old car is at home'); T.eq(stored.config.parts.engine, 'pickup_engine_v8', 'with its parts')
+  T.eq(stored.config.model, 'pickup', 'the old car is parked'); T.eq(stored.config.parts.engine, 'pickup_engine_v8', 'with its parts')
   T.eq(stored.damage, 2000, 'and the repair it needs'); T.eq(stored.worth, 20000, 'and what it was worth')
-  T.eq(c:view().home.stored.name, 'pickup', 'shown on the Home tab'); T.eq(c:view().home.stored.repair, pricing.repairCost(2000, 20000), 'with its repair')
-  -- Home is full: the next bill only trades in.
-  c:openUsedCars(true); T.eq(c:view().usedCars.offers[1].keepCost, nil, 'no keep price with home full')
+  local parkedCar = c:view().fleet.parked[1]
+  T.eq(parkedCar.name, 'pickup', 'shown in Your cars'); T.eq(parkedCar.repair, pricing.repairCost(2000, 20000), 'with its repair')
+  T.eq(parkedCar.slot, 2, 'in slot 2'); T.eq(c:view().fleet.used, 2, 'two slots used')
+  T.eq(math.floor(c:wealth()), c:view().balance + c:carWorth() + 20000 + Home.PRICE, 'a parked car counts in wealth')
+  -- Every slot full: the next bill only trades in.
+  local first = c.storedCars[1]
+  for i = 2, 4 do c.storedCars[i] = first end
+  c:openUsedCars(true); T.eq(c:view().usedCars.offers[1].keepCost, nil, 'no keep price with every slot full')
   local other = slot == 1 and 2 or 1
   T.check(c:buyUsedCar(other), 'another car out'); c:vehicleSpawned(); c:tick(0.1)
-  T.eq(c:view().carChange.keepCost, nil, 'no keeping'); T.check(c:view().carChange.homeFull, 'home is full')
+  T.eq(c:view().carChange.keepCost, nil, 'no keeping'); T.check(c:view().carChange.slotsFull, 'every slot is taken')
   T.check(not c:buyCar(true), 'keep refused'); T.check(c:revertCar(false), 'own car back'); c:vehicleSpawned(); c:tick(0.1)
   T.eq(c.ownedParts.model, 'sport', 'the Sport GT is back')
-  -- Away from home: no swap, and Relocate lists home at the usual fee.
+  -- Sell frees a slot: the trade-in price, less its repair.
+  local selling = c:view().fleet.parked[4]
+  T.eq(selling.sale, math.floor(20000 * pricing.CAR_TRADE_IN_SHARE - selling.repair + 0.5), 'sells at the trade-in price')
+  local cash = c:view().balance
+  T.check(c:sellParkedCar(4), 'sold'); T.eq(c:view().balance, cash + selling.sale, 'paid for it')
+  T.check(c:sellParkedCar(3) and c:sellParkedCar(2), 'two more sold'); T.eq(#c.storedCars, 1, 'one parked car left')
+  T.check(not c:sellParkedCar(2), 'an empty slot sells nothing')
+  -- Away from home Relocate lists home at the usual fee.
   local away = location.destination(spot, 90, 1000)
   F.drive(c, a, away)
-  T.check(not c:atHome(), 'away'); T.check(c:swapProblem():find('Drive to your base', 1, true), 'told to drive to the base')
-  T.check(not c:swapCars(), 'no swap away from home')
+  T.check(not c:atHome(), 'away')
   T.check(c:view().shipping.home.here, 'within 5 km Relocate counts you as home')
   local far = location.destination(spot, 90, 20000)
   local ship = c:shippingView(far).home
@@ -1713,22 +1724,25 @@ do
   -- Swap: the stored pickup comes out with its damage owed; the Sport GT goes home with its own.
   c:fuelReading(1, 20, 60)
   local spawns = #g.spawns
-  T.check(c:swapCars(), 'swapped'); T.eq(#g.spawns, spawns + 1, 'the stored car spawned')
+  T.check(not c:swapCars(2), 'an empty slot does not swap')
+  local cash2 = c:view().balance
+  T.check(c:swapCars(1), 'swapped'); T.eq(#g.spawns, spawns + 1, 'the parked car spawned')
+  T.eq(c:view().balance, cash2 - 250, 'a driver brought it for $250')
   T.eq(g.spawns[#g.spawns].model, 'pickup', 'the pickup'); T.eq(g.spawns[#g.spawns].config.parts.engine, 'pickup_engine_v8', 'with its parts')
   c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
   T.eq(c.ownedParts.model, 'pickup', 'driving the pickup'); T.eq(c:view().carChange, nil, 'no bill for your own car')
   T.eq(c.owedDamage, 2000, 'its repair is still owed')
-  T.eq(c.storedCars[1].config.model, 'sport', 'the Sport GT is at home'); T.eq(c.storedCars[1].damage, damage, 'with its damage')
+  T.eq(c.storedCars[1].config.model, 'sport', 'the Sport GT is parked in its slot'); T.eq(c.storedCars[1].damage, damage, 'with its damage')
   T.eq(c.storedCars[1].value, offer.price, 'and its second-hand value'); T.eq(c.storedCars[1].km, offer.km, 'and km')
   T.near(c.storedCars[1].fuelLitres, 20, 1e-9, 'and its fuel')
   -- And back: the Sport GT keeps its second-hand value, wear and fuel.
   c:tick(0.6); c:tick(0.6)
   local fuels = #c.fuelTank.sets
-  T.check(c:swapCars(), 'swapped back'); c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
+  T.check(c:swapCars(1), 'swapped back'); c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
   T.eq(c.ownedParts.model, 'sport', 'driving the Sport GT'); T.eq(c.ownedParts.value, offer.price, 'worth what was paid')
   T.check(c.ownedParts.used, 'still second-hand'); T.eq(g.wears[#g.wears].km, offer.km, 'worn again')
   T.eq(#c.fuelTank.sets, fuels + 1, 'its fuel put back'); T.near(c.fuelTank.sets[#c.fuelTank.sets].litres, 20, 1e-9, 'as it was')
-  T.eq(c.owedDamage, damage, 'its own repair owed'); T.eq(c.storedCars[1].config.model, 'pickup', 'the pickup is home again')
+  T.eq(c.owedDamage, damage, 'its own repair owed'); T.eq(c.storedCars[1].config.model, 'pickup', 'the pickup is parked again')
   -- Save keeps the home and the stored car; a reload brings both back.
   c:tick(0.6); c:tick(0.6)
   T.check(c:manualSave(), 'saved')
@@ -1865,17 +1879,20 @@ do
   T.eq(toll, 1250, '20% toll, to $10'); T.eq(left, 4980, 'the rest for the driver')
 end
 
--- A save with a stored car needs a home, and a stored car needs a config.
+-- Parked cars need no home, up to four of them, and a parked car needs a config.
 do
   local save = F.save(1)
   save.storedCars = { { config = { model = 'pickup' } } }
-  T.eq(select(2, P.validate(save)), 'invalid_home', 'no stored car without a home')
+  T.check(P.validate(save), 'a parked car without a home loads')
   save.property = { latitude = 1, longitude = 2, paid = 250000 }
-  T.check(P.validate(save), 'a home with a stored car loads')
+  T.check(P.validate(save), 'a home with a parked car loads')
   save.storedCars = { { name = 'x' } }
-  T.eq(select(2, P.validate(save)), 'invalid_home', 'a stored car needs its config')
-  save.storedCars = { { config = { model = 'pickup' } }, { config = { model = 'sport' } } }
-  T.eq(select(2, P.validate(save)), 'invalid_home', 'home keeps one car')
+  T.eq(select(2, P.validate(save)), 'invalid_home', 'a parked car needs its config')
+  save.storedCars = {}
+  for i = 1, 4 do save.storedCars[i] = { config = { model = 'pickup' } } end
+  T.check(P.validate(save), 'four parked cars load')
+  save.storedCars[5] = { config = { model = 'sport' } }
+  T.eq(select(2, P.validate(save)), 'invalid_home', 'no more than four')
   save.storedCars, save.property.paid = nil, -1
   T.eq(select(2, P.validate(save)), 'invalid_home', 'a home has a price')
   save.property = nil
