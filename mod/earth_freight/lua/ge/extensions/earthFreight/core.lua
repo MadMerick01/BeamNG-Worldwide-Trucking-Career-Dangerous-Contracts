@@ -1911,7 +1911,12 @@ function M.new(deps)
     if self.fuel and self.fuel.restore then return end
     litres = math.min(litres, capacity)
     local before = self.fuel
-    if before and before.at and before.vehicleId == vehicleId and not self.refuelPending and self.profile
+    -- A Refuel the car answered before its tanks showed the change: charged once a reading shows it.
+    local pending = self.refuelPending
+    local refuelled = pending and pending.from and before and before.vehicleId == vehicleId
+      and litres > pending.from + fuel.PUMP_MARGIN_LITRES
+    if refuelled then self:finishRefuel(pending, math.min(litres, pending.to) - pending.from) end
+    if not refuelled and before and before.at and before.vehicleId == vehicleId and not self.refuelPending and self.profile
         and litres > before.litres + fuel.PUMP_MARGIN_LITRES then
       if self.pump then
         litres = self:chargePumpFill(vehicleId, before.litres, litres)
@@ -1970,8 +1975,10 @@ function M.new(deps)
       return false
     end
     self.refuelSerial = self.refuelSerial + 1
-    self.refuelPending = { serial = self.refuelSerial, at = self.clock, price = quote.price.perLitre, town = not quote.price.atPump }
-    local ok, why = self.fuelTank:set(self.fuel.litres + quote.litres, self.refuelSerial)
+    local from = self.fuel.litres
+    self.refuelPending = { serial = self.refuelSerial, at = self.clock, price = quote.price.perLitre, town = not quote.price.atPump,
+      from = from, to = from + quote.litres }
+    local ok, why = self.fuelTank:set(from + quote.litres, self.refuelSerial)
     if not ok then
       self.refuelPending = nil
       self.fuelFeedback = 'Could not refuel. You have not been charged.'
@@ -1982,18 +1989,31 @@ function M.new(deps)
     return true
   end
 
+  -- Charges a Refuel for the litres that went in, once.
+  function c:finishRefuel(pending, litres)
+    if self.refuelPending ~= pending then return end
+    self.refuelPending = nil
+    litres = math.max(0, litres)
+    local cost = math.min(fuel.cost(litres, pending.price), self.profile and self.profile.progression.balance or 0)
+    if cost > 0 then self:spend(cost, 'fuel') end
+    self.fuelFeedback = 'Refuelled ' .. string.format('%.1f', litres) .. ' L for ' .. dollars(cost) .. '.'
+    if pending.town then self.fuelFeedback = self.fuelFeedback .. ' A petrol station pump would have cost a fifth of that.' end
+    self.diag:event('refuelled', string.format('%.1f L, %d', litres, cost))
+  end
+
   -- The car's answer to a fuel change: a refuel is charged for what went in; a restore is free.
+  -- In game the tanks can still read their old level in the same frame they are set, so an answer
+  -- that shows no change leaves the Refuel waiting: the next reading that shows the fuel charges it
+  -- (fuelReading), and one that never does gives up uncharged after STALE_SECONDS.
   function c:fuelSet(vehicleId, serial, before, after, capacity)
     if not location.finite(before) or not location.finite(after) or not location.finite(capacity) then return end
     local pending = self.refuelPending
     if pending and serial == pending.serial then
-      self.refuelPending = nil
-      local litres = math.max(0, after - before)
-      local cost = math.min(fuel.cost(litres, pending.price), self.profile and self.profile.progression.balance or 0)
-      if cost > 0 then self:spend(cost, 'fuel') end
-      self.fuelFeedback = 'Refuelled ' .. string.format('%.1f', litres) .. ' L for ' .. dollars(cost) .. '.'
-      if pending.town then self.fuelFeedback = self.fuelFeedback .. ' A petrol station pump would have cost a fifth of that.' end
-      self.diag:event('refuelled', string.format('%.1f L, %d', litres, cost))
+      if after - before <= fuel.PUMP_MARGIN_LITRES then
+        pending.answered, pending.at = true, self.clock
+        return
+      end
+      self:finishRefuel(pending, after - before)
     end
     if capacity > 0 then
       self.fuel = { vehicleId = vehicleId, litres = math.min(after, capacity), capacity = capacity, at = self.clock,
