@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 213 · 15 Nov 2026
+
 - **Fixed: the Refuel button emptied your tank instead of filling it.** Pressing Refuel said "Refuelled 0.0 L for $0", then the fuel you had just put in was taken back out. The fill now stays in the tank, and you're charged for what actually went in. Saves still work.
 
 ## Build 212 · 15 Nov 2026
