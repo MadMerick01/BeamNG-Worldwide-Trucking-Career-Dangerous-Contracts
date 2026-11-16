@@ -208,12 +208,17 @@
 'use strict'
 // Where the live stats come from: the server sends status.json to the trucking-server-stats repo (its own repo, so the
 // server's GitHub token can't touch this one). Until it does, the sample next to this page is shown, marked as such.
+// GitHub's API first: it has the newest copy as soon as the server sends it. It allows each visitor 60 reads an hour,
+// but asks again with the copy's version (no-cache), and an unchanged answer doesn't count. Past the limit, the raw
+// file, which GitHub can serve up to 5 minutes old.
 var STATS_URLS = [
-  'https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json',
-  'status.json'
+  { url: 'https://api.github.com/repos/MadMerick01/trucking-server-stats/contents/status.json?ref=main',
+    headers: { Accept: 'application/vnd.github.raw+json' }, cache: 'no-cache' },
+  { url: 'https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json', bust: true },
+  { url: 'status.json', bust: true }
 ]
 var REFRESH_MS = 60000
-// Stats older than this mean the server is off (it sends them every few minutes while it runs).
+// Stats older than this mean the server is off (it sends them at least every 10 minutes while it runs).
 var STALE_MS = 15 * 60000
 
 var stats = null
@@ -708,11 +713,14 @@ function render() {
 // The first stats file that loads and looks right wins.
 function load(i) {
   if (i >= STATS_URLS.length) { if (!stats) render(); return Promise.resolve() }
-  var url = STATS_URLS[i] + (STATS_URLS[i].indexOf('?') < 0 ? '?t=' : '&t=') + Date.now()
-  return fetch(url, { cache: 'no-store' })
+  var source = STATS_URLS[i]
+  var url = source.bust ? source.url + (source.url.indexOf('?') < 0 ? '?t=' : '&t=') + Date.now() : source.url
+  return fetch(url, { cache: source.cache || 'no-store', headers: source.headers || {} })
     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json() })
     .then(function (data) {
       if (!data || data.version !== 1) throw new Error('not stats')
+      // A copy older than the one shown (the raw file lagging behind) changes nothing.
+      if (stats && stats.sample !== true && data.sample !== true && Date.parse(data.updated) < Date.parse(stats.updated)) return
       stats = data
       var sent = Date.parse(data.updated)
       shift = data.sample === true && isFinite(sent) ? Date.now() - sent : 0

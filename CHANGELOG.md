@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The server's live page updates much faster.** It now shows changes within a minute or two instead of up to about 9 minutes, and a new Mayday Rescue call or a win shows up within about a minute. Nothing changes in the game, and you don't need to do anything.
+
 ## Build 217 · 16 Nov 2026
 
 - **A Mayday Rescue run is now one car from the edge to the scene.** Bringing out another car from Your cars, or picking a different car, ends your run, so pick the right car before you set off. You can still start again from any edge, and changing parts on your car is still fine. Your saves still work.
