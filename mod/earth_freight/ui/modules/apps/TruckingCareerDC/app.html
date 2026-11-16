@@ -310,6 +310,7 @@
             <div ng-if="data.mayday.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.mayday)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="flex:1;min-width:0;">
               <div ng-if="data.mayday.distanceMetres != null" style="font-size:18px;font-weight:bold;">{{distance(data.mayday.distanceMetres)}}<span ng-if="data.mayday.direction"> {{data.mayday.direction}}</span></div>
+              <div ng-if="data.mayday.place" style="font-size:13px;font-weight:bold;color:#f2c94c;">You're {{data.mayday.place}} of {{data.mayday.field}}</div>
               <div style="font-size:12px;color:#c9d6d2;">No GPS: head off road and follow the arrow to the scene. First within {{data.mayday.winMetres}} m wins ${{data.mayday.reward | number:0}}.</div>
             </div>
           </div>
@@ -953,7 +954,7 @@
           <div ng-if="!data.mayday.open" role="status" style="margin-top:4px;font-size:13px;"><b style="color:#6fcf97;">{{data.mayday.winner || 'Someone'}}</b> got there first and won ${{data.mayday.reward | number:0}}. The next call goes out in {{clock(data.mayday.secondsLeft)}}.</div>
         </div>
         <div ng-if="data.mayday.running" style="margin:0 0 8px;padding:8px 10px;border:2px solid #f2c94c;border-radius:6px;">
-          <div style="font-size:13px;color:#c9d6d2;">On your way from the {{data.mayday.running.edge | lowercase}} edge &middot; {{until(data.mayday.running.seconds)}}</div>
+          <div style="font-size:13px;color:#c9d6d2;">On your way from the {{data.mayday.running.edge | lowercase}} edge &middot; {{until(data.mayday.running.seconds)}}<b ng-if="data.mayday.place" style="color:#f2c94c;"> &middot; {{data.mayday.place}} of {{data.mayday.field}}</b></div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
             <div ng-if="data.mayday.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.mayday)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="flex:1;min-width:0;">
@@ -962,6 +963,15 @@
             </div>
           </div>
           <div ng-if="data.mayday.checking" role="status" style="margin-top:4px;font-weight:bold;color:#6fcf97;">You're at the scene! Checking with the server...</div>
+        </div>
+        <div ng-if="data.mayday.standings" style="margin:0 0 8px;padding:8px 10px;border:1px solid #2c3a40;border-radius:6px;">
+          <div style="font-weight:bold;">Standings</div>
+          <div style="font-size:12px;color:#c9d6d2;">How far each trucker on a run is from the scene, in a straight line.</div>
+          <div ng-repeat="r in data.mayday.standings track by $index" ng-style="r.you ? {color:'#f2c94c',fontWeight:'bold'} : {}" style="display:flex;gap:8px;margin-top:3px;font-size:13px;">
+            <span style="flex:none;width:28px;color:#c9d6d2;">{{$index + 1}}.</span>
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{r.name}}<span ng-if="r.you"> (you)</span></span>
+            <span style="flex:none;">{{r.km | number:1}} km</span>
+          </div>
         </div>
         <div ng-if="data.mayday.open && !data.mayday.running && data.mayday.inside" style="margin:0 0 8px;font-size:13px;color:#f2c94c;">You're inside the circle, but not on a run. Start from an edge for it to count.</div>
         <div ng-if="data.mayday.open">

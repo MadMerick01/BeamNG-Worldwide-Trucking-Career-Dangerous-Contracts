@@ -8,7 +8,8 @@
   "mayday": {
     "round": 4, "state": "open", "name": "Gobi Desert", "region": "Ömnögovi, Mongolia",
     "story": "A light plane was forced down on the steppe.", "latitude": 43.5, "longitude": 104.0, "radiusKm": 40,
-    "reward": 80000, "racers": 2, "movesAt": "2026-11-08T19:40:00Z"
+    "reward": 80000, "racers": 2, "movesAt": "2026-11-08T19:40:00Z",
+    "standings": [ { "name": "Ruby", "km": 12.4 }, { "name": "Jonno", "km": 27.9 } ]
   },
   "players": [
     { "name": "MadMerick", "town": "Quillota", "region": "Chile", "latitude": -32.88, "longitude": -71.25, "doing": "Carrying container 7 to Quillota" },

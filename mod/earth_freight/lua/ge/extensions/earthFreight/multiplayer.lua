@@ -512,6 +512,8 @@ function M.new(deps)
   -- Mayday Rescue: this player landed on an edge (n, e, s or w) of the circle, or reached the scene.
   function s:maydayStart(round, edge) return shipEvent('wwtcMaydayStart', { round = round, edge = edge }) end
   function s:maydayWin(round) return shipEvent('wwtcMaydayWin', { round = round }) end
+  -- On a run: how far the car is from the scene (to 100 m, never where it is), for everyone's standings.
+  function s:maydayPos(round, metres) return shipEvent('wwtcMaydayPos', { round = round, metres = metres }) end
   -- The server page: where the player is (a town, never exact coordinates) and what they're doing, and each delivery.
   function s:where(t) return shipEvent('wwtcWhere', t) end
   function s:delivered(t) return shipEvent('wwtcDelivered', t) end
