@@ -577,8 +577,10 @@ do
   T.check(not c:towHere(), 'asks first'); T.check(c:view().tow.armed, 'armed')
   -- The car was 1 in the fixture; the tow puts the player back in it, and the game resets it.
   g.vehicleId, g.towResets = 1, true
+  c.maydayRun = { round = 1, edge = 'e', at = c.clock }
   T.check(c:towHere(), 'towed'); a.vehicle = { id = 1, model = 'pickup' }
   c:vehicleReset(1); c:tick(0.1); c:tick(0.1)
+  T.check(c.maydayRun ~= nil, 'a tow of a few metres keeps a Mayday Rescue run going'); c.maydayRun = nil
   T.eq(g.tows, 1, 'brought over'); T.eq(c:view().balance, balance - 500, 'charged $500')
   T.check(c.load ~= nil, 'the job is kept'); T.eq(c.owedDamage, 8000, 'the damage is still owed')
   T.eq(c:view().flash.title, 'REPAIR STILL OWED', 'told so'); T.check(c:view().flash.text:find('Towing', 1, true), 'by the tow')
