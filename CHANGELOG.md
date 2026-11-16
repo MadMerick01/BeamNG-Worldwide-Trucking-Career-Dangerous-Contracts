@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 221 · 16 Nov 2026
+
 - **Mayday Rescue edge buttons no longer drop two players on top of each other.** Each teleport to an edge now lands at a random spot between 30 and 250 metres from it, so players who pick the same edge at the same time start apart. Your saves still work.
 - **A short tow no longer ends your Mayday Rescue run.** The tow only ever brings your car the few metres to where you are standing, so it now keeps your run going.
 
