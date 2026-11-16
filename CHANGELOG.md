@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 215 · 16 Nov 2026
+
 - **Changed: how many car slots you get in Your cars.** A new career now has 2 slots: the car you drive plus one parked car. Buying a base, or joining one as a corp member, gives you 3. With a base or corp you can also buy a 4th slot for $200,000 with the new Buy a 4th slot button on Your cars, and you confirm before you pay. The bought slot is yours to keep, but it only counts while you have a base or are in a corp. Trailers work as before.
 - If you already have more parked cars than your slots allow, from build 214 or after leaving a corp, you keep every one of them. You can still drive and sell them, but you can't keep another car until you've sold enough to make room. Your saves still work.
 
