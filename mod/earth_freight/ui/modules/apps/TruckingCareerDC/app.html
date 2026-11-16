@@ -279,7 +279,7 @@
           <div style="font-weight:bold;color:#eb5757;">Don't ask questions &middot; ${{data.beacon.pay | number:0}}</div>
           <div style="font-size:13px;">{{data.beacon.line}} No weight, no questions. Pick it up, then take it {{km(data.beacon.dropMetres)}} km off road.</div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
-            <div ng-if="data.beacon.arrow != null && !data.beacon.inZone" aria-hidden="true" ng-style="arrowStyle(data.beacon)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;">&#9650;</div>
+            <div ng-if="data.beacon.arrow != null && !data.beacon.inZone" aria-hidden="true" ng-style="arrowStyle(data.beacon)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="flex:1;min-width:0;">
               <div ng-if="!data.beacon.inZone && data.beacon.distanceMetres != null" style="font-size:18px;font-weight:bold;">Beacon <span ng-if="data.beacon.distanceMetres >= 1000">{{km(data.beacon.distanceMetres)}} km</span><span ng-if="data.beacon.distanceMetres < 1000">{{data.beacon.distanceMetres | number:0}} m</span><span ng-if="data.beacon.direction"> {{data.beacon.direction}}</span></div>
               <div ng-if="data.beacon.inZone" style="font-size:18px;font-weight:bold;color:#6fcf97;">At the beacon</div>
@@ -307,7 +307,7 @@
         <div ng-if="data.mayday.running" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">
           <div style="font-weight:bold;color:#eb5757;">Mayday Rescue: near {{data.mayday.name}}</div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
-            <div ng-if="data.mayday.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.mayday)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;">&#9650;</div>
+            <div ng-if="data.mayday.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.mayday)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="flex:1;min-width:0;">
               <div ng-if="data.mayday.distanceMetres != null" style="font-size:18px;font-weight:bold;">{{distance(data.mayday.distanceMetres)}}<span ng-if="data.mayday.direction"> {{data.mayday.direction}}</span></div>
               <div style="font-size:12px;color:#c9d6d2;">No GPS: head off road and follow the arrow to the scene. First within {{data.mayday.winMetres}} m wins ${{data.mayday.reward | number:0}}.</div>
@@ -319,7 +319,7 @@
           <div ng-if="data.load.beacon" style="font-weight:bold;color:#eb5757;">Don't ask questions</div>
           <div ng-if="data.load.contract" style="font-weight:bold;color:#eb5757;">Dangerous contract: {{data.load.contract.name}}</div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
-            <div ng-if="data.load.drop.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.load.drop)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#f2c94c;">&#9650;</div>
+            <div ng-if="data.load.drop.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.load.drop)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#f2c94c;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="flex:1;min-width:0;">
               <div ng-if="!data.load.drop.inZone" style="font-size:18px;font-weight:bold;"><span ng-if="data.load.drop.distanceMetres >= 1000">{{km(data.load.drop.distanceMetres)}} km</span><span ng-if="data.load.drop.distanceMetres < 1000">{{data.load.drop.distanceMetres | number:0}} m</span><span ng-if="data.load.direction"> {{data.load.direction}}</span></div>
               <div ng-if="data.load.drop.inZone" style="font-size:18px;font-weight:bold;color:#6fcf97;">{{data.load.contract ? 'At the finish' : 'In the drop zone'}}</div>
@@ -955,7 +955,7 @@
         <div ng-if="data.mayday.running" style="margin:0 0 8px;padding:8px 10px;border:2px solid #f2c94c;border-radius:6px;">
           <div style="font-size:13px;color:#c9d6d2;">On your way from the {{data.mayday.running.edge | lowercase}} edge &middot; {{until(data.mayday.running.seconds)}}</div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
-            <div ng-if="data.mayday.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.mayday)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;">&#9650;</div>
+            <div ng-if="data.mayday.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.mayday)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="flex:1;min-width:0;">
               <div ng-if="data.mayday.distanceMetres != null" style="line-height:1;"><span style="font-size:28px;font-weight:900;">{{distance(data.mayday.distanceMetres)}}</span><span ng-if="data.mayday.direction" style="font-size:15px;color:#c9d6d2;"> {{data.mayday.direction}}</span></div>
               <div style="font-size:12px;color:#c9d6d2;">to the scene. No GPS: head off road and follow the arrow. Get within {{data.mayday.winMetres}} m of it.</div>
@@ -1069,7 +1069,7 @@
             <div style="font-size:12px;color:#c9d6d2;">{{data.heli.hired.here.region}}<span ng-if="data.heli.hired.here.boost > 1.02" style="color:#f2c94c;"> &middot; rough roads &times;{{data.heli.hired.here.boost | number:1}} pay</span><span ng-if="data.heli.hired.height != null"> &middot; {{data.heli.hired.height | number:0}} m above the ground</span></div>
           </div>
           <div ng-if="data.heli.hired.car.distanceMetres != null" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-            <div ng-if="data.heli.hired.car.arrow != null && !data.heli.hired.car.near" aria-hidden="true" ng-style="arrowStyle(data.heli.hired.car)" style="width:28px;height:28px;line-height:28px;text-align:center;font-size:22px;color:#a7e5c9;">&#9650;</div>
+            <div ng-if="data.heli.hired.car.arrow != null && !data.heli.hired.car.near" aria-hidden="true" ng-style="arrowStyle(data.heli.hired.car)" style="width:28px;height:28px;line-height:28px;text-align:center;font-size:22px;color:#a7e5c9;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="font-size:13px;">Your car is <span ng-if="data.heli.hired.car.near">right here</span><span ng-if="!data.heli.hired.car.near">{{km(data.heli.hired.car.distanceMetres)}} km {{data.heli.hired.car.direction}}</span>.</div>
           </div>
           <div ng-if="data.beacon" style="margin-top:6px;font-size:13px;color:#eb5757;"><b>Beacon:</b> <span ng-if="data.beacon.distanceMetres >= 1000">{{km(data.beacon.distanceMetres)}} km</span><span ng-if="data.beacon.distanceMetres < 1000">{{data.beacon.distanceMetres | number:0}} m</span> {{data.beacon.direction}}. Fly over to look at it; pick it up in your car.</div>

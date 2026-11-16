@@ -11,6 +11,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - The first trucker to get within 250 m of the scene wins $80,000, added to your money and saved for you. Five minutes later the next call goes out somewhere else. If nobody gets there in two hours, the call moves on anyway.
 - You can join a call at any time and start again from any edge whenever you like. While a call is out, nobody can relocate inside its circle, and any other teleport, a tow or hiring a helicopter ends your run. Repairs and insurance still work.
 - Ship Day, its Go to port button and its containers are gone. A container you were still carrying delivers as a normal job. Your saves still work.
+- **The direction arrow is now a sharp, pointed needle**, so it's easier to see which way it faces. It's the same on off-road drops, signal beacons, the way back to your car from a helicopter, and Mayday Rescue.
 - Mayday Rescue is multiplayer only, so nothing changes in single player. The live server page shows the call and who won it instead of Ship Day.
 
 ## Build 215 · 16 Nov 2026
