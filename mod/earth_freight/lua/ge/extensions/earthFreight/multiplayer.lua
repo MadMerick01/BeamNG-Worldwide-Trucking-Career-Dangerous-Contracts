@@ -117,7 +117,7 @@ function M.cleanBases(list)
         corp = corp, asked = b.asked == true and not corp, yard = corp and spotOf(b.yard) or nil,
         requests = b.mine == true and people(b.requests) or nil,
         outposts = outpostsOf(b.outposts), land = percent(b.land) or 0, grown = b.grown == true,
-        fullAt = money(b.fullAt), wealth = money(b.wealth) }
+        fullAt = money(b.fullAt), wealth = money(b.wealth), worth = money(b.worth) }
     end
   end
   return out
@@ -132,7 +132,8 @@ function M.cleanRace(r, now)
     leader = M.cleanText(r.leader, 32), leaderLand = percent(r.leaderLand) }
 end
 
--- The season's leaderboard from the server, checked (wwtcBoard): the top truckers by wealth with their place, base town,
+-- The season's leaderboard from the server, checked (wwtcBoard): the top truckers by wealth with their place, base towns
+-- (every town a corp's owner holds), the corp a member is in,
 -- deliveries and season wins, which one is this player, this player's own row when they're further down, and the
 -- last season's winner. nil if it's missing.
 local function boardRow(r)
@@ -140,7 +141,7 @@ local function boardRow(r)
   local rank, wealth = tonumber(r.rank), money(r.wealth)
   if not rank or rank < 1 or rank > 100000 or rank ~= math.floor(rank) or not wealth then return nil end
   local deliveries, wins = tonumber(r.deliveries), tonumber(r.wins)
-  return { rank = rank, name = M.cleanText(r.name, 32) or 'A trucker', baseTown = M.cleanText(r.baseTown, 40), wealth = wealth,
+  return { rank = rank, name = M.cleanText(r.name, 32) or 'A trucker', baseTown = M.cleanText(r.baseTown, 40), corp = M.cleanText(r.corp, 32), wealth = wealth,
     deliveries = deliveries and deliveries >= 0 and deliveries < 1e9 and math.floor(deliveries) or 0,
     wins = wins and wins >= 1 and wins < 1000 and math.floor(wins) or nil, mine = r.mine == true }
 end

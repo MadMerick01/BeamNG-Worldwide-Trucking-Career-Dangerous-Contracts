@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Season Leaderboard now shows every base a corp holds.** Once a corp opens a second base, its owner's row lists both towns (for example "Elk Grove Village, Marrakesh"), or the first few and how many more. Corp members, who don't own a base themselves, now show which corp they're in instead of a dash. This is on the server page and on the Land Race and Leaderboard tab in the HUD. Wealth is worked out the same as before: opening another base is free, so it doesn't add to anyone's wealth. Your saves still work.
+- **The Land Race now shows each corp's wealth:** the owner's and every member's wealth from the leaderboard, added together. It's on the Land Race card on the server page and on the Land Race and Leaderboard tab in the HUD. The leaderboard itself still ranks each trucker on their own.
 - **Rough regions now pay much more.** A town job's pay is now multiplied by the region's full "rough roads" number, where before it only got half of it. Death Road now pays ×3 instead of ×2, the Blue Mountains about ×1.5 instead of ×1.25, and a ×2 region pays ×2 instead of ×1.5. For example, the starter car's full load of parts on a 13 km run in a ×2 region now pays about $10,310 instead of $7,740. Fuel runs get the bigger number too, and off-road drops, which already paid the full number, now go up to ×3 instead of stopping at ×2. Jobs on flat ground pay the same as before, and the bonus for jobs in a base's turf stays at +10% for visitors and +20% for the owner. Jobs you've already taken keep their pay, and your saves still work.
 
 ## Build 222 · 16 Nov 2026

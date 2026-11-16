@@ -382,7 +382,7 @@ function renderBoard() {
   // Wealth is cash plus what the truck, trailer and base are worth; a page from an older server sorts by it too.
   rows = rows.map(function (r) {
     var cash = Number(r.balance) || 0, truck = Number(r.truckValue) || 0, trailer = Number(r.trailerValue) || 0, base = Number(r.baseValue) || 0
-    return { name: r.name, wins: num(r.wins) || 0, balance: cash, truckValue: truck, baseTown: r.baseTown, hasBase: base > 0, wealth: r.wealth != null ? Number(r.wealth) || 0 : cash + truck + trailer + base, deliveries: r.deliveries }
+    return { name: r.name, wins: num(r.wins) || 0, balance: cash, truckValue: truck, baseTown: r.baseTown, corp: typeof r.corp === 'string' ? r.corp : '', hasBase: base > 0, wealth: r.wealth != null ? Number(r.wealth) || 0 : cash + truck + trailer + base, deliveries: r.deliveries }
   })
   rows.sort(function (a, b) { return b.wealth - a.wealth })
   if (!rows.length) {
@@ -402,7 +402,8 @@ function renderBoard() {
     tr.appendChild(who)
     tr.appendChild(el('td', 'num', money(r.balance)))
     tr.appendChild(el('td', 'num', money(r.truckValue)))
-    tr.appendChild(el('td', r.hasBase ? 'base' : '', r.hasBase ? text(r.baseTown || 'Yes') : '–'))
+    // A corp's owner gets every town it holds; a member, who owns no base, gets the corp they're in.
+    tr.appendChild(el('td', r.hasBase ? 'base' : '', r.hasBase ? text(r.baseTown || 'Yes') : r.corp ? r.corp + '\u2019s corp' : '–'))
     tr.appendChild(el('td', 'num wealth', money(r.wealth)))
     tr.appendChild(el('td', 'num', count(r.deliveries)))
     body.appendChild(tr)
@@ -428,7 +429,8 @@ function renderRace() {
     var box2 = el('div', 'grow')
     box2.appendChild(el('div', 'who', text(b.name) + (Array.isArray(b.members) && b.members.length ? "'s corp" : '')))
     box2.appendChild(el('div', 'small muted', (counts[b.name] || 1) + ((counts[b.name] || 1) === 1 ? ' base' : ' bases')
-      + (Array.isArray(b.members) && b.members.length ? ' · with ' + b.members.map(text).join(', ') : '')))
+      + (Array.isArray(b.members) && b.members.length ? ' · with ' + b.members.map(text).join(', ') : '')
+      + (num(b.worth) ? ' · ' + money(b.worth) + (Array.isArray(b.members) && b.members.length ? ' together' : '') : '')))
     var bar = el('div', 'bar')
     var fill = el('span')
     fill.style.width = Math.max(0, Math.min(100, b.land / (win || 100) * 100)) + '%'

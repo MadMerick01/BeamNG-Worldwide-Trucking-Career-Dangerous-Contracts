@@ -1014,7 +1014,7 @@
               <div ng-repeat="b in data.standings.corps">
                 <div style="display:flex;gap:8px;align-items:baseline;padding:3px 4px 0;margin:0 -4px;font-size:13px;border-radius:4px;" ng-style="b.mine ? {background:'rgba(111,207,151,.1)'} : {}">
                   <b style="flex:none;">{{b.mine ? (b.members ? 'Your corp' : 'You') : b.name}}</b>
-                  <span style="flex:1;min-width:0;color:#c9d6d2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{b.town}}<span ng-if="b.outposts"> + {{b.outposts}} more {{b.outposts === 1 ? 'base' : 'bases'}}</span><span ng-if="b.members"> &middot; {{b.members + 1}} truckers</span></span>
+                  <span style="flex:1;min-width:0;color:#c9d6d2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{b.town}}<span ng-if="b.outposts"> + {{b.outposts}} more {{b.outposts === 1 ? 'base' : 'bases'}}</span><span ng-if="b.members"> &middot; {{b.members + 1}} truckers</span><span ng-if="b.worth"> &middot; ${{b.worth | number:0}}</span></span>
                   <span style="flex:none;font-size:12px;color:#f2c94c;">{{b.land}}%</span>
                 </div>
                 <div aria-hidden="true" style="height:6px;border-radius:3px;background:#33423f;overflow:hidden;margin:3px 0 4px;"><span ng-style="{width: landWidth(b.land, data.standings.race.win)}" style="display:block;height:100%;background:#f2c94c;"></span></div>
@@ -1031,7 +1031,7 @@
                 <tr><th style="padding:3px 2px;"></th><th style="padding:3px 2px;text-align:left;font-size:11px;font-weight:normal;color:#7d8b88;">Trucker</th><th style="padding:3px 2px;text-align:right;font-size:11px;font-weight:normal;color:#7d8b88;">Wealth</th><th style="padding:3px 2px;text-align:right;font-size:11px;font-weight:normal;color:#7d8b88;">Runs</th></tr>
                 <tr ng-repeat="r in data.standings.board.concat(data.standings.me ? [data.standings.me] : [])" ng-style="r.mine ? {background:'rgba(111,207,151,.1)'} : {}">
                   <td style="padding:3px 2px;" ng-style="{color: r.rank <= 3 ? '#f2c94c' : '#f2f6f5'}">{{r.rank}}</td>
-                  <td style="padding:3px 2px;"><b>{{r.mine ? 'You' : r.name}}</b> <span ng-if="r.baseTown" style="font-size:11px;color:#7d8b88;">{{r.baseTown}}</span> <span ng-if="r.wins" style="font-size:11px;color:#f2c94c;">&#9733; {{r.wins}} {{r.wins === 1 ? 'win' : 'wins'}}</span></td>
+                  <td style="padding:3px 2px;"><b>{{r.mine ? 'You' : r.name}}</b> <span ng-if="r.baseTown" style="font-size:11px;color:#7d8b88;">{{r.baseTown}}</span><span ng-if="!r.baseTown && r.corp" style="font-size:11px;color:#7d8b88;">{{r.corp}}&#8217;s corp</span> <span ng-if="r.wins" style="font-size:11px;color:#f2c94c;">&#9733; {{r.wins}} {{r.wins === 1 ? 'win' : 'wins'}}</span></td>
                   <td style="padding:3px 2px;text-align:right;">${{r.wealth | number:0}}</td>
                   <td style="padding:3px 2px;text-align:right;">{{r.deliveries}}</td>
                 </tr>
