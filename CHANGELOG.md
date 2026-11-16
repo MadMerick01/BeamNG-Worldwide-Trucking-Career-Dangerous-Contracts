@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 216 · 16 Nov 2026
+
 - **New: Mayday Rescue replaces Ship Day on the multiplayer server.** A call for help goes out from a remote spot on Earth, such as a helicopter down in the desert, and everyone hears about it in chat. Open the new Mayday Rescue tab to see where it is and what happened.
 - The scene sits in the middle of a circle that reaches 20 km out in every direction. Press North, East, South or West on the tab to teleport to that edge of the circle for free, with an empty car, then drive any car you like to the scene. Something that can go off road helps. There is no GPS route, so an arrow like the off-road drop's points you to the scene, on the Mayday Rescue tab and on the Route tab, with how far it is. You can also copy its coordinates for the BeamNG.Earth map.
 - The first trucker to get within 250 m of the scene wins $80,000, added to your money and saved for you. Five minutes later the next call goes out somewhere else. If nobody gets there in two hours, the call moves on anyway.
