@@ -553,6 +553,7 @@ function M.attach(c)
     local paid = fee == 0 or (not short and self:spend(fee, 'tow'))
     if not paid then self.profile.progression.towOwed = self:towOwed() + fee end
     self.towedAt, self.repairFeedback = self.clock, nil
+    if self.endMaydayRun then self:endMaydayRun('tow') end
     self.diag:event('towed', fee == 0 and 'free' or (paid and 'paid' or 'owed'))
     local cost = fee == 0 and ', free' or (paid and (' for ' .. dollars(fee))
       or (': you owe ' .. dollars(self:towOwed()) .. '. Pay it on the Garage tab before buying parts or cars'))

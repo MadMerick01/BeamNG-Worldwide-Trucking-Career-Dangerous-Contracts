@@ -5,6 +5,7 @@
 -- one. The messages and frames are described at the top of the server plugin. No game globals here: the game's
 -- sending, JSON and files are given to new().
 local persistence = require('earthFreight/persistence')
+local mayday = require('earthFreight/mayday')
 local M = {
   PROTO = 1, CHUNK = 20000, SAVE_MAX = 4 * 1024 * 1024,
   ROOT = '/settings/earthFreight/mp/',
@@ -334,17 +335,23 @@ function M.new(deps)
       self.rejoinAskedAt = nil
       if self.pending then self:sendText(self.pending.text) end
       return true
-    elseif event == 'wwtcShip' then
-      -- Ship Day: the ship in port and its containers' states (checked by shipday.clean in the game).
+    elseif event == 'wwtcMayday' then
+      -- Mayday Rescue: the call out now (checked by mayday.clean in the game).
       local d = decode(data)
       if not d then return false end
-      self.ship = d
+      self.mayday = d
       return true
-    elseif event == 'wwtcClaimed' then
-      -- The server's answer to a claim: { ship, n, ok, why }.
+    elseif event == 'wwtcMaydayWon' then
+      -- The server's answer to maydayWin: { round, ok, why, reward } (checked by mayday.cleanAnswer).
       local d = decode(data)
       if not d then return false end
-      self.claimed = d
+      self.maydayWon = d
+      return true
+    elseif event == 'wwtcReward' then
+      -- Money the server owes this player (a Mayday Rescue win): { id, amount, why }, added to the money in core.lua.
+      local r = mayday.cleanReward(decode(data))
+      if not r then return false end
+      self.reward = r
       return true
     elseif event == 'wwtcSaveNow' then
       -- The server restarts for an update soon: the game saves now (core.lua).
@@ -493,7 +500,7 @@ function M.new(deps)
     return { balance = self.confirmedBalance, seconds = clock - p.since }
   end
 
-  -- Ship Day: asks for a container, gives one back (an abandoned job), and says one was delivered.
+  -- A message to the server's plugin, once the career is the server's.
   local function shipEvent(event, body)
     if s.state ~= 'server' then return false end
     body.v = M.PROTO
@@ -502,8 +509,9 @@ function M.new(deps)
     deps.send(event, text)
     return true
   end
-  function s:claim(ship, n) return shipEvent('wwtcClaim', { ship = ship, n = n }) end
-  function s:release(ship, n) return shipEvent('wwtcRelease', { ship = ship, n = n }) end
+  -- Mayday Rescue: this player landed on an edge (n, e, s or w) of the circle, or reached the scene.
+  function s:maydayStart(round, edge) return shipEvent('wwtcMaydayStart', { round = round, edge = edge }) end
+  function s:maydayWin(round) return shipEvent('wwtcMaydayWin', { round = round }) end
   -- The server page: where the player is (a town, never exact coordinates) and what they're doing, and each delivery.
   function s:where(t) return shipEvent('wwtcWhere', t) end
   function s:delivered(t) return shipEvent('wwtcDelivered', t) end
@@ -535,7 +543,6 @@ function M.new(deps)
     t['do'] = what
     return shipEvent('wwtcCorp', t)
   end
-  function s:shipDelivered(ship, n, town, pay, ends, toll) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay, ends = ends, toll = toll }) end
   return s
 end
 
@@ -577,7 +584,7 @@ function M.game()
   local listening = false
   function g.listen(handler)
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
-    for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow',
+    for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcMayday', 'wwtcMaydayWon', 'wwtcReward', 'wwtcSaveNow',
         'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission', 'wwtcRejoined',
         'wwtcCorpDone', 'wwtcAway', 'wwtcOutpostDone', 'wwtcBoard' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')

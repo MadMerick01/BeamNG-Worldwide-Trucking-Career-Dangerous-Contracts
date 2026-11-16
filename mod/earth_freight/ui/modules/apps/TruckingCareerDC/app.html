@@ -132,7 +132,7 @@
               </div>
               <button type="button" ng-click="toggleOnline()" aria-expanded="{{!!intro.online}}" style="flex:none;padding:7px 14px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">{{intro.online ? 'Hide' : 'Play online'}}</button>
             </div>
-            <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Online, everyone trucks on the same Earth. Other truckers' bases with their turf and tolls, Ship Day and the season leaderboard are online only.</div>
+            <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Online, everyone trucks on the same Earth. Other truckers' bases with their turf and tolls, Mayday Rescue and the season leaderboard are online only.</div>
             <div ng-if="intro.online" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(242,201,76,.35);font-size:13px;">
               <div style="font-weight:bold;color:#f2c94c;">How to join</div>
               <ol style="margin:4px 0 0;padding-left:20px;">
@@ -208,7 +208,7 @@
       <div ng-if="data.away.tolls" style="margin-top:4px;"><b style="color:#6fcf97;">${{data.away.tolls.amount | number:0}}</b> in turf tolls from {{data.away.tolls.jobs}} {{data.away.tolls.jobs === 1 ? 'delivery' : 'deliveries'}}<span ng-if="data.away.tolls.from.length">: <span ng-repeat="f in data.away.tolls.from">{{f.name}} ${{f.amount | number:0}}{{$last ? '' : ', '}}</span><span ng-if="data.away.tolls.others"> and {{data.away.tolls.others}} more</span></span>. It's added to your money.</div>
       <div ng-repeat="line in data.away.news" style="margin-top:4px;">{{line}}</div>
       <div ng-if="data.away.place" style="margin-top:4px;">You're <b>{{ordinal(data.away.place)}}</b><span ng-if="data.away.of"> of {{data.away.of}}</span> on the season leaderboard<span ng-if="data.away.was && data.away.was > data.away.place" style="color:#6fcf97;">, up from {{ordinal(data.away.was)}}</span><span ng-if="data.away.was && data.away.was < data.away.place" style="color:#f2994a;">, down from {{ordinal(data.away.was)}}</span>.</div>
-      <div ng-if="data.shipDay" style="margin-top:4px;">Ship Day: {{data.shipDay.name}} is in {{data.shipDay.port}}, {{data.shipDay.free}} of {{data.shipDay.total}} containers left, sails in {{until(data.shipDay.secondsLeft)}}. See the Town tab.</div>
+      <div ng-if="data.mayday.open" style="margin-top:4px;">Mayday Rescue: a call is out near {{data.mayday.name}}. First to the scene gets ${{data.mayday.reward | number:0}}. See the Mayday Rescue tab.</div>
       <div ng-if="!data.away.tolls && !data.away.news" style="margin-top:4px;color:#c9d6d2;">No tolls or corp news this time.</div>
       <button type="button" ng-click="dismissAway()" style="margin-top:6px;padding:4px 14px;border:1px solid #f2c94c;border-radius:4px;">Got it</button>
     </div>
@@ -260,7 +260,7 @@
     </div>
     <div role="tablist" ng-if="!data.sightseeing.on" style="margin-top:10px;padding-bottom:6px;border-bottom:1px solid #568d7a;">
       <div ng-repeat="row in tabRows" style="display:flex;gap:4px;" ng-style="$first ? {} : {marginTop:'4px'}">
-        <button type="button" role="tab" ng-repeat="t in row" ng-click="setTab(t.id)" aria-selected="{{tab === t.id}}" ng-style="tab === t.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="flex:1;min-width:0;padding:4px 2px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid #568d7a;border-radius:6px;">{{t.label}}<span ng-if="tabAlert(t.id)" style="color:#f2c94c;" aria-label="needs attention"> &#9679;</span></button>
+        <button type="button" role="tab" ng-repeat="t in row" ng-if="tabShown(t.id)" ng-click="setTab(t.id)" aria-selected="{{tab === t.id}}" ng-style="tab === t.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="flex:1;min-width:0;padding:4px 2px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid #568d7a;border-radius:6px;">{{t.label}}<span ng-if="tabAlert(t.id)" style="color:#f2c94c;" aria-label="needs attention"> &#9679;</span></button>
       </div>
     </div>
     <div role="tabpanel" ng-if="!data.sightseeing.on" style="padding-top:8px;">
@@ -395,39 +395,6 @@
         <p role="status" ng-if="data.tradeFeedback" style="margin:6px 0;">{{data.tradeFeedback}}</p>
       </div>
       <div ng-if="tab === 'town'">
-        <div ng-if="data.shipDay" style="margin:0 0 8px;padding:6px 10px;border:2px solid #56ccf2;border-radius:6px;">
-          <div class="ef-hit" role="button" tabindex="0" ng-click="toggle('shipday')" aria-expanded="{{shipDayOpen()}}" title="{{shipDayOpen() ? 'Hide the containers' : 'Show the containers'}}">
-            <span class="ef-ar" aria-hidden="true" style="color:#56ccf2;">{{shipDayOpen() ? '&#9660;' : '&#9654;'}}</span>
-            <div style="flex:1;min-width:0;">
-              <div class="ef-line" style="font-weight:bold;color:#56ccf2;">Ship Day: {{data.shipDay.name}} at {{data.shipDay.port}}</div>
-              <div class="ef-line" style="font-size:13px;color:#c9d6d2;">{{data.shipDay.region}} &middot; {{data.shipDay.free}} of {{data.shipDay.total}} containers left &middot; sails in {{until(data.shipDay.secondsLeft)}}</div>
-            </div>
-          </div>
-          <div ng-if="data.shipDay.carrying" style="color:#6fcf97;padding-left:18px;">Container {{data.shipDay.carrying}} is on board: drive it to its town and press Deliver there.</div>
-          <div ng-if="!data.shipDay.atPort" style="margin:4px 0 0 18px;">
-            <button type="button" ng-click="goToPort()" ng-disabled="!data.shipDay.goAllowed" ng-style="{opacity: data.shipDay.goAllowed ? 1 : 0.5}" style="padding:4px 10px;background:#56ccf2;color:#0c1318;font-weight:bold;border:1px solid #56ccf2;border-radius:4px;">Go to port (free)</button>
-            <div ng-if="shipDayOpen()" style="font-size:12px;color:#c9d6d2;margin-top:2px;">Takes your empty car to {{data.shipDay.town}}, next to the docks.</div>
-            <div ng-if="data.shipDay.goProblem" style="color:#f2c94c;">{{data.shipDay.goProblem}}</div>
-          </div>
-          <div ng-if="data.shipDay.atPort && data.shipDay.problem" style="color:#f2c94c;margin-top:4px;">{{data.shipDay.problem}}</div>
-          <div ng-if="shipDayOpen() && data.shipDay.units === 0" style="font-size:12px;color:#eb5757;">Container cargo needs a cargo box: fit one with Buy parts on the Garage tab.</div>
-          <div ng-if="shipDayOpen()" style="margin-top:4px;">
-            <div ng-if="data.shipDay.atPort && !data.shipDay.carrying && data.shipDay.units > 1" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c9d6d2;">
-              <span style="flex:none;width:62px;">Load {{shareOf(containerJob())}}%</span>
-              <input type="range" min="10" max="100" step="10" ng-model="shares.container" ng-init="shares.container = shareOf(containerJob())" aria-label="How much container cargo to take" style="flex:1;min-width:0;">
-              <span style="flex:none;">{{containerTaken().units}} units, {{containerTaken().kg | number:0}} kg</span>
-            </div>
-            <div ng-repeat="b in data.shipDay.containers track by b.n" style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(86,141,122,.3);font-size:13px;">
-              <div style="flex:1;min-width:0;"><b>#{{b.n}}</b> &rarr; {{b.to}} <span style="color:#7d8b88;font-size:12px;">{{km(b.distanceMetres)}} km</span><span ng-if="b.tollTo" style="color:#f2994a;font-size:12px;"> &middot; {{b.tollTo}}'s turf, 20% toll</span></div>
-              <div ng-if="b.state === 'free'" style="flex:none;font-weight:bold;color:#56ccf2;" title="${{b.pay | number:0}} for a full load">${{containerTaken(b).pay | number:0}}</div>
-              <button type="button" ng-if="b.state === 'free' && data.shipDay.atPort" ng-click="takeContainer(b)" ng-disabled="!b.allowed" style="flex:none;padding:3px 8px;">Take</button>
-              <div ng-if="b.state === 'mine'" style="flex:none;color:#6fcf97;">Yours</div>
-              <div ng-if="b.state === 'taken'" style="flex:none;color:#7d8b88;font-size:12px;">Taken{{b.by ? ' by ' + b.by : ''}}</div>
-              <div ng-if="b.state === 'delivered'" style="flex:none;color:#7d8b88;font-size:12px;">Delivered</div>
-            </div>
-          </div>
-          <div ng-if="data.shipDay.feedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.shipDay.feedback}}</div>
-        </div>
         <div ng-if="!data.town" style="color:#c9d6d2;">Drive into a town and stop to take jobs and deliver. The Route tab lists the places nearby.</div>
         <div ng-if="data.town">
           <div style="font-weight:bold;color:#a7e5c9;">{{data.town.name}} <span style="color:#7d8b88;font-weight:normal;font-size:12px;">{{data.town.size}}</span> <span ng-if="data.town.boost > 1.02" style="color:#f2c94c;font-size:12px;">{{data.town.region}}: rough roads &times;{{data.town.boost | number:1}} pay</span></div>
@@ -743,13 +710,6 @@
         <p role="status" ng-repeat="text in [data.carChange || data.usedCars ? null : data.carFeedback, data.partsChange ? null : data.partsFeedback, data.repairFeedback] track by $index" ng-if="text" style="margin:6px 0;">{{text}}</p>
       </div>
       <div ng-if="tab === 'relocate'">
-        <div ng-if="data.shipDay && !data.shipDay.atPort && !data.shipping.booking" style="margin:0 0 8px;padding:10px;border:2px solid #56ccf2;border-radius:6px;">
-          <div style="font-weight:bold;color:#56ccf2;">Ship Day: {{data.shipDay.name}} at {{data.shipDay.port}}</div>
-          <div style="font-size:13px;color:#c9d6d2;">{{data.shipDay.region}} &middot; {{data.shipDay.free}} of {{data.shipDay.total}} containers left &middot; sails in {{until(data.shipDay.secondsLeft)}}. The trip to {{data.shipDay.town}} is free.</div>
-          <button type="button" ng-click="goToPort()" ng-disabled="!data.shipDay.goAllowed" ng-style="{opacity: data.shipDay.goAllowed ? 1 : 0.5}" style="margin-top:6px;padding:6px 12px;background:#56ccf2;color:#0c1318;font-weight:bold;border:1px solid #56ccf2;border-radius:4px;">Go to port (free)</button>
-          <div ng-if="data.shipDay.goProblem" style="color:#f2c94c;">{{data.shipDay.goProblem}}</div>
-          <div ng-if="data.shipDay.feedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.shipDay.feedback}}</div>
-        </div>
         <div ng-if="data.shipping.players && !data.shipping.booking" style="margin:0 0 8px;padding:10px;border:1px solid #56ccf2;border-radius:6px;">
           <div style="font-weight:bold;color:#56ccf2;">Relocate to a player</div>
           <div style="font-size:13px;color:#c9d6d2;">Join another trucker on this server and work near them. Same fee as any relocation, with an empty car.</div>
@@ -970,6 +930,42 @@
           </div>
           <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Play, Stop, Next station, the volume and Follow my truck are on the radio page. Stations come from Radio Browser, a free list of internet radio, and use about 60 MB of internet an hour.</div>
         </div>
+      </div>
+      <div ng-if="tab === 'mayday' && data.mayday">
+        <div style="margin:0 0 8px;padding:8px 10px;border:2px solid #eb5757;border-radius:6px;background:rgba(235,87,87,.06);">
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <div style="flex:1;min-width:0;font-weight:bold;letter-spacing:1px;font-size:15px;color:#eb5757;">MAYDAY RESCUE</div>
+            <div ng-if="data.mayday.open" title="When this call moves on to somewhere else" style="flex:none;font-size:13px;color:#c9d6d2;">moves on in {{until(data.mayday.secondsLeft)}}</div>
+          </div>
+          <div style="margin-top:2px;font-weight:bold;">Near {{data.mayday.name}}<span ng-if="data.mayday.region">, {{data.mayday.region}}</span></div>
+          <div style="font-size:13px;color:#c9d6d2;">{{data.mayday.story}}</div>
+          <div ng-if="data.mayday.open" style="margin-top:4px;font-size:13px;">First to the scene gets <b style="color:#6fcf97;">${{data.mayday.reward | number:0}}</b>.<span ng-if="data.mayday.racers"> {{data.mayday.racers}} {{data.mayday.racers === 1 ? 'trucker has' : 'truckers have'}} set off.</span></div>
+          <div ng-if="!data.mayday.open" role="status" style="margin-top:4px;font-size:13px;"><b style="color:#6fcf97;">{{data.mayday.winner || 'Someone'}}</b> got there first and won ${{data.mayday.reward | number:0}}. The next call goes out in {{clock(data.mayday.secondsLeft)}}.</div>
+        </div>
+        <div ng-if="data.mayday.running" style="margin:0 0 8px;padding:8px 10px;border:2px solid #f2c94c;border-radius:6px;">
+          <div style="font-size:13px;color:#c9d6d2;">On your way from the {{data.mayday.running.edge | lowercase}} edge &middot; {{until(data.mayday.running.seconds)}}</div>
+          <div ng-if="data.mayday.distanceMetres != null" style="margin:2px 0;line-height:1;"><span style="font-size:28px;font-weight:900;">{{distance(data.mayday.distanceMetres)}}</span><span ng-if="data.mayday.direction" style="font-size:15px;color:#c9d6d2;"> {{data.mayday.direction}}</span></div>
+          <div style="font-size:12px;color:#c9d6d2;">to the scene, in a straight line. Get within {{data.mayday.winMetres}} m of it.</div>
+          <div ng-if="data.mayday.checking" role="status" style="margin-top:4px;font-weight:bold;color:#6fcf97;">You're at the scene! Checking with the server...</div>
+        </div>
+        <div ng-if="data.mayday.open && !data.mayday.running && data.mayday.inside" style="margin:0 0 8px;font-size:13px;color:#f2c94c;">You're inside the circle, but not on a run. Start from an edge for it to count.</div>
+        <div ng-if="data.mayday.open">
+          <div style="font-weight:bold;">{{data.mayday.running ? 'Start again from an edge' : 'Pick an edge to start from'}}</div>
+          <div style="font-size:12px;color:#c9d6d2;">Free, with an empty car. Each edge is {{data.mayday.radiusKm | number:0}} km from the scene. Bring a car that can go off road.</div>
+          <div style="display:flex;gap:4px;margin-top:6px;">
+            <button type="button" ng-repeat="e in data.mayday.edges track by e.id" ng-click="maydayEdge(e)" ng-disabled="!e.allowed" ng-style="{opacity: e.allowed ? 1 : 0.5}" title="Teleport to the {{e.name | lowercase}} edge of the circle" style="flex:1;min-width:0;padding:6px 2px;background:#eb5757;color:#0c1318;font-weight:bold;border:1px solid #eb5757;border-radius:4px;">{{e.name}}</button>
+          </div>
+          <div ng-if="data.mayday.booked" style="margin-top:4px;font-size:12px;color:#c9d6d2;">Booked to the {{data.mayday.booked | lowercase}} edge.</div>
+          <div ng-if="data.mayday.problem" style="margin-top:4px;color:#f2c94c;">{{data.mayday.problem}}</div>
+          <div style="margin-top:6px;font-size:12px;color:#c9d6d2;">While the call is out, nobody can relocate inside the circle. Any teleport, a tow or a helicopter ends your run, but you can start again from any edge at any time.</div>
+        </div>
+        <div ng-if="data.mayday.feedback" role="status" style="margin-top:6px;color:#c9d6d2;">{{data.mayday.feedback}}</div>
+        <label ng-if="data.mayday.open" style="display:block;margin-top:8px;font-size:13px;">The scene, for the BeamNG.Earth map
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <input aria-label="The scene's coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.mayday.scene)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+            <button type="button" aria-label="Copy the scene's coordinates" ng-click="copyCoordinates(data.mayday.scene)">Copy</button>
+          </div>
+        </label>
       </div>
       <div ng-if="tab === 'race'">
         <div style="margin:0 0 8px;padding:8px 10px;border:1px solid #568d7a;border-radius:6px;">

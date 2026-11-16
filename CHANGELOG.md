@@ -6,6 +6,13 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New: Mayday Rescue replaces Ship Day on the multiplayer server.** A call for help goes out from a remote spot on Earth, such as a helicopter down in the desert, and everyone hears about it in chat. Open the new Mayday Rescue tab to see where it is and what happened.
+- The scene sits in the middle of a 40 km circle. Press North, East, South or West on the tab to teleport to that edge of the circle for free, with an empty car, then drive any car you like to the scene. Something that can go off road helps. The tab shows how far the scene is and in which direction, and you can copy its coordinates for the BeamNG.Earth map.
+- The first trucker to get within 250 m of the scene wins $80,000, added to your money and saved for you. Five minutes later the next call goes out somewhere else. If nobody gets there in two hours, the call moves on anyway.
+- You can join a call at any time and start again from any edge whenever you like. While a call is out, nobody can relocate inside its circle, and any other teleport, a tow or hiring a helicopter ends your run. Repairs and insurance still work.
+- Ship Day, its Go to port button and its containers are gone. A container you were still carrying delivers as a normal job. Your saves still work.
+- Mayday Rescue is multiplayer only, so nothing changes in single player. The live server page shows the call and who won it instead of Ship Day.
+
 ## Build 215 · 16 Nov 2026
 
 - **Changed: how many car slots you get in Your cars.** A new career now has 2 slots: the car you drive plus one parked car. Buying a base, or joining one as a corp member, gives you 3. With a base or corp you can also buy a 4th slot for $200,000 with the new Buy a 4th slot button on Your cars, and you confirm before you pay. The bought slot is yours to keep, but it only counts while you have a base or are in a corp. Trailers work as before.

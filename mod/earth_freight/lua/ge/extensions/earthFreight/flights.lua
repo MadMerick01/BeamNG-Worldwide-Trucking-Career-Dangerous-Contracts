@@ -77,6 +77,7 @@ function M.attach(c)
       self.sightseeingFeedback = 'Could not save your game, so you have not left. ' .. tostring(self.feedback or '')
       return false
     end
+    if self.endMaydayRun then self:endMaydayRun('heli') end
     local car, owned = M.SIGHTSEEING, self.ownedParts
     self.hire = { sightseeing = true, stage = 'spawning', at = self.clock, model = car.model, name = car.name, carModel = owned.model,
       spot = location.copy(self.lastSample), carDamage = self:carDamageNow(),
@@ -123,6 +124,7 @@ function M.attach(c)
       return false
     end
     self.heliArmed = false
+    if self.endMaydayRun then self:endMaydayRun('heli') end
     local config, owned = self:heliConfig(), self.ownedParts
     self.hire = { stage = 'spawning', at = self.clock, model = config.model, name = config.name, carModel = owned.model,
       spot = location.copy(self.lastSample), carDamage = self:carDamageNow(),

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Worldwide Trucking Server</title>
-<meta name="description" content="What's happening on MadMerick's Worldwide Trucking Career multiplayer server for BeamNG.Earth: who's driving, Ship Day, deliveries and the season leaderboard.">
+<meta name="description" content="What's happening on MadMerick's Worldwide Trucking Career multiplayer server for BeamNG.Earth: who's driving, Mayday Rescue, deliveries and the season leaderboard.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +12,7 @@
 <style>
   :root {
     --bg: #0c1318; --panel: #121c22; --line: #24343c; --text: #f2f6f5; --muted: #9fb0ac; --faint: #6f7f7b;
-    --accent: #a7e5c9; --green: #6fcf97; --ship: #56ccf2; --warn: #f2c94c; --red: #eb5757; --gold: #f2c94c;
+    --accent: #a7e5c9; --green: #6fcf97; --mayday: #eb5757; --warn: #f2c94c; --red: #eb5757; --gold: #f2c94c;
     --tag: rgba(14, 16, 20, .9); --head: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
@@ -57,12 +57,10 @@
   @media (max-width: 480px) { th, td { padding: 6px 3px; font-size: 13px; } }
   section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 14px; min-width: 0; }
   section h2 { margin: 0 0 10px; font: 800 19px/1.2 var(--head); letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); }
-  .ship { border: 2px solid var(--ship); }
-  .ship h2 { color: var(--ship); }
-  .ship .big { font-size: 20px; font-weight: 700; }
-  .countdown { font: 800 34px/1.1 var(--head); letter-spacing: 1px; color: var(--ship); font-variant-numeric: tabular-nums; }
-  .bar { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; margin: 6px 0 4px; }
-  .bar > div { height: 100%; background: var(--ship); }
+  .mayday { border: 2px solid var(--mayday); }
+  .mayday h2 { color: var(--mayday); }
+  .mayday .big { font-size: 20px; font-weight: 700; }
+  .countdown { font: 800 34px/1.1 var(--head); letter-spacing: 1px; color: var(--mayday); font-variant-numeric: tabular-nums; }
   .muted { color: var(--muted); }
   .small { font-size: 13px; }
   #map { height: 340px; border-radius: 8px; background: #0a1014; }
@@ -142,13 +140,13 @@
 
   <div class="grid">
     <div>
-      <section class="ship" id="ship-card">
-        <h2>Ship Day</h2>
-        <div id="ship-body" class="empty">No ship in port.</div>
+      <section class="mayday" id="mayday-card">
+        <h2>Mayday Rescue</h2>
+        <div id="mayday-body" class="empty">No call out right now.</div>
       </section>
       <section>
         <h2>Where everyone is</h2>
-        <div id="map" role="img" aria-label="World map of the towns where players are driving, and the Ship Day port"></div>
+        <div id="map" role="img" aria-label="World map of the towns where players are driving, and the Mayday Rescue circle"></div>
         <div class="small muted" style="margin-top:6px;">Towns only, never exact positions.</div>
       </section>
       <section>
@@ -273,34 +271,37 @@ function renderStatus(now) {
   $('updated').textContent = updated !== null ? ago(stats.updated, now) : '–'
 }
 
-function renderShip(now) {
-  var body = $('ship-body')
+// Mayday Rescue: where the call is, what happened and the prize, with how long until it moves on, or who won it and
+// when the next call goes out.
+function maydayClock(m, now) { return until(m.state === 'won' ? m.nextAt : m.movesAt, now) }
+function renderMayday(now) {
+  var body = $('mayday-body')
   clear(body)
-  var ship = stats && stats.ship
-  if (!ship || !ship.port) { body.className = 'empty'; body.textContent = 'No ship in port.'; return }
+  var m = stats && stats.mayday
+  if (!m || !m.name) { body.className = 'empty'; body.textContent = 'No call out right now.'; return }
   body.className = ''
-  body.appendChild(el('div', 'big', text(ship.name) + ' at ' + text(ship.port)))
-  body.appendChild(el('div', 'muted small', ship.region))
+  body.appendChild(el('div', 'big', 'Near ' + text(m.name)))
+  if (m.region) body.appendChild(el('div', 'muted small', m.region))
+  if (m.story) body.appendChild(el('div', '', m.story))
   var row = el('div')
   row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px 20px;align-items:flex-end;margin-top:8px;'
   var left = el('div')
-  left.appendChild(el('div', 'muted small', 'Sails in'))
-  var clock = el('div', 'countdown', until(ship.sailsAt, now))
-  clock.id = 'ship-countdown'
+  left.appendChild(el('div', 'muted small', m.state === 'won' ? 'Next call in' : 'Moves on in'))
+  var clock = el('div', 'countdown', maydayClock(m, now))
+  clock.id = 'mayday-countdown'
   left.appendChild(clock)
   row.appendChild(left)
-  var boxes = el('div', 'grow')
-  var total = num(ship.containers) || 0, free = Math.max(0, Math.min(total, num(ship.left) || 0))
-  boxes.appendChild(el('div', 'small', free + ' of ' + total + ' containers left on the dock'))
-  var bar = el('div', 'bar'), fill = el('div')
-  fill.style.width = (total > 0 ? Math.round(100 * free / total) : 0) + '%'
-  bar.appendChild(fill)
-  boxes.appendChild(bar)
-  row.appendChild(boxes)
-  body.appendChild(row)
-  if (ship.next && ship.next.port) {
-    body.appendChild(el('div', 'small muted', 'Next ship: ' + text(ship.next.port) + (ship.next.region ? ', ' + text(ship.next.region) : '')))
+  var prize = el('div', 'grow')
+  if (m.state === 'won') {
+    prize.appendChild(el('div', '', text(m.winner || 'Someone') + ' reached the scene first and won ' + money(m.reward) + '.'))
+  } else {
+    prize.appendChild(el('div', '', 'First to the scene wins ' + money(m.reward) + '.'))
+    var racers = num(m.racers) || 0
+    prize.appendChild(el('div', 'small muted', racers === 0 ? 'Nobody has set off yet.' : racers + (racers === 1 ? ' trucker has' : ' truckers have') + ' set off.'))
   }
+  row.appendChild(prize)
+  body.appendChild(row)
+  body.appendChild(el('div', 'small muted', 'Teleport to an edge of the ' + (num(m.radiusKm) || 40) + ' km circle in the game, then drive to the middle.'))
 }
 
 function renderTiles() {
@@ -342,7 +343,7 @@ function renderFeed(now) {
     var li = el('li')
     li.appendChild(el('span', 'when', ago(e.at, now)))
     var t = el('span', 'grow', e.text)
-    if (e.kind === 'ship') t.style.color = 'var(--ship)'
+    if (e.kind === 'mayday') t.style.color = 'var(--mayday)'
     if (e.kind === 'season') t.style.color = 'var(--warn)'
     li.appendChild(t)
     list.appendChild(li)
@@ -486,12 +487,12 @@ function renderMap() {
   }
   layer.clearLayers()
   var points = []
-  var ship = stats && stats.ship
-  if (ship && validPoint(ship)) {
-    var m = L.circleMarker([ship.latitude, ship.longitude], { radius: 10, color: '#56ccf2', weight: 3, fillOpacity: 0.25 })
-    var pop = el('div'); pop.appendChild(el('b', '', 'Ship Day: ' + text(ship.port))); pop.appendChild(el('div', '', ship.name))
-    m.bindPopup(pop).addTo(layer)
-    points.push([ship.latitude, ship.longitude])
+  var call = stats && stats.mayday
+  if (call && validPoint(call)) {
+    var pop = el('div'); pop.appendChild(el('b', '', 'Mayday Rescue: near ' + text(call.name))); pop.appendChild(el('div', '', call.story))
+    if (Number(call.radiusKm) > 0) L.circle([call.latitude, call.longitude], { radius: Number(call.radiusKm) * 1000, color: '#eb5757', weight: 2, fillOpacity: 0.08 }).addTo(layer)
+    L.circleMarker([call.latitude, call.longitude], { radius: 7, color: '#eb5757', weight: 3, fillOpacity: 0.6 }).bindPopup(pop).addTo(layer)
+    points.push([call.latitude, call.longitude])
   }
   // Bases of operations: each owner's turf shaded in their colour (a bigger neighbour pushes the border), with the
   // circle's edge and its 100 km core.
@@ -695,7 +696,7 @@ function render() {
   $('sample').hidden = !(stats && stats.sample === true)
   renderStatus(now)
   renderTiles()
-  renderShip(now)
+  renderMayday(now)
   renderOnline()
   renderFeed(now)
   renderRace()
@@ -725,8 +726,8 @@ setInterval(function () { load(0) }, REFRESH_MS)
 // The countdown and "updated" line tick every second between refreshes.
 setInterval(function () {
   var now = Date.now()
-  var c = $('ship-countdown')
-  if (c && stats && stats.ship) c.textContent = until(stats.ship.sailsAt, now)
+  var c = $('mayday-countdown')
+  if (c && stats && stats.mayday) c.textContent = maydayClock(stats.mayday, now)
   renderStatus(now)
   turnRadio(now)
   showTurn(now)

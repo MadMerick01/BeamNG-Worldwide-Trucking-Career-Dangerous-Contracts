@@ -17,15 +17,15 @@ class SiteTest(unittest.TestCase):
         s = self.stats
         self.assertEqual(s['version'], 1)
         self.assertIs(s['sample'], True, 'the bundled stats must say they are sample data')
-        for key in ('updated', 'server', 'season', 'today', 'ship', 'players', 'feed', 'leaderboard'):
+        for key in ('updated', 'server', 'season', 'today', 'mayday', 'players', 'feed', 'leaderboard'):
             self.assertIn(key, s)
         for p in s['players']:
             self.assertIn('town', p, 'players are shown by town')
-        for key in ('port', 'latitude', 'longitude', 'containers', 'left', 'sailsAt'):
-            self.assertIn(key, s['ship'])
+        for key in ('name', 'story', 'latitude', 'longitude', 'radiusKm', 'reward', 'state', 'movesAt'):
+            self.assertIn(key, s['mayday'])
 
     def test_page_reads_every_field_it_needs(self):
-        for field in ('players', 'feed', 'leaderboard', 'sailsAt', 'containers', 'deliveries', 'earned', 'truckers'):
+        for field in ('players', 'feed', 'leaderboard', 'mayday', 'movesAt', 'nextAt', 'winner', 'deliveries', 'earned', 'truckers'):
             self.assertIn(field, self.html)
         self.assertIn('trucking-server-stats/main/status.json', self.html, 'live stats come from the stats repo')
         self.assertIn("'status.json'", self.html, 'with the sample as the fallback')
