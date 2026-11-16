@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **A Mayday Rescue run is now one car from the edge to the scene.** Bringing out another car from Your cars, or picking a different car, ends your run, so pick the right car before you set off. You can still start again from any edge, and changing parts on your car is still fine. Your saves still work.
+
 ## Build 216 · 16 Nov 2026
 
 - **New: Mayday Rescue replaces Ship Day on the multiplayer server.** A call for help goes out from a remote spot on Earth, such as a helicopter down in the desert, and everyone hears about it in chat. Open the new Mayday Rescue tab to see where it is and what happened.

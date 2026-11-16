@@ -195,6 +195,8 @@ function M.attach(c)
       return false
     end
     self:spend(M.SWAP_FEE, 'car_swap')
+    -- A Mayday Rescue run is one car, even one of the same model.
+    self:endMaydayRun('car')
     self.storedCars[index] = outgoing
     -- The parked car owes the repair it was parked with; nothing the other car needed carries over.
     self.owedDamage, self.punctureDamage = stored.damage or 0, 0
