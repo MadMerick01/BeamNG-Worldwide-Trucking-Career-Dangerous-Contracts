@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Trailer cargo stays in the trailer when your truck returns.** Loading a saved job could briefly put the trailer's whole load on the truck before the trailer appeared, making parts break off. The truck now receives only its own cargo, and the trailer's load is applied when it returns. Your saves still work.
+
 ## Build 225 · 16 Nov 2026
 
 - **The Season Leaderboard now shows every base a corp holds.** Once a corp opens a second base, its owner's row lists both towns (for example "Elk Grove Village, Marrakesh"), or the first few and how many more. Corp members, who don't own a base themselves, now show which corp they're in instead of a dash. This is on the server page and on the Land Race and Leaderboard tab in the HUD. Wealth is worked out the same as before: opening another base is free, so it doesn't add to anyone's wealth. Your saves still work.
