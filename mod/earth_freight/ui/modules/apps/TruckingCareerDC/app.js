@@ -26,8 +26,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   // The Town tab's Distance filter, kept the same way: any, short, medium or long.
   var DISTANCE = 'earthFreight.jobDistance'
   var DISTANCES = ['any', 'short', 'medium', 'long']
-  var storedDistance = function () {
-    try { var v = window.localStorage.getItem(DISTANCE); return DISTANCES.indexOf(v) >= 0 ? v : 'any' } catch (e) { return 'any' }
+  var storedDistance = function (fallback) {
+    fallback = fallback || 'any'
+    try { var v = window.localStorage.getItem(DISTANCE); return DISTANCES.indexOf(v) >= 0 ? v : fallback } catch (e) { return fallback }
   }
   var storeDistance = function (v) { try { window.localStorage.setItem(DISTANCE, v) } catch (e) {} }
   // Which folding sections the player opened or closed, by name, kept the same way. Nearby and the
@@ -436,19 +437,25 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         taken.pay = units === job.units ? job.pay : Math.max(10, Math.floor(job.pay * units / job.units / 10 + 0.5) * 10)
         return taken
       }
-      // The Distance filter. Lua builds the board for it, and forgets it when the mod reloads, so the
-      // HUD sends it again whenever the board it gets was built for another one.
-      if (!kept.distance) kept.distance = storedDistance()
+      // Restore the saved Distance filter once per mount, then follow Lua's board. Reasserting
+      // it on every update lets HUD instances with different cached choices fight each other.
+      kept.distance = storedDistance(kept.distance)
+      var restoreDistance = true
       scope.distances = [{ id: 'any', label: 'Any' }, { id: 'short', label: 'Short' },
         { id: 'medium', label: 'Medium' }, { id: 'long', label: 'Long' }]
       scope.jobDistance = function () { return kept.distance }
       scope.setJobDistance = function (v) {
         if (DISTANCES.indexOf(v) < 0) return
+        restoreDistance = false
         kept.distance = v; storeDistance(v)
         core("setJobDistance('" + v + "')")
       }
       var syncDistance = function (data) {
-        if (data && data.town && data.town.distance && data.town.distance !== kept.distance) core("setJobDistance('" + kept.distance + "')")
+        var distance = data && data.town && data.town.distance
+        if (DISTANCES.indexOf(distance) < 0) return
+        if (restoreDistance && distance !== kept.distance) core("setJobDistance('" + kept.distance + "')")
+        restoreDistance = false
+        kept.distance = distance
       }
       scope.hasOutside = function (list) { return (list || []).some(function (j) { return !!j.outside }) }
       scope.takeJob = function (job) {

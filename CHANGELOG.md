@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Town job list no longer keeps switching between distance filters when overlapping menus remember different choices.** The highlighted filter now follows the jobs shown. Your saved distance choice is still restored when the menu opens, and your career saves still work.
+
 ## Build 218 · 16 Nov 2026
 
 - **The server's live page updates much faster.** It now shows changes within a minute or two instead of up to about 9 minutes, and a new Mayday Rescue call or a win shows up within about a minute. Nothing changes in the game, and you don't need to do anything.

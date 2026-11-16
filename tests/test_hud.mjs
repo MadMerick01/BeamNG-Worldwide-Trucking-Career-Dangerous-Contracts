@@ -691,6 +691,64 @@ test('the Distance filter sends its band to Lua, and is kept after a rebuild or 
   assert.equal(b.scope.hasOutside([{}]), false)
   assert.ok(html.includes('ng-click="setJobDistance(o.id)"') && html.includes('j.outside'), 'the Town tab shows the filter and marks jobs outside it')
 })
+test('conflicting HUD distance filters settle and follow the next explicit selection', () => {
+  const saved = { 'earthFreight.jobDistance': 'any' }
+  const storage = { getItem: k => saved[k] ?? null, setItem: (k, v) => { saved[k] = String(v) } }
+  const a = app(storage)
+  saved['earthFreight.jobDistance'] = 'long'
+  const b = app(storage)
+  const apps = [a, b]
+  const commands = () => apps.flatMap(a => a.commands.splice(0)).filter(c => c.includes('setJobDistance('))
+  commands()
+  let distance = 'any'
+  const sent = []
+  for (let i = 0; i < 8; i++) {
+    for (const a of apps) a.state({ state: 'READY', town: { distance, jobs: [] } })
+    const updates = commands()
+    sent.push(...updates)
+    for (const command of updates) distance = command.match(/setJobDistance\('([a-z]+)'\)/)[1]
+  }
+  assert.deepEqual(sent, [fixed("setJobDistance('long')")], 'restore once, without Any/Long feedback')
+  assert.equal(a.scope.jobDistance(), 'long', 'the highlighted filter follows the board')
+  assert.equal(b.scope.jobDistance(), 'long')
+  a.scope.setJobDistance('any')
+  assert.deepEqual(commands(), [fixed("setJobDistance('any')")])
+  for (const a of apps) a.state({ state: 'READY', town: { distance: 'any', jobs: [] } })
+  assert.deepEqual(commands(), [], 'the other HUD does not undo the click')
+  assert.equal(a.scope.jobDistance(), 'any')
+  assert.equal(b.scope.jobDistance(), 'any')
+  assert.equal(saved['earthFreight.jobDistance'], 'any', 'the explicit choice is saved')
+})
+
+test('distance restoration waits for a valid board and does not retry stale updates', () => {
+  const a = app({ getItem: k => k === 'earthFreight.jobDistance' ? 'long' : null, setItem() {} })
+  const commands = () => a.commands.filter(c => c.includes('setJobDistance('))
+  a.state({ state: 'READY' })
+  a.state({ state: 'READY', town: { distance: "x'); os.exit() --" } })
+  assert.deepEqual(commands(), [], 'missing and invalid filters do not consume restoration')
+  a.state({ state: 'READY', town: { distance: 'any' } })
+  a.state({ state: 'READY', town: { distance: 'any' } })
+  a.state({ state: 'READY', town: { distance: 'any' } })
+  assert.deepEqual(commands(), [fixed("setJobDistance('long')")], 'only one restore is sent')
+  assert.equal(a.scope.jobDistance(), 'any', 'later snapshots remain authoritative')
+  a.remount().state({ state: 'READY', town: { distance: 'long' } })
+  assert.equal(a.scope.jobDistance(), 'long')
+})
+
+test('a rebuilt HUD reads the latest saved filter, with a fallback when storage is unavailable', () => {
+  const saved = { 'earthFreight.jobDistance': 'long' }
+  const a = app({ getItem: k => saved[k] ?? null, setItem: (k, v) => { saved[k] = String(v) } })
+  assert.equal(a.scope.jobDistance(), 'long')
+  saved['earthFreight.jobDistance'] = 'medium'
+  assert.equal(a.remount().scope.jobDistance(), 'medium', 'another menu may have changed the preference')
+  a.state({ state: 'READY', town: { distance: 'any' } })
+  assert.equal(a.commands.at(-1), fixed("setJobDistance('medium')"))
+  const b = app({ getItem() { throw new Error('unavailable') }, setItem() { throw new Error('unavailable') } })
+  b.scope.setJobDistance('short')
+  b.state({ state: 'READY', town: { distance: 'short' } })
+  assert.equal(b.remount().scope.jobDistance(), 'short', 'the in-memory choice still survives a rebuild')
+})
+
 test('arriving at the drop-off chimes once, and a minimised HUD button flashes until delivered', () => {
   const a = app()
   a.state({ state: 'READY', mode: 'free', arrived: true })
