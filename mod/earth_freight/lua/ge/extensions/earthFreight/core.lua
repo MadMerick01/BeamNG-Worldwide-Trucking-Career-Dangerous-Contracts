@@ -1448,6 +1448,7 @@ function M.new(deps)
       self.tradeFeedback = nil
       self.diag:event('job_taken', string.format('%s x%d %s -> drop %.5f,%.5f for %d', good.id, quote.units, place.id,
         job.drop.latitude, job.drop.longitude, quote.pay))
+      self:saveNowOrSoon('your new job')
       return true
     end
     -- The job card shows the load and the pay; a message is only needed when the GPS could not be set.
@@ -1457,6 +1458,7 @@ function M.new(deps)
     if known and not known.none then self.load.business = business.clean(known, destination) end
     self:gpsToJob()
     self.diag:event('job_taken', string.format('%s x%d %s -> %s for %d', good.id, quote.units, place.id, destination.id, quote.pay))
+    self:saveNowOrSoon('your new job')
     return true
   end
 
@@ -1566,6 +1568,8 @@ function M.new(deps)
     self.load.contract, self.load.started, self.load.fee = section.id, false, contracts.FEE
     self:applyWeight()
     self.diag:event('job_taken', string.format('%s x%d %s -> contract %s for %d', good.id, quote.units, job.from, section.id, quote.pay))
+    -- Saved before the teleport starts, while the car is still in town: the fee is paid, so the job must be kept.
+    self:saveNowOrSoon('your new job')
     -- The job card and the contract card on the Route tab show the rest; a message is only needed
     -- when Earth is not taking the car there now (teleportToContract may already have said why).
     self.tradeFeedback = nil
@@ -1715,7 +1719,7 @@ function M.new(deps)
       self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), 'Dropped off. Nobody saw a thing, and nobody asked.'
         .. refund)
       self.tradeFeedback = nil
-      self:autoSaveSoon('your delivery')
+      self:saveNowOrSoon('your delivery')
       self.diag:event('job_delivered', 'beacon for ' .. load.pay)
       return true
     end
@@ -1723,7 +1727,7 @@ function M.new(deps)
       .. (section and (' over ' .. section.name .. '. ' .. self:named('You made it') .. '.') or (' dropped off road. ' .. self:named('Nice driving') .. '.'))
       .. tollLine(load) .. refund)
     self.tradeFeedback = nil
-    self:autoSaveSoon('your delivery')
+    self:saveNowOrSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> drop for %d', good.id, load.units, load.pay))
     return true
   end
@@ -1765,7 +1769,7 @@ function M.new(deps)
       .. (load.business and (load.business.name .. ', ') or '') .. place.name
       .. '. ' .. self:named('Nice driving') .. '.' .. tollLine(load) .. refund)
     self.tradeFeedback = nil
-    self:autoSaveSoon('your delivery')
+    self:saveNowOrSoon('your delivery')
     self.diag:event('job_delivered', string.format('%s x%d -> %s for %d', good.id, load.units, place.id, load.pay))
     return true
   end
@@ -1844,6 +1848,7 @@ function M.new(deps)
       .. ', off road: follow the arrow and stop within ' .. beacons.RADIUS .. ' m of the drop. It pays ' .. dollars(beacons.PAY)
       .. '. A crash loses it, and an insurance claim costs at least ' .. dollars(beacons.INSURANCE_FEE) .. '.'
     self.diag:event('beacon_picked_up', string.format('%.5f,%.5f', b.drop.latitude, b.drop.longitude))
+    self:saveNowOrSoon('your pickup')
     return true
   end
 
@@ -2788,22 +2793,43 @@ function M.new(deps)
     self.autoSave = { timed = true, since = nil }
   end
 
-  -- Called every tick: saves the game the player asked for with autoSaveSoon once the car has been
-  -- stopped for AUTOSAVE_SECONDS in its own car, with no bill, booking, respawn or claim waiting.
-  -- Until then it keeps waiting, so a player who drives straight off is saved at their next stop.
-  function c:watchAutoSave()
-    local due = self.autoSave
-    if not due then return end
+  -- Whether an automatic save can happen now: in its own car, stopped, with no bill, booking, respawn or claim waiting.
+  function c:autoSaveSettled()
     local sample = self.lastSample
-    local settled = self.state == 'READY' and self.profile and not self.error and self.arrived
+    return (self.state == 'READY' and self.profile and not self.error and self.arrived
       and not self.stranded and not self.booking and not self.hire and not self.onFoot
       and not self.pendingParts and not self.pendingCar and not self.insurancePending
       and not self.refuelPending and not self.respawned and not self.partsCheckDue
       and not self:trailerSaveProblem()
       -- Not while BeamNG.Earth is still taking the car to a dangerous contract's start and loading its terrain.
       and not (self.contractTeleportAt and self.clock - self.contractTeleportAt < TELEPORT_WAIT_SECONDS)
-      and sample and sample.valid and self.odometer:stopped()
-    if not settled then due.since = nil; return end
+      and sample and sample.valid and self.odometer:stopped()) and true or false
+  end
+
+  -- After a delivery or a new job: saves at once when it can (a job is only taken or delivered with the car stopped),
+  -- so a player who quits, crashes or is sent off by a server update straight after keeps the pay or the job. When it
+  -- can't, it waits for the next stop, as autoSaveSoon does.
+  function c:saveNowOrSoon(what)
+    if not self.profile then return false end
+    if self:autoSaveSettled() then
+      self.autoSave = nil
+      if self:manualSave() then
+        self.feedback = 'Saved automatically after ' .. what .. '.'
+        self.diag:event('auto_save', what .. ' (at once)')
+        return true
+      end
+    end
+    self:autoSaveSoon(what)
+    return false
+  end
+
+  -- Called every tick: saves the game the player asked for with autoSaveSoon once the car has been
+  -- stopped for AUTOSAVE_SECONDS in its own car, with no bill, booking, respawn or claim waiting.
+  -- Until then it keeps waiting, so a player who drives straight off is saved at their next stop.
+  function c:watchAutoSave()
+    local due = self.autoSave
+    if not due then return end
+    if not self:autoSaveSettled() then due.since = nil; return end
     due.since = due.since or self.clock
     if self.clock - due.since < AUTOSAVE_SECONDS then return end
     self.autoSave = nil

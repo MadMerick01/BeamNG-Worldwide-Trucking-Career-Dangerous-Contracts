@@ -86,6 +86,8 @@ do
 
   -- Next time the same town and good: the business is known straight away, from the file.
   local c2, _, a2 = setup(io)
+  -- The delivery was saved at the business, so the next game starts there: back to the first town for the next job.
+  F.drive(c2, a2, c2.profile.resume); F.drive(c2, a2, c2.profile.base)
   local id2 = F.offer(c2, stClair, 'parts')
   T.check(c2:takeJob(id2), 'second job')
   T.eq(c2:view().load.lookup, nil, 'no lookup: remembered')
