@@ -122,7 +122,7 @@ local function load(l)
   if l.trailerUnits ~= nil and (not integer(l.trailerUnits, 1) or not integer(l.units, 1) or l.trailerUnits > l.units) then return nil end
   if l.contract ~= nil and (type(l.contract) ~= 'string' or not optionalString(l.contract) or l.drop == nil
       or (l.started ~= nil and type(l.started) ~= 'boolean') or (l.fee ~= nil and not integer(l.fee, 0))) then return nil end
-  -- A Ship Day container: which ship and which container on it.
+  -- A Ship Day container from before Mayday Rescue replaced it: which ship and which container on it.
   local container
   if l.ship ~= nil then
     if type(l.ship) ~= 'table' or type(l.ship.ship) ~= 'number' or l.ship.ship ~= math.floor(l.ship.ship)
@@ -261,6 +261,7 @@ function M.validate(s)
   if s.playerName ~= nil and not M.validName(s.playerName) then return nil, 'invalid_identity' end
   -- On a server, the last batch of base commission added to the money (multiplayer.lua).
   if s.commissionId ~= nil and not integer(s.commissionId, 0) then return nil, 'invalid_identity' end
+  if s.rewardId ~= nil and not integer(s.rewardId, 0) then return nil, 'invalid_identity' end
   -- The extra car slot bought on the Garage tab (fleet.lua).
   if s.extraCarSlot ~= nil and s.extraCarSlot ~= true then return nil, 'invalid_home' end
   local cargo = nil
@@ -323,7 +324,7 @@ function M.validate(s)
       damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres, value = s.vehicle.value, km = s.vehicle.km,
       worth = s.vehicle.worth },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
-    trailer = trailer, spareTrailer = spareTrailer, property = home, storedCars = stored, commissionId = s.commissionId,
+    trailer = trailer, spareTrailer = spareTrailer, property = home, storedCars = stored, commissionId = s.commissionId, rewardId = s.rewardId,
     corp = member, extraCarSlot = s.extraCarSlot,
   }
 end
@@ -393,7 +394,7 @@ function M.new(io, directory)
       progression = candidate.progression, vehicle = candidate.vehicle,
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
-      trailer = candidate.trailer, spareTrailer = candidate.spareTrailer, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId,
+      trailer = candidate.trailer, spareTrailer = candidate.spareTrailer, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId, rewardId = candidate.rewardId,
       corp = candidate.corp, extraCarSlot = candidate.extraCarSlot,
     }
     local clean, why = M.validate(prepared)

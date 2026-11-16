@@ -164,11 +164,17 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
         { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Base' },
-        { id: 'streetview', label: 'Street View' }, { id: 'radio', label: 'Radio' }, { id: 'race', label: 'Land Race and Leaderboard' }]
-      // Rows of tabs: the job on top, the extras below, each sharing its row's width, and the land race on its own.
+        { id: 'streetview', label: 'Street View' }, { id: 'radio', label: 'Radio' }, { id: 'mayday', label: 'Mayday Rescue' },
+        { id: 'race', label: 'Land Race and Leaderboard' }]
+      // Rows of tabs: the job on top, the extras below, each sharing its row's width, and the server's events last.
       scope.tabRows = [scope.tabs.slice(0, 4), scope.tabs.slice(4, 8), scope.tabs.slice(8)]
+      // Mayday Rescue is a server event: its tab only shows while the server has a call out.
+      scope.tabShown = function (id) { return id !== 'mayday' || !!(scope.data && scope.data.mayday) }
       scope.tab = kept.tab
-      scope.setTab = function (id) { scope.tab = kept.tab = id }
+      scope.setTab = function (id) {
+        scope.tab = kept.tab = id
+        if (id === 'mayday' && scope.data && scope.data.mayday) kept.maydaySeen = scope.data.mayday.round
+      }
       // Marks a tab that has something waiting for the player.
       var alerts = {
         route: function (d) {
@@ -186,7 +192,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!d.insurance
         },
         relocate: function (d) { return !!(d.shipping && d.shipping.booking) },
-        heli: function (d) { return !!(d.heli && d.heli.hired && d.beacon) }
+        heli: function (d) { return !!(d.heli && d.heli.hired && d.beacon) },
+        // A new Mayday Rescue call, until the player has looked at it.
+        mayday: function (d) { return !!(d.mayday && d.mayday.open && kept.maydaySeen !== d.mayday.round) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
       // The HUD shrinks to a Worldwide Trucking button. Its dot is red for bad news, gold for anything a
@@ -251,6 +259,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
         ['garage', function (d) { return !!d.insurance }],
         ['heli', function (d) { return !!(d.heli && d.heli.hired) }],
+        ['mayday', function (d) { return !!(d.mayday && d.mayday.running) }],
         ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.startHereAllowed || !!d.stranded }]
       ]
       var urgent = function (d) { return !!(d.partsChange || d.carChange || d.insurance || d.stranded) }
@@ -273,6 +282,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           }
         }
         if (scope.tab === 'town' && !next.town) scope.setTab('route')
+        if (scope.tab === 'mayday' && !next.mayday) scope.setTab('route')
+        if (scope.tab === 'mayday' && next.mayday) kept.maydaySeen = next.mayday.round
       }
       // The start page: the player's name, how to play, their truck and their career. It fills a big
       // window in the middle of the screen, so it is moved onto the page body, out of the small app
@@ -349,12 +360,6 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         return typeof v === 'boolean' ? v : !!FOLD_DEFAULTS[id]
       }
       scope.toggle = function (id) { kept.folds[id] = !scope.isOpen(id); storeFolds(kept.folds) }
-      // The Ship Day card folds to two lines and Go to port, so it doesn't push the town's jobs off
-      // the HUD. At the port with no container yet, the list opens: that is when the player picks one.
-      scope.shipDayOpen = function () {
-        var s = scope.data && scope.data.shipDay
-        return scope.isOpen('shipday', !!(s && s.atPort && !s.carrying))
-      }
       // One town job at a time shows its details, load slider and GPS.
       scope.jobOpen = function (id) { return kept.openJob === id }
       scope.toggleJob = function (id) { kept.openJob = kept.openJob === id ? null : id }
@@ -525,17 +530,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var s = Math.max(0, Math.ceil(seconds))
         return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2)
       }
-      // Ship Day: a free trip to the port, and a container from the ship there.
-      scope.goToPort = function () { if (scope.data.shipDay && scope.data.shipDay.goAllowed) core('goToPort()') }
-      // The same load slider for the ship's containers: one share for all of them, as only one is taken at a time.
-      scope.containerJob = function (box) {
-        var s = scope.data && scope.data.shipDay
-        return { id: 'container', units: s ? s.units : 0, unitKg: s ? s.unitKg : 0, pay: box ? box.pay : 0 }
-      }
-      scope.containerTaken = function (box) { return scope.taken(scope.containerJob(box)) }
-      scope.takeContainer = function (box) {
-        var n = box ? parseInt(box.n, 10) : 0
-        if (scope.data.shipDay && box.allowed && n > 0) core('takeContainer(' + n + ', ' + scope.shareOf({ id: 'container' }) + ')')
+      // Mayday Rescue: a free teleport to an edge of the circle ('n', 'e', 's' or 'w'), when Lua allows it.
+      scope.maydayEdge = function (edge) {
+        var m = scope.data && scope.data.mayday
+        if (!m || !edge || !edge.allowed || ['n', 'e', 's', 'w'].indexOf(edge.id) < 0) return
+        core('maydayEdge("' + edge.id + '")')
       }
       // The "While you were away" card on a server: Got it closes it.
       scope.dismissAway = function () { core('dismissAway()') }

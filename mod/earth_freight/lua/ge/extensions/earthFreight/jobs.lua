@@ -18,7 +18,7 @@ local M = {}
 -- about $770 and a car boot of parts doesn't out-earn a cargo box. PAY_PERCENT
 -- scales every job's pay, after all of the above: 120 pays a fifth more, 80 a fifth less. It is 75
 -- (MadMerick, 11 Nov: the whole economy a quarter lower, prices kept), so the Burnside's load pays
--- $1,500 over 5 km. Contracts, shortages, jackpots, Ship Day and base commission all follow it. A
+-- $1,500 over 5 km. Contracts, shortages, jackpots and base commission all follow it. A
 -- good's rate (goods.lua) scales its own pay.
 M.PAY_PERCENT = 75
 M.PAY_DOLLARS, M.PAY_KG, M.WEIGHT_POWER = 2000, 780, 0.5

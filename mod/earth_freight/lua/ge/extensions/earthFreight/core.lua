@@ -28,7 +28,7 @@ local fleet = require('earthFreight/fleet')
 local streetView = require('earthFreight/streetView')
 local business = require('earthFreight/business')
 local multiplayer = require('earthFreight/multiplayer')
-local shipday = require('earthFreight/shipday')
+local mayday = require('earthFreight/mayday')
 local magnate = require('earthFreight/magnate')
 local fuelruns = require('earthFreight/fuelruns')
 local M = {}
@@ -356,10 +356,12 @@ function M.new(deps)
       self.diag:event('multiplayer', 'the server answered late: its career is loaded', 'W')
       self:reload()
     end
-    if event == 'wwtcShip' then
-      self.ship, self.shipAt = shipday.clean(self.mp.ship), self.clock
-    elseif event == 'wwtcClaimed' then
-      self:claimAnswered(self.mp.claimed)
+    if event == 'wwtcMayday' then
+      self.mayday = mayday.clean(self.mp.mayday, self.clock)
+      -- A new call, or the old one won: a run from before is over.
+      if self.maydayRun and not self:maydayRunning() then self.maydayRun, self.maydayClaim = nil, nil end
+    elseif event == 'wwtcMaydayWon' then
+      self:maydayAnswered(mayday.cleanAnswer(self.mp.maydayWon))
     elseif event == 'wwtcLocate' then
       self:answerLocate(self.mp.locate)
     elseif event == 'wwtcFound' then
@@ -422,12 +424,11 @@ function M.new(deps)
   function c:doingText()
     local load = self.load
     if not load then
-      if self.ship and self:atPort(shipday.portTown(self.ship)) then return 'At the docks for Ship Day' end
+      if self:maydayRunning() then return 'On a Mayday Rescue' end
       return 'Looking for work'
     end
     local good = goods.get(load.good)
     local to = load.to and places.get(load.to)
-    if load.ship then return 'Carrying container ' .. load.ship.n .. (to and (' to ' .. to.name) or '') end
     if load.contract then
       local section = contracts.get(load.contract)
       return 'Dangerous contract' .. (section and (': ' .. section.name) or '')
@@ -516,7 +517,7 @@ function M.new(deps)
   function c:endMission()
     self.whereSent, self.whereAt = nil, nil
     self.hudSeen, self.hudHints, self.hudMissingFor = nil, nil, nil
-    self.ship, self.shipAt, self.shipClaim, self.shipFeedback = nil, nil, nil, nil
+    self.mayday, self.maydayRun, self.maydayClaim, self.maydayFeedback = nil, nil, nil, nil
     self.finding = nil
     self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
@@ -712,13 +713,14 @@ function M.new(deps)
     if jump then
       -- The insurance claim's or tow's move back to the road is not a teleport.
       local insured = self.insuredUntil and self.clock <= self.insuredUntil
-      if jump > odometer.SHORT_HOP_METRES and not insured then self:teleported(before, sample) end
+      if jump > odometer.SHORT_HOP_METRES and not insured then self:teleported(before, sample)
+      elseif jump > mayday.HOP_METRES and not insured then self:endMaydayRun('hop') end
       return
     end
     -- Landing at a booking is seen from where the car is, not only from a jump: while Earth loads the
     -- terrain the car can turn up first somewhere near the destination (which strands it, booking still
     -- held), then reach the booking in a long loading frame that does not read as a jump.
-    if self.booking and shipping.arrived(sample, self.booking) then
+    if self:atBooking(sample) then
       self:landAtBooking('')
       return
     end
@@ -759,6 +761,7 @@ function M.new(deps)
     -- The trailer is left behind, so it goes into the garage.
     local trailerNote = self:trailerTeleported()
     if trailerNote ~= '' then self.trailerFeedback = trailerNote:gsub('^ ', '') end
+    if not (self.booking and self.booking.mayday and self:atBooking(to)) then self:endMaydayRun('teleport') end
     local section = self.load and self.load.contract and not self.load.started and contracts.get(self.load.contract)
     if section and contracts.atStart(to, section) then
       self.load.started, self.load.drivenKm, self.stranded = true, 0, nil
@@ -775,7 +778,7 @@ function M.new(deps)
       local fee = self:dropJob('teleport')
       lost = ' Your job is cancelled' .. (fee > 0 and (', which cost ' .. dollars(fee)) or '') .. '.'
     end
-    if self.booking and shipping.arrived(to, self.booking) then
+    if self:atBooking(to) then
       self:landAtBooking(lost)
     elseif self.stranded and shipping.returned(to, self.stranded) then
       self:unstrand()
@@ -793,10 +796,29 @@ function M.new(deps)
 
   -- The car is at its booked relocation: the booking is used up, and anything the teleport on the way
   -- there looked like (stranded somewhere in between while Earth loaded) is forgiven.
+  -- Whether a point is where the booked relocation goes: anywhere in its town, or right on a Mayday Rescue edge.
+  function c:atBooking(point)
+    local b = self.booking
+    if not b then return false end
+    if not b.mayday then return shipping.arrived(point, b) end
+    local d = location.distance(point, b)
+    return d ~= nil and d <= mayday.LAND_METRES
+  end
+
   function c:landAtBooking(lost)
     local b = self.booking
     self.booking, self.stranded, self.bookingTeleportAt = nil, nil, nil
     self.landing = { latitude = b.latitude, longitude = b.longitude, at = self.clock, name = b.name, region = b.region }
+    if b.mayday then
+      local call = self:maydayCall()
+      if call and call.state == 'open' and call.round == b.mayday.round then
+        self:startMaydayRun(call, b.mayday.edge)
+      else
+        self:showFlash('cancelled', 'MAYDAY RESCUE IS OVER', 'That call ended while you were on the way. Watch for the next one.')
+      end
+      self.diag:event('shipped', 'mayday:' .. b.mayday.edge)
+      return
+    end
     local paid = ''
     if b.offer then
       self.offer = { latitude = b.latitude, longitude = b.longitude, name = b.name, fee = b.fee }
@@ -888,11 +910,13 @@ function M.new(deps)
   end
 
   -- Books shipping to a destination: pay the fee, then teleport there with the coordinates.
-  function c:book(destination, free)
+  -- anywhere: book it even when already near (an edge of the Mayday Rescue circle, which lands only right on it).
+  function c:book(destination, free, anywhere)
     local here = self.lastSample
     local problem = self:shippingProblem()
     if not problem and not destination then problem = 'Pick a destination.' end
-    if not problem and shipping.arrived(here, destination) then problem = destination.id == 'home' and 'You are already at your base.' or ('You are already in ' .. destination.name .. '.') end
+    if not problem then problem = self:maydayBars(destination) end
+    if not problem and not anywhere and shipping.arrived(here, destination) then problem = destination.id == 'home' and 'You are already at your base.' or ('You are already in ' .. destination.name .. '.') end
     local fee = not problem and (free and 0 or shipping.fee(here, destination)) or nil
     if not problem and not self:spend(fee, 'shipping') then problem = 'Not enough money. Relocating to ' .. destination.name .. ' costs ' .. dollars(fee) .. '.' end
     if problem then
@@ -908,44 +932,185 @@ function M.new(deps)
   end
 
 
-  -- ===== Ship Day (multiplayer): see shipday.lua ==================================================================
-  -- The ship in port, while this game's career is the server's.
-  function c:shipDay()
-    return self.mp and self.mp.state == 'server' and self.ship or nil
+  -- ===== Mayday Rescue (multiplayer): see mayday.lua ==============================================================
+  -- The call out now, while this game's career is the server's.
+  function c:maydayCall()
+    return self.mp and self.mp.state == 'server' and self.mayday or nil
   end
 
-  function c:atPort(town)
-    local sample = self.lastSample
-    if not town or not sample or not sample.valid then return false end
-    local d = location.distance(sample, town)
-    return d ~= nil and d <= shipday.AT_PORT_METRES
+  -- The run this player is on: { round, edge, at }, from landing on an edge of the current call's circle.
+  function c:maydayRunning()
+    local call, run = self:maydayCall(), self.maydayRun
+    return call and call.state == 'open' and run and run.round == call.round and run or nil
   end
 
-  -- Why Go to port can't be pressed now, or nil when it can.
-  function c:portTripProblem(ship, town)
-    if not ship or not town then return 'No ship is in port right now.' end
-    if self:atPort(town) then return 'You are at the port.' end
-    if self.booking and self.booking.id == 'port' then return nil end
+  -- Why an edge button can't be pressed now, or nil when it can.
+  function c:maydayEdgeProblem(call)
+    if not call then return 'No Mayday Rescue call is out right now.' end
+    if call.state ~= 'open' then return 'This call is over. The next one goes out soon.' end
+    if self.booking and self.booking.mayday then return nil end
     return self:shippingProblem()
   end
 
-  -- Go to port: a free relocation to the port's town (its centre, on land), and the teleport there, in one press.
-  function c:goToPort()
-    local ship = self:shipDay()
-    local town = shipday.portTown(ship)
-    local problem = self:portTripProblem(ship, town)
-    if not problem and not self.booking then
-      if not self:book({ id = 'port', name = town.name, region = town.region,
-        latitude = town.latitude, longitude = town.longitude }, true) then problem = self.shippingFeedback end
-    end
+  -- Whether a relocation to a destination is barred: inside the circle of an open call, except to its edges.
+  function c:maydayBars(destination)
+    local call = self:maydayCall()
+    if not destination or destination.id == 'mayday' or not mayday.inside(call, destination) then return nil end
+    return 'Mayday Rescue is on near ' .. call.spot.name .. ': nobody can relocate inside its circle. Use the edge'
+      .. ' buttons on the Mayday Rescue tab, or pick somewhere outside it.'
+  end
+
+  -- A run starts: on an edge of the circle, now. The server hears of it, which starts its clock.
+  function c:startMaydayRun(call, edge)
+    self.maydayRun = { round = call.round, edge = edge, at = self.clock }
+    self.maydayClaim = nil
+    self.mp:maydayStart(call.round, edge)
+    local name = mayday.edgeName(edge):lower()
+    self.maydayFeedback = nil
+    self:showFlash('delivered', 'MAYDAY RESCUE: GO!', 'You are on the ' .. name .. ' edge, '
+      .. math.floor(call.radiusKm + 0.5) .. ' km from the scene near ' .. call.spot.name .. '. Get there first for '
+      .. dollars(call.reward) .. '. Teleporting ends your run, but you can start again from any edge.')
+    self.diag:event('mayday_start', call.round .. ':' .. edge)
+  end
+
+  -- A run ends without a win. why: 'teleport', 'hop', 'tow', 'heli'.
+  local RUN_ENDED = {
+    teleport = 'You teleported, so your Mayday Rescue run is over. Start again from any edge.',
+    hop = 'Your car jumped ahead, so your Mayday Rescue run is over. Start again from any edge.',
+    tow = 'Towing your car ended your Mayday Rescue run. Start again from any edge.',
+    heli = 'Leaving your car for a helicopter or sightseeing ended your Mayday Rescue run. Start again from any edge.',
+  }
+  function c:endMaydayRun(why)
+    if not self.maydayRun then return end
+    self.maydayRun, self.maydayClaim = nil, nil
+    self.maydayFeedback = RUN_ENDED[why] or 'Your Mayday Rescue run is over.'
+    if why == 'hop' then self:showFlash('cancelled', 'MAYDAY RUN OVER', self.maydayFeedback) end
+    self.diag:event('mayday_run_ended', tostring(why))
+  end
+
+  -- An edge button: a free relocation to that edge (an empty car, as any relocation) and the teleport there, in one
+  -- press. Already on that edge, the run starts from where the car is.
+  function c:maydayEdge(edge)
+    local call = self:maydayCall()
+    local problem = self:maydayEdgeProblem(call)
+    local spot = call and call.edges[edge]
+    if not problem and not spot then problem = 'Pick north, east, south or west.' end
     if problem then
-      self.shipFeedback = problem
+      self.maydayFeedback = problem
       return false
     end
+    local name = mayday.edgeName(edge):lower()
+    local here = self.lastSample
+    if not self.booking and here and here.valid and (location.distance(here, spot) or math.huge) <= mayday.LAND_METRES then
+      self:startMaydayRun(call, edge)
+      return true
+    end
+    local b = self.booking
+    if b and b.mayday and (b.mayday.edge ~= edge or b.mayday.round ~= call.round) then
+      self.booking, self.bookingTeleportAt = nil, nil
+      b = nil
+    end
+    if not b then
+      if not self:book({ id = 'mayday', name = 'the ' .. name .. ' edge',
+        region = call.spot.name .. (call.spot.region ~= '' and (', ' .. call.spot.region) or ''),
+        latitude = spot.latitude, longitude = spot.longitude }, true, true) then
+        self.maydayFeedback = self.shippingFeedback
+        return false
+      end
+      self.booking.mayday = { round = call.round, edge = edge }
+    end
     local ok = self:teleportToBooking()
-    self.shipFeedback = ok and ('Off to ' .. ship.port.name .. '. The terrain takes a few seconds to load.')
+    self.maydayFeedback = ok and ('Off to the ' .. name .. ' edge. The terrain takes a few seconds to load.')
       or (self.shippingFeedback or 'BeamNG.Earth did not take the teleport.')
     return ok
+  end
+
+  -- Every tick: at the scene on a run, the server is asked whether this player was first. Asked again if it doesn't
+  -- answer, while the player is still there.
+  function c:watchMayday()
+    if self.maydayClaim and self.clock - self.maydayClaim.at > mayday.WIN_WAIT_SECONDS then self.maydayClaim = nil end
+    local call, run = self:maydayCall(), self:maydayRunning()
+    if not run or self.maydayClaim then return end
+    local sample = self.lastSample
+    if self.state ~= 'READY' or not self.arrived or self.stranded or self.hire or self.onFoot or self.load
+        or type(sample) ~= 'table' or not sample.valid then return end
+    local d = location.distance(sample, call.spot)
+    if not d or d > mayday.WIN_METRES then return end
+    self.maydayClaim = { round = call.round, at = self.clock }
+    self.mp:maydayWin(call.round)
+    self.maydayFeedback = 'You reached the scene! Checking with the server that you were first...'
+    self.diag:event('mayday_reached', tostring(call.round))
+  end
+
+  -- The server's answer: this player won (the money comes as a reward), or why not.
+  local NOT_WON = {
+    beaten = 'Someone else reached the scene first. The next call goes out soon.',
+    over = 'That call is over. Watch for the next one.',
+    no_start = 'The server never heard you set off from an edge, so this run does not count. Start again from any edge.',
+    too_fast = 'The server could not believe that run: it was too fast from the edge. Start again from any edge.',
+  }
+  function c:maydayAnswered(d)
+    local claim = self.maydayClaim
+    if not d or not claim or d.round ~= claim.round then return end
+    self.maydayClaim, self.maydayRun = nil, nil
+    if d.ok then
+      self.maydayFeedback = nil
+      self:showFlash('delivered', 'MAYDAY RESCUE: YOU GOT THERE FIRST', self:named('Great driving') .. '. '
+        .. dollars(d.reward or 0) .. ' is on its way to your money.')
+      self.diag:event('mayday_won', tostring(d.round))
+    else
+      self.maydayFeedback = NOT_WON[d.why] or 'The server did not count that run.'
+      self.diag:event('mayday_refused', tostring(d.why), 'W')
+    end
+  end
+
+  -- Money from the server (a Mayday Rescue win): added once (by id), told in a toast, and saved, which tells the
+  -- server it's paid. Waits until the career is in and the player is on the road.
+  function c:watchReward()
+    local r = self.mp and self.mp.reward
+    if not r or not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return end
+    self.mp.reward = nil
+    if r.id <= (self.profile.rewardId or 0) then return end
+    self.profile.rewardId = r.id
+    if r.amount > 0 then
+      self:addMoney(r.amount)
+      self:toast('info', 'Mayday Rescue', dollars(r.amount) .. ' for reaching the scene first.')
+      self.diag:event('reward', string.format('#%d %d %s', r.id, r.amount, tostring(r.why)))
+    end
+    self:autoSaveSoon('your reward')
+  end
+
+  -- The Mayday Rescue tab.
+  function c:maydayView(current)
+    local call = self:maydayCall()
+    if not call then return nil end
+    local here = type(current) == 'table' and location.valid(current) and current or nil
+    local away = here and location.distance(here, call.spot) or nil
+    -- The off-road drop's arrow: the scene's bearing from the way the car points (or last went), 0 straight ahead.
+    local bearing = away and away > 1 and location.bearing(here, call.spot) or nil
+    local heading = self.lastSample and location.finite(self.lastSample.heading) and self.lastSample.heading or self.heading
+    local problem = self:maydayEdgeProblem(call)
+    local run = self:maydayRunning()
+    local edges = {}
+    for _, e in ipairs(mayday.EDGES) do
+      local p = call.edges[e.id]
+      edges[#edges + 1] = { id = e.id, name = e.name, allowed = problem == nil and p ~= nil,
+        distanceMetres = here and p and location.distance(here, p) or nil }
+    end
+    return {
+      round = call.round, open = call.state == 'open', name = call.spot.name, region = call.spot.region,
+      story = call.story, reward = call.reward, winner = call.winner, racers = call.racers,
+      radiusKm = call.radiusKm, winMetres = mayday.WIN_METRES, secondsLeft = mayday.secondsLeft(call, self.clock),
+      scene = { latitude = call.spot.latitude, longitude = call.spot.longitude },
+      distanceMetres = away, direction = bearing and location.compassPoint(bearing) or nil,
+      arrow = bearing and heading and (bearing - heading) % 360 or nil,
+      inside = here and mayday.inside(call, here) or false,
+      running = run and { edge = mayday.edgeName(run.edge), seconds = math.max(0, self.clock - run.at) } or nil,
+      checking = self.maydayClaim ~= nil or nil,
+      edges = edges, problem = call.state == 'open' and problem or nil,
+      booked = self.booking and self.booking.mayday and mayday.edgeName(self.booking.mayday.edge) or nil,
+      feedback = self.maydayFeedback,
+    }
   end
 
   -- ===== Relocate to a player (multiplayer) ======================================================================
@@ -1053,128 +1218,6 @@ function M.new(deps)
         allowed = problem == nil and not self.finding and (fee == nil or self:canAfford(fee)) }
     end
     return { list = rows, findable = self.mp:findable(), finding = self.finding and self.finding.name or nil }
-  end
-
-  -- How many units of container cargo the car (and a hitched trailer) takes, and what one container pays.
-  function c:containerQuote(box)
-    local good = goods.get(shipday.GOOD)
-    local units, slots, kg, inTrailer = trailers.fits(self:space(), self:trailerSpace(), good)
-    local pay, toll = self:applyToll(shipday.pay(box, units, self:baseShareFunction()), places.get(box.to))
-    return { units = units, slots = slots, kg = kg, trailerUnits = inTrailer, pay = pay, toll = toll }
-  end
-
-  -- Why a container can't be taken now, or nil when it can.
-  function c:containerProblem(ship, town)
-    if not ship or not town then return 'No ship is in port right now.' end
-    if not self:atPort(town) then return 'Go to the port at ' .. town.name .. ' to load a container.' end
-    local problem = self:tradeProblem(town)
-    if problem then return problem end
-    if self.load then return 'Deliver or abandon your job first.' end
-    if self.shipClaim then return 'Waiting for the dock to answer.' end
-    return nil
-  end
-
-  -- Asks the server for a container. It's loaded when the server says it's this player's (claimAnswered), with the
-  -- share of a full load picked on the slider (a percentage, 100 when not given), like a job from the board.
-  function c:takeContainer(n, share)
-    local ship = self:shipDay()
-    local town = shipday.portTown(ship)
-    local problem = self:containerProblem(ship, town)
-    local box = not problem and shipday.container(ship, n) or nil
-    if not problem and not box then problem = 'There is no container ' .. tostring(n) .. ' on this ship.' end
-    if not problem and ship.states[n] then problem = 'Container ' .. n .. ' is already taken.' end
-    if not problem and self:containerQuote(box).units == 0 then
-      local good = goods.get(shipday.GOOD)
-      problem = 'Not enough cargo space: container cargo takes ' .. good.slots .. ' slots and '
-        .. string.format('%g', good.kg) .. ' kg a unit. Fit a cargo box in the parts menu.'
-    end
-    if problem then
-      self.shipFeedback = problem
-      return false
-    end
-    self.shipClaim = { ship = ship.ship, n = n, at = self.clock, share = share or 100 }
-    self.mp:claim(ship.ship, n)
-    self.shipFeedback = 'Asking the dock for container ' .. n .. '...'
-    return true
-  end
-
-  -- The server's answer to a claim: the container is loaded, or someone else got it first.
-  function c:claimAnswered(d)
-    local claim = self.shipClaim
-    if type(d) ~= 'table' or not claim or d.ship ~= claim.ship or d.n ~= claim.n then return end
-    self.shipClaim = nil
-    local ship = self:shipDay()
-    if d.ok ~= true then
-      self.shipFeedback = 'Someone else got container ' .. claim.n .. ' first. Pick another.'
-      return
-    end
-    local town = ship and ship.ship == claim.ship and shipday.portTown(ship) or nil
-    local box = town and shipday.container(ship, claim.n)
-    local problem = not box and 'That ship has sailed.' or self:containerProblem(ship, town)
-    local quote = not problem and self:containerQuote(box) or nil
-    if not problem and quote.units == 0 then problem = 'Not enough cargo space.' end
-    if problem then
-      -- Given back, so someone else can take it.
-      self.mp:release(claim.ship, claim.n)
-      self.shipFeedback = problem
-      return
-    end
-    local good = goods.get(shipday.GOOD)
-    local full = quote.units
-    quote.units, quote.pay = jobs.share(quote.units, quote.pay, claim.share or 100)
-    self.load = { good = good.id, units = quote.units, slots = quote.units * good.slots, kg = quote.units * good.kg,
-      pay = quote.pay, from = box.from, to = box.to, drivenKm = 0, ship = { ship = claim.ship, n = claim.n }, toll = quote.toll }
-    local inTrailer = trailers.split(quote.units, full, quote.trailerUnits)
-    if inTrailer > 0 then self.load.trailerUnits = inTrailer end
-    self.abandonArmed = false
-    self:applyWeight()
-    self:gpsToJob()
-    local to = places.get(box.to)
-    self.shipFeedback = 'Container ' .. claim.n .. ' is yours: take it to ' .. to.name .. ' for ' .. dollars(quote.pay) .. '.'
-    self.diag:event('container_taken', string.format('ship %d #%d -> %s for %d', claim.ship, claim.n, box.to, quote.pay))
-    self:autoSaveSoon('your container')
-  end
-
-  -- The server never answered: the claim is dropped, and the player can try again.
-  function c:watchClaim()
-    if self.shipClaim and self.clock - self.shipClaim.at > shipday.CLAIM_WAIT_SECONDS then
-      self.shipClaim = nil
-      self.shipFeedback = 'The dock did not answer. Try again.'
-    end
-  end
-
-  -- Ship Day on the Town tab: the ship, its port, the time left and every container.
-  function c:shipView(current)
-    local ship = self:shipDay()
-    if not ship then return nil end
-    local town = shipday.portTown(ship)
-    if not town then return nil end
-    local atPort = self:atPort(town)
-    local takeProblem = self:containerProblem(ship, town)
-    local tripProblem = self:portTripProblem(ship, town)
-    local units
-    local list, free = {}, 0
-    for _, box in ipairs(shipday.containers(ship)) do
-      local st = ship.states[box.n]
-      units = units or self:containerQuote(box).units
-      local pay, toll = self:applyToll(shipday.pay(box, units, self:baseShareFunction()), places.get(box.to))
-      local state = st and (st.mine and st.state ~= 'delivered' and 'mine' or st.state) or 'free'
-      if state == 'free' then free = free + 1 end
-      local to = places.get(box.to)
-      list[#list + 1] = { n = box.n, to = to and to.name or box.to, region = to and to.region or nil,
-        distanceMetres = box.km * 1000, pay = pay, tollTo = toll and toll.owner, state = state, by = st and st.by or nil,
-        allowed = state == 'free' and takeProblem == nil and units > 0 }
-    end
-    local held = self.load and self.load.ship
-    return {
-      name = ship.name, port = ship.port.name, region = ship.port.region, town = town.name,
-      secondsLeft = math.max(0, ship.left - (self.clock - (self.shipAt or self.clock))),
-      total = ship.containers, free = free, atPort = atPort, containers = list,
-      goAllowed = tripProblem == nil, goProblem = not atPort and tripProblem or nil,
-      problem = atPort and takeProblem or nil, units = units or 0, unitKg = goods.get(shipday.GOOD).kg,
-      carrying = held and held.ship == ship.ship and held.n or nil,
-      feedback = self.shipFeedback,
-    }
   end
 
   -- Asks Earth to take the car to the booked destination, as pasting its coordinates into Earth's
@@ -1702,11 +1745,7 @@ function M.new(deps)
     jobs.delivered(self.needs, place, good, self.now())
     self:finishJob()
     local from = places.get(load.from)
-    if load.ship and self.mp then
-      self.mp:shipDelivered(load.ship.ship, load.ship.n, place.name, load.pay, townEnds(from, place), load.toll and load.toll.amount or nil)
-    else
-      self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay, townEnds(from, place), load.toll)
-    end
+    self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay, townEnds(from, place), load.toll)
     local refund = ''
     if self.offer and shipping.offerPays(place, self.offer) then
       self:addMoney(self.offer.fee)
@@ -1740,7 +1779,6 @@ function M.new(deps)
     local fee = math.min(jobs.ABANDON_FEE, self.profile.progression.balance)
     if fee > 0 then self:spend(fee, 'abandon') end
     self.diag:event('job_abandoned', tostring(why) .. ':' .. self.load.good .. ':' .. fee)
-    if load.ship and self.mp then self.mp:release(load.ship.ship, load.ship.n) end
     self:finishJob()
     return fee
   end
@@ -2066,9 +2104,10 @@ function M.new(deps)
     self:observe(sample, dt)
     self:spawnFirstCar(sample, dt)
     self:hintHud(sample, dt)
-    self:watchClaim()
+    self:watchMayday()
     self:watchFind()
     self:watchCommission()
+    self:watchReward()
     self:watchCorp()
     self:watchTurf()
     self:reportWhere(sample)
@@ -2578,7 +2617,7 @@ function M.new(deps)
       saveAllowed = self.state == 'READY' and self.arrived and not self.stranded and not self.booking and not self.hire and not self.onFoot,
       heli = self:heliView(current), beacon = self:beaconView(current),
       shipping = self:shippingView(current),
-      shipDay = self:shipView(current),
+      mayday = self:maydayView(current),
       away = self:awayView(),
       home = self:homeView(current),
       fleet = self:fleetView(),
@@ -2689,7 +2728,7 @@ function M.new(deps)
         -- leaderboard and the card before the car is back. Worked out again once it is.
         worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
-      commissionId = self.profile.commissionId, extraCarSlot = self.extraCarSlot or nil,
+      commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
       trailer = self:savedTrailer(), spareTrailer = self:savedSpareTrailer(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
@@ -3036,11 +3075,10 @@ function M.searchShipping(query)
   return safely(function() return ensure():searchShipping(query) end)
 end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
-function M.goToPort() return safely(function() return ensure():goToPort() end) end
--- share is the load slider's percentage of a full load, as for takeJob.
-function M.takeContainer(n, share)
-  local s = type(share) == 'number' and share >= jobs.SHARE_STEP and share <= 100 and share % jobs.SHARE_STEP == 0 and share or 100
-  return safely(function() return ensure():takeContainer(tonumber(n), s) end)
+-- edge: 'n', 'e', 's' or 'w'.
+function M.maydayEdge(edge)
+  if edge ~= 'n' and edge ~= 'e' and edge ~= 's' and edge ~= 'w' then return false end
+  return safely(function() return ensure():maydayEdge(edge) end)
 end
 function M.findPlayer(player)
   if type(player) ~= 'number' then return false end
