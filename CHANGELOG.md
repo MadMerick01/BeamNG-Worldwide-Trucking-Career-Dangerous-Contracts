@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Rough regions now pay much more.** A town job's pay is now multiplied by the region's full "rough roads" number, where before it only got half of it. Death Road now pays ×3 instead of ×2, the Blue Mountains about ×1.5 instead of ×1.25, and a ×2 region pays ×2 instead of ×1.5. For example, the starter car's full load of parts on a 13 km run in a ×2 region now pays about $10,310 instead of $7,740. Fuel runs get the bigger number too, and off-road drops, which already paid the full number, now go up to ×3 instead of stopping at ×2. Jobs on flat ground pay the same as before, and the bonus for jobs in a base's turf stays at +10% for visitors and +20% for the owner. Jobs you've already taken keep their pay, and your saves still work.
+
 ## Build 222 · 16 Nov 2026
 
 - **Mayday Rescue now shows live standings.** The Mayday Rescue tab lists every trucker on a run and how far each one is from the scene, nearest first, with your own line highlighted. While you race, the Route tab and the Mayday Rescue tab show your place, such as "2nd of 3". The server's live page shows the same standings, so anyone can follow the race. Standings update about every 15 seconds in the game and about every minute on the page. Your saves still work.

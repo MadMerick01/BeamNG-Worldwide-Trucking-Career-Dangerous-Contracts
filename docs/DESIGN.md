@@ -56,7 +56,7 @@ The truck earns about 5 times more a run but far less a kg, so fuel, repairs and
 - Each delivery lowers that town's need for that good by 0.15, so the second run of the same job pays noticeably less and the third clearly worse. The drop recovers by half every hour (real time, so it also recovers while the game is off). Only towns that have been delivered to are kept in the save.
 - The board colours each job against its base: green above, grey around it, red below.
 
-**Treacherous roads.** The region pay boost (1× to 3×, see [Region pay boost as built](#region-pay-boost-as-built)) becomes a road bonus of 1 + (boost − 1) / 2 at the average of the two towns, so it tops out at **2×**. Flat Sydney pays ×1, the Blue Mountains about ×1.25, Death Road ×2.
+**Treacherous roads.** The region pay boost (1× to 3×, see [Region pay boost as built](#region-pay-boost-as-built)) becomes the road bonus at the average of the two towns, in full, so it tops out at **3×**. Flat Sydney pays ×1, the Blue Mountains about ×1.5, Death Road ×3. Until 16 Nov it was half the boost above 1, at most 2× (MadMerick, 16 Nov: the region should count for more).
 
 **Sweet jobs.** Some jobs pay far more, and the bonuses stack:
 

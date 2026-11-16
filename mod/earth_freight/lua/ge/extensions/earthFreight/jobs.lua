@@ -57,8 +57,13 @@ M.JACKPOT_CHANCE, M.JACKPOT_MIN, M.JACKPOT_MAX = 0.05, 1.5, 2
 -- Town need, a shortage and a jackpot together pay at most MAX_BONUS times (MadMerick, 12 Nov: they
 -- no longer stack). The road and base bonuses come on top, as before.
 M.MAX_BONUS = 2
--- The region pay boost (1 to 3) becomes a road bonus of 1 + (boost - 1) * ROAD_SHARE, at most 2.
-M.ROAD_SHARE, M.MAX_ROAD = 0.5, 2
+-- The region pay boost (1 to 3) becomes a road bonus of 1 + (boost - 1) * ROAD_SHARE, at most
+-- MAX_ROAD. It was half the boost, at most 2, until MadMerick (16 Nov) wanted the region to count
+-- for more: a town job now pays the whole boost, so Death Road pays 3 times flat ground.
+M.ROAD_SHARE, M.MAX_ROAD = 1, 3
+-- A base of operations' share of the region multiplier is added to the road bonus at this rate, so
+-- its bonus stays +10% for visitors and +20% for the owner on flat ground, as before the change above.
+M.BASE_SHARE = 0.5
 -- A job only delivers once you have driven at least this share of the straight-line distance
 -- from where it was taken, so a teleport or a lift never delivers.
 M.DRIVEN_SHARE = 0.7
@@ -99,16 +104,16 @@ function M.roadKm(from, to)
   return metres and metres / 1000 or 0
 end
 
--- The road bonus for a region pay boost: half the boost above 1, at most 2x.
+-- The road bonus for a region pay boost: the boost above 1 times ROAD_SHARE, at most MAX_ROAD.
 function M.roadBonusFor(boost)
   return math.min(M.MAX_ROAD, 1 + ((boost or 1) - 1) * M.ROAD_SHARE)
 end
 
 -- What bases of operations add to a run's road bonus (magnate.lua): at each end, shareAt's share of the
--- region multiplier there, averaged over the two ends and halved like the boost itself. 0 without shareAt.
+-- region multiplier there, averaged over the two ends and halved (BASE_SHARE). 0 without shareAt.
 function M.baseExtra(shareAt, from, to)
   if not shareAt then return 0 end
-  return (shareAt(from) * places.boost(from) + shareAt(to) * places.boost(to)) / 2 * M.ROAD_SHARE
+  return (shareAt(from) * places.boost(from) + shareAt(to) * places.boost(to)) / 2 * M.BASE_SHARE
 end
 
 -- The road bonus of a job: from the region boost at the average of its two ends.
@@ -208,8 +213,8 @@ function M.quote(job, units, needs, now, shareAt)
   end
   if job.drop then
     local factor, road = job.jackpot or 1, M.steepBonus(from)
-    -- Halved like a town job's (ROAD_SHARE), so a base's bonus is the same +20% on a drop in its turf.
-    local extra = shareAt and shareAt(job.drop) * places.boost(from) * M.ROAD_SHARE or 0
+    -- Halved like a town job's (BASE_SHARE), so a base's bonus is the same +20% on a drop in its turf.
+    local extra = shareAt and shareAt(job.drop) * places.boost(from) * M.BASE_SHARE or 0
     road = road + extra
     local base = M.basePay(good, units, M.DROP_KM)
     return { pay = units > 0 and math.max(10, round10(base * factor * road)) or 0, base = round10(base),
