@@ -51,4 +51,20 @@ T.eq(M.cleanReward({ id = 0, amount = 5 }), nil, 'id 0 is no reward')
 T.eq(M.cleanReward({ id = 1, amount = 2e7 }), nil, 'nor more than the most the server could pay')
 T.eq(M.cleanReward(nil), nil, 'nor nothing')
 T.eq(M.edgeName('w'), 'West', 'edges by name')
+
+-- Edge landings are spread out, so two players on the same edge don't land on top of each other.
+local edge = c.edges.e
+local seen = {}
+for i = 1, 50 do
+  local p = M.landing(edge)
+  local d = L.distance(edge, p)
+  T.check(d >= M.SPREAD_MIN_METRES - 0.5 and d <= M.SPREAD_MAX_METRES + 0.5, 'landing ' .. i .. ' is near the edge')
+  T.check(d < M.LAND_METRES, 'and close enough to start a run')
+  seen[#seen + 1] = p
+end
+local apart = math.huge
+for i = 2, #seen do apart = math.min(apart, L.distance(seen[1], seen[i])) end
+T.check(apart > 0, 'two landings are not the same spot')
+local fixed = function() return 0 end
+T.eq(math.floor(L.distance(edge, M.landing(edge, fixed)) + 0.5), M.SPREAD_MIN_METRES, 'at least the minimum away')
 T.done('Mayday Rescue')

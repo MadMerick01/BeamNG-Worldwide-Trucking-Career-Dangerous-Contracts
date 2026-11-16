@@ -1013,9 +1013,11 @@ function M.new(deps)
       b = nil
     end
     if not b then
+      -- Not the edge's exact point: two players on the same edge would land on top of each other.
+      local land = mayday.landing(spot)
       if not self:book({ id = 'mayday', name = 'the ' .. name .. ' edge',
         region = call.spot.name .. (call.spot.region ~= '' and (', ' .. call.spot.region) or ''),
-        latitude = spot.latitude, longitude = spot.longitude }, true, true) then
+        latitude = land.latitude, longitude = land.longitude }, true, true) then
         self.maydayFeedback = self.shippingFeedback
         return false
       end

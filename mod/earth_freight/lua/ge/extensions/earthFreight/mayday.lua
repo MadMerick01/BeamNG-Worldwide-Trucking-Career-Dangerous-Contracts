@@ -14,6 +14,10 @@ M.EDGES = { { id = 'n', name = 'North' }, { id = 'e', name = 'East' }, { id = 's
 -- A relocation landing within this of its edge starts the run (tighter than other relocations, which land anywhere in
 -- a town), and a player this close to an edge already starts from where they are.
 M.LAND_METRES = 500
+-- Each edge teleport lands somewhere this far from the edge's own point, in a random direction, so two players who
+-- pick the same edge at once don't land on top of each other. Well inside LAND_METRES.
+M.SPREAD_MIN_METRES = 30
+M.SPREAD_MAX_METRES = 250
 -- The edges sit on the circle's line: a spot this far inside it is still outside, so the edges aren't barred.
 M.INSIDE_MARGIN_METRES = 1000
 -- A jump of the car further than this (and not a teleport the game already deals with) ends a run. BeamNG's own
@@ -90,6 +94,14 @@ function M.inside(call, p)
   if not call or call.state ~= 'open' or type(p) ~= 'table' or not location.valid(p) then return false end
   local d = location.distance(p, call.spot)
   return d ~= nil and d < call.radiusKm * 1000 - M.INSIDE_MARGIN_METRES
+end
+
+-- Where an edge teleport lands: a random spot SPREAD_MIN_METRES to SPREAD_MAX_METRES from the edge. random() gives a
+-- number in [0, 1).
+function M.landing(edge, random)
+  random = random or math.random
+  local metres = M.SPREAD_MIN_METRES + (M.SPREAD_MAX_METRES - M.SPREAD_MIN_METRES) * math.sqrt(random())
+  return location.destination(edge, random() * 360, metres)
 end
 
 -- An edge's name ('North') from its id ('n').
