@@ -11,6 +11,7 @@ local goods = require('earthFreight/goods')
 local beacons = require('earthFreight/beacons')
 local places = require('earthFreight/places')
 local usedCars = require('earthFreight/usedCars')
+local mayday = require('earthFreight/mayday')
 local M = {}
 
 -- Driving this far from where the parts were changed, without paying, puts the paid parts back.
@@ -544,6 +545,7 @@ function M.attach(c)
       return false
     end
     self.towArmed = false
+    local away = self:carDistance()
     local ok, why, detail = self.garage:towHere(self.ownedParts.id)
     if not ok then
       self.repairFeedback = 'The tow did not go through. You have not been charged.'
@@ -553,7 +555,9 @@ function M.attach(c)
     local paid = fee == 0 or (not short and self:spend(fee, 'tow'))
     if not paid then self.profile.progression.towOwed = self:towOwed() + fee end
     self.towedAt, self.repairFeedback = self.clock, nil
-    if self.endMaydayRun then self:endMaydayRun('tow') end
+    -- The car only comes the few metres (TOW_RANGE) to the player, which is no shortcut on a Mayday Rescue run. A
+    -- longer move would be, so that still ends one.
+    if self.endMaydayRun and (away or math.huge) > mayday.HOP_METRES then self:endMaydayRun('tow') end
     self.diag:event('towed', fee == 0 and 'free' or (paid and 'paid' or 'owed'))
     local cost = fee == 0 and ', free' or (paid and (' for ' .. dollars(fee))
       or (': you owe ' .. dollars(self:towOwed()) .. '. Pay it on the Garage tab before buying parts or cars'))
