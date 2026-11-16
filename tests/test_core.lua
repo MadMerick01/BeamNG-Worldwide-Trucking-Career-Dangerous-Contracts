@@ -2515,6 +2515,17 @@ do
   c = watched({ adapter = adapter })
   F.advance(c, Core.HUD_HINT_SECONDS * 3)
   T.eq(hints(c), 0, 'nor on a level without BeamNG.Earth')
+
+  c = watched()
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'playing alone: the .Earth layout')
+
+  local mp = { inSession = function() return true end, send = function() end, listen = function() return true end,
+    encode = function() return '' end, decode = function() return {} end }
+  c = watched({ multiplayer = mp })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(hints(c), 1, 'on a server too')
+  T.check(c.toasts[1].msg:find('BeamMP (edit layout)', 1, true) ~= nil, 'on a server: the BeamMP layout')
 end
 
 T.done('Earth Freight controller')

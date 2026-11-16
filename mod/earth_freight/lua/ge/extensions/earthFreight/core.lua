@@ -404,9 +404,17 @@ function M.new(deps)
   -- open, which is no reason to nag).
   M.HUD_HINT_SECONDS, M.HUD_HINT_REPEAT_SECONDS, M.HUD_HINT_TIMES = 20, 180, 3
   M.HUD_HINT_TITLE = 'Turn on the trucking HUD'
-  M.HUD_HINT_TEXT = 'Worldwide Trucking needs its HUD on screen. Press Esc, go to System > HUD Apps > .Earth (edit layout), '
-    .. 'press + Add app, pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom of the list, press '
-    .. '+ Add to layout, move it where you like and press Save.'
+  -- Each layout has its own apps. Playing alone, BeamNG.Earth's level uses its ".Earth" layout; on a BeamMP server,
+  -- BeamNG.Earth 1.10.1 and later usually leave BeamMP's own "BeamMP" layout up, so a HUD added in single player is
+  -- missing there until it's added to that layout too.
+  local function hudHint(layout, extra)
+    return 'Worldwide Trucking needs its HUD on screen. Press Esc, go to System > HUD Apps > ' .. layout .. ' (edit layout), '
+      .. 'press + Add app, pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom of the list, press '
+      .. '+ Add to layout, move it where you like and press Save.' .. (extra or '')
+  end
+  M.HUD_HINT_TEXT = hudHint('.Earth')
+  M.HUD_HINT_TEXT_SERVER = hudHint('BeamMP', ' Added it in single player already? The server uses the BeamMP layout, '
+    .. 'so it needs adding there too.')
   function c:hintHud(sample, dt)
     local earth = type(sample) == 'table' and (sample.valid or sample.reason == 'vehicle_required')
     if self.hudSeen or not earth or (self.hudHints or 0) >= M.HUD_HINT_TIMES then return end
@@ -414,7 +422,7 @@ function M.new(deps)
     local due = M.HUD_HINT_SECONDS + (self.hudHints or 0) * M.HUD_HINT_REPEAT_SECONDS
     if self.hudMissingFor < due then return end
     self.hudHints = (self.hudHints or 0) + 1
-    self:toast('info', M.HUD_HINT_TITLE, M.HUD_HINT_TEXT, 30)
+    self:toast('info', M.HUD_HINT_TITLE, self.mp and M.HUD_HINT_TEXT_SERVER or M.HUD_HINT_TEXT, 30)
     self.diag:event('hud_hint', tostring(self.hudHints))
   end
 

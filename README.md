@@ -37,8 +37,8 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 1. Download `worldwide-trucking-dangerous-contracts.zip` from the [latest release](../../releases/latest).
 2. Drop it, **still zipped**, into the `mods` folder of your BeamNG user folder. If an older `earth-freight-sim.zip` or `earth_freight.zip` is there, delete it so two copies don't load. Your saves carry over.
-3. In game, turn on the **BeamNG Worldwide Trucking Career: Dangerous Contracts** HUD app. Go to System >  HUD Apps > .Earth (edit layout) > +Add app > Scroll down to bottom of HUD APPS >
-   BeamNG Worldwide Trucking Career: Dangerous Contracts > + Add to layout > (move it where you wish onscreen) > Save
+3. In game, turn on the **BeamNG Worldwide Trucking Career: Dangerous Contracts** HUD app. Press Esc, go to System > HUD Apps and edit the layout you're using: **.Earth** when you play alone, **BeamMP** on a server. Then + Add app > scroll down to the bottom of HUD APPS >
+   BeamNG Worldwide Trucking Career: Dangerous Contracts > + Add to layout > (move it where you wish onscreen) > Save. Each layout keeps its own apps, so if you play both alone and on a server, add it to both.
 
 ## How to Start
 
