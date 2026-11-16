@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Town job list no longer keeps switching between distance filters when overlapping menus remember different choices.** The highlighted filter now follows the jobs shown. Your saved distance choice is still restored when the menu opens, and your career saves still work.
+
 ## Build 219 · 16 Nov 2026
 
 - **Your pay is saved the moment you deliver, and a job is saved the moment you take it.** Before, the game waited until your truck had stood still for a few seconds, so quitting, crashing or being sent off by a server update right after a delivery could lose the pay, and you'd have to deliver the load again. If something stops the save right then, such as a garage bill or a relocation booking, it saves at your next stop as before. Your saves still work, and you don't need to do anything.
