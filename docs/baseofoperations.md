@@ -81,13 +81,13 @@ Because the base's price counts as wealth, a fresh base never starts below 17 km
 
 The region multiplier is the number shown next to a town name, like "Katoomba ×1.5". Today it pays like this:
 
-- **Town jobs** get half of it above ×1.0: the road bonus is 1 + (multiplier − 1) ÷ 2, at most ×2, taken from the
-  average of the job's two ends.
-- **Off-road drops** get all of it above ×1.0, at most ×2.
+- **Town jobs** get all of it: the road bonus is the multiplier, at most ×3, taken from the average of the job's two
+  ends. (Until 16 Nov they got half of it above ×1.0, at most ×2. The base bonus below kept its size when that changed.)
+- **Off-road drops** get all of it too, at most ×3.
 
 **Decided (MadMerick, 9 Nov):** the bonus goes on the region multiplier, and it **scales with the region**: at each
 end inside a circle, visitors add **0.2 × that end's multiplier** and the owner adds **0.4 × that end's multiplier**. The
-usual caps (×3 multiplier, ×2 road bonus) apply to the normal part only, and the base bonus goes on top of them. For a
+usual caps (×3 multiplier, ×3 road bonus) apply to the normal part only, and the base bonus goes on top of them. For a
 town job that is: road bonus = (the usual road bonus) + half the average base bonus of its two ends.
 
 On a job that pays $1,000 on flat ground, with both ends inside the circle:

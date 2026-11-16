@@ -103,8 +103,8 @@ for _, n in ipairs(places.nearest(penrith, 40)) do fluidsSeen[jobs.fluid(n.place
 T.check(fluidsSeen.water and fluidsSeen.fuel, 'some towns post water, others fuel')
 T.eq(jobs.fluid(penrith).id, jobs.fluid(penrith).id, 'a town keeps its fluid')
 -- Rough roads: half the region boost above 1, at most 2x.
-T.near(jobs.roadBonusFor(1), 1, 1e-9, 'flat roads add nothing'); T.near(jobs.roadBonusFor(1.5), 1.25, 1e-9, 'the Blue Mountains')
-T.near(jobs.roadBonusFor(3), 2, 1e-9, 'Death Road doubles'); T.near(jobs.roadBonusFor(5), 2, 1e-9, 'never more than 2x')
+T.near(jobs.roadBonusFor(1), 1, 1e-9, 'flat roads add nothing'); T.near(jobs.roadBonusFor(1.5), 1.5, 1e-9, 'the Blue Mountains pay their whole boost')
+T.near(jobs.roadBonusFor(3), 3, 1e-9, 'Death Road triples'); T.near(jobs.roadBonusFor(5), 3, 1e-9, 'never more than 3x')
 
 -- Town need: within 30% of the base, lowered by each delivery, recovering over the hours after.
 do
@@ -217,7 +217,8 @@ do
   T.eq(q.shortage, false, 'no shortages off road'); T.eq(q.need, 1, 'and no town need')
   T.eq(jobs.steepBonus({ id = 'x', boost = 1 }), 1, 'flat ground pays the base')
   T.eq(jobs.steepBonus({ id = 'x', boost = 1.5 }), 1.5, 'steep ground pays the whole region boost')
-  T.eq(jobs.steepBonus({ id = 'x', boost = 3 }), 2, 'at most twice')
+  T.eq(jobs.steepBonus({ id = 'x', boost = 3 }), 3, 'Death Road pays three times')
+  T.eq(jobs.steepBonus({ id = 'x', boost = 5 }), 3, 'at most three times')
 end
 T.near(jobs.drivenNeeded(penrith, near[1].place), near[1].metres * 0.7, 1e-6, '70% of the straight line must be driven')
 -- The Distance filter: every town job in the band picked, each to a different town where it can,
