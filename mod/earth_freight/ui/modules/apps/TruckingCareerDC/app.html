@@ -1031,7 +1031,7 @@
                 <tr><th style="padding:3px 2px;"></th><th style="padding:3px 2px;text-align:left;font-size:11px;font-weight:normal;color:#7d8b88;">Trucker</th><th style="padding:3px 2px;text-align:right;font-size:11px;font-weight:normal;color:#7d8b88;">Wealth</th><th style="padding:3px 2px;text-align:right;font-size:11px;font-weight:normal;color:#7d8b88;">Runs</th></tr>
                 <tr ng-repeat="r in data.standings.board.concat(data.standings.me ? [data.standings.me] : [])" ng-style="r.mine ? {background:'rgba(111,207,151,.1)'} : {}">
                   <td style="padding:3px 2px;" ng-style="{color: r.rank <= 3 ? '#f2c94c' : '#f2f6f5'}">{{r.rank}}</td>
-                  <td style="padding:3px 2px;"><b>{{r.mine ? 'You' : r.name}}</b> <span ng-if="r.baseTown" style="font-size:11px;color:#7d8b88;">{{r.baseTown}}</span> <span ng-if="r.wins" style="font-size:11px;color:#f2c94c;">&#9733; {{r.wins}} {{r.wins === 1 ? 'win' : 'wins'}}</span></td>
+                  <td style="padding:3px 2px;"><b>{{r.mine ? 'You' : r.name}}</b> <span ng-if="r.baseTown" style="font-size:11px;color:#7d8b88;">{{r.baseTown}}</span><span ng-if="!r.baseTown && r.corp" style="font-size:11px;color:#7d8b88;">{{r.corp}}&#8217;s corp</span> <span ng-if="r.wins" style="font-size:11px;color:#f2c94c;">&#9733; {{r.wins}} {{r.wins === 1 ? 'win' : 'wins'}}</span></td>
                   <td style="padding:3px 2px;text-align:right;">${{r.wealth | number:0}}</td>
                   <td style="padding:3px 2px;text-align:right;">{{r.deliveries}}</td>
                 </tr>

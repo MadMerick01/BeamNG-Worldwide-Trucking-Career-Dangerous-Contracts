@@ -5,12 +5,12 @@ local MPC = require('earthFreight/multiplayer')
 -- The Land Race and Leaderboard tab: the game checks the leaderboard the server sends (wwtcBoard), and the HUD gets it
 -- with the land race on a server only.
 do
-  local clean = MPC.cleanBoard({ season = 2, day = 3, truckers = 5, board = { { rank = 1, name = 'Sam\nX', wealth = 5000, deliveries = 4, wins = 1 },
+  local clean = MPC.cleanBoard({ season = 2, day = 3, truckers = 5, board = { { rank = 1, name = 'Sam\nX', wealth = 5000, deliveries = 4, wins = 1, corp = 'Kez' },
     { rank = 'x', wealth = 1 }, { rank = 2, name = 'Me', wealth = -5 }, { rank = 3, name = 'You', wealth = 100, mine = true } },
     me = { rank = 14, name = 'Me', wealth = 50 },
     winner = { season = 1, owner = 'Kez', town = 'Wichita', members = { 'Ruby', 7 }, land = 50.4 } })
   T.eq(#clean.board, 2, 'bad rows are dropped'); T.eq(clean.board[1].name, 'Sam X', 'names are one line')
-  T.eq(clean.board[1].wins, 1, 'season wins'); T.eq(clean.board[2].mine, true, 'the player\'s own row')
+  T.eq(clean.board[1].wins, 1, 'season wins'); T.eq(clean.board[1].corp, 'Kez', 'the corp a member is in'); T.eq(clean.board[2].mine, true, 'the player\'s own row')
   T.eq(clean.me.rank, 14, 'the player\'s own place further down'); T.eq(clean.me.mine, true, 'is marked theirs')
   T.eq(clean.winner.owner, 'Kez', 'the last winner'); T.eq(#clean.winner.members, 1, 'winner members are names only')
   T.eq(MPC.cleanBoard({}), nil, 'no board, nothing')
