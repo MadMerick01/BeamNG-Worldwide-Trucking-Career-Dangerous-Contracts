@@ -1044,6 +1044,11 @@ function M.new(deps)
     if self.state ~= 'READY' or not self.arrived or self.stranded or self.hire or self.onFoot or self.load
         or type(sample) ~= 'table' or not sample.valid then return end
     local d = location.distance(sample, call.spot)
+    -- Every POS_SECONDS, how far from the scene (to 100 m), for the standings everyone sees.
+    if d and self.clock - (run.posAt or -math.huge) >= mayday.POS_SECONDS then
+      run.posAt = self.clock
+      self.mp:maydayPos(call.round, math.floor(d / 100 + 0.5) * 100)
+    end
     if not d or d > mayday.WIN_METRES then return end
     self.maydayClaim = { round = call.round, at = self.clock }
     self.mp:maydayWin(call.round)
@@ -1089,6 +1094,12 @@ function M.new(deps)
     self:autoSaveSoon('your reward')
   end
 
+  -- This player's place in the standings, as '2nd', or nil when they're not in them yet.
+  local function placeIn(standings)
+    for i, e in ipairs(standings or {}) do if e.you then return mayday.ordinal(i) end end
+    return nil
+  end
+
   -- The Mayday Rescue tab.
   function c:maydayView(current)
     local call = self:maydayCall()
@@ -1116,6 +1127,8 @@ function M.new(deps)
       inside = here and mayday.inside(call, here) or false,
       running = run and { edge = mayday.edgeName(run.edge), seconds = math.max(0, self.clock - run.at) } or nil,
       checking = self.maydayClaim ~= nil or nil,
+      standings = call.state == 'open' and #call.standings > 0 and call.standings or nil,
+      place = run and placeIn(call.standings) or nil, field = #call.standings,
       edges = edges, problem = call.state == 'open' and problem or nil,
       booked = self.booking and self.booking.mayday and mayday.edgeName(self.booking.mayday.edge) or nil,
       feedback = self.maydayFeedback,

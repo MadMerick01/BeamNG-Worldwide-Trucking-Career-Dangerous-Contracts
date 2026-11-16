@@ -60,6 +60,11 @@
   .mayday { border: 2px solid var(--mayday); }
   .mayday h2 { color: var(--mayday); }
   .mayday .big { font-size: 20px; font-weight: 700; }
+  .mayday .standings { list-style: none; margin: 4px 0 8px; padding: 0; }
+  .mayday .standings li { display: flex; gap: 8px; padding: 3px 0; border-top: 1px solid var(--line, rgba(255,255,255,.08)); font-variant-numeric: tabular-nums; }
+  .mayday .standings li:first-child { border-top: none; font-weight: 700; }
+  .mayday .standings .place { flex: none; width: 2em; color: var(--muted, #8a9a9f); }
+  .mayday .standings .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .countdown { font: 800 34px/1.1 var(--head); letter-spacing: 1px; color: var(--mayday); font-variant-numeric: tabular-nums; }
   .muted { color: var(--muted); }
   .small { font-size: 13px; }
@@ -306,6 +311,21 @@ function renderMayday(now) {
   }
   row.appendChild(prize)
   body.appendChild(row)
+  // The race so far: each trucker on a run and how far they are from the scene, nearest first.
+  var standings = m.state !== 'won' && Array.isArray(m.standings) ? m.standings.slice(0, 20) : []
+  if (standings.length) {
+    var list = el('ol', 'standings')
+    standings.forEach(function (r, i) {
+      var km = num(r && r.km)
+      var li = el('li')
+      li.appendChild(el('span', 'place', (i + 1) + '.'))
+      li.appendChild(el('span', 'grow', text(r && r.name) || 'A trucker'))
+      li.appendChild(el('span', '', km === null ? '–' : km.toFixed(1) + ' km'))
+      list.appendChild(li)
+    })
+    body.appendChild(el('div', 'small muted', 'Standings: how far each trucker is from the scene, in a straight line.'))
+    body.appendChild(list)
+  }
   body.appendChild(el('div', 'small muted', 'Teleport to an edge of the ' + (num(m.radiusKm) || 40) + ' km circle in the game, then drive to the middle.'))
 }
 

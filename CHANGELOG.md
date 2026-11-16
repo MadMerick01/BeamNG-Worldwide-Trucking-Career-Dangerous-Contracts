@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Mayday Rescue now shows live standings.** The Mayday Rescue tab lists every trucker on a run and how far each one is from the scene, nearest first, with your own line highlighted. While you race, the Route tab and the Mayday Rescue tab show your place, such as "2nd of 3". The server's live page shows the same standings, so anyone can follow the race. Standings update about every 15 seconds in the game and about every minute on the page. Your saves still work.
+
 ## Build 221 · 16 Nov 2026
 
 - **Mayday Rescue edge buttons no longer drop two players on top of each other.** Each teleport to an edge now lands at a random spot between 30 and 250 metres from it, so players who pick the same edge at the same time start apart. Your saves still work.

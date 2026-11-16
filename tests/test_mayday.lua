@@ -67,4 +67,12 @@ for i = 2, #seen do apart = math.min(apart, L.distance(seen[1], seen[i])) end
 T.check(apart > 0, 'two landings are not the same spot')
 local fixed = function() return 0 end
 T.eq(math.floor(L.distance(edge, M.landing(edge, fixed)) + 0.5), M.SPREAD_MIN_METRES, 'at least the minimum away')
+-- The standings, checked: nearest first as sent, this player marked, junk dropped.
+local st = M.clean(call({ standings = { { name = 'Ann', km = 3.24, you = true }, { name = 'Bo\nb', km = 7 }, { km = -1 }, 'x',
+  { name = 'Cy', km = 'far' } } }), 0).standings
+T.eq(#st, 2, 'two good lines'); T.eq(st[1].km, 3.2, 'to 100 m'); T.eq(st[1].you, true, 'this player marked')
+T.eq(st[2].name, 'Bo b', 'names on one line'); T.eq(st[2].you, nil, 'others not')
+T.eq(#M.clean(call(), 0).standings, 0, 'none sent is none')
+T.eq(M.ordinal(1), '1st', '1st'); T.eq(M.ordinal(2), '2nd', '2nd'); T.eq(M.ordinal(3), '3rd', '3rd')
+T.eq(M.ordinal(4), '4th', '4th'); T.eq(M.ordinal(11), '11th', '11th'); T.eq(M.ordinal(22), '22nd', '22nd')
 T.done('Mayday Rescue')

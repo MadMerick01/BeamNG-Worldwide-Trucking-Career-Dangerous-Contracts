@@ -23,6 +23,8 @@ M.INSIDE_MARGIN_METRES = 1000
 -- A jump of the car further than this (and not a teleport the game already deals with) ends a run. BeamNG's own
 -- recover button moves the car a few metres back, which is fine.
 M.HOP_METRES = 300
+-- How often a game on a run tells the server how far it is from the scene, for the standings.
+M.POS_SECONDS = 10
 -- How long the game waits for the server to answer "I'm at the scene" before asking again.
 M.WIN_WAIT_SECONDS = 15
 -- The most the server could ever pay for one, so a garbled number is never added to anyone's money.
@@ -58,12 +60,21 @@ function M.clean(d, now)
     edges[e.id] = point(type(d.edges) == 'table' and d.edges[e.id] or nil)
     if not edges[e.id] then return nil end
   end
+  -- The standings: everyone on a run, nearest the scene first, with this player's own line marked.
+  local standings = {}
+  for _, e in ipairs(type(d.standings) == 'table' and d.standings or {}) do
+    local km = type(e) == 'table' and tonumber(e.km)
+    if km and km >= 0 and km < 100000 and #standings < 20 then
+      standings[#standings + 1] = { name = text(e.name, 32) or 'A trucker', km = math.floor(km * 10 + 0.5) / 10,
+        you = e.you == true or nil }
+    end
+  end
   spot.name = text(d.spot.name, 40) or 'Somewhere remote'
   spot.region = text(d.spot.region, 60) or ''
   return { round = round, state = d.state, spot = spot, radiusKm = radius, edges = edges,
     story = text(d.story, 160) or 'Someone needs help.', reward = whole(d.reward, M.MAX_REWARD) or 0,
     winner = text(d.winner, 32), racers = whole(d.racers, 1000) or 0,
-    left = whole(d.left, 30 * 86400) or 0, at = now or 0 }
+    left = whole(d.left, 30 * 86400) or 0, at = now or 0, standings = standings }
 end
 
 -- The server's answer to "I'm at the scene" (wwtcMaydayWon), checked.
@@ -102,6 +113,14 @@ function M.landing(edge, random)
   random = random or math.random
   local metres = M.SPREAD_MIN_METRES + (M.SPREAD_MAX_METRES - M.SPREAD_MIN_METRES) * math.sqrt(random())
   return location.destination(edge, random() * 360, metres)
+end
+
+-- 1st, 2nd, 3rd, 4th...
+function M.ordinal(n)
+  local tens = n % 100
+  local last = n % 10
+  local suffix = (tens >= 11 and tens <= 13) and 'th' or last == 1 and 'st' or last == 2 and 'nd' or last == 3 and 'rd' or 'th'
+  return n .. suffix
 end
 
 -- An edge's name ('North') from its id ('n').
