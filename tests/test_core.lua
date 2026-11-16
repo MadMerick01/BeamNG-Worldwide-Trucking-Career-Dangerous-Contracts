@@ -10,6 +10,12 @@ local location = require('earthFreight/location')
 local contracts = require('earthFreight/contracts')
 local workshop = require('earthFreight/workshop')
 local A, B = P.DIRECTORY .. 'save-a.json', P.DIRECTORY .. 'save-b.json'
+-- The newer of the two save slots: the one the game loads.
+local function newest(io)
+  local a, b = io.files[A], io.files[B]
+  if not a or (b and b.generation > a.generation) then return b end
+  return a
+end
 local north = 1 / 111195.0802 -- degrees latitude per metre
 
 local function placeNamed(name)
@@ -231,8 +237,9 @@ do
   T.near(jobs.need(stClair, goods.get('food'), r.needs, 50100), jobs.need(stClair, goods.get('food'), c.needs, 50100), 1e-9, 'and loaded')
 end
 
--- Autosave: after a delivery the game saves itself once the car has been stopped a few seconds.
--- Driving straight off waits for the next stop; a purchase saves the same way.
+-- Autosave: taking a job and delivering it each save at once (the car is stopped for both), so quitting or being
+-- sent off by a server update straight after keeps the job and the pay. A save that can't happen then waits for the
+-- next stop, as a purchase's does.
 do
   local c, io, a, g = F.controller()
   g.fitted.box = 'pickup_cargo_load_box_m'
@@ -241,29 +248,36 @@ do
   local writes = io.writes
   local id = F.offer(c, stClair, 'food')
   T.check(c:takeJob(id), 'job taken')
+  T.eq(io.writes, writes + 1, 'taking a job saves at once')
+  T.eq(c:view().saveFeedback, 'Saved automatically after your new job.', 'and says so')
+  T.eq(newest(io).load.good, 'food', 'the job is in the save')
   F.drive(c, a, stClair)
-  T.eq(io.writes, writes, 'taking a job does not save')
   T.check(c:deliver(), 'delivered')
   T.check(not c:view().flash.text:find('Save to keep'), 'no reminder to press Save')
-  c:tick(0.1)
-  T.eq(io.writes, writes, 'not saved straight away')
-  -- Driving off before it saves: it waits for the next stop.
+  T.eq(io.writes, writes + 2, 'the delivery saves at once')
+  T.eq(c:view().saveFeedback, 'Saved automatically after your delivery.', 'and says so')
+  T.eq(newest(io).progression.jobsDone, 1, 'the delivery is in the save')
+  T.eq(newest(io).load, nil, 'and the job is gone from it')
+  T.eq(c:view().unsavedBalance, 0, 'the pay is kept')
+  F.advance(c, 10)
+  T.eq(io.writes, writes + 2, 'only once')
+  -- When it can't save then (a relocation booked, say), it waits until it can, at the next stop.
+  c.booking = { id = 'x', name = 'X', region = 'Y', fee = 0 }
+  T.check(not c:saveNowOrSoon('your delivery'), 'not saved while a relocation is booked')
+  T.eq(io.writes, writes + 2, 'nothing written')
+  c.booking = nil
   a.pose = location.destination(a.pose, 0, 50); c:tick(1)
   a.pose = location.destination(a.pose, 0, 50); c:tick(1)
   F.advance(c, Core.AUTOSAVE_SECONDS - 0.5)
-  T.eq(io.writes, writes, 'waits until stopped for a few seconds')
+  T.eq(io.writes, writes + 2, 'waits until stopped for a few seconds')
   F.advance(c, 2)
-  T.eq(io.writes, writes + 1, 'saved itself once stopped')
-  T.eq(c:view().saveFeedback, 'Saved automatically after your delivery.', 'and says so')
-  T.eq(io.files[A].progression.jobsDone, 1, 'the delivery is in the save')
-  T.eq(c:view().unsavedBalance, 0, 'the pay is kept')
-  F.advance(c, 10)
-  T.eq(io.writes, writes + 1, 'only once')
+  T.eq(io.writes, writes + 3, 'saved itself once stopped')
+  T.eq(c:view().saveFeedback, 'Saved automatically after your delivery.', 'named after what was done')
   -- A relocation booking puts it off, as it does Save.
   c:autoSaveSoon('buying parts'); c.booking = { id = 'x', name = 'X', region = 'Y', fee = 0 }
-  F.advance(c, 10); T.eq(io.writes, writes + 1, 'not while a relocation is booked')
+  F.advance(c, 10); T.eq(io.writes, writes + 3, 'not while a relocation is booked')
   c.booking = nil; F.advance(c, Core.AUTOSAVE_SECONDS + 0.5)
-  T.eq(io.writes, writes + 2, 'saved once the booking is gone')
+  T.eq(io.writes, writes + 4, 'saved once the booking is gone')
   T.eq(c:view().saveFeedback, 'Saved automatically after buying parts.', 'named after what was done')
 end
 
@@ -432,10 +446,10 @@ do
   local c, io = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   c:takeJob(F.offer(c, stClair, 'food'))
-  T.check(c:manualSave(), 'saved with a job'); T.eq(io.files[A].load.good, 'food', 'job saved'); T.check(io.files[A].load.pay > 0, 'with its pay')
+  T.check(c:manualSave(), 'saved with a job'); T.eq(newest(io).load.good, 'food', 'job saved'); T.check(newest(io).load.pay > 0, 'with its pay')
   local r = F.controller({ io = io })
   T.eq(r.load.good, 'food', 'job restored'); T.eq(r.load.to, stClair.id, 'with its drop-off'); T.eq(r.load.pay, c.load.pay, 'and its pay')
-  io.files[A].load.good = 'unobtainium'
+  newest(io).load.good = 'unobtainium'
   r = F.controller({ io = io })
   T.eq(r.load, nil, 'unknown good dropped')
   local bad = F.copy(io.files[A]); bad.load = { good = 'food', slots = 0, pay = 1, from = 'x' }
@@ -634,7 +648,7 @@ do
   -- A reset with no damage owes nothing; one saved keeps it.
   c:vehicleReset(1); c:tick(0.1); T.eq(c.owedDamage, 0, 'nothing to owe')
   g.damage = 4000; c:tick(0.1); g.damage = 0; c:tick(0.1)
-  T.check(c:manualSave(), 'saved'); T.eq(io.files[A].vehicle.damage, 4000, 'saved as owed')
+  T.check(c:manualSave(), 'saved'); T.eq(newest(io).vehicle.damage, 4000, 'saved as owed')
   -- The game reloading the car with the same parts mends it too; the repair is still owed.
   g.damage = 2000; c:tick(0.1); g.damage = 0; c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
   T.eq(c.owedDamage, 6000, 'a reload is not a free repair')
