@@ -1063,7 +1063,7 @@
           <div ng-if="isOpen('howheli')" style="font-size:13px;color:#c9d6d2;margin-top:4px;">A hire lasts until you go back to your car. Every {{data.heli.beaconMinutes}} minutes flying over {{data.heli.beaconHeight}} m up, there&rsquo;s a {{data.heli.beaconChance}}% chance of picking up a signal beacon within {{data.heli.beaconKm}} km of your car. Your car waits where you leave it, with its job, fuel and damage. A crash costs ${{data.heli.crashFee | number:0}} insurance and ends the heli hire.</div>
           <div ng-if="!data.heli.installed" style="margin-top:6px;padding:8px;border:1px solid #f2c94c;border-radius:6px;">
             <div style="font-weight:bold;color:#f2c94c;">Needs the {{data.heli.modName}} mod</div>
-            <div style="font-size:13px;">Download the {{data.heli.modName}} by {{data.heli.modAuthor}} from the BeamNG forum, put its ZIP in your mods folder and restart the game. Then come back here.</div>
+            <div style="font-size:13px;">Download the {{data.heli.modName}} by {{data.heli.modAuthor}} from the BeamNG forum, put its ZIP in your mods folder and restart the game. Then come back here. On a multiplayer server, BeamMP turns off your own mods, so the server must have the ZIP in its <b>Resources\Client</b> folder instead.</div>
             <button type="button" ng-click="openHeliMod()" style="margin-top:6px;padding:5px 10px;">Open the mod's page</button>
             <div style="font-size:12px;color:#c9d6d2;margin-top:2px;">Opens it in your browser and copies the link.</div>
           </div>

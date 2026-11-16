@@ -6,6 +6,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Heli tab now explains why the helicopter is missing on a multiplayer server.** BeamMP turns off the mods in your own mods folder while you play on a server, so the Revamped Bell 407 only works there when the server has it in its Resources\Client folder. The "Needs the Revamped Bell 407 mod" box and the README now say so. Nothing else changes, and your saves still work.
 - **Rough regions now pay much more.** A town job's pay is now multiplied by the region's full "rough roads" number, where before it only got half of it. Death Road now pays ×3 instead of ×2, the Blue Mountains about ×1.5 instead of ×1.25, and a ×2 region pays ×2 instead of ×1.5. For example, the starter car's full load of parts on a 13 km run in a ×2 region now pays about $10,310 instead of $7,740. Fuel runs get the bigger number too, and off-road drops, which already paid the full number, now go up to ×3 instead of stopping at ×2. Jobs on flat ground pay the same as before, and the bonus for jobs in a base's turf stays at +10% for visitors and +20% for the owner. Jobs you've already taken keep their pay, and your saves still work.
 
 ## Build 222 · 16 Nov 2026

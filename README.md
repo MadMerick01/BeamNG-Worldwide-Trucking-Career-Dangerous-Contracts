@@ -13,7 +13,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 - **BeamNG.drive 0.40.**
 - **[BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth)**, installed and working. Follow its own install guide first. The mod's **Teleport** buttons use Earth's teleport, so keep Earth's companion app running too. Without it you can still paste coordinates into Earth's map yourself.
-- Optional, for heli flights: the **[Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/)** mod by stefan750.
+- Optional, for heli flights: the **[Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/)** mod by stefan750. On a BeamMP server, BeamMP turns off players' own mods, so the server owner puts its ZIP in the server's `Resources/Client` folder (next to this mod) and every player gets it when they join.
 
 ## Features
 

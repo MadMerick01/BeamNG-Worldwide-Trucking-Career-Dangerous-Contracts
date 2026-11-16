@@ -35,7 +35,7 @@ function M.attach(c)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived or not self.garage or not self.aircraft then
       return 'Heli flights are unavailable right now.'
     end
-    if not self:heliConfig() then return 'Install the ' .. heli.MOD_NAME .. ' mod to hire a helicopter.' end
+    if not self:heliConfig() then return 'Install the ' .. heli.MOD_NAME .. ' mod to hire a helicopter. On a multiplayer server, the server must have it.' end
     if self.hire then return self.hire.sightseeing and 'Return to your job first.' or 'You already have a helicopter.' end
     local problem = self:leaveCarProblem('hire a helicopter')
     if problem then return problem end
