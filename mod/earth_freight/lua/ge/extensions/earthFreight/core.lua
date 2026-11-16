@@ -241,6 +241,7 @@ function M.new(deps)
     -- Your cars: the parked ones (a car kept at a base or corp yard before Your cars is one of them now).
     self.storedCars = self.profile and copy(self.profile.storedCars) or {}
     self.carCards, self.fleetFeedback = nil, nil
+    self.extraCarSlot = self.profile and self.profile.extraCarSlot or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
     self.corp = self.profile and copy(self.profile.corp) or nil
     self.homeFeedback, self.homeCard, self.corpSeen, self.leaveArmed, self.corpAskedAt = nil, nil, nil, nil, nil
@@ -2564,6 +2565,7 @@ function M.new(deps)
         -- With a free slot in Your cars: what keeping the old car costs, or that every slot is taken.
         keepCost = self:carSlotFree() and self.pendingCar.keepCost or nil,
         slotsFull = not self:carSlotFree() or nil, keepSlot = self:carSlotFree() and #self:parkedCars() + 2 or nil,
+        slotHint = not self:carSlotFree() and self:slotHint() or nil,
         oldName = self.ownedParts and self.ownedParts.name or nil,
         used = self.pendingCar.used and { km = self.pendingCar.used.km, newPrice = self.pendingCar.used.newPrice } or nil,
       } or nil,
@@ -2687,7 +2689,7 @@ function M.new(deps)
         -- leaderboard and the card before the car is back. Worked out again once it is.
         worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
-      commissionId = self.profile.commissionId,
+      commissionId = self.profile.commissionId, extraCarSlot = self.extraCarSlot or nil,
       trailer = self:savedTrailer(), spareTrailer = self:savedSpareTrailer(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
@@ -2958,6 +2960,7 @@ function M.swapCars(index)
   if not parkedIndex(index) then return false end
   return safely(function() return ensure():swapCars(index) end)
 end
+function M.buyCarSlot() return safely(function() return ensure():buyCarSlot() end) end
 function M.sellParkedCar(index)
   if not parkedIndex(index) then return false end
   return safely(function() return ensure():sellParkedCar(index) end)

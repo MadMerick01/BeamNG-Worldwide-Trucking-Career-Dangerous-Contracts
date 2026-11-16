@@ -1650,9 +1650,17 @@ do
   T.check(not c:view().home.claimAllowed, 'not without the money'); T.eq(c:view().home.short, Home.PRICE - 100000, 'told how short')
   T.check(not c:claimHome(), 'refused when short'); T.eq(c:view().balance, 100000, 'nothing paid')
   T.eq(c:view().shipping.home, nil, 'no home on Relocate yet')
-  -- Without a home a car bill can still keep the old car: Your cars has a free slot.
+  -- Without a home a car bill can still keep the old car: Your cars starts with two slots.
   c:openUsedCars(true); T.eq(c:view().usedCars.offers[1].keepCost, c:view().usedCars.offers[1].price, 'a keep price without a home')
   c:openUsedCars(false)
+  T.eq(c:view().fleet.slots, 2, 'two slots to start'); T.check(c:view().fleet.hint:find('base', 1, true), 'told a base gives a 3rd')
+  T.eq(c:view().fleet.buySlot, nil, 'no slot to buy without a base')
+  c.profile.progression.balance = 900000
+  T.check(not c:buyCarSlot(), 'refused without a base'); T.eq(c.fleetFeedback, 'Buy or join a base first.', 'told why')
+  T.eq(c:view().balance, 900000, 'nothing paid')
+  c.storedCars[1] = { config = { model = 'pickup' }, name = 'Spare', worth = 1000 }
+  T.check(not c:carSlotFree(), 'one parked car fills two slots')
+  c.storedCars[1] = nil
   c.profile.progression.balance = 400000
   c.load = { good = 'food' }; T.eq(c:claimProblem(), nil, 'a job does not stop buying a home'); c.load = nil
   T.check(c:claimHome(), 'bought'); T.eq(c:view().balance, 400000 - Home.PRICE, 'paid $250,000')
@@ -1660,7 +1668,7 @@ do
   T.check(not c:claimHome(), 'only one home'); T.eq(c:view().balance, 400000 - Home.PRICE, 'not charged twice')
   local v = c:view().home
   T.check(v.owned and v.owned.here, 'at home'); T.eq(#c:view().fleet.parked, 0, 'nothing parked yet')
-  T.eq(c:view().fleet.slots, 5, 'five slots'); T.eq(c:view().fleet.used, 1, 'one used, by the car being driven')
+  T.eq(c:view().fleet.slots, 3, 'three slots with a base'); T.eq(c:view().fleet.used, 1, 'one used, by the car being driven')
   F.advance(c, 4); T.check(io.files[A] and io.files[A].property, 'saved itself with the home')
   T.eq(io.files[A].property.paid, Home.PRICE, 'with what was paid')
   -- A second-hand car, keeping the old one: the full price, and the old car goes home with its damage.
@@ -1687,10 +1695,12 @@ do
   -- Every slot full: the next bill only trades in.
   local first = c.storedCars[1]
   for i = 2, 4 do c.storedCars[i] = first end
+  T.eq(c:view().fleet.over, 2, 'two cars over the three slots are kept'); T.eq(#c:view().fleet.parked, 4, 'and shown')
   c:openUsedCars(true); T.eq(c:view().usedCars.offers[1].keepCost, nil, 'no keep price with every slot full')
   local other = slot == 1 and 2 or 1
   T.check(c:buyUsedCar(other), 'another car out'); c:vehicleSpawned(); c:tick(0.1)
   T.eq(c:view().carChange.keepCost, nil, 'no keeping'); T.check(c:view().carChange.slotsFull, 'every slot is taken')
+  T.check(c:view().carChange.slotHint:find('4th', 1, true), 'told a 4th slot can be bought')
   T.check(not c:buyCar(true), 'keep refused'); T.check(c:revertCar(false), 'own car back'); c:vehicleSpawned(); c:tick(0.1)
   T.eq(c.ownedParts.model, 'sport', 'the Sport GT is back')
   -- Sell frees a slot: the trade-in price, less its repair.
@@ -1700,6 +1710,19 @@ do
   T.check(c:sellParkedCar(4), 'sold'); T.eq(c:view().balance, cash + selling.sale, 'paid for it')
   T.check(c:sellParkedCar(3) and c:sellParkedCar(2), 'two more sold'); T.eq(#c.storedCars, 1, 'one parked car left')
   T.check(not c:sellParkedCar(2), 'an empty slot sells nothing')
+  -- With a base a 4th slot can be bought, once, for $200,000.
+  T.check(c:carSlotFree(), 'a slot is free'); c.storedCars[2] = c.storedCars[1]
+  T.check(not c:carSlotFree(), 'three slots full'); c.storedCars[2] = nil
+  local buy = c:view().fleet.buySlot
+  T.eq(buy.price, 200000, '$200,000'); T.check(not buy.allowed, 'not with too little money')
+  c.profile.progression.balance = 250000
+  T.check(c:view().fleet.buySlot.allowed, 'allowed with the money')
+  T.check(c:buyCarSlot(), 'bought'); T.eq(c:view().balance, 50000, 'paid $200,000')
+  T.eq(c:view().fleet.slots, 4, 'four slots'); T.eq(c:view().fleet.buySlot, nil, 'nothing more to buy')
+  T.check(not c:buyCarSlot(), 'only once'); T.eq(c:view().balance, 50000, 'not charged twice')
+  c.storedCars[2], c.storedCars[3] = c.storedCars[1], c.storedCars[1]
+  T.check(not c:carSlotFree(), 'four slots full'); c.storedCars[2], c.storedCars[3] = nil, nil
+  c.profile.progression.balance = 400000
   -- Away from home Relocate lists home at the usual fee.
   local away = location.destination(spot, 90, 1000)
   F.drive(c, a, away)
@@ -1750,7 +1773,10 @@ do
   T.eq(#saved.storedCars, 1, 'the stored car saved'); T.eq(saved.storedCars[1].config.model, 'pickup', 'the pickup')
   local r = F.controller({ io = io })
   T.eq(r.property.paid, Home.PRICE, 'home back after a reload'); T.eq(r.storedCars[1].damage, 2000, 'with the stored car')
-  T.eq(r.storedCars[1].worth, 20000, 'and its worth')
+  T.eq(r.storedCars[1].worth, 20000, 'and its worth'); T.check(r.extraCarSlot, 'and the bought slot')
+  T.eq(r:carSlots(), 4, 'four slots after a reload')
+  -- Without the base the bought slot doesn't count.
+  r.property = nil; T.eq(r:carSlots(), 2, 'two slots without a base')
 end
 
 -- The Magnate update: a base's circle of influence around its town, sized by wealth, and the owner's
@@ -1891,6 +1917,9 @@ do
   save.storedCars = {}
   for i = 1, 4 do save.storedCars[i] = { config = { model = 'pickup' } } end
   T.check(P.validate(save), 'four parked cars load')
+  save.extraCarSlot = true; T.check(P.validate(save), 'a bought slot loads')
+  save.extraCarSlot = 'yes'; T.eq(select(2, P.validate(save)), 'invalid_home', 'a bought slot is true or nothing')
+  save.extraCarSlot = nil
   save.storedCars[5] = { config = { model = 'sport' } }
   T.eq(select(2, P.validate(save)), 'invalid_home', 'no more than four')
   save.storedCars, save.property.paid = nil, -1

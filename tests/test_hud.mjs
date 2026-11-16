@@ -157,6 +157,12 @@ test('Your cars: Drive and Sell only send a plain slot number, when Lua allows t
   assert.equal(a.commands.at(-1), fixed('sellParkedCar(3)'))
   assert.equal(JSON.stringify(a.scope.fleetEmpty({ used: 2, slots: 5 })), '[3,4,5]', 'the empty slots are numbered')
   assert.ok(html.includes('ng-click="cancelPay(); sellParkedCar(car)"'), 'Sell confirms first')
+  const before = a.commands.length
+  a.state({ state: 'READY', fleet: { buySlot: { price: 200000 } } }); a.scope.buyCarSlot()
+  assert.equal(a.commands.length, before, 'Buy a 4th slot refused unless allowed')
+  a.state({ state: 'READY', fleet: { buySlot: { price: 200000, allowed: true } } }); a.scope.buyCarSlot()
+  assert.equal(a.commands.at(-1), fixed('buyCarSlot()'))
+  assert.ok(html.includes('ng-click="cancelPay(); buyCarSlot()"'), 'buying a slot confirms first')
 })
 test('town buttons only send fixed commands, with plain ids, when Lua enabled them', () => {
   const a = app()
