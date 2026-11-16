@@ -962,29 +962,31 @@ function M.new(deps)
 
   -- A run starts: on an edge of the circle, now. The server hears of it, which starts its clock.
   function c:startMaydayRun(call, edge)
-    self.maydayRun = { round = call.round, edge = edge, at = self.clock }
+    -- The run is in one car: the one the player has now (see watchMayday).
+    self.maydayRun = { round = call.round, edge = edge, at = self.clock, model = self.ownedParts and self.ownedParts.model }
     self.maydayClaim = nil
     self.mp:maydayStart(call.round, edge)
     local name = mayday.edgeName(edge):lower()
     self.maydayFeedback = nil
     self:showFlash('delivered', 'MAYDAY RESCUE: GO!', 'You are on the ' .. name .. ' edge, '
       .. math.floor(call.radiusKm + 0.5) .. ' km from the scene near ' .. call.spot.name .. '. Get there first for '
-      .. dollars(call.reward) .. '. Teleporting ends your run, but you can start again from any edge.')
+      .. dollars(call.reward) .. '. Teleporting or changing cars ends your run, but you can start again from any edge.')
     self.diag:event('mayday_start', call.round .. ':' .. edge)
   end
 
-  -- A run ends without a win. why: 'teleport', 'hop', 'tow', 'heli'.
+  -- A run ends without a win. why: 'teleport', 'hop', 'tow', 'heli', 'car'.
   local RUN_ENDED = {
     teleport = 'You teleported, so your Mayday Rescue run is over. Start again from any edge.',
     hop = 'Your car jumped ahead, so your Mayday Rescue run is over. Start again from any edge.',
     tow = 'Towing your car ended your Mayday Rescue run. Start again from any edge.',
     heli = 'Leaving your car for a helicopter or sightseeing ended your Mayday Rescue run. Start again from any edge.',
+    car = 'Changing cars ended your Mayday Rescue run: a run is one car from the edge to the scene. Start again from any edge.',
   }
   function c:endMaydayRun(why)
     if not self.maydayRun then return end
     self.maydayRun, self.maydayClaim = nil, nil
     self.maydayFeedback = RUN_ENDED[why] or 'Your Mayday Rescue run is over.'
-    if why == 'hop' then self:showFlash('cancelled', 'MAYDAY RUN OVER', self.maydayFeedback) end
+    if why == 'hop' or why == 'car' then self:showFlash('cancelled', 'MAYDAY RUN OVER', self.maydayFeedback) end
     self.diag:event('mayday_run_ended', tostring(why))
   end
 
@@ -1030,6 +1032,11 @@ function M.new(deps)
   function c:watchMayday()
     if self.maydayClaim and self.clock - self.maydayClaim.at > mayday.WIN_WAIT_SECONDS then self.maydayClaim = nil end
     local call, run = self:maydayCall(), self:maydayRunning()
+    -- One car per run: picking another car (a bill for it opens) or a different model under the player ends it.
+    if run and (self.pendingCar or (run.model and self.ownedParts and self.ownedParts.model ~= run.model)) then
+      self:endMaydayRun('car')
+      return
+    end
     if not run or self.maydayClaim then return end
     local sample = self.lastSample
     if self.state ~= 'READY' or not self.arrived or self.stranded or self.hire or self.onFoot or self.load
