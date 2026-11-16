@@ -117,7 +117,7 @@ function M.cleanBases(list)
         corp = corp, asked = b.asked == true and not corp, yard = corp and spotOf(b.yard) or nil,
         requests = b.mine == true and people(b.requests) or nil,
         outposts = outpostsOf(b.outposts), land = percent(b.land) or 0, grown = b.grown == true,
-        fullAt = money(b.fullAt), wealth = money(b.wealth) }
+        fullAt = money(b.fullAt), wealth = money(b.wealth), worth = money(b.worth) }
     end
   end
   return out

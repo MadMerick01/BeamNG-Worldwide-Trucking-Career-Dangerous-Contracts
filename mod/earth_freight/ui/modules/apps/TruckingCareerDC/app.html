@@ -1014,7 +1014,7 @@
               <div ng-repeat="b in data.standings.corps">
                 <div style="display:flex;gap:8px;align-items:baseline;padding:3px 4px 0;margin:0 -4px;font-size:13px;border-radius:4px;" ng-style="b.mine ? {background:'rgba(111,207,151,.1)'} : {}">
                   <b style="flex:none;">{{b.mine ? (b.members ? 'Your corp' : 'You') : b.name}}</b>
-                  <span style="flex:1;min-width:0;color:#c9d6d2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{b.town}}<span ng-if="b.outposts"> + {{b.outposts}} more {{b.outposts === 1 ? 'base' : 'bases'}}</span><span ng-if="b.members"> &middot; {{b.members + 1}} truckers</span></span>
+                  <span style="flex:1;min-width:0;color:#c9d6d2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{b.town}}<span ng-if="b.outposts"> + {{b.outposts}} more {{b.outposts === 1 ? 'base' : 'bases'}}</span><span ng-if="b.members"> &middot; {{b.members + 1}} truckers</span><span ng-if="b.worth"> &middot; ${{b.worth | number:0}}</span></span>
                   <span style="flex:none;font-size:12px;color:#f2c94c;">{{b.land}}%</span>
                 </div>
                 <div aria-hidden="true" style="height:6px;border-radius:3px;background:#33423f;overflow:hidden;margin:3px 0 4px;"><span ng-style="{width: landWidth(b.land, data.standings.race.win)}" style="display:block;height:100%;background:#f2c94c;"></span></div>

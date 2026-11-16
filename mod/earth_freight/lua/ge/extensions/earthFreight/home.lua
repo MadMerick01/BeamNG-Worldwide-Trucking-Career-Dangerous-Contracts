@@ -555,7 +555,7 @@ function M.attach(c)
     for _, b in ipairs(mp.bases or {}) do
       if (b.land or 0) > 0 then
         corps[#corps + 1] = { name = b.name, town = b.town, outposts = #(b.outposts or {}), members = #(b.members or {}),
-          land = b.land, mine = (b.mine or b.corp) or nil }
+          land = b.land, worth = b.worth, mine = (b.mine or b.corp) or nil }
       end
     end
     table.sort(corps, function(a, b) if a.land ~= b.land then return a.land > b.land end return a.name < b.name end)

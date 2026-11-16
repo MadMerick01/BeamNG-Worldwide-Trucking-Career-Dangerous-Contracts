@@ -429,7 +429,8 @@ function renderRace() {
     var box2 = el('div', 'grow')
     box2.appendChild(el('div', 'who', text(b.name) + (Array.isArray(b.members) && b.members.length ? "'s corp" : '')))
     box2.appendChild(el('div', 'small muted', (counts[b.name] || 1) + ((counts[b.name] || 1) === 1 ? ' base' : ' bases')
-      + (Array.isArray(b.members) && b.members.length ? ' · with ' + b.members.map(text).join(', ') : '')))
+      + (Array.isArray(b.members) && b.members.length ? ' · with ' + b.members.map(text).join(', ') : '')
+      + (num(b.worth) ? ' · ' + money(b.worth) + (Array.isArray(b.members) && b.members.length ? ' together' : '') : '')))
     var bar = el('div', 'bar')
     var fill = el('span')
     fill.style.width = Math.max(0, Math.min(100, b.land / (win || 100) * 100)) + '%'

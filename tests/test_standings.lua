@@ -13,6 +13,8 @@ do
   T.eq(clean.board[1].wins, 1, 'season wins'); T.eq(clean.board[1].corp, 'Kez', 'the corp a member is in'); T.eq(clean.board[2].mine, true, 'the player\'s own row')
   T.eq(clean.me.rank, 14, 'the player\'s own place further down'); T.eq(clean.me.mine, true, 'is marked theirs')
   T.eq(clean.winner.owner, 'Kez', 'the last winner'); T.eq(#clean.winner.members, 1, 'winner members are names only')
+  T.eq(MPC.cleanBases({ { name = 'Sam', latitude = 1, longitude = 2, radiusKm = 800, worth = 1234.5 } })[1].worth, 1234, 'a corp\'s wealth from the server')
+  T.eq(MPC.cleanBases({ { name = 'Sam', latitude = 1, longitude = 2, radiusKm = 800, worth = 'x' } })[1].worth, nil, 'and none when it is bad')
   T.eq(MPC.cleanBoard({}), nil, 'no board, nothing')
   T.eq(MPC.cleanBoard('x'), nil, 'not a table, nothing')
   -- The message is taken by the game's server link.
@@ -25,12 +27,13 @@ do
   local c = F.controller()
   T.eq(c:view().standings, nil, 'single player has no standings, so nothing is asked for')
   c.mp = { state = 'server', now = 0, board = clean, race = { win = 50, left = 86400 * 3, at = 0, leader = 'Sam', leaderLand = 1.6 },
-    bases = { { name = 'Sam', town = 'Perth', land = 1.6, outposts = { {} }, members = {} },
+    bases = { { name = 'Sam', town = 'Perth', land = 1.6, outposts = { {} }, members = {}, worth = 900000 },
       { name = 'player1', town = 'Parramatta', land = 1.1, mine = true, members = {} },
       { name = 'Ruby', town = 'Lithgow', land = 0, members = {} } } }
   local st = c:standingsView()
   T.check(st ~= nil, 'a server has standings')
   T.eq(#st.corps, 2, 'corps holding land'); T.eq(st.corps[1].name, 'Sam', 'most first'); T.eq(st.corps[1].outposts, 1, 'with their outposts')
+  T.eq(st.corps[1].worth, 900000, 'and the corp\'s wealth')
   T.eq(st.corps[2].mine, true, 'yours marked'); T.eq(st.race.daysLeft, 3, 'days left'); T.eq(#st.board, 2, 'the leaderboard')
   T.eq(st.season, 2, 'the season'); T.eq(st.waiting, nil, 'not waiting')
   c.mp.board = nil
