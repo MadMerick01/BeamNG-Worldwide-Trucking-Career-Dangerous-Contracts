@@ -988,6 +988,11 @@ test('Mayday Rescue: its tab shows only while a call is out, and the edge button
   a.state({ state: 'READY', arrived: true })
   assert.equal(a.scope.tab, 'route', 'no call: back to Route')
   for (const gone of ['shipDay', 'goToPort', 'takeContainer']) assert.ok(!html.includes(gone) && !source.includes(gone), gone + ' is gone')
+  // The off-road drop's arrow points to the scene, on this tab and on the Route tab while on a run.
+  assert.ok(panel.includes('arrowStyle(data.mayday)'), 'an arrow on the tab')
+  const route = html.slice(html.indexOf(`ng-if="tab === 'route'"`), html.indexOf(`ng-if="tab === 'town'"`))
+  assert.ok(route.includes('ng-if="data.mayday.running"') && route.includes('arrowStyle(data.mayday)'), 'and on the Route tab')
+  assert.equal(a.scope.arrowStyle({ arrow: 90 }).transform, 'rotate(90deg)')
 })
 test('Relocate to a player: a Join button for each player, sent by number only, and the opt-out', () => {
   const a = app()

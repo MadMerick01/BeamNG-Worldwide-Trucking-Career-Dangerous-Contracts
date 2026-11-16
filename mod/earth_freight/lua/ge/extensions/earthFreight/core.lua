@@ -1086,6 +1086,9 @@ function M.new(deps)
     if not call then return nil end
     local here = type(current) == 'table' and location.valid(current) and current or nil
     local away = here and location.distance(here, call.spot) or nil
+    -- The off-road drop's arrow: the scene's bearing from the way the car points (or last went), 0 straight ahead.
+    local bearing = away and away > 1 and location.bearing(here, call.spot) or nil
+    local heading = self.lastSample and location.finite(self.lastSample.heading) and self.lastSample.heading or self.heading
     local problem = self:maydayEdgeProblem(call)
     local run = self:maydayRunning()
     local edges = {}
@@ -1099,7 +1102,8 @@ function M.new(deps)
       story = call.story, reward = call.reward, winner = call.winner, racers = call.racers,
       radiusKm = call.radiusKm, winMetres = mayday.WIN_METRES, secondsLeft = mayday.secondsLeft(call, self.clock),
       scene = { latitude = call.spot.latitude, longitude = call.spot.longitude },
-      distanceMetres = away, direction = away and away > 1 and location.compassPoint(location.bearing(here, call.spot)) or nil,
+      distanceMetres = away, direction = bearing and location.compassPoint(bearing) or nil,
+      arrow = bearing and heading and (bearing - heading) % 360 or nil,
       inside = here and mayday.inside(call, here) or false,
       running = run and { edge = mayday.edgeName(run.edge), seconds = math.max(0, self.clock - run.at) } or nil,
       checking = self.maydayClaim ~= nil or nil,

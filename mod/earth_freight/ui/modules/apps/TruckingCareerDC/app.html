@@ -304,6 +304,16 @@
             <button type="button" aria-label="Copy start coordinates" ng-click="copyCoordinates(data.load.contract.start)">Copy</button>
           </div>
         </div>
+        <div ng-if="data.mayday.running" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">
+          <div style="font-weight:bold;color:#eb5757;">Mayday Rescue: near {{data.mayday.name}}</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
+            <div ng-if="data.mayday.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.mayday)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;">&#9650;</div>
+            <div style="flex:1;min-width:0;">
+              <div ng-if="data.mayday.distanceMetres != null" style="font-size:18px;font-weight:bold;">{{distance(data.mayday.distanceMetres)}}<span ng-if="data.mayday.direction"> {{data.mayday.direction}}</span></div>
+              <div style="font-size:12px;color:#c9d6d2;">No GPS: head off road and follow the arrow to the scene. First within {{data.mayday.winMetres}} m wins ${{data.mayday.reward | number:0}}.</div>
+            </div>
+          </div>
+        </div>
         <div ng-if="data.load.drop && (!data.load.contract || data.load.contract.started)" style="margin:0 0 8px;padding:10px;border:1px solid #f2c94c;border-radius:6px;">
           <div ng-if="!data.load.contract && !data.load.beacon" style="font-weight:bold;color:#f2c94c;">Off-road drop</div>
           <div ng-if="data.load.beacon" style="font-weight:bold;color:#eb5757;">Don't ask questions</div>
@@ -944,8 +954,13 @@
         </div>
         <div ng-if="data.mayday.running" style="margin:0 0 8px;padding:8px 10px;border:2px solid #f2c94c;border-radius:6px;">
           <div style="font-size:13px;color:#c9d6d2;">On your way from the {{data.mayday.running.edge | lowercase}} edge &middot; {{until(data.mayday.running.seconds)}}</div>
-          <div ng-if="data.mayday.distanceMetres != null" style="margin:2px 0;line-height:1;"><span style="font-size:28px;font-weight:900;">{{distance(data.mayday.distanceMetres)}}</span><span ng-if="data.mayday.direction" style="font-size:15px;color:#c9d6d2;"> {{data.mayday.direction}}</span></div>
-          <div style="font-size:12px;color:#c9d6d2;">to the scene, in a straight line. Get within {{data.mayday.winMetres}} m of it.</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
+            <div ng-if="data.mayday.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.mayday)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;">&#9650;</div>
+            <div style="flex:1;min-width:0;">
+              <div ng-if="data.mayday.distanceMetres != null" style="line-height:1;"><span style="font-size:28px;font-weight:900;">{{distance(data.mayday.distanceMetres)}}</span><span ng-if="data.mayday.direction" style="font-size:15px;color:#c9d6d2;"> {{data.mayday.direction}}</span></div>
+              <div style="font-size:12px;color:#c9d6d2;">to the scene. No GPS: head off road and follow the arrow. Get within {{data.mayday.winMetres}} m of it.</div>
+            </div>
+          </div>
           <div ng-if="data.mayday.checking" role="status" style="margin-top:4px;font-weight:bold;color:#6fcf97;">You're at the scene! Checking with the server...</div>
         </div>
         <div ng-if="data.mayday.open && !data.mayday.running && data.mayday.inside" style="margin:0 0 8px;font-size:13px;color:#f2c94c;">You're inside the circle, but not on a run. Start from an edge for it to count.</div>
