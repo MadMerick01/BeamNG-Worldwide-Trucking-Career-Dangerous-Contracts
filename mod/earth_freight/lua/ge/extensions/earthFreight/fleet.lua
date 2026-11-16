@@ -1,5 +1,8 @@
--- Your cars: every player drives one car and keeps up to SLOTS more parked, from the start of a career,
--- with or without a base. A car bill can keep the old car in a free slot instead of trading it in. Drive
+-- Your cars: the car being driven takes slot 1 and the rest are parked. A career starts with START_SLOTS
+-- slots; a base, or being in a corp, gives BASE_SLOTS; and with a base or corp one more slot can be bought
+-- for SLOT_PRICE (kept in the save as extraCarSlot, and counted only while there is a base or corp). Cars
+-- over the limit (an older save, or after leaving a corp) are kept: they can be driven and sold, but no
+-- car can be kept until there is room again. A car bill can keep the old car in a free slot instead of trading it in. Drive
 -- puts a parked car out in place of the one being driven, anywhere, for SWAP_FEE (a driver brings it to
 -- you), and parks the one being driven in its slot. Sell gets the trade-in price for a parked car:
 -- CAR_TRADE_IN_SHARE of its worth, less the repair it needs. Each car keeps its own parts, fuel, wear
@@ -8,8 +11,12 @@ local pricing = require('earthFreight/pricing')
 local persistence = require('earthFreight/persistence')
 local M = {}
 
--- How many cars are kept parked besides the one being driven.
+-- The most cars a save keeps parked besides the one being driven.
 M.SLOTS = persistence.PARKED_SLOTS
+-- Slots, counting the one being driven: at the start, with a base or corp, and with the bought slot too.
+M.START_SLOTS, M.BASE_SLOTS, M.BOUGHT_SLOTS = 2, 3, 4
+-- What the extra slot costs, with a base or corp.
+M.SLOT_PRICE = 200000
 -- What Drive costs: a driver brings the parked car to wherever the player is.
 M.SWAP_FEE = 250
 
@@ -28,9 +35,48 @@ function M.attach(c)
 
   function c:parkedCars() return self.storedCars or {} end
 
+  -- How many slots the player has, counting the car being driven.
+  function c:carSlots()
+    if not self:homeSpot() then return M.START_SLOTS end
+    return self.extraCarSlot and M.BOUGHT_SLOTS or M.BASE_SLOTS
+  end
+
   -- Whether a car bill can keep the old car: a slot is free.
   function c:carSlotFree()
-    return #self:parkedCars() < M.SLOTS
+    return 1 + #self:parkedCars() < self:carSlots()
+  end
+
+  -- How to get another slot, when every slot is taken; nil when there is no other way.
+  function c:slotHint()
+    if not self:homeSpot() then return 'Buy or join a base to get a 3rd slot.' end
+    if not self.extraCarSlot then return 'Buy a 4th slot on Your cars for ' .. dollars(M.SLOT_PRICE) .. '.' end
+    return nil
+  end
+
+  -- Why Buy a 4th slot cannot be pressed now, or nil.
+  function c:buySlotProblem()
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Your cars are unavailable right now.' end
+    if self.extraCarSlot then return 'You already bought it.' end
+    if not self:homeSpot() then return 'Buy or join a base first.' end
+    if not self:canAfford(M.SLOT_PRICE) then
+      return 'Not enough money. You need ' .. dollars(M.SLOT_PRICE - self.profile.progression.balance) .. ' more.'
+    end
+    return nil
+  end
+
+  -- Buys the extra slot for SLOT_PRICE.
+  function c:buyCarSlot()
+    local problem = self:buySlotProblem()
+    if problem then
+      self.fleetFeedback = problem
+      return false
+    end
+    if not self:spend(M.SLOT_PRICE, 'car_slot') then return false end
+    self.extraCarSlot = true
+    self.fleetFeedback = 'Bought a 4th car slot for ' .. dollars(M.SLOT_PRICE) .. '.'
+    self.diag:event('car_slot_bought', tostring(M.SLOT_PRICE))
+    self:autoSaveSoon('buying a car slot')
+    return true
   end
 
   -- The car being driven as a parked car keeps it: what Save would keep of it.
@@ -208,7 +254,15 @@ function M.attach(c)
     end
     local driving = owned and { name = owned.name or owned.model, value = self:carWorth() } or nil
     if driving and type(driving.value) == 'number' then worth = worth + driving.value end
-    return { slots = M.SLOTS + 1, used = (driving and 1 or 0) + #parked, fee = M.SWAP_FEE,
+    local slots, used = self:carSlots(), (driving and 1 or 0) + #parked
+    local buy = nil
+    if self:homeSpot() and not self.extraCarSlot then
+      local problem = self:buySlotProblem()
+      buy = { price = M.SLOT_PRICE, allowed = problem == nil or nil, problem = problem }
+    end
+    return { slots = slots, used = used, over = used > slots and used - slots or nil, fee = M.SWAP_FEE,
+      buySlot = buy, hint = not self:homeSpot() and 'Buy or join a base to get a 3rd slot.' or nil,
+      baseSlots = M.BASE_SLOTS, boughtSlots = M.BOUGHT_SLOTS, slotPrice = M.SLOT_PRICE,
       sharePercent = math.floor(pricing.CAR_TRADE_IN_SHARE * 100 + 0.5), driving = driving, parked = parked, worth = worth,
       swapProblem = #parked > 0 and swap or nil, feedback = self.fleetFeedback }
   end

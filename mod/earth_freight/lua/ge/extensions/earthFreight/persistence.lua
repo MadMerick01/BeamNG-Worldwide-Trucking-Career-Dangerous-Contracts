@@ -213,7 +213,8 @@ function M.storedCar(car)
     worth = car.worth }
 end
 
--- How many cars a player keeps parked besides the one they drive, base or not.
+-- The most cars a save keeps parked besides the one being driven. How many a player may fill is up to
+-- fleet.lua (fewer without a base); a save with more than that still loads, so nobody loses a car.
 M.PARKED_SLOTS = 4
 local function storedCars(list)
   if type(list) ~= 'table' or #list > M.PARKED_SLOTS then return nil end
@@ -260,6 +261,8 @@ function M.validate(s)
   if s.playerName ~= nil and not M.validName(s.playerName) then return nil, 'invalid_identity' end
   -- On a server, the last batch of base commission added to the money (multiplayer.lua).
   if s.commissionId ~= nil and not integer(s.commissionId, 0) then return nil, 'invalid_identity' end
+  -- The extra car slot bought on the Garage tab (fleet.lua).
+  if s.extraCarSlot ~= nil and s.extraCarSlot ~= true then return nil, 'invalid_home' end
   local cargo = nil
   if s.load ~= nil then
     cargo = load(s.load)
@@ -321,7 +324,7 @@ function M.validate(s)
       worth = s.vehicle.worth },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
     trailer = trailer, spareTrailer = spareTrailer, property = home, storedCars = stored, commissionId = s.commissionId,
-    corp = member,
+    corp = member, extraCarSlot = s.extraCarSlot,
   }
 end
 
@@ -391,7 +394,7 @@ function M.new(io, directory)
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
       trailer = candidate.trailer, spareTrailer = candidate.spareTrailer, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId,
-      corp = candidate.corp,
+      corp = candidate.corp, extraCarSlot = candidate.extraCarSlot,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

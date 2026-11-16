@@ -501,7 +501,7 @@
           <div ng-if="data.balance < data.carChange.cost" style="font-size:13px;color:#eb5757;">You have ${{data.balance | number:0}}: ${{data.carChange.cost - data.balance | number:0}} short.</div>
           <div ng-if="data.load" style="font-size:13px;color:#eb5757;">Deliver or abandon your job before you change cars.</div>
           <div ng-if="data.carChange.keepCost != null" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Or keep your {{data.carChange.oldName || 'old car'}} in slot {{data.carChange.keepSlot}} of Your cars: no trade-in, ${{data.carChange.keepCost | number:0}}.</div>
-          <div ng-if="data.carChange.slotsFull" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Every slot in Your cars is taken, so your old car can only be traded in. Sell a parked car to free a slot.</div>
+          <div ng-if="data.carChange.slotsFull" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Every slot in Your cars is taken, so your old car can only be traded in. Sell a parked car to free a slot.<span ng-if="data.carChange.slotHint"> {{data.carChange.slotHint}}</span></div>
           <div ng-if="!isConfirming('car', data.carChange.cost) && !isConfirming('keep', data.carChange.keepCost)" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
             <button type="button" ng-click="askToPay('car', data.carChange.cost)" ng-disabled="!data.buyCarAllowed" ng-style="data.buyCarAllowed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">{{data.carChange.keepCost != null ? 'Trade in' : 'Buy'}} for ${{data.carChange.cost | number:0}}</button>
             <button type="button" ng-if="data.carChange.keepCost != null" ng-click="askToPay('keep', data.carChange.keepCost)" ng-disabled="!data.keepCarAllowed" ng-style="data.keepCarAllowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Keep it in slot {{data.carChange.keepSlot}} for ${{data.carChange.keepCost | number:0}}</button>
@@ -601,6 +601,15 @@
             </div>
             <div ng-repeat="n in fleetEmpty(data.fleet) track by n" style="display:flex;align-items:center;gap:8px;margin-top:4px;padding:6px 8px;border:1px dashed #33423f;border-radius:6px;color:#7d8b88;font-style:italic;font-size:13px;">
               <span style="flex:none;width:12px;font-size:12px;text-align:center;font-style:normal;">{{n}}</span><span>Empty<span ng-if="$first">: when you buy a car, keep your old one here</span></span>
+            </div>
+            <div ng-if="data.fleet.over" style="margin-top:4px;font-size:13px;color:#f2c94c;">You have {{data.fleet.used}} cars and {{data.fleet.slots}} slots. Your cars are safe and you can still drive or sell them, but you can't keep another one until you sell some.</div>
+            <div ng-if="data.fleet.hint" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.fleet.hint}} You can then buy a {{data.fleet.boughtSlots}}th for ${{data.fleet.slotPrice | number:0}}.</div>
+            <div ng-if="data.fleet.buySlot" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;">
+              <button type="button" ng-if="!isConfirming('slot', data.fleet.buySlot.price)" ng-click="askToPay('slot', data.fleet.buySlot.price)" ng-disabled="!data.fleet.buySlot.allowed" ng-style="data.fleet.buySlot.allowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:5px 12px;border:1px solid #568d7a;border-radius:4px;">Buy a {{data.fleet.boughtSlots}}th slot &middot; ${{data.fleet.buySlot.price | number:0}}</button>
+              <span ng-if="isConfirming('slot', data.fleet.buySlot.price)" style="font-weight:bold;">Pay ${{data.fleet.buySlot.price | number:0}} for a {{data.fleet.boughtSlots}}th car slot?</span>
+              <button type="button" ng-if="isConfirming('slot', data.fleet.buySlot.price)" ng-click="cancelPay(); buyCarSlot()" ng-disabled="!data.fleet.buySlot.allowed" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Yes, buy it</button>
+              <button type="button" ng-if="isConfirming('slot', data.fleet.buySlot.price)" ng-click="cancelPay()" style="padding:5px 12px;">Cancel</button>
+              <span ng-if="data.fleet.buySlot.problem && !isConfirming('slot', data.fleet.buySlot.price)" style="font-size:13px;color:#c9d6d2;">{{data.fleet.buySlot.problem}}</span>
             </div>
             <div ng-if="data.fleet.swapProblem" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.fleet.swapProblem}}</div>
             <div ng-if="data.fleet.feedback" role="status" style="margin-top:4px;">{{data.fleet.feedback}}</div>

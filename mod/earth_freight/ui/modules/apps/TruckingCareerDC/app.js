@@ -595,6 +595,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // confirm (the fee shows on the button); Sell asks to confirm first.
       var parked = function (car) { return car && Number.isInteger(car.index) && car.index >= 1 && car.index <= 9 }
       scope.swapCars = function (car) { if (parked(car) && car.driveAllowed) core('swapCars(' + car.index + ')') }
+      scope.buyCarSlot = function () { if (scope.data.fleet && scope.data.fleet.buySlot && scope.data.fleet.buySlot.allowed) core('buyCarSlot()') }
       scope.sellParkedCar = function (car) { if (parked(car) && car.sellAllowed) core('sellParkedCar(' + car.index + ')') }
       // The empty slots' numbers, after the car being driven and the parked ones.
       scope.fleetEmpty = function (f) {
