@@ -12,6 +12,7 @@ local places = require('earthFreight/places')
 local goods = require('earthFreight/goods')
 local jobs = require('earthFreight/jobs')
 local business = require('earthFreight/business')
+local rockets = require('earthFreight/rockets')
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
@@ -328,6 +329,7 @@ function M.attach(c)
   function c:fuelRunProblem(current, hub, depot)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Fuel runs are unavailable right now.' end
     if self.load then return 'Deliver or abandon your job first.' end
+    if self.rockets then return rockets.TAKE_PROBLEM end
     if not hub then return 'There is no fuel depot within ' .. M.HUB_REACH_KM .. ' km.' end
     if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
