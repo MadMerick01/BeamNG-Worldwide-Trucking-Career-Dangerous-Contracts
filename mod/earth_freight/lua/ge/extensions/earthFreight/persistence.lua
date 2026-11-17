@@ -286,15 +286,24 @@ function M.validate(s)
     end
     return trailers.clean(raw)
   end
-  local trailer, spareTrailer = nil, nil
+  local trailer, spareTrailers = nil, nil
   if s.trailer ~= nil then
     trailer = trailerOf(s.trailer)
     if not trailer then return nil, 'invalid_trailer' end
   end
-  if s.spareTrailer ~= nil then
-    spareTrailer = trailerOf(s.spareTrailer)
-    -- The second trailer is never out, and only kept beside a first one.
-    if not spareTrailer or not spareTrailer.stored or not trailer then return nil, 'invalid_trailer' end
+  -- The parked trailers (an older save kept one as spareTrailer): never out, only kept beside the
+  -- one in use, and no more than the most car slots.
+  local spares = s.spareTrailers
+  if spares == nil and s.spareTrailer ~= nil then spares = { s.spareTrailer } end
+  if spares ~= nil then
+    if type(spares) ~= 'table' or #spares > M.PARKED_SLOTS or not trailer then return nil, 'invalid_trailer' end
+    spareTrailers = {}
+    for i = 1, #spares do
+      local t = trailerOf(spares[i])
+      if not t or not t.stored then return nil, 'invalid_trailer' end
+      spareTrailers[i] = t
+    end
+    if #spareTrailers == 0 then spareTrailers = nil end
   end
   local recent = nil
   if s.needs ~= nil then
@@ -324,7 +333,7 @@ function M.validate(s)
       damage = s.vehicle.damage, fuelLitres = s.vehicle.fuelLitres, value = s.vehicle.value, km = s.vehicle.km,
       worth = s.vehicle.worth },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
-    trailer = trailer, spareTrailer = spareTrailer, property = home, storedCars = stored, commissionId = s.commissionId, rewardId = s.rewardId,
+    trailer = trailer, spareTrailers = spareTrailers, property = home, storedCars = stored, commissionId = s.commissionId, rewardId = s.rewardId,
     corp = member, extraCarSlot = s.extraCarSlot,
   }
 end
@@ -394,7 +403,7 @@ function M.new(io, directory)
       progression = candidate.progression, vehicle = candidate.vehicle,
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
-      trailer = candidate.trailer, spareTrailer = candidate.spareTrailer, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId, rewardId = candidate.rewardId,
+      trailer = candidate.trailer, spareTrailers = candidate.spareTrailers, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId, rewardId = candidate.rewardId,
       corp = candidate.corp, extraCarSlot = candidate.extraCarSlot,
     }
     local clean, why = M.validate(prepared)

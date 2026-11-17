@@ -382,7 +382,7 @@ function M.attach(c)
     self.corp, self.leaveArmed = nil, nil
     local lines = {}
     local moved = false
-    for _, t in ipairs({ self.trailer, self.spareTrailer }) do
+    for _, t in ipairs(require('earthFreight/trailers').allTrailers(self)) do
       if t and t.stored and t.at == 'base' then t.at, moved = 'depot', true end
     end
     if moved then lines[#lines + 1] = 'Your trailer there went to the depot for free.' end

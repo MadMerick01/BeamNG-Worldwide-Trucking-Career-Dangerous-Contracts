@@ -230,12 +230,16 @@ function M.new(deps)
     end
     self.store = self.mp and multiplayer.store(self.mp, deps.io) or persistence.new(deps.io)
     self.profile, self.loadStatus = self.store:load()
-    -- The trailers owned: one saved out comes back behind the car once it is back (watchTrailer). A
-    -- second one is kept stored, with a base.
+    -- The trailers owned: one saved out comes back behind the car once it is back (watchTrailer). The
+    -- others are parked (Your trailers); an older save kept one as spareTrailer.
     self.trailer = self.profile and trailers.clean(self.profile.trailer) or nil
-    self.spareTrailer = self.profile and trailers.clean(self.profile.spareTrailer) or nil
+    self.spareTrailers = {}
+    for _, raw in ipairs(self.profile and self.profile.spareTrailers or { self.profile and self.profile.spareTrailer }) do
+      local t = trailers.clean(raw)
+      if t then self.spareTrailers[#self.spareTrailers + 1] = t end
+    end
     self.trailerOut, self.trailerRestored, self.foreignTrailer, self.trailersOpen = nil, nil, nil, false
-    self.trailerFeedback, self.storeArmed, self.sellArmed = nil, false, false
+    self.trailerFeedback, self.storeArmed, self.sellArmed, self.spareSellArmed = nil, false, false, nil
     -- The home owned; like money, a home bought since the last Save is not kept.
     self.property = self.profile and copy(self.profile.property) or nil
     -- Your cars: the parked ones (a car kept at a base or corp yard before Your cars is one of them now).
@@ -2764,7 +2768,7 @@ function M.new(deps)
         worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
-      trailer = self:savedTrailer(), spareTrailer = self:savedSpareTrailer(),
+      trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
       beacon = self.beacon and { pickup = location.copy(self.beacon.pickup), drop = location.copy(self.beacon.drop),
@@ -3043,8 +3047,26 @@ function M.storeTrailer(place)
 end
 function M.cancelStoreTrailer() return safely(function() return ensure():cancelStoreTrailer() end) end
 function M.bringOutTrailer() return safely(function() return ensure():bringOutTrailer() end) end
-function M.swapTrailers() return safely(function() return ensure():swapTrailers() end) end
-function M.switchTrailer() return safely(function() return ensure():switchTrailer() end) end
+-- index is the parked trailer's place on Your trailers, from 1.
+local function spareIndex(index)
+  return type(index) == 'number' and index == math.floor(index) and index >= 1 and index <= 9
+end
+function M.switchTrailer(index)
+  if not spareIndex(index) then return false end
+  return safely(function() return ensure():switchTrailer(index) end)
+end
+function M.swapTrailers(index)
+  if not spareIndex(index) then return false end
+  return safely(function() return ensure():swapTrailers(index) end)
+end
+function M.hitchSpareTrailer(index)
+  if not spareIndex(index) then return false end
+  return safely(function() return ensure():hitchSpareTrailer(index) end)
+end
+function M.sellSpareTrailer(index)
+  if not spareIndex(index) then return false end
+  return safely(function() return ensure():sellSpareTrailer(index) end)
+end
 function M.sellTrailer() return safely(function() return ensure():sellTrailer() end) end
 function M.claimHome() return safely(function() return ensure():claimHome() end) end
 -- Your cars (fleet.lua): index is the parked car's place in the list, from 1.

@@ -646,8 +646,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var allowed = place === 'base' ? (t.parkAllowed || t.sendAllowed) : t.depotAllowed
         if (allowed || t.storeArmed === place) core("storeTrailer('" + place + "')")
       }
-      scope.swapTrailers = function () { var t = scope.data.trailer; if (t && (t.swapAllowed || t.storeArmed === 'swap')) core('swapTrailers()') }
-      scope.switchTrailer = function () { if (scope.data.trailer && scope.data.trailer.switchAllowed) core('switchTrailer()') }
+      // Your trailers: each parked trailer's row, by its place on the list (from 1).
+      var spareRow = function (row) { return row && Number.isInteger(row.index) && row.index >= 1 && row.index <= 9 }
+      scope.swapTrailers = function (row) { if (spareRow(row) && (row.swapAllowed || row.swapArmed)) core('swapTrailers(' + row.index + ')') }
+      scope.hitchSpareTrailer = function (row) { if (spareRow(row) && row.hitchAllowed) core('hitchSpareTrailer(' + row.index + ')') }
+      scope.sellSpareTrailer = function (row) { if (spareRow(row)) core('sellSpareTrailer(' + row.index + ')') }
       scope.cancelStoreTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeArmed) core('cancelStoreTrailer()') }
       scope.bringOutTrailer = function () { if (scope.data.trailer && scope.data.trailer.bringOutAllowed) core('bringOutTrailer()') }
       scope.sellTrailer = function () { if (scope.data.trailer && scope.data.trailer.sellAllowed) core('sellTrailer()') }
