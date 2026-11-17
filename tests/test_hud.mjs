@@ -90,8 +90,7 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
   assert.equal(a.commands.length, count, 'refused unless allowed, with a whole index')
   a.scope.buyTrailer({ index: 3, allowed: true }); assert.equal(a.commands.at(-1), fixed('buyTrailer(3)'))
   const buttons = {
-    cancelStoreTrailer: ['storeArmed', 'cancelStoreTrailer()'], swapTrailers: ['swapAllowed', 'swapTrailers()'],
-    switchTrailer: ['switchAllowed', 'switchTrailer()'],
+    cancelStoreTrailer: ['storeArmed', 'cancelStoreTrailer()'],
     bringOutTrailer: ['bringOutAllowed', 'bringOutTrailer()'], sellTrailer: ['sellAllowed', 'sellTrailer()'],
     repairTrailer: ['repairAllowed', 'repairTrailer()']
   }
@@ -111,7 +110,15 @@ test('Trailer buttons only call Lua when it allows them, and a trailer is bought
   a.state({ state: 'READY', trailer: { sendAllowed: true } }); a.scope.storeTrailer('base'); assert.equal(a.commands.at(-1), fixed("storeTrailer('base')"), 'Send to base')
   a.state({ state: 'READY', trailer: { depotAllowed: true } }); a.scope.storeTrailer('depot'); assert.equal(a.commands.at(-1), fixed("storeTrailer('depot')"))
   a.state({ state: 'READY', trailer: { storeArmed: 'depot' } }); a.scope.storeTrailer('depot'); assert.equal(a.commands.at(-1), fixed("storeTrailer('depot')"), 'confirm after the warning')
-  a.state({ state: 'READY', trailer: { storeArmed: 'swap' } }); a.scope.swapTrailers(); assert.equal(a.commands.at(-1), fixed('swapTrailers()'), 'confirm a swap')
+  // Your trailers: Hitch, Swap and Sell on each parked trailer, by its place on the list.
+  count = a.commands.length
+  a.scope.hitchSpareTrailer({ index: 1, hitchAllowed: false }); a.scope.swapTrailers({ index: 1 })
+  a.scope.hitchSpareTrailer({ index: '1); x(', hitchAllowed: true }); a.scope.sellSpareTrailer({ index: 0 }); a.scope.sellSpareTrailer(null)
+  assert.equal(a.commands.length, count, 'refused unless allowed, with a whole place on the list')
+  a.scope.hitchSpareTrailer({ index: 2, hitchAllowed: true }); assert.equal(a.commands.at(-1), fixed('hitchSpareTrailer(2)'))
+  a.scope.swapTrailers({ index: 1, swapAllowed: true }); assert.equal(a.commands.at(-1), fixed('swapTrailers(1)'))
+  a.scope.swapTrailers({ index: 3, swapArmed: true }); assert.equal(a.commands.at(-1), fixed('swapTrailers(3)'), 'confirm a swap')
+  a.scope.sellSpareTrailer({ index: 2 }); assert.equal(a.commands.at(-1), fixed('sellSpareTrailer(2)'))
 })
 
 test('trailer parts cannot be bought: no button for them', () => {
