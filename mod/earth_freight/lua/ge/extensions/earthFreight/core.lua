@@ -876,6 +876,8 @@ function M.new(deps)
   -- Books shipping to one of the listed regions or any place by its id.
   function c:bookShipping(destinationId)
     if destinationId == 'home' then return self:book(self:homeDestination()) end
+    local outpost = type(destinationId) == 'string' and tonumber(destinationId:match('^home_(%d+)$'))
+    if outpost then return self:book(self:homeDestination(outpost)) end
     return self:book(shipping.get(destinationId) or placeDestination(places.get(destinationId)))
   end
 
@@ -928,7 +930,7 @@ function M.new(deps)
     local problem = self:shippingProblem()
     if not problem and not destination then problem = 'Pick a destination.' end
     if not problem then problem = self:maydayBars(destination) end
-    if not problem and not anywhere and shipping.arrived(here, destination) then problem = destination.id == 'home' and 'You are already at your base.' or ('You are already in ' .. destination.name .. '.') end
+    if not problem and not anywhere and shipping.arrived(here, destination) then problem = tostring(destination.id):match('^home') and 'You are already at your base.' or ('You are already in ' .. destination.name .. '.') end
     local fee = not problem and (free and 0 or shipping.fee(here, destination)) or nil
     if not problem and not self:spend(fee, 'shipping') then problem = 'Not enough money. Relocating to ' .. destination.name .. ' costs ' .. dollars(fee) .. '.' end
     if problem then
@@ -2499,6 +2501,16 @@ function M.new(deps)
       homeView = { id = 'home', name = homeSpot.name, region = homeSpot.region, fee = fee, here = here,
         allowed = problem == nil and not here and self:canAfford(fee) }
     end
+    -- The corp's further bases, each at its town centre, at the usual fee.
+    local outposts = {}
+    for _, y in ipairs(homeSpot and self:yards() or {}) do
+      local d = y.outpost and self:homeDestination(y.outpost)
+      if d then
+        local here, fee = shipping.arrived(current, d), shipping.fee(current, d)
+        outposts[#outposts + 1] = { id = d.id, name = d.name, region = d.region, fee = fee, here = here,
+          allowed = problem == nil and not here and self:canAfford(fee) }
+      end
+    end
     local found = {}
     for _, d in ipairs(self.shippingSearch and self.shippingSearch.results or {}) do
       local here, fee = shipping.arrived(current, d), shipping.fee(current, d)
@@ -2517,7 +2529,7 @@ function M.new(deps)
     -- Teleport there rests while Earth carries out the last press.
     local teleporting = self.bookingTeleportAt ~= nil and self.clock - self.bookingTeleportAt < TELEPORT_WAIT_SECONDS
     return {
-      offer = offerView, home = homeView, destinations = list, players = playersView, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
+      offer = offerView, home = homeView, homes = #outposts > 0 and outposts or nil, destinations = list, players = playersView, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
       problem = problem, feedback = self.shippingFeedback,
       pending = self.offer and { name = self.offer.name, fee = self.offer.fee, radiusKm = shipping.OFFER_RADIUS_METRES / 1000,
         distanceMetres = location.distance(current, self.offer) } or nil,

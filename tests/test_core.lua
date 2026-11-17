@@ -2551,4 +2551,59 @@ do
   T.check(c.toasts[1].msg:find('BeamMP (edit layout)', 1, true) ~= nil, 'on a server: the BeamMP layout')
 end
 
+-- A corp's further bases (outposts, Magnate 4) each have a yard at their town centre, sharing one yard with the
+-- first base: half-price repairs within 200 m, parked trailers hitched there, and each on Relocate.
+do
+  local location = require('earthFreight/location')
+  local pricing = require('earthFreight/pricing')
+  -- A server link that only answers with its bases: every other call does nothing.
+  local function server(t)
+    t.state, t.now = 'server', 0
+    for _, name in ipairs({ 'claimBase', 'corp', 'delivered', 'find', 'findable', 'here', 'maydayPos', 'maydayStart', 'maydayWin',
+      'openBase', 'ready', 'receive', 'setFindable', 'start', 'tick', 'unconfirmed', 'where' }) do
+      t[name] = function() return nil end
+    end
+    return t
+  end
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 2000000
+  local spot = F.copy(a.pose)
+  T.check(c:buyBase(spot), 'base bought')
+  local far = location.destination(spot, 90, 20000)
+  c.mp = server { bases = { { name = 'player1', town = 'Parramatta', latitude = spot.latitude, longitude = spot.longitude,
+    radiusKm = 1600, mine = true, members = {}, outposts = { { town = 'Marrakesh', latitude = far.latitude, longitude = far.longitude, radiusKm = 800 } } } } }
+  T.eq(#c:yards(), 2, 'two yards')
+  -- Relocate lists the outpost, and books it.
+  local ship = c:view().shipping
+  T.eq(#ship.homes, 1, 'the second base on Relocate'); T.eq(ship.homes[1].id, 'home_1', 'by its number')
+  T.eq(ship.homes[1].region, 'Marrakesh', 'named by its town'); T.check(ship.homes[1].allowed, 'bookable')
+  T.eq(ship.homes[1].fee, require('earthFreight/shipping').fee(spot, far), 'at the usual fee')
+  T.check(c:bookShipping('home_1'), 'booked'); T.eq(c.booking.name, 'Base', 'to a base')
+  T.eq(c.booking.latitude, far.latitude, 'at the town centre'); T.check(c:cancelShipping(), 'cancelled')
+  T.check(not c:bookShipping('home_9'), 'no such base')
+  -- Repairs: the usual price between bases, half at the outpost.
+  local between = location.destination(spot, 90, 10000)
+  F.drive(c, a, between)
+  T.check(not c:atHome(), 'between bases is not home')
+  T.eq(c:repairPrice(3000, 20000), pricing.repairCost(3000, 20000), 'the usual price')
+  F.drive(c, a, location.destination(far, 0, 150))
+  T.check(c:atHome(), 'within 200 m of the outpost is home'); T.check(c:view().repairAtHome, 'the HUD says so')
+  T.eq(c:repairPrice(3000, 20000), math.floor(pricing.repairCost(3000, 20000) * 0.5 + 0.5), 'half price there')
+  T.check(c:view().shipping.homes[1].here, 'Relocate says you are there')
+  T.eq(c:trailerMoveFee('base'), 0, 'trailers park there for free, one yard with the first base')
+  -- A corp member gets the same.
+  local m, _, ma = F.controller()
+  m:tick(0.1); m:tick(0.6); m:tick(0.6)
+  m.mp = server { bases = { { name = 'Sam', town = 'Parramatta', latitude = spot.latitude, longitude = spot.longitude,
+    radiusKm = 1600, corp = true, members = {}, outposts = { { town = 'Marrakesh', latitude = far.latitude, longitude = far.longitude, radiusKm = 800 } } } } }
+  m.corp = { latitude = spot.latitude, longitude = spot.longitude, owner = 'Sam', town = 'Parramatta' }
+  T.eq(m:view().shipping.homes[1].region, 'Sam\'s base, Marrakesh', 'a member sees whose base')
+  F.drive(m, ma, location.destination(far, 0, 150))
+  T.check(m:atHome(), 'a member is home at the outpost too')
+  -- Off a server, no outposts.
+  c.mp = nil
+  T.eq(#c:yards(), 1, 'only the first base')
+end
+
 T.done('Earth Freight controller')

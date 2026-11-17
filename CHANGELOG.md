@@ -6,6 +6,11 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Fixed: a corp's second base (and every base after it) now works like the first.** Before, a base opened with **Open a base here** was only a circle on the map. Now, within 200 m of its town centre, repairs are half price, and you can park, hitch and swap your trailers there.
+- All of a corp's bases share one yard, so a trailer you park at one base can be hitched at any of the others.
+- **Relocate now lists every base your corp holds,** each as Base with its town, at the usual fee. A second base's spot is the centre of the town it was opened in.
+- This works for the base owner and for corp members alike. Server hosts don't need to update anything, and your saves still work.
+
 ## Build 227 · 17 Nov 2026
 
 - **You can now own as many trailers as you have car slots.** That's 2 trailers at the start, 3 with a base or a corp, and 4 once you buy the 4th slot on Your cars. Before, it was 1 trailer, or 2 with a base. The $200,000 Buy a 4th slot button now gives you a 4th trailer slot too, and if you already bought it you get the extra trailer slot straight away.

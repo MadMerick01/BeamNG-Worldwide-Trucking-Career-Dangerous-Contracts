@@ -37,11 +37,33 @@ function M.attach(c)
     return self.property or self.corp or nil
   end
 
-  -- How far the player is from home, or nil.
+  -- Every yard the player can use: their base's spot (or as a corp member the owner's), then on a server the town
+  -- centre of each of their corp's further bases (outposts), which share one yard with it. Each is
+  -- { latitude, longitude, town }, the outposts with their number (outpost). Empty without a base or corp.
+  function c:yards()
+    local spot = self:homeSpot()
+    if not spot then return {} end
+    local list = { { latitude = spot.latitude, longitude = spot.longitude,
+      town = spot.town and (type(spot.town) == 'table' and spot.town.name or spot.town) or spot.name } }
+    local entry = self.myCorpEntry and self:myCorpEntry() or nil
+    for i, o in ipairs(entry and entry.outposts or {}) do
+      if location.valid(o) then
+        list[#list + 1] = { latitude = o.latitude, longitude = o.longitude, town = o.town, outpost = i }
+      end
+    end
+    return list
+  end
+
+  -- How far the player is from the nearest of their yards, and that yard, or nil.
   function c:homeDistance()
-    local here, spot = self.lastSample, self:homeSpot()
-    if not spot or not here or not here.valid then return nil end
-    return location.distance(here, spot)
+    local here = self.lastSample
+    if not here or not here.valid then return nil end
+    local best, bestYard
+    for _, y in ipairs(self:yards()) do
+      local d = location.distance(here, y)
+      if d and (not best or d < best) then best, bestYard = d, y end
+    end
+    return best, bestYard
   end
 
   function c:atHome()
@@ -249,8 +271,18 @@ function M.attach(c)
     return cost
   end
 
-  -- The base as a Relocate destination.
-  function c:homeDestination()
+  -- The base as a Relocate destination; with an outpost number, that further base of the corp (its town centre).
+  function c:homeDestination(outpost)
+    if outpost then
+      for _, y in ipairs(self:yards()) do
+        if y.outpost == outpost then
+          return { id = 'home_' .. outpost, name = 'Base', region = self.property and (y.town or 'Your corp\'s base')
+              or ((self.corp.owner or 'Your corp') .. '\'s base' .. (y.town and (', ' .. y.town) or '')),
+            latitude = y.latitude, longitude = y.longitude }
+        end
+      end
+      return nil
+    end
     local p = self.property
     if not p then
       local y = self.corp
