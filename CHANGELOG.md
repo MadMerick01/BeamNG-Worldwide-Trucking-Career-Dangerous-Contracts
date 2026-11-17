@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 228 · 17 Nov 2026
+
 - **Fuel runs pay about 40% less.** They were earning two to three times as much an hour as town jobs, so they now pay a little more than the best town jobs rather than far more. A full long tanker now earns about $206,000 for a 100 km run in flat country, down from about $284,000, and about $399,000 for 200 km, down from about $562,000.
 - Rough regions add half as much to a fuel run as they do to a town job, because most of a long run is on main roads. A run in a ×2 region now pays ×1.5, and the most it can reach is ×2. Your base's bonus still counts in full. A fuel run you have already loaded keeps its pay, and your saves still work.
 
