@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 227 · 17 Nov 2026
+
 - **You can now own as many trailers as you have car slots.** That's 2 trailers at the start, 3 with a base or a corp, and 4 once you buy the 4th slot on Your cars. Before, it was 1 trailer, or 2 with a base. The $200,000 Buy a 4th slot button now gives you a 4th trailer slot too, and if you already bought it you get the extra trailer slot straight away.
 - **New: Your trailers, on the Trailer section of the Garage tab.** It lists the trailers you aren't using, each with where it is and what it's worth. Press **Hitch** to bring one out (free at your base, the haulier's fee away from it, or $250 from the depot), **Swap** at your base to park the trailer you're towing and hitch that one instead, or **Sell** for 75% of what you paid, less any repair. You confirm before it sells.
 - Your base or corp yard now keeps all your parked trailers, not just one, so you never have to send one to the depot because the spot is taken. Without a base, the depot keeps them for $250 each way, as before.
