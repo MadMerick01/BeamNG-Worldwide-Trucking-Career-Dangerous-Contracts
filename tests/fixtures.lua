@@ -110,6 +110,13 @@ function F.garage()
       parts = F.copy(self.fitted), values = F.copy(self.values), names = names,
       value = self.carValues[self.model], name = self.model }
   end
+  -- Whether JATO rockets are fitted to the car, or to the trailer with id.
+  function g:rockets(id)
+    local rockets = require('earthFreight/rockets')
+    if id ~= nil and self.trailers[id] then return rockets.inParts(self.trailers[id].fitted) end
+    if self.partsUnreadable then return nil end
+    return rockets.inParts(self.fitted)
+  end
   -- Parts menu stand-in: fits parts for free and respawns, which mends the damage.
   function g:fit(slot, part)
     self.fitted[slot], self.damage = part, 0

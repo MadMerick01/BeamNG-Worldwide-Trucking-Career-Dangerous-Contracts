@@ -28,6 +28,7 @@ local fleet = require('earthFreight/fleet')
 local streetView = require('earthFreight/streetView')
 local business = require('earthFreight/business')
 local multiplayer = require('earthFreight/multiplayer')
+local rockets = require('earthFreight/rockets')
 local mayday = require('earthFreight/mayday')
 local magnate = require('earthFreight/magnate')
 local fuelruns = require('earthFreight/fuelruns')
@@ -212,6 +213,7 @@ function M.new(deps)
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
     self.pump, self.pumpBill = nil, nil
     self.ourRespawn, self.rawDamage = nil, nil
+    self.rockets, self.rocketsOnCar, self.rocketsCheckedAt = nil, nil, nil
     self.autoSave, self.gpsTown, self.gpsContract, self.gpsFeedback = nil, nil, nil, nil
     self.configuration, self.configError = config.load(deps.io)
     self.diag:event('configuration', self.configuration and 'loaded' or self.configError, self.configuration and 'I' or 'W')
@@ -505,11 +507,45 @@ function M.new(deps)
     return true
   end
 
+  -- JATO rockets (rockets.lua), online only: every CHECK_SECONDS the car and its hitched trailer are looked at.
+  -- Seen on a job, the job is marked and pays nothing; seen on a Mayday Rescue run, the run is over.
+  function c:rocketsBanned() return self.mp ~= nil end
+
+  function c:watchRockets()
+    if not self:rocketsBanned() or not self.garage or not self.garage.rockets then self.rockets = nil; return end
+    if self.hire or self.onFoot or self.state ~= 'READY' or not self.arrived then return end
+    if self.rocketsCheckedAt and self.clock - self.rocketsCheckedAt < rockets.CHECK_SECONDS then return end
+    self.rocketsCheckedAt = self.clock
+    -- A car whose parts can't be read keeps what was last seen on it.
+    local okCar, onCar = pcall(self.garage.rockets, self.garage)
+    if okCar and onCar ~= nil then self.rocketsOnCar = onCar == true end
+    local out, onTrailer = self.trailerOut, false
+    if out and out.hitched and out.id ~= nil then
+      local ok, seen = pcall(self.garage.rockets, self.garage, out.id)
+      onTrailer = ok and seen == true
+    end
+    local fitted = self.rocketsOnCar == true or onTrailer
+    if fitted and not self.rockets then self.diag:event('rockets_fitted', self.load and 'on a job' or '', 'W') end
+    self.rockets = fitted or nil
+    if not fitted then return end
+    if self.load and not self.load.rockets then
+      self.load.rockets = true
+      self:showFlash('cancelled', 'NO PAY FOR THIS JOB', rockets.JOB_LOST)
+      self:autoSaveSoon('the job losing its pay')
+    end
+    if self.maydayRun then self:endMaydayRun('rockets') end
+  end
+
+  -- A job that had rockets fitted pays nothing, and no toll is taken from it.
+  function c:loseRocketPay(load)
+    if load and load.rockets then load.pay, load.toll = 0, nil end
+  end
+
   -- Tells the server a delivery happened, for its live feed, today's totals and base owners' commission.
-  function c:reportDelivery(kind, good, units, from, to, pay, ends, toll)
+  function c:reportDelivery(kind, good, units, from, to, pay, ends, toll, rocketsFitted)
     if not self.mp or self.mp.state ~= 'server' then return end
     self.mp:delivered({ kind = kind, what = good and amount(good, units) or nil, from = from, to = to, pay = pay, ends = ends,
-      toll = toll and toll.amount or nil })
+      toll = toll and toll.amount or nil, rockets = rocketsFitted or nil })
   end
 
   -- The turf toll (magnate.lua): a delivery whose drop-off town is in someone else's turf pays them part of its pay.
@@ -960,6 +996,7 @@ function M.new(deps)
   function c:maydayEdgeProblem(call)
     if not call then return 'No Mayday Rescue call is out right now.' end
     if call.state ~= 'open' then return 'This call is over. The next one goes out soon.' end
+    if self.rockets then return rockets.MAYDAY_PROBLEM end
     if self.booking and self.booking.mayday then return nil end
     return self:shippingProblem()
   end
@@ -993,12 +1030,13 @@ function M.new(deps)
     tow = 'Towing your car ended your Mayday Rescue run. Start again from any edge.',
     heli = 'Leaving your car for a helicopter or sightseeing ended your Mayday Rescue run. Start again from any edge.',
     car = 'Changing cars ended your Mayday Rescue run: a run is one car from the edge to the scene. Start again from any edge.',
+    rockets = 'JATO rockets are not allowed online, so your Mayday Rescue run is over. Remove them and start again from any edge.',
   }
   function c:endMaydayRun(why)
     if not self.maydayRun then return end
     self.maydayRun, self.maydayClaim = nil, nil
     self.maydayFeedback = RUN_ENDED[why] or 'Your Mayday Rescue run is over.'
-    if why == 'hop' or why == 'car' then self:showFlash('cancelled', 'MAYDAY RUN OVER', self.maydayFeedback) end
+    if why == 'hop' or why == 'car' or why == 'rockets' then self:showFlash('cancelled', 'MAYDAY RUN OVER', self.maydayFeedback) end
     self.diag:event('mayday_run_ended', tostring(why))
   end
 
@@ -1074,6 +1112,7 @@ function M.new(deps)
     over = 'That call is over. Watch for the next one.',
     no_start = 'The server never heard you set off from an edge, so this run does not count. Start again from any edge.',
     too_fast = 'The server could not believe that run: it was too fast from the edge. Start again from any edge.',
+    rockets = 'JATO rockets are not allowed online, so the server did not count that run. Remove them and start again from any edge.',
   }
   function c:maydayAnswered(d)
     local claim = self.maydayClaim
@@ -1437,6 +1476,7 @@ function M.new(deps)
     local place = self:here()
     local problem = self:tradeProblem(place)
     if not problem and self.load then problem = 'You already have a job. Deliver it or abandon it first.' end
+    if not problem and self.rockets then problem = rockets.TAKE_PROBLEM end
     local job
     if not problem then
       for _, j in ipairs(self:board(place)) do if not job and j.id == jobId then job = j end end
@@ -1719,6 +1759,7 @@ function M.new(deps)
       return false
     end
     local load, good = self.load, goods.get(self.load.good)
+    self:loseRocketPay(load)
     self:addMoney(load.pay)
     -- A delivered dangerous contract's road is counted for the career page (it stays on the boards).
     if load.contract then
@@ -1736,12 +1777,12 @@ function M.new(deps)
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
-    refund = refund .. self:payDebtFrom(load.pay)
+    refund = refund .. self:payDebtFrom(load.pay) .. (load.rockets and (' ' .. rockets.PAID_NOTHING) or '')
     local section = load.contract and contracts.get(load.contract)
     -- An off-road drop counts for the turf of the town it was taken in, at both ends.
     local town = not load.beacon and not section and places.get(load.from) or nil
     self:reportDelivery(load.beacon and 'beacon' or (section and 'contract' or 'drop'), not load.beacon and good or nil,
-      load.units, nil, section and section.name or nil, load.pay, townEnds(town, town), load.toll)
+      load.units, nil, section and section.name or nil, load.pay, townEnds(town, town), load.toll, load.rockets)
     if load.beacon then
       self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), 'Dropped off. Nobody saw a thing, and nobody asked.'
         .. refund)
@@ -1779,11 +1820,12 @@ function M.new(deps)
       return false
     end
     local load, good = self.load, goods.get(self.load.good)
+    self:loseRocketPay(load)
     self:addMoney(load.pay)
     jobs.delivered(self.needs, place, good, self.now())
     self:finishJob()
     local from = places.get(load.from)
-    self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay, townEnds(from, place), load.toll)
+    self:reportDelivery('job', good, load.units, from and from.name or nil, place.name, load.pay, townEnds(from, place), load.toll, load.rockets)
     local refund = ''
     if self.offer and shipping.offerPays(place, self.offer) then
       self:addMoney(self.offer.fee)
@@ -1791,7 +1833,7 @@ function M.new(deps)
       self.diag:event('offer_paid', self.offer.name .. ':' .. self.offer.fee)
       self.offer = nil
     end
-    refund = refund .. self:payDebtFrom(load.pay)
+    refund = refund .. self:payDebtFrom(load.pay) .. (load.rockets and (' ' .. rockets.PAID_NOTHING) or '')
     self:showFlash('delivered', (load.fuelRun and 'FUEL RUN DELIVERED: +' or 'DELIVERED: +') .. dollars(load.pay), amount(good, load.units) .. ' to '
       .. (load.business and (load.business.name .. ', ') or '') .. place.name
       .. '. ' .. self:named('Nice driving') .. '.' .. tollLine(load) .. refund)
@@ -1846,6 +1888,7 @@ function M.new(deps)
     if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
     if self.load then return 'Deliver or abandon your job first. The package will wait until the beacon goes quiet.' end
+    if self.rockets then return rockets.TAKE_PROBLEM end
     local away = location.distance(sample, b.pickup)
     if not away or away > beacons.RADIUS then return 'Drive to the beacon and stop within ' .. beacons.RADIUS .. ' m of it.' end
     if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
@@ -2154,6 +2197,7 @@ function M.new(deps)
     self:watchHire()
     self:watchBeacon(dt)
     self:watchParts()
+    self:watchRockets()
     self:watchPartsBill()
     self:watchTrailer()
     self:afterRespawn()
@@ -2470,6 +2514,8 @@ function M.new(deps)
           radiusMetres = business.RADIUS, delivery = { allowed = problem == nil, problem = problem } }
       end
     end
+    -- A job that had JATO rockets fitted pays nothing (rockets.lua).
+    if loadView and self.load.rockets then loadView.pay, loadView.rockets = 0, true end
     return {
       here = place and { id = place.id, name = place.name, size = place.size } or nil,
       -- The region you are in, from the nearest place, and what its roads add to a job's pay.
@@ -2661,6 +2707,7 @@ function M.new(deps)
       home = self:homeView(current),
       fleet = self:fleetView(),
       repairAtHome = self:homeSpot() ~= nil and self:atHome() or nil,
+      rockets = self.rockets or nil,
       stranded = self.stranded and current and {
         latitude = self.stranded.latitude, longitude = self.stranded.longitude,
         distanceMetres = location.distance(current, self.stranded),

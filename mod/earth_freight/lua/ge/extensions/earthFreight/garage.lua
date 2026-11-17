@@ -1,6 +1,7 @@
 -- Reads and repairs the player vehicle. Base-game calls only, so it works outside career mode
 -- (career's repair modules are not loaded in Earth Freeroam). Every call is guarded: a missing
 -- or changed game function makes the quote or repair fail without touching the balance.
+local rockets = require('earthFreight/rockets')
 local M = {}
 
 local function defaults()
@@ -255,6 +256,20 @@ function M.new(environment)
     local ok, why = pcall(function() vehicle:queueLuaCommand(command) end)
     if not ok then return false, 'wear_failed', tostring(why) end
     return true
+  end
+
+  -- Whether JATO rockets are fitted to the player vehicle, or to the vehicle with vehicleId (the hitched trailer):
+  -- true or false, or nil when its parts can't be read. Cheaper than g:parts, as it prices nothing.
+  function g:rockets(vehicleId)
+    local id = vehicleId
+    if id == nil then
+      local vehicle, currentId = current()
+      if not vehicle then return nil end
+      id = currentId
+    end
+    local data = vehicleData(id)
+    if not data or type(data.config.partsTree) ~= 'table' then return nil end
+    return rockets.inTree(data.config.partsTree)
   end
 
   -- Returns the player vehicle's fitted parts:

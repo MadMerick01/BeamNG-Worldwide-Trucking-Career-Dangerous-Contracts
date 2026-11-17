@@ -148,7 +148,8 @@ local function load(l)
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
     pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop, ship = container,
-    toll = toll, fuelRun = l.fuelRun }
+    -- JATO rockets were fitted on this job online (rockets.lua): it pays nothing.
+    toll = toll, fuelRun = l.fuelRun, rockets = l.rockets == true or nil }
 end
 
 -- A "don't ask questions" job found and not yet picked up: its pickup and drop spots, which line
