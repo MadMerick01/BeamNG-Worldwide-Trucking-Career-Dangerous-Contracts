@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 226 · 17 Nov 2026
+
 - **The steps for turning on the HUD now name the right layout on a server.** Since BeamNG.Earth 1.10.1, a BeamMP server usually shows BeamMP's own layout instead of .Earth, so a HUD you added in single player isn't there. On a server, the "Turn on the trucking HUD" pop-up now tells you to add it to the **BeamMP** layout (Esc > System > HUD Apps > BeamMP (edit layout) > + Add app). Playing alone it still says .Earth. The README and the server page say the same. Nothing for you to delete, and your saves still work.
 
 ## Build 225 · 16 Nov 2026
