@@ -2,9 +2,8 @@
 -- 60 to 200 km out to a country town's petrol station, the reason to leave the big cities, which
 -- BeamNG.Earth draws roughly, for the hills. Shown on their own Fuel runs card, never on a town's
 -- board. Pay grows in a straight line with distance past 20 km, where a town job's only grows with
--- the square root, times a flat bonus, so a long run pays more per hour than town jobs without
--- being a money printer. The region and base bonuses come on top as for town jobs; shortages and
--- jackpots never do. With BeamNG.Earth's places (its modding API 1.4 and later) a run is only offered
+-- the square root, so a long run pays a little more per hour than town jobs without being a money
+-- printer. Half the region bonus and the base bonus come on top; shortages and jackpots never do. With BeamNG.Earth's places (its modding API 1.4 and later) a run is only offered
 -- to a town where Earth knows a real petrol station, delivered at its pumps, and its GPS shows the
 -- whole run, depot then station, as one route (API 1.2). On an older Earth the HUD's OpenStreetMap
 -- lookup and the town centre stand in. Pure maths and picks, and the controller's side below.
@@ -20,10 +19,16 @@ local M = {}
 -- to the station's.
 M.MIN_KM, M.MAX_KM = 60, 200
 -- Past jobs.FLAT_KM (20 km) each km pays PER_KM_SHARE of what an average km of a 20 km job pays,
--- so 100 km pays about 4.6 times 20 km, not 2.2. Then every run pays BONUS times that. With
+-- so 100 km pays 4 times 20 km, not 2.2. Then every run pays BONUS times that. With
 -- jobs.PAY_PERCENT at 75, the 34,000 L long tanker of fuel pays about $51,500 over 20 km as a town
--- job and about $284,000 over 100 km as a fuel run, before the region and base bonuses.
-M.PER_KM_SHARE, M.BONUS = 0.9, 1.2
+-- job and about $206,000 over 100 km as a fuel run, before the region and base bonuses.
+-- They were 0.9 and 1.2 ($284,000) until fuel runners earned 2 to 3 times as much an hour as town
+-- job players on the server (MadMerick, 17 Nov: about 40% off).
+M.PER_KM_SHARE, M.BONUS = 0.75, 1
+-- The region boost (1 to 3) at the run's two ends becomes a road bonus of 1 + (boost - 1) *
+-- ROAD_SHARE, half a town job's: the runs are picked for the steepest destinations, but most of a
+-- 100 km run is main road. A base's bonus is added in full, as for town jobs.
+M.ROAD_SHARE = 0.5
 -- Fuel runs leave from towns (5,000 to 50,000 people) with at most HUB_NEIGHBOURS other towns or
 -- cities within QUIET_KM, so never from a big city or its suburbs: Katoomba and Richmond for
 -- Sydney, Tulln for Vienna. The card shows the nearest within HUB_REACH_KM of the truck.
@@ -159,12 +164,18 @@ function M.offers(hub, seed, hasStation)
   return out
 end
 
--- What a fuel run pays for this many units of fuel: its distance, BONUS and the road and base
--- bonuses of a town job (see jobs.quote; shareAt is the same). Shaped like jobs.quote's answer.
+-- The road bonus of a fuel run: from the region boost at the average of its two ends, at ROAD_SHARE.
+function M.roadBonus(from, to)
+  local boost = (places.boost(from) + places.boost(to)) / 2
+  return math.min(jobs.MAX_ROAD, 1 + (boost - 1) * M.ROAD_SHARE)
+end
+
+-- What a fuel run pays for this many units of fuel: its distance, BONUS, its road bonus and the
+-- base bonus of a town job (see jobs.quote; shareAt is the same). Shaped like jobs.quote's answer.
 function M.quote(job, units, shareAt)
   local good, from, to = goods.get(job.good), places.get(job.from), places.get(job.to)
   local extra = jobs.baseExtra(shareAt, from, to)
-  local road = jobs.roadBonus(from, to) + extra
+  local road = M.roadBonus(from, to) + extra
   local base = jobs.weightPay(units * (good.payKg or good.kg)) * (good.rate or 1) * jobs.PAY_PERCENT / 100 * M.distanceFactor(job.km)
   return { pay = units > 0 and math.max(10, round10(base * M.BONUS * road)) or 0, base = round10(base), factor = M.BONUS,
     need = 1, road = road, baseBonus = extra > 0 and extra or nil, shortage = false, level = 'fuel' }
