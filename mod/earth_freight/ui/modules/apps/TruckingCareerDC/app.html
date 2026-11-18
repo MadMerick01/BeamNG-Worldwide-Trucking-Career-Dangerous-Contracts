@@ -380,9 +380,13 @@
             <div ng-repeat="r in data.fuelRuns.runs track by r.id" style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
               <div style="flex:1;min-width:0;">
                 <div><b>Fuel</b> &rarr; <span ng-if="r.station">{{r.station}}, </span>{{r.to}} <span style="color:#7d8b88;font-size:12px;">{{km(r.distanceMetres)}} km</span></div>
-                <div style="font-size:12px;color:#c9d6d2;"><span ng-if="r.units > 0">{{r.litres | number:0}} L, {{r.kg | number:0}} kg</span><span ng-if="r.units === 0" style="color:#eb5757;">Needs a tanker</span><span ng-if="r.region"> &middot; {{r.region}}</span><span ng-if="r.road"> &middot; rough road &times;{{r.road | number:1}}</span><span ng-if="r.basePercent" style="color:#6fcf97;"> &middot; base bonus +{{r.basePercent}}%</span><span ng-if="r.tollTo" style="color:#f2994a;"> &middot; {{r.tollTo}}'s turf: 20% toll</span></div>
+                <div style="font-size:12px;color:#c9d6d2;"><span ng-if="r.units > 0">{{taken(r).units * r.unitLitres | number:0}} L, {{taken(r).kg | number:0}} kg</span><span ng-if="r.units === 0" style="color:#eb5757;">Needs a tanker</span><span ng-if="r.region"> &middot; {{r.region}}</span><span ng-if="r.road"> &middot; rough road &times;{{r.road | number:1}}</span><span ng-if="r.basePercent" style="color:#6fcf97;"> &middot; base bonus +{{r.basePercent}}%</span><span ng-if="r.tollTo" style="color:#f2994a;"> &middot; {{r.tollTo}}'s turf: 20% toll</span></div>
+                <div ng-if="r.units > 1" style="display:flex;align-items:center;gap:8px;margin-top:2px;font-size:12px;color:#c9d6d2;">
+                  <span style="flex:none;width:62px;">Load {{shareOf(r)}}%</span>
+                  <input type="range" min="10" max="100" step="10" ng-model="shares[r.id]" ng-init="shares[r.id] = shareOf(r)" aria-label="How much fuel to take to {{r.to}}" style="flex:1;min-width:0;">
+                </div>
               </div>
-              <div ng-if="r.units > 0" style="flex:none;font-weight:bold;color:#f2994a;">${{r.pay | number:0}}</div>
+              <div ng-if="r.units > 0" style="flex:none;font-weight:bold;color:#f2994a;">${{taken(r).pay | number:0}}</div>
               <button type="button" aria-label="Set the GPS to show the run to {{r.to}}" title="See the whole run: the depot, then the station" ng-click="gpsToRun(r)" ng-disabled="!data.gpsAllowed" ng-style="r.gps ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="flex:none;padding:2px 6px;font-size:12px;">GPS</button>
               <button type="button" ng-click="takeFuelRun(r)" ng-disabled="!r.allowed" style="flex:none;padding:3px 8px;">Load</button>
             </div>

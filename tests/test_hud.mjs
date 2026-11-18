@@ -1277,7 +1277,11 @@ test('Fuel runs: the Route tab card loads a run and sets the GPS to the depot on
   assert.equal(a.commands.length, count, 'refused when not allowed')
   a.state({ state: 'READY', gpsAllowed: true, fuelRuns: { ...fuelRuns, runs: [{ ...run, allowed: true }] } })
   a.scope.takeFuelRun({ ...run, allowed: true })
-  assert.equal(a.commands.at(-1), fixed("takeFuelRun('fuelrun_gn123')"))
+  assert.equal(a.commands.at(-1), fixed("takeFuelRun('fuelrun_gn123', 100)"), 'a full load unless the slider moved')
+  a.scope.shares[run.id] = '40'
+  a.scope.takeFuelRun({ ...run, allowed: true })
+  assert.equal(a.commands.at(-1), fixed("takeFuelRun('fuelrun_gn123', 40)"), 'the share on the Load slider')
+  assert.match(html, /ng-model="shares\[r\.id\]"/)
   a.scope.gpsToDepot()
   assert.equal(a.commands.at(-1), fixed('gpsToDepot()'))
   a.scope.gpsToRun(run)

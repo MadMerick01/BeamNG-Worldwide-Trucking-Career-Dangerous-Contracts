@@ -211,4 +211,21 @@ do
   local _ = io; local _ = g
 end
 
+-- The load slider: half a tanker, for half the pay, poured half full.
+do
+  local c, _, a, _, w = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local v = c:view()
+  local hub = places.get(v.fuelRuns.hub.id)
+  c:tanksRead(c.ownedParts.id, 12000)
+  F.drive(c, a, hub)
+  v = c:view()
+  T.check(v.fuelRuns.atDepot, 'at the depot town')
+  local run = v.fuelRuns.runs[1]
+  T.eq(run.unitLitres, 10, 'the card knows a unit is 10 L'); T.eq(run.unitKg, goods.get('fuel').kg, 'and its weight')
+  T.check(c:takeFuelRun(run.id, 50), 'half a load taken')
+  T.eq(c.load.units, 600, 'half the fuel'); T.eq(c.load.pay, math.floor(run.pay / 2 / 10 + 0.5) * 10, 'for half the pay')
+  T.eq(w.weights[#w.weights].fluid.litres, 6000, 'poured half full')
+end
+
 T.done('fuel runs')
