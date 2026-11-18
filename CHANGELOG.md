@@ -6,7 +6,366 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
-- **Leaving the parts menu now puts you back on your car's camera.** After pressing **Buy parts** (or **Parts menu** for a trailer) and closing the game's parts menu, you used to be left in the free camera and had to press Shift+C. Now you're back on the camera you were driving with, such as the driver or chase camera. If you were already in the free camera before pressing Buy parts, you stay in it. Your saves still work.
+- **Leaving the parts menu now puts you back on your car's camera.** After pressing **Buy parts** and closing the game's parts menu, you used to be left in the free camera and had to press Shift+C. Now you're back on the camera you were driving with, such as the driver or chase camera. If you were already in the free camera before pressing Buy parts, you stay in it. Your saves still work.
+
+## Build 233 · 18 Nov 2026
+
+- **Fuel and water in a tanker trailer now weigh it down.** Before, a load in the game's own tanker trailers weighed nothing, so fuel runs drove like an empty trailer while town jobs in a truck's own tanks were heavy. Now when you load, the mod fills the tanker's Load Volume setting (the slider under Load in Vehicle Config, Tuning) with your load, and the game weighs and sloshes it. The trailer blinks and hitches itself again as it fills, and again when it empties after you deliver or abandon. Any damage it had is still on your repair bill.
+- **New: a Load slider on fuel runs.** Each run on the Fuel runs card now has the same Load slider as town jobs, from 10% to 100%, so you can take a lighter tanker for a share of the pay. Half a load pays half, and the litres and weight shown follow the slider.
+- **Fuel now weighs the same as water**, so a full tank of fuel is as heavy as a full tank of water. Fuel jobs and fuel runs pay exactly what they did.
+- If any truck or trailer tank can't take the weight of its load, the weight now goes on the vehicle's frame instead of vanishing. Your saves still work, and a job you already have gets its weight the next time it's put on, such as after a repair or loading your save.
+
+## Build 232 · 18 Nov 2026
+
+- **Small loads no longer release mirrors or hood and door latches when a truck spawns.** Cargo carried without a fitted box now leaves coupling nodes alone and puts its full weight on the remaining nodes.
+
+## Build 230 · 18 Nov 2026
+
+- **You can't miss a new Mayday Rescue call now, even with the HUD minimised.** When a call goes out online, a red Mayday Rescue card drops in under the small strip, the strip's dot turns red, and a short alert sounds once. The card shows where the call is, its story, the $80,000 reward, how far away you are, how long until it moves on and how many truckers have set off. It also says if something stops you going, such as a job you're still on.
+- Press **Open Mayday Rescue** to open the HUD on the Mayday Rescue tab, or **Not now** (or the X) to close the card. Either way it won't come back for that call, even after you restart the game, and the next call gets a new card. The card also goes by itself when someone wins, the call moves on, or you start a run. With the HUD open, the same card sits above the tabs. Your saves still work.
+- **Trailer cargo stays in the trailer when your truck returns.** Loading a saved job could briefly put the trailer's whole load on the truck before the trailer appeared, making parts break off. The truck now receives only its own cargo, and the trailer's load is applied when it returns. Your saves still work.
+
+## Build 229 · 17 Nov 2026
+
+- **JATO rockets are not allowed online.** On a multiplayer server, while rockets are fitted to your truck or its hitched trailer you can't take jobs, fuel runs or beacon packages, and a red warning on the HUD tells you to remove them in the parts menu. If rockets go on at any point during a job, that job pays $0 when you deliver it, even if you take them off before the drop-off. A Mayday Rescue run ends as soon as rockets are fitted, and the server won't count a win with rockets on.
+- Single player is unchanged: rockets still work there as before. Your saves still work.
+
+## Build 228 · 17 Nov 2026
+
+- **Fuel runs pay about 40% less.** They were earning two to three times as much an hour as town jobs, so they now pay a little more than the best town jobs rather than far more. A full long tanker now earns about $206,000 for a 100 km run in flat country, down from about $284,000, and about $399,000 for 200 km, down from about $562,000.
+- Rough regions add half as much to a fuel run as they do to a town job, because most of a long run is on main roads. A run in a ×2 region now pays ×1.5, and the most it can reach is ×2. Your base's bonus still counts in full. A fuel run you have already loaded keeps its pay, and your saves still work.
+
+## Build 227 · 17 Nov 2026
+
+- **You can now own as many trailers as you have car slots.** That's 2 trailers at the start, 3 with a base or a corp, and 4 once you buy the 4th slot on Your cars. Before, it was 1 trailer, or 2 with a base. The $200,000 Buy a 4th slot button now gives you a 4th trailer slot too, and if you already bought it you get the extra trailer slot straight away.
+- **New: Your trailers, on the Trailer section of the Garage tab.** It lists the trailers you aren't using, each with where it is and what it's worth. Press **Hitch** to bring one out (free at your base, the haulier's fee away from it, or $250 from the depot), **Swap** at your base to park the trailer you're towing and hitch that one instead, or **Sell** for 75% of what you paid, less any repair. You confirm before it sells.
+- Your base or corp yard now keeps all your parked trailers, not just one, so you never have to send one to the depot because the spot is taken. Without a base, the depot keeps them for $250 each way, as before.
+- If you leave a corp and own more trailers than your slots allow, you keep them all, but you can't buy another until you've sold enough. Your saves still work: a second trailer you already had is on Your trailers.
+
+## Build 226 · 17 Nov 2026
+
+- **The steps for turning on the HUD now name the right layout on a server.** Since BeamNG.Earth 1.10.1, a BeamMP server usually shows BeamMP's own layout instead of .Earth, so a HUD you added in single player isn't there. On a server, the "Turn on the trucking HUD" pop-up now tells you to add it to the **BeamMP** layout (Esc > System > HUD Apps > BeamMP (edit layout) > + Add app). Playing alone it still says .Earth. The README and the server page say the same. Nothing for you to delete, and your saves still work.
+
+## Build 225 · 16 Nov 2026
+
+- **The Season Leaderboard now shows every base a corp holds.** Once a corp opens a second base, its owner's row lists both towns (for example "Elk Grove Village, Marrakesh"), or the first few and how many more. Corp members, who don't own a base themselves, now show which corp they're in instead of a dash. This is on the server page and on the Land Race and Leaderboard tab in the HUD. Wealth is worked out the same as before: opening another base is free, so it doesn't add to anyone's wealth. Your saves still work.
+- **The Land Race now shows each corp's wealth:** the owner's and every member's wealth from the leaderboard, added together. It's on the Land Race card on the server page and on the Land Race and Leaderboard tab in the HUD. The leaderboard itself still ranks each trucker on their own.
+- **Rough regions now pay much more.** A town job's pay is now multiplied by the region's full "rough roads" number, where before it only got half of it. Death Road now pays ×3 instead of ×2, the Blue Mountains about ×1.5 instead of ×1.25, and a ×2 region pays ×2 instead of ×1.5. For example, the starter car's full load of parts on a 13 km run in a ×2 region now pays about $10,310 instead of $7,740. Fuel runs get the bigger number too, and off-road drops, which already paid the full number, now go up to ×3 instead of stopping at ×2. Jobs on flat ground pay the same as before, and the bonus for jobs in a base's turf stays at +10% for visitors and +20% for the owner. Jobs you've already taken keep their pay, and your saves still work.
+- **Downloads are updating again.** Builds 223 and 224 never reached the Releases page because the release notes had grown too long for GitHub. The notes now list only the newest earlier builds, and the full history stays in the changelog. Nothing to do on your side, and your saves still work. The next download includes the Town job pay change and the Leaderboard and Land Race corp changes.
+
+## Build 222 · 16 Nov 2026
+
+- **Mayday Rescue now shows live standings.** The Mayday Rescue tab lists every trucker on a run and how far each one is from the scene, nearest first, with your own line highlighted. While you race, the Route tab and the Mayday Rescue tab show your place, such as "2nd of 3". The server's live page shows the same standings, so anyone can follow the race. Standings update about every 15 seconds in the game and about every minute on the page. Your saves still work.
+
+## Build 221 · 16 Nov 2026
+
+- **Mayday Rescue edge buttons no longer drop two players on top of each other.** Each teleport to an edge now lands at a random spot between 30 and 250 metres from it, so players who pick the same edge at the same time start apart. Your saves still work.
+- **A short tow no longer ends your Mayday Rescue run.** The tow only ever brings your car the few metres to where you are standing, so it now keeps your run going.
+
+## Build 220 · 16 Nov 2026
+
+- **The Town job list no longer keeps switching between distance filters when overlapping menus remember different choices.** The highlighted filter now follows the jobs shown. Your saved distance choice is still restored when the menu opens, and your career saves still work.
+
+## Build 219 · 16 Nov 2026
+
+- **Your pay is saved the moment you deliver, and a job is saved the moment you take it.** Before, the game waited until your truck had stood still for a few seconds, so quitting, crashing or being sent off by a server update right after a delivery could lose the pay, and you'd have to deliver the load again. If something stops the save right then, such as a garage bill or a relocation booking, it saves at your next stop as before. Your saves still work, and you don't need to do anything.
+
+## Build 218 · 16 Nov 2026
+
+- **The server's live page updates much faster.** It now shows changes within a minute or two instead of up to about 9 minutes, and a new Mayday Rescue call or a win shows up within about a minute. Nothing changes in the game, and you don't need to do anything.
+
+## Build 217 · 16 Nov 2026
+
+- **A Mayday Rescue run is now one car from the edge to the scene.** Bringing out another car from Your cars, or picking a different car, ends your run, so pick the right car before you set off. You can still start again from any edge, and changing parts on your car is still fine. Your saves still work.
+
+## Build 216 · 16 Nov 2026
+
+- **New: Mayday Rescue replaces Ship Day on the multiplayer server.** A call for help goes out from a remote spot on Earth, such as a helicopter down in the desert, and everyone hears about it in chat. Open the new Mayday Rescue tab to see where it is and what happened.
+- The scene sits in the middle of a circle that reaches 20 km out in every direction. Press North, East, South or West on the tab to teleport to that edge of the circle for free, with an empty car, then drive any car you like to the scene. Something that can go off road helps. There is no GPS route, so an arrow like the off-road drop's points you to the scene, on the Mayday Rescue tab and on the Route tab, with how far it is. You can also copy its coordinates for the BeamNG.Earth map.
+- The first trucker to get within 250 m of the scene wins $80,000, added to your money and saved for you. Five minutes later the next call goes out somewhere else. If nobody gets there in two hours, the call moves on anyway.
+- You can join a call at any time and start again from any edge whenever you like. While a call is out, nobody can relocate inside its circle, and any other teleport, a tow or hiring a helicopter ends your run. Repairs and insurance still work.
+- Ship Day, its Go to port button and its containers are gone. A container you were still carrying delivers as a normal job. Your saves still work.
+- **The direction arrow is now a sharp, pointed needle**, so it's easier to see which way it faces. It's the same on off-road drops, signal beacons, the way back to your car from a helicopter, and Mayday Rescue.
+- Mayday Rescue is multiplayer only, so nothing changes in single player. The live server page shows the call and who won it instead of Ship Day.
+
+## Build 215 · 16 Nov 2026
+
+- **Changed: how many car slots you get in Your cars.** A new career now has 2 slots: the car you drive plus one parked car. Buying a base, or joining one as a corp member, gives you 3. With a base or corp you can also buy a 4th slot for $200,000 with the new Buy a 4th slot button on Your cars, and you confirm before you pay. The bought slot is yours to keep, but it only counts while you have a base or are in a corp. Trailers work as before.
+- If you already have more parked cars than your slots allow, from build 214 or after leaving a corp, you keep every one of them. You can still drive and sell them, but you can't keep another car until you've sold enough to make room. Your saves still work.
+
+## Build 214 · 15 Nov 2026
+
+- **New: Your cars, five car slots for every player from the start.** The Garage tab now has a Your cars section. It shows the car you're driving in slot 1 and up to four parked cars in slots 2 to 5, each with its worth, fuel and any repair it needs. You don't need a base for any of it.
+- When you buy a car, new or second hand, the bill offers Keep it in slot N whenever a slot is free. You pay the full price and your old car is parked there instead of traded in. When all five slots are full, the bill only offers the trade-in.
+- Press Drive on a parked car and a driver brings it to you, wherever you are, for $250. The car you were in is parked in its slot. Each car keeps its own parts, fuel, wear and repair bill. You can't change cars during a job, and you need to be stopped in your own car.
+- Press Sell on a parked car to free its slot. It pays the trade-in price: half of what the car is worth, less any repair it needs. You confirm before it sells.
+- Parked cars now count towards your wealth, so a car you keep doesn't make you look poorer. That means your base's circle, the price of an insurance claim and your wealth on the server leaderboard all include them. The server needs updating for its leaderboard to count them.
+- Your base and corp yard no longer keep a car. If you had a car stored at your base or corp yard, it's in slot 2 of Your cars now, with nothing lost. Leaving a corp no longer trades in your car. Your base still gives half-price repairs, a free spot for a second trailer and its circle.
+- Your saves still work. Once you have two or more parked cars, though, an older build can't load that save, so don't go back to an older download.
+
+## Build 213 · 15 Nov 2026
+
+- **Fixed: the Refuel button emptied your tank instead of filling it.** Pressing Refuel said "Refuelled 0.0 L for $0", then the fuel you had just put in was taken back out. The fill now stays in the tank, and you're charged for what actually went in. Saves still work.
+
+## Build 212 · 15 Nov 2026
+
+- **New: fuel runs, long hauls out into the country.** A new Fuel runs section on the Route tab shows the nearest fuel depot, in a quiet regional town away from the big cities, and two runs from it: one 60 to 120 km out and one 120 to 200 km out, to a petrol station in a small country town. Press GPS next to a run to see its whole route first: the depot, then the station. Press Teleport next to the depot to go straight there for free, then Load when you're stopped at it. You need a tanker: a truck with a fluid tank or a tanker trailer.
+- Fuel runs pay more the further you go, so they're worth the drive. A full long tanker earns about $284,000 for a 100 km run in flat country, against about $51,500 for a 20 km town job. Steep country and your base add their bonuses on top. A crash doesn't change the pay, and you can start the next run as soon as you deliver.
+- With BeamNG.Earth 1.10 or newer, fuel runs only go to towns where Earth knows a real petrol station, and you deliver at its pumps. The GPS shows the depot and the station as one route. On an older Earth they still work: the mod finds a station online, or you deliver in the town centre. Fuel runs save and resume like any job, and your saves still work.
+
+## Build 211 · 14 Nov 2026
+
+- **Petrol station pumps now show up straight away.** When the mod turns on the game's petrol stations for you, it now also reloads the game's list of stations, so the pumps and their Refuel prompt appear without restarting. Saves still work.
+
+## Build 210 · 14 Nov 2026
+
+- **Relocating, towing or resetting your car no longer fills the tank for free.** The game refills the tank whenever it resets the car, which happens when you relocate, use Tow car here, press Insert or use the recovery menu. The mod now quietly puts your fuel back to where it was, just as it already did after a repair or a part change. Saves still work.
+
+## Build 209 · 14 Nov 2026
+
+- **Fill up at real petrol stations, at real prices.** BeamNG.earth's petrol stations, with their canopies and pumps, now sell fuel at that continent's real pump price. Petrol and diesel are priced separately, and the mod knows which one your truck takes. For example, diesel is $1.62 a litre in North America and $2.49 in Europe. Prices are November 2026 averages for North America, South America, Europe, Africa, Asia and Oceania.
+- Stop at a pump and press **Refuel** on the Garage tab, or use the pump's own Refuel prompt. Both charge the pump price. If you can't pay for everything that went in, the extra fuel is taken back out of the tank. Before this, the pump's own prompt filled you up for free.
+- **The town Refuel button still works, but costs 5 times the pump price.** The Fuel section warns you about that and tells you to use a pump instead. It used to be a flat $2.10 a litre everywhere.
+- The mod turns on BeamNG's "gas stations in freeroam" setting for you, so the pumps show up. This works in single player and online. Your saves still work, and there's nothing you need to do.
+
+## Build 208 · 14 Nov 2026
+
+- **A Land Race and Leaderboard tab on the HUD.** It sits on its own row under the other tabs. At the top is the live server page's web address with a **Copy address** button, so you can open the page on your phone or PC and follow the race when you're out of the game. Copying doesn't open anything over the game.
+- Online, the tab shows the land race (every corp holding land, with its share and a bar towards the winning share, yours highlighted) and the season leaderboard (the top 10 by wealth, with your own place even if you're further down). It comes straight from the server you're on, so it uses no extra internet, and it updates as things change.
+- In single player, the tab shows nothing from the internet. It explains that the land race is online only, lists the steps to join the server, and has a Discord button.
+- Saves still work. Players on a server see the leaderboard once the server runs its update. Until then the tab says it's waiting for the server.
+
+## Build 207 · 14 Nov 2026
+
+- **Relocating no longer shows damage the truck doesn't have.** After **Teleport** on a relocation, BeamNG.Earth puts your truck down while the ground is still loading, and it can drop or bump as it lands. The game counted that as damage, so you could arrive with a repair to pay. For the first 15 seconds after any teleport, those bumps no longer count. Damage your truck already had before you left still counts, and so does any crash after you've landed.
+- Saves still work. Players on a server get this when the server runs its update.
+
+## Build 206 · 14 Nov 2026
+
+- **Fitting a part no longer shows damage the truck doesn't have.** After you change a part, the game rebuilds your truck and drops it onto its springs. With a heavy part or load it bounces, and the game counted that bounce as damage. The repair price on the **Garage** tab went up, the insurance offer could pop up, and swapping parts back and forth could flash **REPAIR STILL OWED** and keep adding to the bill. For the first few seconds after a part change, a reset, or a load going on or off, the truck is now left to settle, and only damage after that counts. Real crashes still count as before, and pressing Insert still doesn't fix your truck for free.
+- Saves still work. Players on a server get this when the server runs its update.
+
+## Build 205 · 14 Nov 2026
+
+- **A relocation you paid for no longer leaves you stranded when you get there.** Sometimes, after pressing **Teleport** on a booked relocation, you arrived at the right place but got "You teleported without booking a relocation", with driving and deliveries switched off. While BeamNG.Earth finishes putting your car down, it can briefly report the car somewhere else (often back where you started) before it settles. The game took that blip as a second, unbooked teleport. For two minutes after you arrive, those blips are now ignored, and if one did strand you, you're freed the moment your car is back at your booked destination. Teleporting somewhere else without a booking still strands you as before.
+- Saves still work. Players on a server get this when the server runs its update.
+
+## Build 204 · 14 Nov 2026
+
+- No changes in the game. The old server downloads are being removed from earlier releases on the Releases page; every release keeps its mod download.
+
+## Build 203 · 14 Nov 2026
+
+- **The online server is MadMerick's own.** The Releases page no longer has a server download, and the README no longer explains how to host a server. You still join MadMerick's server the same way, from the HUD's **Play online** screen, and the mod download is unchanged.
+- Saves and online careers still work. Nothing to do for players.
+
+## Build 202 · 14 Nov 2026
+
+- **The server's name shows cleanly when it has BeamMP colour codes.** A server owner can style the name in the BeamMP server browser with codes such as ^l (bold) and ^f (white). Those codes now only change how the name looks in the server browser: the server's web page and the "how to join" steps on the HUD's **Play online** screen show the plain name, for example "A WW Trucking Career | MadMerick", instead of "^l^fA WW Trucking Career…".
+- Saves still work. Server owners need to run the server update to get this.
+
+## Build 201 · 14 Nov 2026
+
+- **A coffee button on the HUD.** Under the WORLDWIDE TRUCKING title there's now a short line, "This mod will always be free to play", with a small, soft gold **Buy MadMerick a coffee** button. Pressing it copies MadMerick's Ko-fi link (ko-fi.com/madmerick), the button changes to **Ko-fi link copied**, and a note underneath asks you to paste it into your web browser. It doesn't open anything or take you out of the game. The mod stays free, and the button is only there for anyone who'd like to chip in.
+- Saves still work. Players on a server get this when the server runs its update.
+
+## Build 200 · 13 Nov 2026
+
+- **Booking a relocation works on the first press.** On the **Relocate** tab, about half the presses of **Book** next to a region or a town you searched for did nothing, so it looked as if the booking hadn't registered and you had to try again. The HUD redrew those rows several times a second (more often while BeamNG.Earth was still loading), and a click that landed during a redraw was lost. The rows now stay put between updates, so every press counts.
+- The same fix applies to the other lists with buttons: the job board and nearby towns on the **Town** tab, Ship Day containers, and the base and corp lists on the **Base** tab.
+- Saves still work. Players on a server get this when the server runs its update.
+
+## Build 199 · 13 Nov 2026
+
+- **Street View, the radio and the base map open your web browser again.** Since BeamNG 0.40, pressing **Turn on**, **Open radio** or **Open base map** started the page but no browser window came up, so you had to copy the address by hand. Now the page opens straight away in your normal web browser, whichever one you use (Chrome, Edge, Firefox and so on). The address and its **Copy** button are still there in case it doesn't.
+- The **Street View** and **Radio** tabs now have a short tip under their buttons: play BeamNG in **Borderless** or **Windowed** mode (in the game's display options) so you can switch to the browser with Alt+Tab, or put the browser beside or on top of the game.
+- Saves still work. Players on a server get this when the server runs its update.
+
+## Build 198 · 13 Nov 2026
+
+- **The server page's radio card now follows the action.** Renamed Server radio, it plays live radio from where the latest delivery in the live feed was made ("Listen to the radio where Sam just made a delivery"), then from each player base in turn ("Listen to the radio at Sam's base in Perth"), with a new station every 3 minutes. A fresh delivery is played next as soon as it shows up in the feed.
+- The server now notes the town each delivery was made in, so the page knows where to tune. Server owners need to run the server update to get this; until then the card plays the bases only. Saves still work and players don't need a new download.
+
+## Build 197 · 13 Nov 2026
+
+- No changes in the game. **The server page's Base radio now plays the whole leading corp.** It used to play only the station near the corp's first base. Now it plays the corp holding the most land, moving to the station near each of its bases in turn: a new base every 3 minutes, with a countdown on the card.
+
+## Build 196 · 13 Nov 2026
+
+- No changes in the game. **The live server page now has a Base radio card.** It plays the live radio station closest to the biggest base on Earth, with a Play button, and it changes station when another base takes the lead in the land race.
+
+## Build 195 · 13 Nov 2026
+
+- **The radio page now looks like a classic dash radio.** It has a chrome front, a lit dial with a red needle that moves as you change station, and the station name glowing in amber. Push the Volume knob to turn the radio on or off, and turn it (drag up or down, or scroll) to change the volume. Press the Tune knob for the next station, or use the five preset buttons, which hold your favourites first and then the stations nearest to you. The Follow my truck switch sits just below the radio.
+- **Favourite stations on the radio.** The radio page has a new Favourites list above the stations near you. These stations play wherever you drive, and Follow my truck never switches away from them. It starts with Psyndora Chill, a chill-out station a player asked for. You can also add your own station under Add your own station: type a name and the stream's address, and it stays in your favourites in that browser until you press Remove. Saves still work, and there's nothing to set up.
+
+## Build 194 · 13 Nov 2026
+
+- **New Radio tab: live local radio wherever you drive.** Press Open radio and a radio page opens in your web browser, like Street View does. It lists real radio stations around your truck, nearest first, from Radio Browser, a free list of internet radio. Press Play nearest or pick a station, and use Stop, Next station and the volume slider. As you drive it finds the stations around you, and with Follow my truck ticked it switches to a nearby station once you're far from the one you're listening to. The HUD's Radio tab shows what's playing.
+- The radio plays in your web browser because the game's own browser can't reach internet radio. Keep the radio page open: the music carries on with it in the background. It needs an internet connection and uses about 60 MB an hour. If a station won't play, the radio moves on to the next one. Saves still work, and there's nothing to set up.
+
+## Build 193 · 12 Nov 2026
+
+- **Big loads now pay less for their weight.** A load still pays more the heavier it is, but less so: a 16 t trailer load pays about 4.5 times what the starter Burnside's full load pays, where it used to pay 6.6 times. The Burnside's own pay is the same, and a small truck with a 2.5 t load earns about a seventh less. A 20 km run with 16 t of parts now pays about $41,000 instead of $60,000.
+- **Bonuses no longer stack.** A town that badly needs the good, a shortage and a jackpot together now pay at most twice the usual, where they could add up to nearly eight times before. Jackpots now pay 1.5 to 2 times instead of 2 to 3 times. The rough-road and base bonuses still come on top. Saves still work, and a job you had already taken keeps the pay it showed.
+
+## Build 192 · 12 Nov 2026
+
+- **Trailers tow steadily and stop jackknifing.** A load is now shared between your truck and your trailer, each carrying the same share of what it can take. Before, the trailer filled first, so a smaller load sat entirely in the trailer behind an empty truck. Your truck never carries more than it would on a full job, so splitting a load can't overload it.
+- The weight in a trailer now sits just ahead of its axles, like a real driver loads it (about 60% ahead of the axles and 40% behind). That puts a steady share on the hitch, 12% on a ball hitch and 20% on a gooseneck or fifth wheel, which stops the trailer swaying. Tankers are unchanged, because their liquid sits where the tank is. Saves still work, and a job you're already carrying keeps its old split until you deliver it.
+
+## Build 191 · 12 Nov 2026
+
+- **Trailer parts can no longer be changed.** Trailers come with their cargo boxes or tanks already fitted, and you can only buy and sell them. The Buy trailer parts button on the Garage tab is gone. If you change a trailer's parts in the game's own parts menu, the trailer is put straight back as you bought it and you're put back in your truck, with nothing charged. For more room, buy a bigger trailer.
+- If you fitted parts to a trailer in an earlier build, it comes back as it was sold when you load your save. What you paid for those parts still counts toward the trailer's value when you sell it. Saves still work.
+
+## Build 190 · 12 Nov 2026
+
+- **Insurance is cheaper for rich players again.** A claim now costs at most a quarter of the real repair, which you reach at $300,000 of wealth (cash, truck, trailers and base). Below that the share shrinks with your wealth: at $60,000 it's 5% and at $150,000 it's 12.5%. A claim still costs at least $1,000. For example, a $60,000 repair costs $15,000 to claim once you're worth $300,000, where it used to cost the full $60,000 from $500,000. The Serious crash box on the Garage tab shows the share you pay. Saves still work.
+
+## Build 189 · 12 Nov 2026
+
+- **Insurance now covers less the richer you get.** When you're starting out, a claim after a serious crash still costs $1,000. As your cash, truck, trailers and base add up, a claim costs a bigger share of the real repair: at $50,000 it's a tenth, at $250,000 half, and from $500,000 you pay the full repair. Rich players can still claim to get pulled back onto the road. The Serious crash box on the Garage tab shows what you're worth and what the claim costs.
+- **If you can't afford a claim, the rest becomes an insurance debt instead of being let off.** The claim takes the money you have, and half of every delivery's pay goes to the debt until it's paid. You can also pay it off in one go with **Pay off** on the Garage tab. While you owe it, you can't buy parts or cars. You're never stuck: the claim always fixes your truck and puts it back on the road.
+- A claim never costs more than the repair itself, so a cheap car crashed near your base no longer pays $1,000 for a $600 fix.
+- Dangerous contracts no longer have their own $4,000 insurance price: a claim costs the same as on any other job. A signal beacon's package still costs at least $4,000 to claim. Saves still work.
+
+## Build 188 · 12 Nov 2026
+
+- **On a trucking server, the season is now a race for land.** The first base owner whose turf, with their corp's, covers half of Earth's land (Antarctica left out) wins the season. If nobody gets there within 12 weeks, whoever holds the most land wins. Then a new season starts and everyone starts over. You're sent off the server with a message saying who won, and you start fresh when you join again. The winners are listed on the server's web page, with a trophy next to their names on the leaderboard.
+- A land meter shows how much of Earth's land you or your corp hold, who's leading and how many days are left. You'll find it under the town name on the HUD, on the Base tab, on the Base map and on the web page.
+- Circles now start smaller and stop growing at the size of the USA. A new base's circle reaches 800 km, it takes four times the wealth to double its area, and it's full size at 1,600 km once your corp is worth $4,000,000. The circles already on the server are resized to these sizes, so big circles shrink once. For example, a base worth $2.2 million goes from about 4,750 km to about 1,380 km. Your money, trucks, base and corp are kept.
+- **Once your newest base is full size, anyone in your corp can open another base, for free.** Drive to a town outside all of your corp's circles and at least 300 km from anyone else's base, then press **Open a base here** on the Base tab. The new base's circle starts at 800 km and gives the same bonus, tolls and turf as your first. It grows as your corp gets richer and is full size after about $3,750,000 more. Then you can open the next one. Everyone in the corp gets a message when a base fills up, and anyone who was offline hears about it when they next join. The Base tab shows how far your newest base is from full size.
+- A rival's circle that pushes into yours costs you land on the meter, but it never stops your next base from unlocking.
+- On the Base map, a full-size circle has a thicker edge. On the web page, all of a corp's bases share one colour.
+- Server hosts need to update the server plugin as usual. Saves still work.
+
+## Build 187 · 12 Nov 2026
+
+- **Turf tolls in a corp are now split equally between everyone in it.** When a trucker outside the corp delivers in its turf, the 20% toll is shared out evenly between the owner and every member, and each gets their share the next time they're on the server. A base owner on their own still keeps every toll. So going solo means a smaller turf where all the tolls are yours, and a corp means a bigger turf where the tolls are shared. A member who leaves stops earning tolls straight away but still gets anything already owed to them.
+- The base bonus is now shown as a percentage instead of "+0.4". In your own turf, jobs pay up to 20% more: 10% when one end of the job is in it, 20% when both are, and a little more on steep ground. In your corp's turf it's up to 10%. The HUD line now reads, for example, "Your turf · up to +20% pay". The bonus on town jobs hasn't changed, only how it's shown.
+- Off-road drops in your own turf now get the same bonus as town jobs, up to +20%. Before, they got up to +40%.
+- Server hosts need to update the server plugin as usual. Tolls already owed to base owners are kept, and saves still work.
+
+## Build 186 · 12 Nov 2026
+
+- **The Base map now draws the bases' circles.** Because of a fault in how the game sent them to your browser, the map showed your truck and said whose turf you were in, but drew no circles and no turf colours at all. Now every base shows, with its circle and its turf shaded, whether its owner is online or not.
+- The Base map also opens on the nearest base now. Before, if you didn't own a base it opened zoomed right in on your truck, so a circle a few thousand kilometres away was off the screen. Now it opens showing your truck and the whole circle of the nearest base, or your own or your corp's. Follow truck keeps that view and only moves the map when your truck gets near the edge. Saves still work.
+
+## Build 185 · 12 Nov 2026
+
+- **On a trucking server, a "While you were away" card now greets you when you come back.** Once you're back at your last save, it sits on the HUD under your money until you press **Got it**. It shows how long you were gone and the turf tolls paid to you while you were off, with the biggest payers by name. It lists any corp news, such as someone asking to join, leaving, being let in or being removed. It also shows your place on the season leaderboard and whether you've gone up or down, and where Ship Day is and when it sails. If you drop out and rejoin within 15 minutes, no card appears unless something happened. Server hosts need to update the server plugin as usual to get it. Careers and saves still work.
+
+## Build 184 · 11 Nov 2026
+
+- **On a trucking server, you can now join another trucker's base as part of their corp.** If you don't own a base, press **Ask to join** next to one under Other truckers' bases on the Base tab. The owner sees your request on their Base tab and presses **Accept** or **Turn down**. A corp holds up to 5 truckers, owner included, and you can be in one corp at a time.
+- As a corp member, you pay no toll on deliveries in your corp's turf, and jobs that start or end there pay you +0.2 on the region multiplier. The owner keeps +0.4, and every toll from truckers outside the corp still goes to the owner. Members don't pay the owner anything.
+- Corp members get a yard at the owner's base. It keeps one car and one trailer for you, just like owning a base: **Swap cars**, Park at base, Swap trailers, a second trailer and half-price repairs there. Relocate lists it as **Corp yard**. Only members are told where the yard is.
+- A corp's circle now grows with its members. Half of what each member is worth adds to the owner's wealth when sizing it, and that part goes again if they leave. The Base tab, the Base map and the live server page show who is in each corp, and the HUD line says "Your corp's turf · +0.2 bonus" in green inside it.
+- You can leave with **Leave corp**, and the owner can remove a member with **Remove**. Either way, that trucker must wait 24 hours before asking to join any corp again, and a car left in the yard is traded in at the usual trade-in price (half its worth, less any repair it needs). A trailer left there goes to the depot for free. Members can't buy a base while they're in a corp, and base owners can't join one.
+- Server hosts need to update the server plugin as usual to get corps. Careers and saves still work.
+
+## Build 183 · 11 Nov 2026
+
+- **The HUD now always shows whose turf you're in.** Under the town name, an orange line such as "HybridLWB's turf · 20% toll on deliveries here" stays on screen while you're in another trucker's turf, and a green "Your turf · +0.4 bonus" while you're in your own. Outside every turf there's no line. It changes when you cross a border, at the same moment as the pop-up message. Saves still work.
+
+## Build 182 · 11 Nov 2026
+
+- **Trucking servers now post three reminders in chat, in colour, taking turns every 10 minutes while anyone is on:** how to turn on the trucking HUD (in yellow), the Discord address (in blue) and the address of the live trucking career page (in gold). Server hosts can change the lines, add more, change how often or turn them off at the top of the server plugin, and the update script keeps those changes. To get this, update the server as usual. Careers are unaffected.
+- **On a trucking server, your saves can no longer be lost when the connection drops quietly.** Sometimes the server loses you while your game keeps running, and your saves stop reaching it. Before, the HUD still said "Saved", and when you joined again the server's older career replaced the newer one on your PC. Now the game waits for the server to confirm each save and keeps sending it until it does. If the server hasn't had your saves for half a minute, the line under Save says so, with the money in the last save it got, such as "The server hasn't got your saves since $56,000". Those saves are kept on your PC. Join the server again from the same PC and they're sent to it, and your career carries on where you left off.
+- If the server itself has lost track of you while you're still playing, your game now joins back on its own and sends the save again, so you won't notice anything.
+- To get this, update the server as usual, and players need the new download. Careers and saves still work. A career copy changed by hand on a PC still loses to the server's.
+- No changes in the game. The server page now shows the server's new name, **A WW Trucking Career | MadMerick**, while it's loading and in its sample data.
+
+## Build 179 · 11 Nov 2026
+
+- **Fixed: the Store at depot, Send to base and Park at base buttons did nothing.** Swap trailers and Use this trailer didn't work either. All five buttons now work. Your save still works.
+- **A booked relocation no longer leaves you stranded.** Sometimes, while BeamNG.Earth loaded the terrain after a relocation you had booked and paid for on the **Relocate** tab, your car was picked up for a moment a few km short of the destination. The HUD then said "You teleported without booking a relocation. Go back to where you left from", and stayed that way even once you were there. Now arriving at your booking always counts as relocating: the booking is used up, the warning clears and jobs, driving and Save work again. If you're stuck with that warning right now, press **Cancel booking** on the **Relocate** tab to get the fee back, then load this build: you carry on from your last save as usual. Your saves still work.
+
+## Build 178 · 11 Nov 2026
+
+- **Magnate 2: base circles are now sized for the whole world.** A new base reaches 1,600 km at $250,000 of wealth (cash, truck, trailer and base) and keeps growing as you get richer, with no limit: about 2,550 km at $637,500, 3,200 km at $1 million and 6,400 km at $4 million. Ten players worth a million or two each can split the planet between them. Circles still never shrink, steep regions still reach further, and a bigger neighbour still pushes the border towards a smaller one.
+- **Delivering in someone else's turf now costs a 20% turf toll, paid to that turf's owner.** If a job's drop-off is in another trucker's turf, 20% of its pay goes to them. The job board shows "drop-off in Belake's turf: 20% toll" and the pay after the toll before you take the job, and the delivery message says how much was taken. An off-road drop counts for the town you took it in. Dangerous contracts and beacon packages pay no toll, and there's none in your own turf, outside every turf or in single player. Base owners get each toll as it happens, or in one go the next time they join, and there's no daily limit.
+- **Visitors no longer get a bonus in someone else's circle, and commission is gone.** The turf toll replaces both. Your own turf still pays you +0.4 on the region multiplier.
+- Every base now keeps the 100 km around its town however rich its neighbours get, and new bases must be at least 300 km apart. Existing bases stay where they are and simply grow to the new size.
+- The "you are in someone's turf" message, the Base tab and the Base map now talk about the toll, and the server's web page shades each base's turf in its own colour.
+- Saves still work. Server hosts: run the server updater to get the new sizes and the toll.
+
+## Build 177 · 11 Nov 2026
+
+- **Every job now pays a quarter less.** Town jobs, off-road drops, dangerous contracts, shortages, jackpots and Ship Day containers all pay 75% of what they did, so a full load of parts in the starter Burnside over 5 km pays $1,500 instead of $2,000. The "don't ask questions" beacon job pays $9,000 instead of $12,000, and on a server the commission from your base's turf is a quarter lower too, because it's a share of the pay.
+- Prices haven't changed: cars, parts, repairs, trailers, fuel, fees and the $250,000 base cost the same as before, so everything takes about a third more driving to afford. Your circle of influence still grows with your wealth in the same way, so it will grow more slowly.
+- Your saves still work, and the money you already have stays as it is. A job you had already taken before updating keeps the pay it showed when you took it.
+
+## Build 176 · 11 Nov 2026
+
+- **New Base map: see every base's circle on a real map.** Press **Open base map** on the **Base** tab and an overhead map opens in your web browser, like Street View does. It shows your circle, every other trucker's circle on a server, the borders where circles overlap (each turf is shaded in its owner's colour), your truck as it moves, and your job's pickup and drop-off. The top of the page says whose turf you are in and what it's worth, and the bottom says whether each end of your job gets the base bonus. **Follow truck** keeps you in the middle, and **Pop out** opens it in its own small window for a second screen. The map pictures need the internet.
+- **The game now tells you when you cross into or out of a turf.** A short message says "You are in your turf around Penrith" or "You are in Belake's turf", with the bonus jobs pay there, and another says when you have left. Driving along a border doesn't keep sending messages. Saves still work as before.
+
+## Build 174 · 11 Nov 2026
+
+- **Buy new trailer now offers 16 trailers instead of two**, from the $6,000 box utility trailer up to semi trailers: tilt decks, an enclosed cargo trailer, flatbeds, dry vans, and short, long and EU tankers holding up to 34,000 L. Each trailer has its own card with its picture, what it holds and the most it can carry.
+- Trailers come ready to work, with XL cargo boxes fitted. The box utility trailer can also be bought with XL fluid tanks instead: press **Boxes** or **Tanks** on its card. The tankers' own tanks start empty.
+- Each card says which hitch the trailer needs (a ball hitch, a gooseneck hitch or a fifth wheel) and whether your car has one. Small trailers take a ball hitch, and semi trailers need a truck with a fifth wheel. You can still buy a trailer before fitting the hitch with **Buy parts**.
+- **Every trailer now has a weight limit.** A job fills your trailer first, up to the most that trailer can carry, and the rest goes in your car. Before, a trailer could take as much as its boxes held, which on the biggest trailers would have been far more than they're built for. The limits are BeamNG's own, such as 600 kg for the box utility trailer and 22,400 kg for the 53 ft dry van.
+- **Your trailer now counts towards your wealth**, at what you paid for it and its parts. That includes the circle around your base, and the leaderboard on a multiplayer server. Buying a trailer no longer looks like losing money. Trailer parts you pay for add to what the trailer is worth, so they also count when you sell it.
+- **Your base of operations now has a spot for a trailer.** Within 200 m of your base, **Park at base** and **Hitch from base** are free. Away from it, **Send to base** and **Have it delivered** cost $100 plus 2 cents a km from your base, so a trailer 500 km away costs $110 to move.
+- **With a base you can own two trailers.** One parks in the spot at your base while you use the other. At your base, **Swap trailers** parks the one you are towing and brings out the other, for free. **Use this trailer** picks which one to bring out next. Without a base you can own one trailer.
+- **Your trailer no longer goes everywhere with you.** If you have no base, or its spot is taken, **Store at depot** keeps your trailer for $250, and bringing it out again costs $250 too, wherever you are.
+- Trailer repairs cost half at your base, as for cars. Both trailers count towards your wealth and on the multiplayer leaderboard.
+- Your save still works. A trailer you had stored moves to your base if it has a free spot, or to the depot if not, with nothing to pay. A trailer that gets lost or left behind by a teleport goes there too, for free.
+- Your saves still work, and a trailer you already own keeps working. A box utility trailer bought before this update gets its 600 kg limit too.
+
+## Build 173 · 10 Nov 2026
+
+- **Your progress now saves itself every 5 minutes.** If you've driven, earned or spent anything since your last save, the game saves on its own once five minutes have passed. It never saves while you're moving: it waits until you next stop for a few seconds, the same way it already saves after a delivery, so there's no hitch on the road. The Save line in the HUD says "Saved automatically." when it happens.
+- It works partway through a job (your load and the distance you've driven with it are kept, just as when you press Save), and it waits while a relocation is booked, while you're away from your car, in a helicopter or on foot, and while a dangerous contract teleport is still loading. Sitting parked with nothing new doesn't save again and again.
+- It works the same on a multiplayer server: each auto save goes to the server, like pressing Save. Pressing Save yourself, or any other save, starts the five minutes again.
+- Nothing to do to get it, and your saves still work.
+
+## Build 172 · 10 Nov 2026
+
+- **The start page now has a Play online card.** It shows whether the multiplayer server is up and how many truckers are on it right now, with the season and day, and checks again every minute while the page is open. Press **Play online** to see how to join, plus buttons that open the live map and leaderboard page and the Discord in your browser (the link is copied too, in case your browser doesn't open).
+- Your career on the start page is now labelled **Offline career**, because it's kept on this PC. A server keeps a separate career for you, and the start page calls that one "Your career on this server". The card explains that other truckers' bases with their turf and commission, Ship Day and the season leaderboard are online only.
+- Nothing to do to get it, and your saves still work.
+
+## Build 171 · 10 Nov 2026
+
+- **Parts you fit now count in what your truck is worth.** Before, a truck was always worth the price of the version it came as, so a Burnside starter stayed at $3,500 however much you spent on it. Now every part that differs from how the truck came adds its price, and parts you take off without replacing take theirs away. You'll see the new worth on the Your truck card, on the Rust Bucket to Rig line, in your wealth (and so your base's circle) and on the server's leaderboard.
+- Because a truck with better parts is worth more, its repairs cost a bit more and it trades in for more when you buy another car.
+- Your saves still work, and parts already on your truck count straight away, with nothing to do. A car parked at your base shows the worth it had when you parked it.
+
+## Build 170 · 10 Nov 2026
+
+- **The server's web page now wears the Magnate update look.** It opens with a "The Magnate Update" banner over a hillside shot, with the game's title card beneath it. Headings use the same bold, narrow lettering as the banner. On the map, each base gets a glowing gold circle and a dark tag such as "Sam's base · 41 km", which shows once you zoom in on a region. Base towns on the leaderboard are picked out in gold. Nothing changes in the game itself, and saves still work.
+
+## Build 169 · 10 Nov 2026
+
+- **The server's web page now shows who owns which ground.** Where two bases' circles overlap, the map cuts each one off at the border the game uses, so the bigger circle pushes into the smaller one, and every base's protected 5 km core is shaded. On a phone the page now fits the screen: the leaderboard scrolls sideways inside its own box instead of the whole page. Nothing changes in the game itself, and saves still work.
+
+## Build 168 · 10 Nov 2026
+
+- **Your base now earns commission on a multiplayer server.** When another trucker picks up or drops off a job in your turf, you get 2.5% of their pay for each end, so 5% when both ends are yours. The server pays it as extra money and takes nothing from the driver. Each base can earn up to $20,000 a day. If you're on the server, a message tells you as it comes in. If you're away, it waits for you and is paid in one go when you next join. Town jobs, off-road drops and Ship Day containers all count. Dangerous contracts, heli jobs and beacon packages don't. The server's live feed shows each commission, and the Base tab explains how it works. Saves still work. Server hosts: run the server updater to get it.
+
+## Build 167 · 10 Nov 2026
+
+- **Bases of operations now work on multiplayer servers.** Everyone sees everyone else's bases on the **Base** tab, with the owner, the town, the size of their circle and whether you are inside it. Jobs that start or end inside someone else's circle pay you a visitor's bonus: about 10% more on a town job with both ends inside, more in steep regions. Inside your own circle you still get the owner's bonus.
+- Only one base is allowed per town, and bases must be at least 10 km apart. When you press Buy, the server is asked first, so two truckers can't grab the same town, and you're told whose base is too close.
+- Where two circles overlap, the bigger one pushes the border towards the smaller one, and the owner's bonus only counts on your side of the border. Every base keeps the 5 km around its town, however rich its neighbours get. Get richer than your neighbour and your border moves forward.
+- Ship Day containers now get the base bonus too, like any town job.
+- The server's web page now draws every base's circle on the map, and the leaderboard has a Base column naming each trucker's base town.
+- Server hosts: run the server updater to get bases on your server. Saves still work, and a home bought before this update shows up on the server after its owner's next save.
+
+## Build 166 · 9 Nov 2026
+
+- **The Magnate update begins: your home is now a base of operations.** Buy one on the new **Base** tab (it replaces the Home tab) for $250,000, parked in any town. Around that town grows a circle of influence, and jobs that start or end inside it pay you more: about 20% more on a town job with both ends inside, and 40% more on an off-road drop, a little more again in steep regions. The circle is big from the start (it reaches about 20 km out in a flat region for a trucker worth $350,000) and grows as you get richer, where your wealth is your cash plus your truck plus your base. It never shrinks, and bases in steep regions reach further. The Base tab shows how far your circle reaches and how much wealth takes it further, and the job board marks each job your base pays extra on. Everything a home did still works: the stored car, Swap cars, half-price repairs and Relocate (now listed as Base).
+- If you already own a home, it becomes your base for free, with its circle around the nearest town. Your saves keep working.
+- On a multiplayer server, the season leaderboard's wealth now includes what each trucker paid for their base, so buying one doesn't drop you down the table. Server hosts: run the server updater to get it.
+
+## Build 165 · 9 Nov 2026
+
+- **The server's season leaderboard now ranks truckers by wealth: their cash plus what their truck is worth.** It shows each trucker's Cash, Truck value, Wealth and Jobs, so spending your money on a better truck no longer drops you down the table. Your truck's value is the one on the Your truck card, and it reaches the leaderboard the next time you save, so drivers who haven't saved since this update show a truck value of $0 (or what they paid for a second-hand truck) until they do. Saves still work as before. Server hosts: run the server updater to get the new leaderboard.
+
 ## Build 164 · 9 Nov 2026
 
 - **Ship Day containers now have a Load slider.** At the port, open the Ship Day card on the Town tab and set the Load slider above the containers, from 10% to 100% of a full load, just like on the town job board. The pay next to each container changes with it, and the container you take is loaded with that much cargo. A lighter load is easier on a small car or a rough road.

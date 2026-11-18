@@ -65,6 +65,19 @@ class ChangelogTest(unittest.TestCase):
         self.assertEqual(notes, changelog.NO_CHANGES + '\n')
         self.assertEqual(updated, text)
 
+    def test_long_history_is_cut_to_fit_githubs_limit(self):
+        tail = ''.join(f'## Build {n} · 1 Oct 2026\n\n- ' + 'x' * 500 + '\n\n' for n in range(400, 0, -1))
+        history = changelog.earlier(tail, limit=5000)
+        self.assertIn('### Build 400 ·', history)
+        self.assertNotIn('### Build 1 ·', history)
+        self.assertIn(changelog.MORE_IN_CHANGELOG, history)
+        self.assertLess(len(history), 6000)
+
+    def test_real_changelog_notes_fit_on_github(self):
+        text = (ROOT / 'CHANGELOG.md').read_text(encoding='utf-8')
+        notes = changelog.earlier(changelog.split(text)[3])
+        self.assertLess(len(notes), 100_000)
+
 
 if __name__ == '__main__':
     unittest.main()

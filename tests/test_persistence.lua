@@ -21,7 +21,7 @@ local edits = {
   function(s) s.vehicle.config='pickup.pc' end, function(s) s.vehicle.config={ parts = {} } end,
   function(s) s.vehicle.config={ model = 'pickup', vars = { x = 0/0 } } end,
   function(s) s.vehicle.config={ model = 'pickup', [true] = 1 } end,
-  function(s) s.atStart=false end, function(s) s.vehicle.fuelLitres=-1 end, function(s) s.vehicle.fuelLitres=0/0 end,
+  function(s) s.atStart=false end, function(s) s.vehicle.fuelLitres=-1 end, function(s) s.vehicle.worth=-1 end, function(s) s.vehicle.fuelLitres=0/0 end,
   function(s) s.progression.lastPunctureKm=-1 end,
   function(s) s.playerName='' end, function(s) s.playerName=' Sam' end, function(s) s.playerName=('x'):rep(81) end,
   function(s) s.playerName='Sam"' end, function(s) s.playerName='Sam\n' end, function(s) s.playerName=7 end,
@@ -46,7 +46,11 @@ do
   T.eq(v.load.good,'food','good kept'); T.eq(v.load.to,'gn2','drop-off kept'); T.eq(v.load.condition,nil,'an old cargo condition is dropped')
   T.eq(v.load.drivenKm,3.5,'distance kept'); T.check(v.load~=s.load,'load copied')
   T.eq(P.validate(F.save()).load,nil,'no load is fine')
+  s=F.save(); s.load={ good='food', slots=2, kg=50, pay=800, from='gn1', to='gn2', drivenKm=0, toll={ owner='Belake', amount=200 } }
+  v=P.validate(s); T.eq(v.load.toll.owner,'Belake','the turf toll\'s owner kept'); T.eq(v.load.toll.amount,200,'and its amount')
+  s.load.toll={ owner=5, amount=-1 }; v=P.validate(s); T.check(v.load~=nil and v.load.toll==nil,'an odd toll is dropped, the job kept')
   s=F.save(); s.vehicle.fuelLitres=31.5; T.eq(P.validate(s).vehicle.fuelLitres,31.5,'fuel kept')
+  s=F.save(); s.vehicle.worth=42000; T.eq(P.validate(s).vehicle.worth,42000,'the truck\'s worth kept for the leaderboard')
 end
 -- A job on board keeps its pay, and recent deliveries are kept.
 do
@@ -138,5 +142,18 @@ do
     local s = F.save(1); s.vehicle.damage = bad
     T.eq(P.validate(s), nil, 'invalid damage rejected')
   end
+end
+-- A corp member's yard (Magnate 3), never with a base of their own. Parked cars (Your cars) need neither.
+do
+  local car = { config = { model = 'pickup' }, name = 'Pickup' }
+  local s = F.save(1); s.storedCars = { car }
+  T.check(P.validate(s) ~= nil, 'a parked car needs no base or corp yard')
+  s.corp = { latitude = -33.75, longitude = 150.69, owner = 'MadMerick', town = 'Penrith' }
+  local clean = P.validate(s)
+  T.check(clean ~= nil and clean.corp.owner == 'MadMerick', 'a member with a parked car')
+  s.property = { latitude = -33.75, longitude = 150.69, paid = 250000 }
+  T.eq(select(2, P.validate(s)), 'invalid_corp', 'a base owner is never in a corp')
+  s.property = nil; s.corp = { latitude = 200, longitude = 0 }
+  T.eq(select(2, P.validate(s)), 'invalid_corp', 'a yard must be on Earth')
 end
 T.done('persistence')

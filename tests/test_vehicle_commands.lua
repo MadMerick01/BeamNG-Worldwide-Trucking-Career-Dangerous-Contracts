@@ -48,6 +48,95 @@ do
   run(vehicle.commands[5], { v = {}, obj = {} }) -- a car without nodes: nothing happens, no error
 end
 
+-- Boot cargo must not alter the endpoints of mirror couplers or advanced hood/door latches.
+-- The MD70 can release these during initialization even with a small, correctly allocated load.
+do
+  local vehicle = car()
+  local w = cargo.new({ player = function() return vehicle end })
+  local nodes = {
+    [0] = { cid = 0, name = 'mirror', nodeWeight = .55, couplerTag = 'mirror' },
+    [1] = { cid = 1, name = 'mirrorTarget', nodeWeight = .25, tag = 'mirror' },
+    [2] = { cid = 2, name = 'hoodLatch', nodeWeight = 1 },
+    [3] = { cid = 3, name = 'hoodTarget', nodeWeight = 1 },
+    [4] = { cid = 4, name = 'hoodAlternate', nodeWeight = 1 },
+    [5] = { cid = 5, name = 'doorLatch', nodeWeight = 1 },
+    [6] = { cid = 6, name = 'doorTarget', nodeWeight = 1 },
+    [7] = { cid = 7, name = 'frameA', nodeWeight = 10, partOrigin = 'frame' },
+    [8] = { cid = 8, name = 'frameB', nodeWeight = 10, partOrigin = 'frame' },
+  }
+  local header = { 'cid1', 'cid2' }
+  local masses, writes = {}, {}
+  for cid, n in pairs(nodes) do masses[cid] = n.nodeWeight end
+  local world = { v = { data = { nodes = nodes,
+    controller = {
+      { fileName = 'advancedCouplerControl', name = 'hood' },
+      { fileName = 'advancedCouplerControl', name = 'door', couplerNodes = { header, { 'doorLatch', 'doorTarget' } } },
+    },
+    hood = { couplerNodes = { header, { 'hoodLatch', { 'hoodTarget', 'hoodAlternate' } } } },
+  } }, obj = {
+    getNodeMass = function(_, cid) return masses[cid] end,
+    setNodeMass = function(_, cid, mass) masses[cid], writes[cid] = mass, true end,
+  }, tableFromHeaderTable = function(rows)
+    local out = {}
+    for i = 2, #rows do out[#out + 1] = { cid1 = rows[i][1], cid2 = rows[i][2] } end
+    return out
+  end }
+  local function apply(kg, parts)
+    w:setWeight(kg, parts or {}); run(vehicle.commands[#vehicle.commands], world)
+    for cid = 0, 6 do T.check(not writes[cid], 'coupling endpoint ' .. cid .. ' untouched') end
+  end
+  apply(25.5)
+  T.near(masses[7] + masses[8] - 20, 25.5, 1e-9, 'all boot cargo remains on the truck')
+  apply(25.5)
+  T.near(masses[7] + masses[8] - 20, 25.5, 1e-9, 'repeat replaces the existing load')
+  apply(30, { 'frame' })
+  T.near(masses[7] + masses[8] - 20, 30, 1e-9, 'selected-part cargo keeps its full weight')
+  apply(0)
+  T.eq(masses[7], 10, 'unloading restores the first frame node')
+  T.eq(masses[8], 10, 'unloading restores the second frame node')
+end
+
+-- A trailer's load is centred just ahead of its axles, so hitchShare of it rests on the hitch.
+do
+  local trailer = car(42)
+  local w = cargo.new({ byId = function(id) return id == 42 and trailer or nil end })
+  -- A trailer facing -y: hitch node at y = -4 (tagged), axle hubs at y = 2, deck nodes from -3 to 4.
+  local masses, nodes = {}, {}
+  local function node(cid, y, extra)
+    local n = { cid = cid, pos = { x = 0, y = y, z = 1 } }
+    for k, v in pairs(extra or {}) do n[k] = v end
+    nodes[cid], masses[cid] = n, 5
+  end
+  node(0, -4, { couplerTag = 'tow_hitch' })
+  for i = 1, 8 do node(i, -4 + i) end
+  node(20, 2); node(21, 2); node(22, 2.3, { wheelID = 0 })
+  local world = { v = { data = { nodes = nodes, wheels = { [0] = { node1 = 20, node2 = 21 } } } },
+    obj = { setNodeMass = function(_, cid, m) masses[cid] = m end, getNodeMass = function(_, cid) return masses[cid] end } }
+  T.check(w:setWeightOn(42, 1000, {}, {}, 0.12), 'sent')
+  run(trailer.commands[1], world)
+  local total, moment = 0, 0
+  for cid, n in pairs(nodes) do
+    local added = masses[cid] - 5
+    total, moment = total + added, moment + added * n.pos.y
+  end
+  T.near(total, 1000, 1e-6, 'all the weight is on the trailer')
+  local centre = moment / total
+  T.near((2 - centre) / (2 - -4), 0.12, 1e-3, '12% of it rests on the hitch')
+  T.check(centre < 2, 'the load sits ahead of the axles')
+  T.eq(masses[0], 5, 'none on the coupler'); T.eq(masses[20], 5, 'none on the hubs'); T.eq(masses[22], 5, 'nor the tyres')
+  local most, least = 0, math.huge
+  for i = 1, 8 do most, least = math.max(most, masses[i] - 5), math.min(least, masses[i] - 5) end
+  T.check(most / least <= 20 + 1e-6, 'no node takes more than 20 times another')
+  -- Without wheels to find the axles, it is spread evenly as before.
+  world.v.data.wheels = nil
+  w:setWeightOn(42, 900, {}, {}, 0.12); run(trailer.commands[2], world)
+  T.near(masses[1] - 5, 900 / 11, 1e-6, 'even spread over nodes other than the coupler')
+  T.eq(masses[0], 5, 'fallback also leaves the coupler mass unchanged')
+  -- A share outside 0..1 is never sent: the load is then spread evenly.
+  w:setWeightOn(42, 10, {}, {}, 2)
+  T.check(trailer.commands[3]:match('^[^\n]*') :sub(-5) == ', nil', 'a share outside 0..1 is sent as none')
+end
+
 -- Fluid: the tank's own container is filled through its jbeam expressions, so it sloshes.
 do
   -- A stand-in for BeamNG's expression parser: "$=" then Lua arithmetic in $names.
@@ -106,11 +195,18 @@ do
   w:setWeight(100, { tank }, { litres = 100, density = 1, tanks = { tank } }); replies = run(vehicle.commands[5], legacy)
   T.eq(masses[0], 60, 'half on each weight node'); T.eq(masses[1], 60, 'both')
   T.eq(replies[1], 'if earthFreight_core then earthFreight_core.tanksRead(9, 300.000) end', 'found by its part')
+  -- A tank whose expressions give no weight (a tanker weighed by a tuning setting): the fluid is not
+  -- lost, it goes over the tank's nodes instead.
+  local dead = world()
+  dead.v.data.nodes[0].nodeWeightFunction = '=10+$fill_level'
+  masses = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }
+  w:setWeight(150, { tank }, { litres = 200, density = 0.75, tanks = { tank } }); run(vehicle.commands[#vehicle.commands], dead)
+  T.near((masses[0] - 10) + (masses[1] - 10), 150, 1e-6, 'all 150 kg still on the tank')
   -- Asking only: reports the size, changes nothing.
   masses = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }
-  T.check(w:readTanks({ tank }), 'read sent'); replies = run(vehicle.commands[6], world())
+  T.check(w:readTanks({ tank }), 'read sent'); replies = run(vehicle.commands[#vehicle.commands], world())
   T.eq(replies[1], 'if earthFreight_core then earthFreight_core.tanksRead(9, 500.000) end', 'tank size read'); T.eq(masses[0], 10, 'nothing changed')
-  replies = run(vehicle.commands[6], { v = {}, obj = {} })
+  replies = run(vehicle.commands[#vehicle.commands], { v = {}, obj = {} })
   T.eq(replies[1], 'if earthFreight_core then earthFreight_core.tanksRead(9, 0.000) end', 'a car with no tank reads 0')
 end
 
@@ -127,7 +223,7 @@ do
   local world = { energyStorage = { getStorages = function() return storages end } }
   T.check(f:read(), 'read sent')
   local replies = run(vehicle.commands[1], world)
-  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.fuelReading(7, 15.000, 60.000) end', 'reports litres and capacity')
+  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.fuelReading(7, 15.000, 60.000, "gasoline") end', 'reports litres, capacity and fuel')
   T.check(f:set(45, 3), 'set sent')
   replies = run(vehicle.commands[2], world)
   T.eq(replies[1], 'if earthFreight_core then earthFreight_core.fuelSet(7, 3, 15.000, 45.000, 60.000) end', 'reports before and after')
@@ -136,8 +232,46 @@ do
   T.check(f:set(500, 4), 'over-full request sent'); run(vehicle.commands[3], world)
   T.eq(storages.main.remainingVolume, 40, 'never past full')
   replies = run(vehicle.commands[1], {})
-  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.fuelReading(7, 0.000, 0.000) end', 'a car with no tank reads empty')
+  T.eq(replies[1], 'if earthFreight_core then earthFreight_core.fuelReading(7, 0.000, 0.000, "gasoline") end', 'a car with no tank reads empty')
   T.eq(select(2, f:set(-1)), 'invalid_litres', 'negative litres refused')
-  T.eq(fuel.cost(10), math.floor(10 * fuel.PRICE_PER_LITRE + 0.5), 'cost per litre')
+  T.eq(fuel.cost(10, 1.25), 13, 'cost per litre, to the dollar'); T.eq(fuel.cost(10, nil), 0, 'no price, no cost')
+  -- A diesel tank says so.
+  storages.main.energyType = 'diesel'; f:read()
+  replies = run(vehicle.commands[#vehicle.commands], world)
+  T.check(replies[1]:find('"diesel"', 1, true), 'a diesel car reads as diesel')
+end
+-- The pump the car stands at: the nearest within reach, from the game's gas station list.
+do
+  local pos = { x = 0, y = 0, z = 0 }
+  local vehicle = { getPosition = function() return pos end }
+  local gathered, gen = 0, 1
+  local f = fuel.new({ player = function() return vehicle end, generation = function() return gen end,
+    pumps = function()
+      gathered = gathered + 1
+      return { { x = 30, y = 0, z = 0, name = 'Far', energy = { diesel = true } },
+               { x = 4, y = 3, z = 0, name = 'Shell Newtown', brand = 'Shell', energy = { gasoline = true } } }
+    end,
+    stationsShown = function() return false end, showStations = function() end })
+  local p = f:pumpNear(0)
+  T.eq(p and p.brand, 'Shell', 'the pump within reach'); T.near(p.metres, 5, 1e-9, 'its distance')
+  f:pumpNear(1); T.eq(gathered, 1, 'the list is kept between looks')
+  gen = 2; f:pumpNear(1.5); T.eq(gathered, 2, 'gathered again when the stations change')
+  f:pumpNear(1.5 + fuel.STATIONS_EVERY_SECONDS); T.eq(gathered, 3, 'and every few seconds')
+  pos = { x = 100, y = 0, z = 0 }; T.eq(f:pumpNear(20), nil, 'none in reach')
+  T.check(f:showStations(), 'the freeroam gas stations are turned on when off')
+  local broken = fuel.new({ player = function() return vehicle end, pumps = function() error('no POIs') end,
+    generation = function() error('none') end, stationsShown = function() return true end, showStations = function() end })
+  T.eq(broken:pumpNear(0), nil, 'a broken station list is no pump'); T.check(not broken:showStations(), 'already on: left alone')
+end
+-- Turning on the game's gas stations also has the game gather its POIs again, so Earth's pumps show.
+do
+  local value, cleared = false, 0
+  local oldSettings, oldPois = rawget(_G, 'settings'), rawget(_G, 'gameplay_rawPois')
+  settings = { getValue = function() return value end, setValue = function(_, v) value = v end }
+  gameplay_rawPois = { clear = function() cleared = cleared + 1 end }
+  local f = fuel.new()
+  T.check(f:showStations(), 'turned on'); T.eq(value, true, 'the setting is on'); T.eq(cleared, 1, 'the POIs are gathered again')
+  T.check(not f:showStations(), 'already on: nothing to do'); T.eq(cleared, 1, 'not gathered again')
+  settings, gameplay_rawPois = oldSettings, oldPois
 end
 T.done('vehicle commands')

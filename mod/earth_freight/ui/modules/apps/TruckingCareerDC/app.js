@@ -5,25 +5,36 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   var kept = {
     tab: 'route', introShown: false, intro: { open: false, name: '', steps: false }, shares: {},
     ship: { query: '', coords: '', error: null }, last: null, hud: null,
+    // The multiplayer server's status for Play online: 'checking', 'online', 'offline' or 'unknown' (not reachable).
+    server: { status: 'checking', at: null },
     // Towns already looked up for a real business this game, so each is only asked once.
     businessAsked: {}
   }
   // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
   var STORE = 'earthFreight.hudMinimised'
   var KOFI = 'https://ko-fi.com/madmerick'
+  // Play online on the start page. The server sends status.json to its stats repo every few minutes (see the server
+  // page, site/index.html); stats older than STALE_MS mean the server is off. Its two links open in the browser.
+  var STATS_URL = 'https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json'
+  var STATS_EVERY_MS = 60000, STALE_MS = 15 * 60000
+  var LINKS = {
+    server: 'https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/',
+    discord: 'https://discord.gg/eYJCfXNGbP'
+  }
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
   // The Town tab's Distance filter, kept the same way: any, short, medium or long.
   var DISTANCE = 'earthFreight.jobDistance'
   var DISTANCES = ['any', 'short', 'medium', 'long']
-  var storedDistance = function () {
-    try { var v = window.localStorage.getItem(DISTANCE); return DISTANCES.indexOf(v) >= 0 ? v : 'any' } catch (e) { return 'any' }
+  var storedDistance = function (fallback) {
+    fallback = fallback || 'any'
+    try { var v = window.localStorage.getItem(DISTANCE); return DISTANCES.indexOf(v) >= 0 ? v : fallback } catch (e) { return fallback }
   }
   var storeDistance = function (v) { try { window.localStorage.setItem(DISTANCE, v) } catch (e) {} }
   // Which folding sections the player opened or closed, by name, kept the same way. Nearby and the
   // heli's towns and jobs start open; the rest start closed.
   var FOLDS = 'earthFreight.hudFolds'
-  var FOLD_DEFAULTS = { nearby: true, helitowns: true, heliboard: true }
+  var FOLD_DEFAULTS = { fuelruns: true, nearby: true, helitowns: true, heliboard: true, landrace: true, leaderboard: true, fleet: true }
   var storedFolds = function () {
     try {
       var v = JSON.parse(window.localStorage.getItem(FOLDS) || '{}')
@@ -33,6 +44,16 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     } catch (e) { return {} }
   }
   var storeFolds = function (folds) { try { window.localStorage.setItem(FOLDS, JSON.stringify(folds)) } catch (e) {} }
+  // The last Mayday Rescue call the player closed the card for or looked at on its tab, by its round, kept the same way
+  // so a call's card doesn't come back after a restart. The next call gets a new card.
+  var MAYDAY = 'earthFreight.maydaySeen'
+  var storedMayday = function () {
+    try { var v = parseInt(window.localStorage.getItem(MAYDAY), 10); return isFinite(v) ? v : null } catch (e) { return null }
+  }
+  var storeMayday = function (round) { try { window.localStorage.setItem(MAYDAY, String(round)) } catch (e) {} }
+  kept.maydaySeen = storedMayday()
+  // MadMerick's alert, played once when a new call's card shows.
+  var MAYDAY_SOUND = '/ui/modules/apps/TruckingCareerDC/mayday_alert.wav'
   // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
   // bill here and the box goes on the page itself, over the menu. It stays until the player closes
   // it, Lua says the bill was paid or undone, or the menu closes and the HUD is built again.
@@ -153,12 +174,23 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       var mount = function (on) { core('uiMounted(' + (on ? 'true' : 'false') + ')') }
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
-        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Home' },
-        { id: 'streetview', label: 'Street View' }]
-      // Two rows of tabs: the job on top, the extras below, each sharing its row's width.
-      scope.tabRows = [scope.tabs.slice(0, 4), scope.tabs.slice(4)]
+        { id: 'relocate', label: 'Relocate' }, { id: 'heli', label: 'Heli' }, { id: 'home', label: 'Base' },
+        { id: 'streetview', label: 'Street View' }, { id: 'radio', label: 'Radio' }, { id: 'mayday', label: 'Mayday Rescue' },
+        { id: 'race', label: 'Land Race and Leaderboard' }]
+      // Rows of tabs: the job on top, the extras below, each sharing its row's width, and the server's events last.
+      scope.tabRows = [scope.tabs.slice(0, 4), scope.tabs.slice(4, 8), scope.tabs.slice(8)]
+      // Mayday Rescue is a server event: its tab only shows while the server has a call out.
+      scope.tabShown = function (id) { return id !== 'mayday' || !!(scope.data && scope.data.mayday) }
       scope.tab = kept.tab
-      scope.setTab = function (id) { scope.tab = kept.tab = id }
+      var seeMayday = function (call) {
+        if (!call || typeof call.round !== 'number' || kept.maydaySeen === call.round) return
+        kept.maydaySeen = call.round
+        storeMayday(call.round)
+      }
+      scope.setTab = function (id) {
+        scope.tab = kept.tab = id
+        if (id === 'mayday' && scope.data) seeMayday(scope.data.mayday)
+      }
       // Marks a tab that has something waiting for the player.
       var alerts = {
         route: function (d) {
@@ -176,7 +208,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           return !!d.partsChange || !!d.carChange || d.repairOwed > 0 || !!d.puncture || !!d.insurance
         },
         relocate: function (d) { return !!(d.shipping && d.shipping.booking) },
-        heli: function (d) { return !!(d.heli && d.heli.hired && d.beacon) }
+        heli: function (d) { return !!(d.heli && d.heli.hired && d.beacon) },
+        // A new Mayday Rescue call, until the player has looked at it.
+        mayday: function (d) { return !!(d.mayday && d.mayday.open && kept.maydaySeen !== d.mayday.round) }
       }
       scope.tabAlert = function (id) { return !!alerts[id] && alerts[id](scope.data || {}) }
       // The HUD shrinks to a Worldwide Trucking button. Its dot is red for bad news, gold for anything a
@@ -203,6 +237,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.hudAlert = function (d) {
         d = d || scope.data || {}
         if (d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) return 'bad'
+        if (scope.maydayCard(d)) return 'mayday'
         for (var id in alerts) if (alerts[id](d)) return 'waiting'
         return ''
       }
@@ -236,11 +271,37 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         } catch (e) {}
       }
       scope.chimes = function () { return kept.chimes || 0 }
+      // The Mayday Rescue card: a call is out that the player hasn't closed the card for or looked at, and they aren't
+      // on a run. It hangs under the minimised strip, or sits above the tabs, and waits for the start page to close.
+      scope.maydayCard = function (d) {
+        d = d || scope.data || {}
+        var m = d.mayday
+        return !!(m && m.open && !m.running && kept.maydaySeen !== m.round && !(scope.intro && scope.intro.open))
+      }
+      scope.closeMaydayCard = function () { if (scope.data) seeMayday(scope.data.mayday) }
+      scope.openMaydayCard = function () {
+        if (!scope.data || !scope.data.mayday) return
+        scope.setMinimised(false)
+        scope.setTab('mayday')
+      }
+      // The alert sound, once for each call's card. Where the game can't play it, the chime stands in.
+      var maydayAlert = function () {
+        kept.maydayAlerts = (kept.maydayAlerts || 0) + 1
+        try {
+          if (typeof Audio === 'undefined') return chime()
+          var sound = new Audio(MAYDAY_SOUND)
+          sound.volume = 0.6
+          var played = sound.play()
+          if (played && played.catch) played.catch(function () { chime() })
+        } catch (e) { chime() }
+      }
+      scope.maydayAlerts = function () { return kept.maydayAlerts || 0 }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
         ['garage', function (d) { return !!d.insurance }],
         ['heli', function (d) { return !!(d.heli && d.heli.hired) }],
+        ['mayday', function (d) { return !!(d.mayday && d.mayday.running) }],
         ['town', function (d) { return !!d.town }], ['route', function (d) { return !!d.resume || !!d.startHereAllowed || !!d.stranded }]
       ]
       var urgent = function (d) { return !!(d.partsChange || d.carChange || d.insurance || d.stranded) }
@@ -248,6 +309,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         // The start page opens once on a new game or on loading a save, until the player is there.
         if (next.arrived || (previous.mode && previous.mode !== next.mode)) kept.introShown = false
         if (scope.atDestination(next) && !scope.atDestination(previous)) chime()
+        if (scope.maydayCard(next) && kept.maydayRung !== next.mayday.round) {
+          kept.maydayRung = next.mayday.round
+          maydayAlert()
+        }
         if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
           kept.introShown = true; scope.openIntro(next)
         }
@@ -263,6 +328,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           }
         }
         if (scope.tab === 'town' && !next.town) scope.setTab('route')
+        if (scope.tab === 'mayday' && !next.mayday) scope.setTab('route')
+        // On the Mayday Rescue tab a new call is seen, but not while the HUD is minimised to the strip.
+        if (scope.tab === 'mayday' && next.mayday && !scope.hud.minimised) seeMayday(next.mayday)
       }
       // The start page: the player's name, how to play, their truck and their career. It fills a big
       // window in the middle of the screen, so it is moved onto the page body, out of the small app
@@ -275,6 +343,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         scope.intro.name = ((d || scope.data || {}).playerName) || ''
         scope.intro.open = true
         fit()
+        checkServer()
       }
       // Letters in any alphabet, digits, spaces, dots, apostrophes and hyphens; at most 20 of them.
       var notInName
@@ -338,12 +407,6 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         return typeof v === 'boolean' ? v : !!FOLD_DEFAULTS[id]
       }
       scope.toggle = function (id) { kept.folds[id] = !scope.isOpen(id); storeFolds(kept.folds) }
-      // The Ship Day card folds to two lines and Go to port, so it doesn't push the town's jobs off
-      // the HUD. At the port with no container yet, the list opens: that is when the player picks one.
-      scope.shipDayOpen = function () {
-        var s = scope.data && scope.data.shipDay
-        return scope.isOpen('shipday', !!(s && s.atPort && !s.carrying))
-      }
       // One town job at a time shows its details, load slider and GPS.
       scope.jobOpen = function (id) { return kept.openJob === id }
       scope.toggleJob = function (id) { kept.openJob = kept.openJob === id ? null : id }
@@ -420,25 +483,43 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         taken.pay = units === job.units ? job.pay : Math.max(10, Math.floor(job.pay * units / job.units / 10 + 0.5) * 10)
         return taken
       }
-      // The Distance filter. Lua builds the board for it, and forgets it when the mod reloads, so the
-      // HUD sends it again whenever the board it gets was built for another one.
-      if (!kept.distance) kept.distance = storedDistance()
+      // Restore the saved Distance filter once per mount, then follow Lua's board. Reasserting
+      // it on every update lets HUD instances with different cached choices fight each other.
+      kept.distance = storedDistance(kept.distance)
+      var restoreDistance = true
       scope.distances = [{ id: 'any', label: 'Any' }, { id: 'short', label: 'Short' },
         { id: 'medium', label: 'Medium' }, { id: 'long', label: 'Long' }]
       scope.jobDistance = function () { return kept.distance }
       scope.setJobDistance = function (v) {
         if (DISTANCES.indexOf(v) < 0) return
+        restoreDistance = false
         kept.distance = v; storeDistance(v)
         core("setJobDistance('" + v + "')")
       }
       var syncDistance = function (data) {
-        if (data && data.town && data.town.distance && data.town.distance !== kept.distance) core("setJobDistance('" + kept.distance + "')")
+        var distance = data && data.town && data.town.distance
+        if (DISTANCES.indexOf(distance) < 0) return
+        if (restoreDistance && distance !== kept.distance) core("setJobDistance('" + kept.distance + "')")
+        restoreDistance = false
+        kept.distance = distance
       }
       scope.hasOutside = function (list) { return (list || []).some(function (j) { return !!j.outside }) }
       scope.takeJob = function (job) {
         if (!scope.data.town || scope.data.load || !job || !job.allowed || !plainId(job.id)) return
         core("takeJob('" + job.id + "', " + scope.shareOf(job) + ')')
       }
+      // Fuel runs: loaded at the depot on the Fuel runs card, when Lua allows it.
+      scope.takeFuelRun = function (run) {
+        var f = scope.data.fuelRuns
+        if (!f || scope.data.load || !run || !run.allowed || !plainId(run.id)) return
+        core("takeFuelRun('" + run.id + "', " + scope.shareOf(run) + ')')
+      }
+      scope.gpsToRun = function (run) { if (scope.data.gpsAllowed && scope.data.fuelRuns && run && plainId(run.id)) core("gpsToRun('" + run.id + "')") }
+      scope.teleportToDepot = function () {
+        var f = scope.data.fuelRuns
+        if (f && f.teleportAllowed && !f.teleporting) core('teleportToDepot()')
+      }
+      scope.gpsToDepot = function () { if (scope.data.gpsAllowed && scope.data.fuelRuns && scope.data.fuelRuns.hub) core('gpsToDepot()') }
       scope.deliverJob = function () {
         var d = scope.data
         var town = d.town && d.town.delivery && d.town.delivery.allowed
@@ -453,7 +534,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         arrow.transform = 'rotate(' + turn + 'deg)'
         return arrow
       }
-      scope.refuel = function () { if (scope.data.town && scope.data.town.refuelAllowed) core('refuel()') }
+      scope.refuel = function () { if (scope.data.refuel && scope.data.refuel.allowed) core('refuel()') }
       scope.abandonJob = function () { if (scope.data.abandonAllowed) core('abandonJob()') }
       // Heli flights: hire asks Lua to confirm, and so does Back to my car.
       scope.hireHeli = function () { if (scope.data.heli && scope.data.heli.hireAllowed) core('hireHeli()') }
@@ -502,17 +583,20 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var s = Math.max(0, Math.ceil(seconds))
         return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2)
       }
-      // Ship Day: a free trip to the port, and a container from the ship there.
-      scope.goToPort = function () { if (scope.data.shipDay && scope.data.shipDay.goAllowed) core('goToPort()') }
-      // The same load slider for the ship's containers: one share for all of them, as only one is taken at a time.
-      scope.containerJob = function (box) {
-        var s = scope.data && scope.data.shipDay
-        return { id: 'container', units: s ? s.units : 0, unitKg: s ? s.unitKg : 0, pay: box ? box.pay : 0 }
+      // Mayday Rescue: a free teleport to an edge of the circle ('n', 'e', 's' or 'w'), when Lua allows it.
+      scope.maydayEdge = function (edge) {
+        var m = scope.data && scope.data.mayday
+        if (!m || !edge || !edge.allowed || ['n', 'e', 's', 'w'].indexOf(edge.id) < 0) return
+        core('maydayEdge("' + edge.id + '")')
       }
-      scope.containerTaken = function (box) { return scope.taken(scope.containerJob(box)) }
-      scope.takeContainer = function (box) {
-        var n = box ? parseInt(box.n, 10) : 0
-        if (scope.data.shipDay && box.allowed && n > 0) core('takeContainer(' + n + ', ' + scope.shareOf({ id: 'container' }) + ')')
+      // The "While you were away" card on a server: Got it closes it.
+      scope.dismissAway = function () { core('dismissAway()') }
+      // 1st, 2nd, 3rd, 4th, 11th, 21st: a place on the leaderboard.
+      scope.ordinal = function (n) {
+        n = Math.floor(Number(n))
+        if (!isFinite(n) || n < 1) return ''
+        var t = n % 100, u = n % 10
+        return n + (t >= 11 && t <= 13 ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th')
       }
       // A long wait as days and hours, or hours and minutes: 2d 14h, 5h 12m.
       scope.until = function (seconds) {
@@ -536,11 +620,15 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // Sightseeing: saves, swaps the truck for the free Moonhawk; Return to your job brings it back.
       scope.goSightseeing = function () { if (scope.data.sightseeing && scope.data.sightseeing.allowed) core('goSightseeing()') }
       scope.returnToJob = function () { if (scope.data.sightseeing && scope.data.sightseeing.returnAllowed) core('returnToJob()') }
+      // Opens the Base map (circles, borders and the truck, from the same little web server) in the browser.
+      scope.openBaseMap = function () { if (scope.data.baseMap) core('openBaseMap()') }
+      scope.openRadio = function () { if (scope.data.radio) core('openRadio()') }
       scope.stopStreetView = function () { if (scope.data.streetView && scope.data.streetView.on) core('stopStreetView()') }
       scope.requestRepairQuote = function () { if (scope.data.repairQuoteAllowed) core('requestRepairQuote()') }
       scope.repairVehicle = function () { if (scope.data.repairAllowed) core('repairVehicle()') }
       scope.towHere = function () { if (scope.data.tow && scope.data.tow.allowed) core('towHere()') }
       scope.payTow = function () { if (scope.data.tow && scope.data.tow.payAllowed) core('payTow()') }
+      scope.payInsurance = function () { if (scope.data.insuranceDebt && scope.data.insuranceDebt.payAllowed) core('payInsurance()') }
       scope.getOut = function () { if (scope.data.tow && scope.data.tow.getOutAllowed) core('getOut()') }
       // Paying for a bill takes two presses: the first asks to confirm that total, and a changed
       // total asks again.
@@ -551,11 +639,41 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.buyParts = function () { if (scope.data.buyPartsAllowed) core('buyParts()') }
       scope.revertParts = function () { if (scope.data.revertPartsAllowed) core('revertParts()') }
       scope.buyCar = function () { if (scope.data.buyCarAllowed) core('buyCar(false)') }
-      // Keep and store at home: the old car goes home instead of being traded in.
+      // Keep: the old car is parked in a free slot of Your cars instead of being traded in.
       scope.keepCar = function () { if (scope.data.keepCarAllowed) core('buyCar(true)') }
-      // Home: Buy this spot asks to confirm on the HUD first; Swap cars needs no confirm.
+      // Home: Buy this spot asks to confirm on the HUD first.
       scope.claimHome = function () { if (scope.data.home && scope.data.home.claimAllowed) core('claimHome()') }
-      scope.swapCars = function () { if (scope.data.home && scope.data.home.swapAllowed) core('swapCars()') }
+      // Your cars: car is a parked car from data.fleet.parked; its index is its place in the list, from 1. Drive needs no
+      // confirm (the fee shows on the button); Sell asks to confirm first.
+      var parked = function (car) { return car && Number.isInteger(car.index) && car.index >= 1 && car.index <= 9 }
+      scope.swapCars = function (car) { if (parked(car) && car.driveAllowed) core('swapCars(' + car.index + ')') }
+      scope.buyCarSlot = function () { if (scope.data.fleet && scope.data.fleet.buySlot && scope.data.fleet.buySlot.allowed) core('buyCarSlot()') }
+      scope.sellParkedCar = function (car) { if (parked(car) && car.sellAllowed) core('sellParkedCar(' + car.index + ')') }
+      // The empty slots' numbers, after the car being driven and the parked ones.
+      scope.fleetEmpty = function (f) {
+        var out = []
+        if (!f) return out
+        for (var n = f.used + 1; n <= f.slots; n++) out.push(n)
+        return out
+      }
+      // Corps: base and who are numbers from the server.
+      var num = function (n) { n = Number(n); return isFinite(n) && n > 0 ? String(Math.floor(n)) : null }
+      scope.askToJoin = function (id) { if (num(id)) core('askToJoin(' + num(id) + ')') }
+      scope.cancelJoin = function () { core('cancelJoin()') }
+      scope.leaveCorp = function () { core('leaveCorp()') }
+      scope.cancelLeaveCorp = function () { core('cancelLeaveCorp()') }
+      scope.corpAccept = function (id) { if (num(id)) core('corpAccept(' + num(id) + ')') }
+      scope.corpRefuse = function (id) { if (num(id)) core('corpRefuse(' + num(id) + ')') }
+      scope.corpRemove = function (id) { if (num(id)) core('corpRemove(' + num(id) + ')') }
+      // The land race: Open a base here, and how full the land bar is (the winning share is the end of the bar).
+      scope.openBase = function () { var c = scope.data.home && scope.data.home.conquest; if (c && c.openAllowed) core('openBase()') }
+      scope.landBar = function (c) {
+        var win = c && c.race && Number(c.race.win) > 0 ? Number(c.race.win) : 100
+        var land = c ? Number(c.land) || 0 : 0
+        return Math.max(0, Math.min(100, land / win * 100))
+      }
+      scope.removing = null
+      scope.setRemoving = function (id) { scope.removing = id }
       scope.revertCar = function () { if (scope.data.revertCarAllowed) core('revertCar()') }
       // Buy second hand: opens or closes the town's list; a car is picked by its place in it.
       scope.openUsedCars = function (open) { core('openUsedCars(' + (open ? 'true' : 'false') + ')') }
@@ -567,17 +685,25 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.buyTrailer = function (offer) {
         if (offer && offer.allowed && Number.isInteger(offer.index) && offer.index >= 1 && offer.index <= 999) core('buyTrailer(' + offer.index + ')')
       }
-      scope.storeTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeAllowed) core('storeTrailer()') }
+      // Park at base / Send to base ('base') or Store at depot ('depot'); a confirm after the load warning sends the same place.
+      scope.storeTrailer = function (place) {
+        var t = scope.data.trailer
+        if (!t || (place !== 'base' && place !== 'depot')) return
+        var allowed = place === 'base' ? (t.parkAllowed || t.sendAllowed) : t.depotAllowed
+        if (allowed || t.storeArmed === place) core("storeTrailer('" + place + "')")
+      }
+      // Your trailers: each parked trailer's row, by its place on the list (from 1).
+      var spareRow = function (row) { return row && Number.isInteger(row.index) && row.index >= 1 && row.index <= 9 }
+      scope.swapTrailers = function (row) { if (spareRow(row) && (row.swapAllowed || row.swapArmed)) core('swapTrailers(' + row.index + ')') }
+      scope.hitchSpareTrailer = function (row) { if (spareRow(row) && row.hitchAllowed) core('hitchSpareTrailer(' + row.index + ')') }
+      scope.sellSpareTrailer = function (row) { if (spareRow(row)) core('sellSpareTrailer(' + row.index + ')') }
       scope.cancelStoreTrailer = function () { if (scope.data.trailer && scope.data.trailer.storeArmed) core('cancelStoreTrailer()') }
       scope.bringOutTrailer = function () { if (scope.data.trailer && scope.data.trailer.bringOutAllowed) core('bringOutTrailer()') }
       scope.sellTrailer = function () { if (scope.data.trailer && scope.data.trailer.sellAllowed) core('sellTrailer()') }
-      scope.buyTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.partsAllowed) core('buyTrailerParts()') }
-      scope.payTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.shop && scope.data.trailer.shop.payAllowed) core('payTrailerParts()') }
-      scope.undoTrailerParts = function () { if (scope.data.trailer && scope.data.trailer.shop) core('undoTrailerParts()') }
       scope.repairTrailer = function () { if (scope.data.trailer && scope.data.trailer.repairAllowed) core('repairTrailer()') }
       // Open the game's own parts menu (Ctrl+W) and car selector (Ctrl+E); the bill then shows up on the Garage tab.
-      scope.openPartsMenu = function (forTrailer) {
-        if (scope.data.garageLocked && !(forTrailer && scope.data.trailer && scope.data.trailer.shop)) return
+      scope.openPartsMenu = function () {
+        if (scope.data.garageLocked) return
         // Lua notes the camera first, so it can put the player back on it when the menu closes.
         core('partsMenuOpening()')
         call("if core_vehicles and core_vehicles.openPartsSelectorUI then core_vehicles.openPartsSelectorUI() " +
@@ -629,10 +755,90 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var url = scope.data && scope.data.streetView && scope.data.streetView.url
         if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/$/.test(url)) call('setClipboard("' + url + '")')
       }
+      scope.copyBaseMap = function () {
+        var url = scope.data && scope.data.baseMap && scope.data.baseMap.url
+        if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/bases$/.test(url)) call('setClipboard("' + url + '")')
+      }
+      scope.copyRadio = function () {
+        var url = scope.data && scope.data.radio && scope.data.radio.url
+        if (typeof url === 'string' && /^http:\/\/127\.0\.0\.1:\d+\/radio$/.test(url)) call('setClipboard("' + url + '")')
+      }
+      // The Copy link button under the HUD's title: copies MadMerick's Ko-fi page for the player to paste
+      // into their browser. It doesn't open the browser, so the game stays in front.
+      scope.copySupport = function () {
+        call('setClipboard("' + KOFI + '")')
+        scope.hud.supportCopied = true
+      }
       // The Ko-fi link on the start page: opened in the browser where the game can, and copied in case it can't.
+      // The Land Race and Leaderboard tab: the live server page's address, copied for the player to open on their
+      // phone or PC and follow the race out of the game. Copying only, so nothing opens over the game.
+      scope.liveAddress = LINKS.server
+      scope.copyLiveAddress = function () {
+        call('setClipboard("' + LINKS.server + '")')
+        scope.intro.liveCopied = true
+      }
+      scope.raceDays = function (n) { return n === 1 ? '1 day left' : n + ' days left' }
+      // The leaderboard's line when folded: the player's place, how far behind the leader, or who leads.
+      scope.boardSummary = function (st) {
+        var board = (st && st.board) || []
+        if (!board.length) return st && st.waiting ? 'waiting for the server' : 'nobody yet'
+        var mine = st.me || board.filter(function (r) { return r.mine })[0]
+        var top = board[0]
+        if (mine && mine.rank === 1) return "you're 1st"
+        if (mine) return "you're " + scope.ordinal(mine.rank) + ', $' + (top.wealth - mine.wealth).toLocaleString('en-US') + ' behind ' + top.name
+        return top.name + ' leads, $' + top.wealth.toLocaleString('en-US')
+      }
+      scope.raceSummary = function (st) {
+        var r = st && st.race
+        if (!r || !r.leader) return 'nobody holds land yet'
+        return r.leader + ' leads with ' + r.leaderLand + '% of ' + r.win + '%'
+      }
+      // A land bar's width: the share against what wins, so the bar fills at the win.
+      scope.landWidth = function (land, win) { return Math.max(1, Math.min(100, win > 0 ? land / win * 100 : 0)) + '%' }
       scope.openKofi = function () {
         call('if openWebBrowser then openWebBrowser("' + KOFI + '") end setClipboard("' + KOFI + '")')
         scope.intro.kofiOpened = true
+      }
+      // Play online: whether the server is up and how many are trucking on it, from its stats, asked when the start
+      // page opens and every minute while it stays open. Only numbers and short text are kept from the answer.
+      scope.server = kept.server
+      var whole = function (v) { return typeof v === 'number' && isFinite(v) && v >= 0 ? Math.floor(v) : null }
+      var short = function (v, max) { return typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null }
+      scope.readServer = function (stats, now) {
+        var s = stats && typeof stats === 'object' ? stats : {}
+        var updated = typeof s.updated === 'string' && typeof Date.parse === 'function' ? Date.parse(s.updated) : NaN
+        var fresh = isFinite(updated) && now - updated < STALE_MS
+        var info = s.server && typeof s.server === 'object' ? s.server : {}
+        return {
+          status: s.sample !== true && info.online === true && fresh ? 'online' : 'offline', at: now,
+          players: Array.isArray(s.players) ? Math.min(s.players.length, 999) : null, max: whole(info.maxPlayers),
+          name: short(typeof info.name === 'string' ? info.name.replace(/\^[0-9a-z]/gi, '') : null, 60), season: s.season && whole(s.season.number), day: s.season && whole(s.season.day),
+          truckers: s.season && whole(s.season.truckers)
+        }
+      }
+      var checkServer = function () {
+        var now = Date.now()
+        if (kept.server.asking || (kept.server.at !== null && now - kept.server.at < STATS_EVERY_MS)) return
+        var done = function (next) {
+          kept.server.asking = false
+          scope.$evalAsync(function () { for (var k in next) kept.server[k] = next[k] })
+        }
+        if (typeof fetch !== 'function') return done({ status: 'unknown', at: now })
+        kept.server.asking = true
+        fetch(STATS_URL, { cache: 'no-store' })
+          .then(function (r) { if (!r.ok) throw new Error('status ' + r.status); return r.json() })
+          .then(function (stats) { done(scope.readServer(stats, Date.now())) }, function () { done({ status: 'unknown', at: Date.now() }) })
+      }
+      scope.toggleOnline = function () {
+        scope.intro.online = !scope.intro.online
+        if (scope.intro.online) checkServer()
+      }
+      // The live server page or the Discord: opened in the browser where the game can, and copied in case it can't.
+      scope.openLink = function (which) {
+        var url = LINKS[which]
+        if (!url) return
+        call('if openWebBrowser then openWebBrowser("' + url + '") end setClipboard("' + url + '")')
+        scope.intro.linkOpened = which
       }
       // Real businesses as drop-offs: when a town job's town has none yet, the game asks (load.lookup)
       // and the HUD, which can reach the web, asks OpenStreetMap's free Overpass server for one named
@@ -650,6 +856,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         if (t.shop === 'car_repair') return 'garage'
         if (/^(garden_centre|agrarian)$/.test(t.shop)) return 'garden'
         if (t.place === 'farm' || t.landuse === 'farmyard') return 'farm'
+        if (/^(fuel|fuel_depot|oil|oil_terminal|refinery|petroleum_terminal)$/.test(t.industrial)) return 'terminal'
         if (t.industrial === 'depot') return 'depot'
         if (t.building === 'warehouse' || /^(warehouse|logistics)$/.test(t.industrial)) return 'warehouse'
         if (t.man_made === 'works' || /^(factory|manufacturing)$/.test(t.industrial)) return 'factory'
@@ -661,6 +868,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         bricks: ['builders', 'hardware', 'warehouse', 'factory', 'depot'],
         water: ['farm', 'garden', 'supermarket', 'warehouse'],
         fuel: ['fuel', 'depot', 'farm'],
+        // Where a fuel run loads: a fuel terminal, a depot or a truck stop in the depot town.
+        fuelhub: ['terminal', 'depot', 'fuel'],
         other: ['warehouse', 'factory', 'depot', 'supermarket']
       }
       var businessQuery = function (lat, lon, metres) {
@@ -762,12 +971,14 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           kept.last = data
           scope.data = data
           if (data.load && data.load.lookup) scope.lookUpBusiness(data.load.lookup)
+          if (data.fuelRuns && data.fuelRuns.lookup) scope.lookUpBusiness(data.fuelRuns.lookup)
         })
       })
       mount(true)
       var heartbeat = setInterval(function () {
         if (disposed) return
         mount(true)
+        if (scope.intro.open) checkServer()
         if (Date.now() - lastMessage > 6000) {
           scope.$evalAsync(function () {
             if (disposed) return

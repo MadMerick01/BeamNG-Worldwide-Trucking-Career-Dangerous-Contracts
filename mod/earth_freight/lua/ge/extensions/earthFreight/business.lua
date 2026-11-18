@@ -25,7 +25,7 @@ M.MAX_NAME = 60
 M.KINDS = {
   supermarket = 'Supermarket', hardware = 'Hardware store', builders = "Builders' merchant",
   car_parts = 'Car parts', garage = 'Garage', warehouse = 'Warehouse', factory = 'Factory',
-  fuel = 'Fuel station', farm = 'Farm', garden = 'Garden centre', depot = 'Depot',
+  fuel = 'Fuel station', farm = 'Farm', garden = 'Garden centre', depot = 'Depot', terminal = 'Fuel terminal',
 }
 
 function M.key(townId, goodId) return tostring(townId) .. ':' .. tostring(goodId) end

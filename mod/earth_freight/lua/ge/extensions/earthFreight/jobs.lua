@@ -12,13 +12,16 @@ local M = {}
 -- One-line settings. Tune these after testing in game.
 -- Pay by weight: a full load of PAY_KG kg (the starter Burnside's 52 slots of parts) pays
 -- PAY_DOLLARS over 5 km. Heavier loads pay more, but less a kg: pay grows as (kg / PAY_KG) ^
--- WEIGHT_POWER, so 2,000 kg pays about $3,600, 8,000 kg about $8,700, 10,000 kg about $10,000
--- and 12,000 kg about $11,200. Lighter loads pay a straight share by weight, so 300 kg pays
+-- WEIGHT_POWER, so 2,000 kg pays about $3,200, 8,000 kg about $6,400, 16,000 kg about $9,100
+-- and 22,400 kg about $10,700. WEIGHT_POWER was 0.63 until big trailers earned $170,000 a run
+-- (MadMerick, 12 Nov): a load 20 times the Burnside's now pays 4.5 times its pay, not 6.6. Lighter loads pay a straight share by weight, so 300 kg pays
 -- about $770 and a car boot of parts doesn't out-earn a cargo box. PAY_PERCENT
--- scales every job's pay, for balance testing: 120 pays a fifth more, 80 a fifth less. A good's
--- rate (goods.lua) scales its own pay.
-M.PAY_PERCENT = 100
-M.PAY_DOLLARS, M.PAY_KG, M.WEIGHT_POWER = 2000, 780, 0.63
+-- scales every job's pay, after all of the above: 120 pays a fifth more, 80 a fifth less. It is 75
+-- (MadMerick, 11 Nov: the whole economy a quarter lower, prices kept), so the Burnside's load pays
+-- $1,500 over 5 km. Contracts, shortages, jackpots and base commission all follow it. A
+-- good's rate (goods.lua) scales its own pay.
+M.PAY_PERCENT = 75
+M.PAY_DOLLARS, M.PAY_KG, M.WEIGHT_POWER = 2000, 780, 0.5
 -- Pay grows as (km / 5) ^ DISTANCE_POWER up to FLAT_KM, so 20 km pays 6 times 5 km; past that it
 -- only grows with the square root.
 M.BASE_KM, M.FLAT_KM = 5, 20
@@ -49,10 +52,18 @@ M.HIGH, M.LOW = 1.1, 0.9
 -- Shortages: each town and good has SHORTAGE_CHANCE of one in each SHORTAGE_SECONDS window, paying
 -- SHORTAGE_PAY times. With about 30 towns within 20 km, a little over half the boards carry one.
 M.SHORTAGE_CHANCE, M.SHORTAGE_SECONDS, M.SHORTAGE_PAY = 0.01, 3600, 2
--- About one job in 20 is a jackpot, paying 2 to 3 times.
-M.JACKPOT_CHANCE, M.JACKPOT_MIN, M.JACKPOT_MAX = 0.05, 2, 3
--- The region pay boost (1 to 3) becomes a road bonus of 1 + (boost - 1) * ROAD_SHARE, at most 2.
-M.ROAD_SHARE, M.MAX_ROAD = 0.5, 2
+-- About one job in 20 is a jackpot, paying 1.5 to 2 times.
+M.JACKPOT_CHANCE, M.JACKPOT_MIN, M.JACKPOT_MAX = 0.05, 1.5, 2
+-- Town need, a shortage and a jackpot together pay at most MAX_BONUS times (MadMerick, 12 Nov: they
+-- no longer stack). The road and base bonuses come on top, as before.
+M.MAX_BONUS = 2
+-- The region pay boost (1 to 3) becomes a road bonus of 1 + (boost - 1) * ROAD_SHARE, at most
+-- MAX_ROAD. It was half the boost, at most 2, until MadMerick (16 Nov) wanted the region to count
+-- for more: a town job now pays the whole boost, so Death Road pays 3 times flat ground.
+M.ROAD_SHARE, M.MAX_ROAD = 1, 3
+-- A base of operations' share of the region multiplier is added to the road bonus at this rate, so
+-- its bonus stays +10% for visitors and +20% for the owner on flat ground, as before the change above.
+M.BASE_SHARE = 0.5
 -- A job only delivers once you have driven at least this share of the straight-line distance
 -- from where it was taken, so a teleport or a lift never delivers.
 M.DRIVEN_SHARE = 0.7
@@ -93,9 +104,16 @@ function M.roadKm(from, to)
   return metres and metres / 1000 or 0
 end
 
--- The road bonus for a region pay boost: half the boost above 1, at most 2x.
+-- The road bonus for a region pay boost: the boost above 1 times ROAD_SHARE, at most MAX_ROAD.
 function M.roadBonusFor(boost)
   return math.min(M.MAX_ROAD, 1 + ((boost or 1) - 1) * M.ROAD_SHARE)
+end
+
+-- What bases of operations add to a run's road bonus (magnate.lua): at each end, shareAt's share of the
+-- region multiplier there, averaged over the two ends and halved (BASE_SHARE). 0 without shareAt.
+function M.baseExtra(shareAt, from, to)
+  if not shareAt then return 0 end
+  return (shareAt(from) * places.boost(from) + shareAt(to) * places.boost(to)) / 2 * M.BASE_SHARE
 end
 
 -- The road bonus of a job: from the region boost at the average of its two ends.
@@ -183,7 +201,10 @@ end
 -- jackpot, level }: factor is the need, shortage and jackpot together, which the colour is from.
 -- An off-road drop goes to no town, so it has no need or shortage: road is its steep-ground bonus.
 -- A dangerous contract pays its section's pay times a 5 km job at the base rate, and nothing else.
-function M.quote(job, units, needs, now)
+-- shareAt, when given, is the base of operations' share of the region multiplier at a point (see
+-- magnate.lua): that share of each end's multiplier is added on top of the usual capped bonus, and
+-- the quote's baseBonus is how much it added to road.
+function M.quote(job, units, needs, now, shareAt)
   local good, from, to = goods.get(job.good), places.get(job.from), places.get(job.to)
   if job.contract then
     local base, times = M.basePay(good, units, M.BASE_KM), contracts.get(job.contract).pay
@@ -192,19 +213,23 @@ function M.quote(job, units, needs, now)
   end
   if job.drop then
     local factor, road = job.jackpot or 1, M.steepBonus(from)
+    -- Halved like a town job's (BASE_SHARE), so a base's bonus is the same +20% on a drop in its turf.
+    local extra = shareAt and shareAt(job.drop) * places.boost(from) * M.BASE_SHARE or 0
+    road = road + extra
     local base = M.basePay(good, units, M.DROP_KM)
     return { pay = units > 0 and math.max(10, round10(base * factor * road)) or 0, base = round10(base),
-      factor = factor, need = 1, road = road, shortage = false, jackpot = job.jackpot,
+      factor = factor, need = 1, road = road, baseBonus = extra > 0 and extra or nil, shortage = false, jackpot = job.jackpot,
       level = job.jackpot and 'sweet' or 'normal' }
   end
   local need = M.need(to, good, needs, now)
   if job.decent then need = math.max(1, need) end
   local short = M.shortage(to, good, now)
-  local factor = need * (short and M.SHORTAGE_PAY or 1) * (job.jackpot or 1)
-  local road = M.roadBonus(from, to)
+  local factor = math.min(M.MAX_BONUS, need * (short and M.SHORTAGE_PAY or 1) * (job.jackpot or 1))
+  local extra = M.baseExtra(shareAt, from, to)
+  local road = M.roadBonus(from, to) + extra
   local base = M.basePay(good, units, job.km)
   return { pay = units > 0 and math.max(10, round10(base * factor * road)) or 0, base = round10(base),
-    factor = factor, need = need, road = road, shortage = short, jackpot = job.jackpot,
+    factor = factor, need = need, road = road, baseBonus = extra > 0 and extra or nil, shortage = short, jackpot = job.jackpot,
     level = (short or job.jackpot) and 'sweet' or M.level(factor) }
 end
 

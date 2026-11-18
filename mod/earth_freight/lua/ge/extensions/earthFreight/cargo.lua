@@ -162,6 +162,8 @@ end
 -- spreads its weight over the nodes of the box or tank parts (each jbeam node knows its
 -- partOrigin), or over the whole car when there is none. The nodes' own masses are kept in a
 -- vehicle global, which a respawn clears along with the added weight.
+-- With hitchShare (a trailer), the weight is not spread evenly: it is centred just ahead of the
+-- axles so that share of it rests on the hitch (see trailers.HITCH_SHARE).
 local LOAD = [[
 local extra, litres, density = %s, %s, %s
 if not (v and v.data and type(v.data.nodes) == 'table' and obj and obj.setNodeMass) then return end
@@ -186,13 +188,20 @@ end
 local function call(name, ...)
   if type(obj[name]) == 'function' then pcall(obj[name], obj, ...) end
 end
+-- Fills a container to volume litres and returns the mass its nodes now have, so what a fill
+-- really added is that less the mass at 0 L.
 local function fill(c, volume)
+  local total = 0
   for _, n in ipairs(c.nodes) do
     local mass = value(n.nodeWeightFunction, volume)
-    if mass then obj:setNodeMass(n.cid, mass) end
+    if mass then obj:setNodeMass(n.cid, mass); total = total + mass end
   end
   for _, n in ipairs(c.legacy) do
-    if type(n.nodeWeight) == 'number' then obj:setNodeMass(n.cid, n.nodeWeight + volume * density / #c.legacy) end
+    if type(n.nodeWeight) == 'number' then
+      local mass = n.nodeWeight + volume * density / #c.legacy
+      obj:setNodeMass(n.cid, mass)
+      total = total + mass
+    end
   end
   for _, b in ipairs(c.beams) do
     if b.beamSpringFunction or b.beamDampFunction then
@@ -210,24 +219,124 @@ local function fill(c, volume)
     local precompression = value(b.beamPrecompressionFunction, volume)
     if precompression then call('setPrecompressionRatio', b.cid, precompression) end
   end
+  return total
 end
-for _, c in ipairs(containers) do fill(c, 0) end
+local empty = {}
+for i, c in ipairs(containers) do empty[i] = fill(c, 0) end
 local poured = litres > 0 and capacity > 0
 if poured then
   local share = math.min(1, litres / capacity)
-  for _, c in ipairs(containers) do fill(c, c.size * share) end
-  extra = math.max(0, extra - math.min(litres, capacity) * density)
+  local took = 0
+  for i, c in ipairs(containers) do took = took + math.max(0, fill(c, c.size * share) - empty[i]) end
+  -- Only what the containers really took comes off the load: a tank whose expressions give no
+  -- weight (some trailers weigh their load by a tuning setting instead) must not make the fluid
+  -- weigh nothing. The rest goes over the tank's nodes, or the vehicle, below.
+  local wanted = math.min(litres, capacity) * density
+  if took < wanted * 0.9 and log then
+    pcall(log, 'W', 'earthFreight', string.format('fluid_weight_short: tanks took %%.0f of %%.0f kg', took, wanted))
+  end
+  extra = math.max(0, extra - math.min(wanted, took))
 end
 report()
 if extra <= 0.001 then return end
+-- Changing a coupling node's mass during initialization can release the latch.
+-- Put solid cargo on the remaining nodes, leaving both coupling endpoints alone.
+local coupled = {}
+local function reserve(names)
+  if type(names) == 'table' then for _, name in pairs(names) do coupled[name] = true end
+  elseif names ~= nil then coupled[names] = true end
+end
+local function reserveCouplers(data)
+  if type(data) ~= 'table' or type(data.couplerNodes) ~= 'table' then return end
+  for _, pair in pairs(tableFromHeaderTable(data.couplerNodes)) do reserve(pair.cid1); reserve(pair.cid2) end
+end
+for _, data in pairs(v.data.controller or {}) do
+  if type(data) == 'table' and data.fileName == 'advancedCouplerControl' then
+    reserveCouplers(data)
+    reserveCouplers(v.data[data.name or data.fileName])
+  end
+end
+local function loadable(n)
+  return type(n) == 'table' and n.cid ~= nil and not n.couplerTag and not n.tag and not coupled[n.name]
+end
 local list = {}
-for _, n in pairs(v.data.nodes) do if type(n) == 'table' and n.cid and parts[n.partOrigin] then list[#list + 1] = n end end
-if #list == 0 then for _, n in pairs(v.data.nodes) do if type(n) == 'table' and n.cid then list[#list + 1] = n end end end
+for _, n in pairs(v.data.nodes) do if loadable(n) and parts[n.partOrigin] then list[#list + 1] = n end end
+if #list == 0 then for _, n in pairs(v.data.nodes) do if loadable(n) then list[#list + 1] = n end end end
 if #list == 0 then return end
-local share = extra / #list
-for _, n in ipairs(list) do
+local weights = BALANCE(list) or {}
+local total = 0
+for i = 1, #list do weights[i] = weights[i] or 1; total = total + weights[i] end
+for i, n in ipairs(list) do
   if base[n.cid] == nil then base[n.cid] = (obj.getNodeMass and obj:getNodeMass(n.cid)) or n.nodeWeight end
-  if type(base[n.cid]) == 'number' then obj:setNodeMass(n.cid, base[n.cid] + share) end
+  if type(base[n.cid]) == 'number' then obj:setNodeMass(n.cid, base[n.cid] + extra * weights[i] / total) end
+end
+]]
+
+-- Runs inside a trailer before LOAD: BALANCE(list) gives each node of list a weight so that the
+-- load's centre sits where hitchShare of it rests on the hitch, or nil to spread it evenly. The
+-- axles are the middle of the wheel hubs and the hitch is the coupler node (else the frontmost
+-- node); each node's place is t along the trailer, 0 at the axles and 1 at the hitch, and the
+-- load's centre should be at t = hitchShare (the lever rule). Weights rise smoothly toward the
+-- hitch, exp(k * t), with k found by halving; the heaviest node never takes more than SPREAD
+-- times the lightest, so no single node is overloaded. Wheel nodes and the coupler carry none.
+local BALANCE = [[
+local SPREAD = 20
+local function BALANCE(list)
+  if type(hitchShare) ~= 'number' or hitchShare <= 0 or hitchShare >= 1 then return nil end
+  local nodes, wheels = v.data.nodes, type(v.data.wheels) == 'table' and v.data.wheels or {}
+  -- A node's place along the vehicle (BeamNG's vehicles face -y): its pos, or the jbeam's posY.
+  local function y(n)
+    if type(n) ~= 'table' then return nil end
+    local ok, at = pcall(function() return n.pos and n.pos.y or n.posY end)
+    return ok and tonumber(at) or nil
+  end
+  local hubs, sum, count = {}, 0, 0
+  for _, w in pairs(wheels) do
+    for _, key in ipairs({ 'node1', 'node2' }) do
+      local cid = type(w) == 'table' and w[key]
+      local at = cid ~= nil and y(nodes[cid])
+      if at then hubs[cid], sum, count = true, sum + at, count + 1 end
+    end
+  end
+  if count == 0 then return nil end
+  local axle = sum / count
+  local hitch, front
+  for _, n in pairs(nodes) do
+    local at = y(n)
+    if at and not hubs[n.cid] and n.wheelID == nil then
+      local tag = tostring(n.couplerTag or n.tag or ''):lower()
+      if tag:find('hitch', 1, true) or tag:find('fifthwheel', 1, true) or tag:find('gooseneck', 1, true) or tag:find('kingpin', 1, true) then
+        hitch = hitch or n
+      end
+      if not front or at < y(front) then front = n end
+    end
+  end
+  hitch = hitch or front
+  local reach = hitch and (y(hitch) - axle)
+  if not reach or math.abs(reach) < 0.5 then return nil end
+  local t, low, high = {}, math.huge, -math.huge
+  for i, n in ipairs(list) do
+    local at = y(n)
+    if at and not hubs[n.cid] and n.wheelID == nil and n.cid ~= hitch.cid then
+      t[i] = (at - axle) / reach
+      low, high = math.min(low, t[i]), math.max(high, t[i])
+    end
+  end
+  if high - low < 1e-3 then return nil end
+  local function centre(k)
+    local m, w = 0, 0
+    for i in pairs(t) do local e = math.exp(k * (t[i] - high)); m, w = m + e * t[i], w + e end
+    return m / w
+  end
+  local limit = math.log(SPREAD) / (high - low)
+  local a, b = -limit, limit
+  for _ = 1, 40 do
+    local mid = (a + b) / 2
+    if centre(mid) < hitchShare then a = mid else b = mid end
+  end
+  local k, weights = (a + b) / 2, {}
+  for i = 1, #list do weights[i] = t[i] and math.exp(k * (t[i] - high)) or 0 end
+  return weights
 end
 ]]
 
@@ -266,19 +375,21 @@ function M.new(environment)
   function c:setWeight(kg, parts, fluid)
     fluid = type(fluid) == 'table' and fluid or {}
     return send(function(id)
-      return 'local id, tanks, parts = ' .. id .. ', ' .. partSet(fluid.tanks) .. ', ' .. partSet(parts) .. '\n'
-        .. CONTAINERS .. string.format(LOAD, number(kg), number(fluid.litres), number(fluid.density or 1))
+      return 'local id, tanks, parts, hitchShare = ' .. id .. ', ' .. partSet(fluid.tanks) .. ', ' .. partSet(parts) .. ', nil\n'
+        .. CONTAINERS .. BALANCE .. string.format(LOAD, number(kg), number(fluid.litres), number(fluid.density or 1))
     end)
   end
 
   -- The same for the player's trailer, by its vehicle id: a trailer's fluid containers are found by
   -- their cargo types, and other loads spread over the trailer when parts names none of its parts.
-  function c:setWeightOn(vehicleId, kg, parts, fluid)
+  -- hitchShare is the share of its load that should rest on the hitch (trailers.HITCH_SHARE).
+  function c:setWeightOn(vehicleId, kg, parts, fluid, hitchShare)
     if vehicleId == nil then return false, 'vehicle_required' end
     fluid = type(fluid) == 'table' and fluid or {}
+    local share = (type(hitchShare) == 'number' and hitchShare > 0 and hitchShare < 1) and string.format('%.3f', hitchShare) or 'nil'
     return send(function(id)
-      return 'local id, tanks, parts = ' .. id .. ', ' .. partSet(fluid.tanks) .. ', ' .. partSet(parts) .. '\n'
-        .. CONTAINERS .. string.format(LOAD, number(kg), number(fluid.litres), number(fluid.density or 1))
+      return 'local id, tanks, parts, hitchShare = ' .. id .. ', ' .. partSet(fluid.tanks) .. ', ' .. partSet(parts) .. ', ' .. share .. '\n'
+        .. CONTAINERS .. BALANCE .. string.format(LOAD, number(kg), number(fluid.litres), number(fluid.density or 1))
     end, vehicleId)
   end
 

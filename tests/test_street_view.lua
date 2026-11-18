@@ -127,6 +127,8 @@ end
 -- JSON
 T.eq(SV.encode({ a = 0 / 0, b = 1e300 * 1e10, c = 'line\nbreak\1' }), '{"a":null,"b":null,"c":"line\\nbreak\\u0001"}', 'JSON escapes')
 T.eq(SV.encode(-33.12345678), '-33.1234568', 'seven decimals')
+T.eq(SV.encode({ { a = 1 }, { a = 2 } }), '[{"a":1},{"a":2}]', 'a list is a JSON array')
+T.eq(SV.encode({ list = { 3 }, none = {} }), '{"list":[3],"none":{}}', 'in an object too, and an empty table is {}')
 
 -- In the game: the Street View button.
 do
@@ -178,6 +180,86 @@ do
   T.check(not c4:openStreetView(), 'busy port fails')
   T.check(c4:view().streetView.feedback:find('47170', 1, true) ~= nil, 'and says which port')
   T.eq(F.controller():view().streetView, nil, 'no server, no button')
+
+  -- The Base map: the same server, at /bases, with its data at /basemap.
+  local libB = fakeSocket()
+  local opened2 = {}
+  local cb = F.controller({ streetView = SV.new({ socket = libB }), openUrl = function(url) opened2[#opened2 + 1] = url; return true end })
+  cb:tick(0.1)
+  T.check(cb:view().baseMap ~= nil, 'HUD offers the base map')
+  T.check(cb:openBaseMap(), 'base map opens')
+  T.eq(opened2[1], 'http://127.0.0.1:47170/bases', 'its page opened in the browser')
+  T.eq(cb:view().baseMap.url, 'http://127.0.0.1:47170/bases', 'HUD has its address')
+  T.check(cb:view().baseMap.feedback:find('copy the address below', 1, true) ~= nil, 'HUD points to the Copy button')
+  local pageReq, dataReq = libB.client(get('/bases')), libB.client(get('/basemap'))
+  libB.queue = { pageReq, dataReq }
+  cb:tick(0.1); cb:tick(0.1)
+  T.eq(body(pageReq), require('earthFreight/baseMapPage').html, 'the base map page')
+  T.check(body(dataReq):find('"circles":', 1, true) ~= nil and body(dataReq):find('"ok":true', 1, true) ~= nil, 'and its data')
+  -- With a base, its circle reaches the page as a list (it came out as an object of nulls, so none was drawn).
+  cb:tick(0.6); cb:tick(0.6)
+  cb.profile.progression.balance = 400000
+  T.check(cb:claimHome(), 'a base for the map')
+  local dataReq2 = libB.client(get('/basemap'))
+  libB.queue = { dataReq2 }
+  cb:tick(0.1); cb:tick(0.1)
+  T.check(body(dataReq2):find('"circles":[{', 1, true) ~= nil, 'the circles are a JSON array of circles')
+  T.check(body(dataReq2):find('"town":"Penrith"', 1, true) ~= nil, 'with the base in it')
+  local busyB = fakeSocket(); busyB.busy = true
+  local cb2 = F.controller({ streetView = SV.new({ socket = busyB }) })
+  T.check(not cb2:openBaseMap(), 'busy port fails')
+  T.check(cb2:view().baseMap.feedback == nil, 'nothing claimed while off')
+end
+
+-- The Radio: the same server, at /radio. The page passes what it plays in ?radio=, for the HUD.
+do
+  local lib = fakeSocket()
+  local opened = {}
+  local c = F.controller({ streetView = SV.new({ socket = lib }), openUrl = function(url) opened[#opened + 1] = url; return true end })
+  c:tick(0.1)
+  T.check(c:view().radio ~= nil and not c:view().radio.open, 'HUD offers the radio, not open yet')
+  T.check(c:openRadio(), 'radio opens')
+  T.eq(opened[1], 'http://127.0.0.1:47170/radio', 'its page opened in the browser')
+  T.eq(c:view().radio.url, 'http://127.0.0.1:47170/radio', 'HUD has its address')
+  T.check(c:view().radio.feedback:find('opening in your web browser', 1, true) ~= nil, 'and says where it went')
+  local pageReq, posReq = lib.client(get('/radio')), lib.client(get('/position?radio=Lithgow%20Community+Radio'))
+  lib.queue = { pageReq, posReq }
+  c:tick(0.1); c:tick(0.1)
+  T.eq(body(pageReq), require('earthFreight/radioPage').html, 'the radio page')
+  T.check(body(posReq):find('"ok":', 1, true) ~= nil, 'the position as usual')
+  T.eq(c:view().radio.playing, 'Lithgow Community Radio', 'the HUD shows what is playing')
+  T.check(c:view().radio.open, 'and that the page is open')
+  local stopped = lib.client(get('/position?radio='))
+  lib.queue = { stopped }
+  c:tick(0.1); c:tick(0.1)
+  T.eq(c:view().radio.playing, nil, 'stopped')
+  T.check(c:view().radio.open, 'page still open')
+  T.eq(c.streetView:radio(c.clock + 30), nil, 'a page gone quiet is closed')
+  local plain = lib.client(get('/position'))
+  lib.queue = { plain }
+  c:tick(0.1); c:tick(0.1)
+  T.check(c:view().radio.open, 'Street View asking does not change the radio')
+  local busy = fakeSocket(); busy.busy = true
+  local c2 = F.controller({ streetView = SV.new({ socket = busy }) })
+  T.check(not c2:openRadio(), 'busy port fails')
+  T.check(c2:view().radio.feedback == nil, 'nothing claimed while off')
+  T.eq(F.controller():view().radio, nil, 'no server, no radio')
+  local page = require('earthFreight/radioPage').html
+  for _, part in ipairs({ 'radio-browser.info', "fetch('/position?radio='", 'Follow my truck', 'Push the volume knob', 'Tune: next station', 'Preset ', 'textContent',
+      "name: 'Psyndora Chill'", 'Add your own station', 'Remove' }) do
+    T.check(page:find(part, 1, true) ~= nil, 'radio page has ' .. part)
+  end
+  T.check(page:find('innerHTML', 1, true) == nil, 'station names never go in as HTML')
+end
+
+-- What the radio page says it plays: decoded, plain text, short.
+do
+  T.eq(SV.radioParam('/position'), nil, 'nothing said')
+  T.eq(SV.radioParam('/position?radio='), '', 'stopped')
+  T.eq(SV.radioParam('/position?x=1&radio=Triple%20J%2B'), 'Triple J+', 'decoded')
+  T.eq(SV.radioParam('/position?radio=%3Cb%3EHi%3C%2Fb%3E%0A'), 'bHi/b', 'no markup or control characters')
+  T.eq(#SV.radioParam('/position?radio=' .. string.rep('a', 200)), 60, 'at most 60 characters')
+  T.eq(SV.radioParam('/position?radio=' .. string.rep('a', 59) .. '%C3%A9'), string.rep('a', 59), 'never half a letter')
 end
 
 T.done('street view')

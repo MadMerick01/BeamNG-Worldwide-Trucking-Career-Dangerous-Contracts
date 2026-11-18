@@ -1,6 +1,7 @@
 -- Reads and repairs the player vehicle. Base-game calls only, so it works outside career mode
 -- (career's repair modules are not loaded in Earth Freeroam). Every call is guarded: a missing
 -- or changed game function makes the quote or repair fail without touching the balance.
+local rockets = require('earthFreight/rockets')
 local M = {}
 
 local function defaults()
@@ -26,6 +27,8 @@ local function defaults()
     -- The parts menu's own Save, which writes a config and takes its photo.
     partmgmt = function() return rawget(_G, 'core_vehicle_partmgmt') or (extensions and extensions.core_vehicle_partmgmt) end,
     exists = function(path) return FS:fileExists(path) end,
+    -- Reads a JSON file, such as a car config's .pc, as a table.
+    read = function(path) return jsonReadFile(path) end,
     remove = function(path) return FS:removeFile(path) end,
   }
 end
@@ -38,11 +41,18 @@ local function copy(value)
 end
 
 -- Flattens a 0.39 partsTree into { [slot path] = part name }; an empty slot has part name ''.
-local function fitted(node, out)
-  if type(node) ~= 'table' then return out end
-  if type(node.chosenPartName) == 'string' then out[tostring(node.path or node.id or '')] = node.chosenPartName end
+-- With slots, also fills { [slot path] = slot name } (the key in its parent's children), and
+-- parents, { [slot path] = its parent's path }; the root's slot name is ''.
+local function fitted(node, out, slots, parents, slotName, parentPath, depth)
+  depth = depth or 1
+  if type(node) ~= 'table' or depth > 64 then return out end
+  local path = tostring(node.path or node.id or '')
+  if type(node.chosenPartName) == 'string' then
+    out[path] = node.chosenPartName
+    if slots then slots[path], parents[path] = slotName or '', parentPath end
+  end
   if type(node.children) == 'table' then
-    for _, child in pairs(node.children) do fitted(child, out) end
+    for key, child in pairs(node.children) do fitted(child, out, slots, parents, tostring(key), path, depth + 1) end
   end
   return out
 end
@@ -248,6 +258,20 @@ function M.new(environment)
     return true
   end
 
+  -- Whether JATO rockets are fitted to the player vehicle, or to the vehicle with vehicleId (the hitched trailer):
+  -- true or false, or nil when its parts can't be read. Cheaper than g:parts, as it prices nothing.
+  function g:rockets(vehicleId)
+    local id = vehicleId
+    if id == nil then
+      local vehicle, currentId = current()
+      if not vehicle then return nil end
+      id = currentId
+    end
+    local data = vehicleData(id)
+    if not data or type(data.config.partsTree) ~= 'table' then return nil end
+    return rockets.inTree(data.config.partsTree)
+  end
+
   -- Returns the player vehicle's fitted parts:
   -- { id, model, config, parts = { [slot] = part }, values = { [part] = price or nil }, names = { [part] = name },
   --   configFile, value, name } where value is the car's own price from carValue.
@@ -261,7 +285,8 @@ function M.new(environment)
     if not vehicle then return nil, 'vehicle_required' end
     local data = vehicleData(id)
     if not data or type(data.config.partsTree) ~= 'table' then return nil, 'parts_unavailable' end
-    local parts = fitted(data.config.partsTree, {})
+    local slots, parents = {}, {}
+    local parts = fitted(data.config.partsTree, {}, slots, parents)
     local values, names = {}, {}
     for _, partName in pairs(parts) do
       if partName ~= '' and names[partName] == nil then
@@ -279,14 +304,74 @@ function M.new(environment)
     -- After a photo the game may say the car came from our photo config, which has no name or price.
     local photo = type(configFile) == 'string' and configFile:match('([^/\\]+)%.pc$') == M.PHOTO_KEY or nil
     return { id = id, model = model, config = copy(data.config), parts = parts, values = values, names = names,
-      configFile = configFile, value = value, name = name or model, photo = photo }
+      slots = slots, parents = parents, configFile = configFile, value = value, name = name or model, photo = photo }
+  end
+
+  -- The parts the car's own config (its .pc file) comes with, lined up with the fitted slots of
+  -- snapshot (from g:parts), so pricing.partsWorth can price what was changed since:
+  -- { [slot path] = part name }, plus '#slot name' entries for config slots the car no longer has.
+  -- A slot the config does not name keeps its fitted part as stock, unless the part above it was
+  -- changed (it came with that part). Also prices the stock parts no longer fitted into
+  -- snapshot.values and names. Nil when the config file can't be read.
+  function g:stockParts(snapshot)
+    if type(snapshot) ~= 'table' or type(snapshot.parts) ~= 'table' or type(snapshot.configFile) ~= 'string' then return nil end
+    if type(env.read) ~= 'function' then return nil end
+    local ok, pc = pcall(env.read, snapshot.configFile)
+    if not ok or type(pc) ~= 'table' then return nil end
+    local stock = {}
+    if type(pc.partsTree) == 'table' then
+      -- A config saved with a tree: slots line up by path.
+      fitted(pc.partsTree, stock)
+      for path, part in pairs(snapshot.parts) do if stock[path] == nil then stock[path] = part end end
+    elseif type(pc.parts) == 'table' then
+      -- A format 2 config names each slot's part by slot name.
+      local slots, parents, byName, seen = snapshot.slots or {}, snapshot.parents or {}, {}, {}
+      for slot, part in pairs(pc.parts) do if type(part) == 'string' then byName[tostring(slot)] = part end end
+      local function stockOf(path, depth)
+        if stock[path] ~= nil then return stock[path] end
+        local slot, part = slots[path], nil
+        if slot == '' then
+          part = type(pc.mainPartName) == 'string' and pc.mainPartName ~= '' and pc.mainPartName or snapshot.parts[path]
+        elseif slot and byName[slot] ~= nil then
+          part = byName[slot]
+          seen[slot] = true
+        else
+          local parent = parents[path]
+          local changed = parent ~= nil and depth < 64 and stockOf(parent, depth + 1) ~= snapshot.parts[parent]
+          part = changed and '' or snapshot.parts[path]
+        end
+        stock[path] = part
+        return part
+      end
+      for path in pairs(snapshot.parts) do stockOf(path, 1) end
+      for slot in pairs(byName) do
+        if not seen[slot] and byName[slot] ~= '' then stock['#' .. slot] = byName[slot] end
+      end
+    else
+      return nil
+    end
+    -- What each stock part costs, for the parts no longer fitted.
+    local data = snapshot.id ~= nil and vehicleData(snapshot.id) or nil
+    snapshot.values, snapshot.names = snapshot.values or {}, snapshot.names or {}
+    for _, part in pairs(stock) do
+      if part ~= '' and snapshot.names[part] == nil then
+        local value, name
+        if data then value, name = partInfo(data, part) end
+        snapshot.values[part], snapshot.names[part] = value, name or part
+      end
+    end
+    return stock
   end
 
   -- Respawns the vehicle where it stands, which leaves every part new. With no config it keeps the
   -- current parts, tuning and paint; with one, it fits that config's parts but keeps the current
   -- tuning and paint. Returns true once the game accepted the respawn.
-  function g:repair(withConfig)
+  function g:repair(withConfig, vehicleId)
     local vehicle, id = current()
+    if vehicleId ~= nil then
+      local found, other = pcall(env.objectById, vehicleId)
+      vehicle, id = found and other or nil, vehicleId
+    end
     if not vehicle then return false, 'vehicle_required' end
     local vehicles = env.vehicles()
     if type(env.manager()) ~= 'table' or type(vehicles) ~= 'table' or type(vehicles.replaceVehicle) ~= 'function' then
@@ -298,12 +383,58 @@ function M.new(environment)
     if type(withConfig) == 'table' then
       config = copy(withConfig)
       config.vars, config.paints = copy(data.config.vars), copy(data.config.paints)
+    elseif type(withConfig) == 'string' and withConfig ~= '' then
+      -- A .pc path: the vehicle as that setup comes (a trailer put back as it was sold).
+      config = withConfig
     end
     local modelOK, model = pcall(function() return vehicle:getJBeamFilename() end)
     if not modelOK or type(model) ~= 'string' or model == '' then model = config.model end
     if type(model) ~= 'string' or model == '' then return false, 'config_unavailable' end
     local ok, why = pcall(vehicles.replaceVehicle, model, { config = config, keepOtherVehRotation = true }, vehicle)
     if not ok then return false, 'repair_failed', tostring(why) end
+    return true
+  end
+
+  -- The tuning setting that fills a vehicle's load in litres, as the game's own tanker trailers
+  -- have ("Load Volume" under Load in Vehicle Config, Tuning): { name, max, value }, value being
+  -- what it is set to now. nil when the vehicle has none.
+  function g:loadVolume(id)
+    local data = vehicleData(id)
+    local variables = data and type(data.vdata) == 'table' and data.vdata.variables or nil
+    if type(variables) ~= 'table' then return nil end
+    for key, v in pairs(variables) do
+      if type(v) == 'table' then
+        local title = tostring(v.title or ''):lower()
+        local unit = tostring(v.unit or ''):lower()
+        local name = type(v.name) == 'string' and v.name or (type(key) == 'string' and key or nil)
+        if name and title:find('load', 1, true) and title:find('volume', 1, true) and (unit == 'l' or unit == '') then
+          local vars = type(data.config.vars) == 'table' and data.config.vars or {}
+          local value = tonumber(vars[name]) or tonumber(v.val) or tonumber(v.default) or 0
+          return { name = name, max = tonumber(v.max), value = value }
+        end
+      end
+    end
+    return nil
+  end
+
+  -- Sets a vehicle's Load Volume (the name loadVolume gave) to litres and respawns it where it
+  -- stands with everything else as it was, as the game's own Apply does. The respawn leaves it as
+  -- new. Returns true once the game accepted the respawn.
+  function g:setLoadVolume(id, name, litres)
+    local found, vehicle = pcall(env.objectById, id)
+    if not found or not vehicle then return false, 'vehicle_required' end
+    local vehicles = env.vehicles()
+    if type(vehicles) ~= 'table' or type(vehicles.replaceVehicle) ~= 'function' then return false, 'respawn_unavailable' end
+    local data = vehicleData(id)
+    if not data then return false, 'config_unavailable' end
+    local config = copy(data.config)
+    config.vars = copy(type(data.config.vars) == 'table' and data.config.vars or {})
+    config.vars[name] = litres
+    local modelOK, model = pcall(function() return vehicle:getJBeamFilename() end)
+    if not modelOK or type(model) ~= 'string' or model == '' then model = config.model end
+    if type(model) ~= 'string' or model == '' then return false, 'config_unavailable' end
+    local ok, why = pcall(vehicles.replaceVehicle, model, { config = config, keepOtherVehRotation = true }, vehicle)
+    if not ok then return false, 'respawn_failed', tostring(why) end
     return true
   end
 

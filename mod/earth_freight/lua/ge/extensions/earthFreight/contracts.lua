@@ -8,8 +8,6 @@ local M = {}
 -- One-line settings. Tune these after testing in game.
 -- The relocation to the start, paid when the contract is taken.
 M.FEE = 200
--- An insurance claim on a dangerous contract costs this instead of the usual fee.
-M.INSURANCE_FEE = 4000
 -- The finish circle, in metres.
 M.FINISH_RADIUS = 100
 -- Arriving within this many metres of the start (by the teleport) starts the contract.

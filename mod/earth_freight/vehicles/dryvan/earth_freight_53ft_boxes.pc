@@ -1,0 +1,41 @@
+{
+  "format": 2,
+  "mainPartName": "dryvan_base",
+  "model": "dryvan",
+  "parts": {
+    "bogie_airbag": "bogie_airbag",
+    "bogie_brake_1": "bogie_brake_1",
+    "bogie_brake_2": "bogie_brake_2",
+    "bogie_leaf": "bogie_leaf_heavy",
+    "bogie_mudflap": "bogie_mudflap",
+    "bogie_tire_1": "bogie_tire_1",
+    "bogie_tire_2": "bogie_tire_2",
+    "bogie_wheel_1": "bogie_wheel_1",
+    "bogie_wheel_2": "bogie_wheel_2",
+    "bogie_wheeldata_1": "bogie_wheeldata_1",
+    "bogie_wheeldata_2": "bogie_wheeldata_2",
+    "bogiedata": "dryvan_double_bogie",
+    "double_bogie": "bogie_double",
+    "dryvan": "dryvan_53ft",
+    "dryvan_ABS": "",
+    "dryvan_feet": "dryvan_feet",
+    "dryvan_frontwall": "dryvan_frontwall",
+    "dryvan_licenseplate": "dryvan_licenseplate",
+    "dryvan_load_F": "dryvan_load_F_cargo_load_box_8XL",
+    "dryvan_load_M": "",
+    "dryvan_load_M_large": "dryvan_load_M_cargo_load_box_16xl",
+    "dryvan_load_R": "dryvan_load_R_cargo_load_box_8XL",
+    "dryvan_mod": "",
+    "dryvan_reardoor_L": "dryvan_reardoor_L",
+    "dryvan_reardoor_R": "dryvan_reardoor_R",
+    "dryvan_rearframe": "dryvan_rearframe",
+    "dryvan_rearguard": "dryvan_rearguard",
+    "dryvan_taillights": "dryvan_taillights",
+    "paint_design": "",
+    "trailer_sparetire": "trailer_sparetire",
+    "trailer_sparetireholder": "trailer_sparetireholder"
+  },
+  "vars": {
+    "$bogiepos": 6
+  }
+}

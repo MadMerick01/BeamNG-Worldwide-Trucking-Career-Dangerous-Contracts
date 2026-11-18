@@ -8,10 +8,10 @@ local persistence = require('earthFreight/persistence')
 local pricing = require('earthFreight/pricing')
 local cargo = require('earthFreight/cargo')
 local goods = require('earthFreight/goods')
-local contracts = require('earthFreight/contracts')
 local beacons = require('earthFreight/beacons')
 local places = require('earthFreight/places')
 local usedCars = require('earthFreight/usedCars')
+local mayday = require('earthFreight/mayday')
 local M = {}
 
 -- Driving this far from where the parts were changed, without paying, puts the paid parts back.
@@ -20,11 +20,18 @@ M.UNPAID_PARTS_DRIVE_LIMIT = 25
 M.STARTER_MODEL = 'burnside'
 M.STARTER_CONFIG = 'vehicles/burnside/earth_freight_starter.pc'
 -- Insurance: from this much damage (half of what BeamNG calls major) a crash is serious, and the
--- player can claim instead of paying for the repair. A claim costs INSURANCE_FEE, or all the
--- player's money if less. The car is first sent back to the road, then fixed ROAD_SECONDS later
--- where it landed; jumps in the GRACE_SECONDS after a claim are not teleports.
+-- player can claim instead of paying for the repair. Cover shrinks as the player gets richer: a
+-- claim costs a share of the real repair that grows with their wealth (cash, truck, trailers and
+-- base), from nothing up to TOP_SHARE at TOP_WEALTH or more (25% from $300,000, MadMerick,
+-- 12 Nov). It never costs less than INSURANCE_FEE (more for a beacon's package) and never more
+-- than the repair. What the player's money doesn't cover is owed: DEBT_SHARE of every delivery's
+-- pay goes to it until it is paid, it can be paid off on the Garage tab, and parts and cars can't
+-- be bought meanwhile. The car is first sent back to the road, then fixed ROAD_SECONDS later where
+-- it landed; jumps in the GRACE_SECONDS after a claim are not teleports.
 M.SERIOUS_DAMAGE = 15000
 M.INSURANCE_FEE = 1000
+M.TOP_WEALTH, M.TOP_SHARE = 300000, 0.25
+M.DEBT_SHARE = 0.5
 M.ROAD_SECONDS, M.GRACE_SECONDS = 1.5, 10
 -- Tow: on foot, within TOW_RANGE metres of the car, the player pays TOW_FEE to have it brought to
 -- them. Short of the fee, it is owed instead, and parts and cars cannot be bought until it is paid.
@@ -33,6 +40,13 @@ M.TOW_FEE = 0
 M.TOW_RANGE = 50
 -- A drop in the car's damage bigger than this, with no repair or respawn, is the game resetting it.
 M.RESET_DAMAGE_DROP = 1
+-- After the car is spawned or reset, or its load's weight goes on, it drops onto its springs and
+-- bounces; a heavy part or load can bend a little on the way down. For SETTLE_SECONDS whatever
+-- damage it shows is taken as how it stands, not as damage: only damage on top of that is billed.
+M.SETTLE_SECONDS = 4
+-- After a teleport, such as a relocation, BeamNG.Earth puts the car down while the terrain is still
+-- loading and may move it again as it does; it settles for this long instead.
+M.LANDING_SETTLE_SECONDS = 15
 -- How long the HUD app has to show the parts bill box before a corner pop-up shows it instead.
 M.BILL_FALLBACK_SECONDS = 1.5
 -- After the parts menu closes, the camera is checked at these times (seconds), as the game can turn
@@ -49,6 +63,17 @@ M.RUST_VALUE, M.RIG_VALUE = 3500, 100000
 -- After parts or a car are paid for, a photo of the car is taken this many seconds later, once it
 -- is standing still, for the start page. The game's menus close and the car settles first.
 M.PHOTO_DELAY = 3
+
+-- What an insurance claim costs before the player's money caps it: the share of the repair that
+-- grows with wealth up to TOP_SHARE at TOP_WEALTH, at least minimum, but never more than the repair (0: unknown).
+function M.claimFee(repair, wealth, minimum)
+  repair = math.max(0, tonumber(repair) or 0)
+  wealth = math.max(0, tonumber(wealth) or 0)
+  local share = M.TOP_SHARE * math.min(1, wealth / M.TOP_WEALTH)
+  local fee = math.max(minimum or M.INSURANCE_FEE, math.floor(repair * share + 0.5))
+  if repair > 0 then fee = math.min(fee, repair) end
+  return fee
+end
 
 -- How far along the Rust Bucket to Rig line a car worth this much is, from 0 to 1; nil unknown.
 function M.climb(value)
@@ -88,15 +113,48 @@ end
 
 function M.attach(c)
   function c:inspectDamage()
-    local vehicle, why = self.garage:inspect()
+    local vehicle, why = self:vehicleDamage()
     if not vehicle then return nil, why end
     return { id = vehicle.id, damage = vehicle.damage + self.owedDamage + self.punctureDamage }
   end
 
-  -- The game Value of the player's own car, when vehicleId is that car; repairs are priced from it.
+  -- Starts (or extends) the settle time: SETTLE_SECONDS, or seconds. A spawned or reset car starts
+  -- with no damage; with keep (a change of load, a teleport), the damage it has now stays as it was.
+  function c:startSettle(keep, seconds)
+    if self.settleOff then return end
+    local carried = 0
+    if keep and self.garage then
+      local now = self:vehicleDamage()
+      carried = now and now.damage or 0
+    end
+    local untilAt = (self.clock or 0) + (seconds or M.SETTLE_SECONDS)
+    self.settleUntil = math.max(untilAt, self.settleUntil or untilAt)
+    self.settleCarried = carried
+  end
+
+  -- The player vehicle's damage as the game reads it, less what it picked up settling after its
+  -- last spawn, reset or change of load. While it settles, it keeps the damage it had before.
+  function c:vehicleDamage()
+    local vehicle, why = self.garage:inspect()
+    if not vehicle then return nil, why end
+    if self.settleUntil and (self.clock or 0) < self.settleUntil then
+      self.settleBaseline = { id = vehicle.id, damage = math.max(0, vehicle.damage - (self.settleCarried or 0)) }
+    end
+    local base = self.settleBaseline
+    local offset = base and base.id == vehicle.id and base.damage or 0
+    return { id = vehicle.id, damage = math.max(0, vehicle.damage - offset) }
+  end
+
+  -- What the player's own car is worth, when vehicleId is that car: its price plus the parts
+  -- fitted since (pricing.carWorth). Repairs and trade-ins are priced from it.
   function c:carValueOf(vehicleId)
     local owned = self.ownedParts
-    if owned and vehicleId ~= nil and owned.id == vehicleId then return owned.value end
+    if owned and vehicleId ~= nil and owned.id == vehicleId then return pricing.carWorth(owned) end
+  end
+
+  -- What the player's own car is worth now, or nil.
+  function c:carWorth()
+    return self.ownedParts and pricing.carWorth(self.ownedParts) or nil
   end
 
   -- The player's car for the start page's Your truck card, like a character sheet: its name,
@@ -109,11 +167,11 @@ function M.attach(c)
     local owned = self.ownedParts
     if self.error then return nil end
     if not owned or not self.arrived then return self:savedCarCard() end
-    local d = self.lastDamage
-    return { name = owned.name or owned.model, value = owned.value,
+    local d, worth = self.lastDamage, pricing.carWorth(owned)
+    return { name = owned.name or owned.model, value = worth,
       preview = self:carPicture(owned.model, owned.configFile),
-      repair = d and d.id == owned.id and pricing.repairCost(d.damage, owned.value) or 0,
-      climb = M.climb(owned.value) }
+      repair = d and d.id == owned.id and pricing.repairCost(d.damage, worth) or 0,
+      climb = M.climb(worth) }
   end
 
   -- The picture of the player's car: our photo of it with the parts paid for, once one has been
@@ -149,8 +207,8 @@ function M.attach(c)
         local ok, v, n = pcall(self.garage.carValue, self.garage, model, configFile)
         if ok then value, name = v, n end
       end
-      -- A second-hand car is worth what was paid for it.
-      value = saved.value or value
+      -- A second-hand car is worth what was paid for it; the worth saved with it counts its parts.
+      value = saved.worth or saved.value or value
       known = { from = saved, model = model, configFile = configFile, name = saved.name or name or model, value = value,
         repair = saved.damage and pricing.repairCost(saved.damage, value) or 0,
         space = cargo.capacity({ parts = M.configParts(config) }) }
@@ -288,10 +346,57 @@ function M.attach(c)
     return d ~= nil and owned ~= nil and d.id == owned.id and d.damage >= M.SERIOUS_DAMAGE
   end
 
-  -- On a dangerous contract, or a beacon's package, a claim costs more instead.
+  -- What the claim costs now: see M.TOP_WEALTH. A beacon's package has a higher minimum.
+  -- Wealth here is less what is already owed for insurance.
   function c:insuranceFee()
-    local fee = self.load and (self.load.contract and contracts.INSURANCE_FEE or self.load.beacon and beacons.INSURANCE_FEE) or M.INSURANCE_FEE
-    return math.min(fee, self.profile and self.profile.progression.balance or 0)
+    local minimum = self.load and self.load.beacon and beacons.INSURANCE_FEE or M.INSURANCE_FEE
+    local d = self.lastDamage
+    local repair = d and self:repairPrice(d.damage, self:carValueOf(d.id)) or 0
+    return M.claimFee(repair, self:insuranceWealth(), minimum)
+  end
+
+  function c:insuranceWealth()
+    return math.max(0, math.floor((self.wealth and self:wealth() or 0) - self:insuranceOwed()))
+  end
+
+  -- What is owed for insurance claims the player's money did not cover.
+  function c:insuranceOwed()
+    return self.profile and self.profile.progression.insuranceOwed or 0
+  end
+
+  -- Everything owed (tows and insurance): parts and cars can't be bought until it is paid.
+  function c:debtOwed()
+    return self:towOwed() + self:insuranceOwed()
+  end
+
+  -- Takes DEBT_SHARE of a delivery's pay (already added to the money) for the insurance owed.
+  -- Returns a line for the delivery message, or ''.
+  function c:payDebtFrom(pay)
+    local owed = self:insuranceOwed()
+    if owed <= 0 or type(pay) ~= 'number' or pay <= 0 then return '' end
+    local take = math.min(owed, math.floor(pay * M.DEBT_SHARE), self.profile.progression.balance)
+    if take <= 0 or not self:spend(take, 'insurance_debt') then return '' end
+    local left = owed - take
+    self.profile.progression.insuranceOwed = left > 0 and left or nil
+    return ' ' .. dollars(take) .. ' went to your insurance debt' .. (left > 0 and (', ' .. dollars(left) .. ' left.') or ', which is now paid off.')
+  end
+
+  function c:payInsuranceAllowed()
+    return self:insuranceOwed() > 0 and self:canAfford(self:insuranceOwed())
+  end
+
+  -- Pays off the insurance owed in one go.
+  function c:payInsurance()
+    local owed = self:insuranceOwed()
+    if owed == 0 then return false end
+    if not self:spend(owed, 'insurance_debt') then
+      self.repairFeedback = 'Not enough money. You need ' .. dollars(owed - self.profile.progression.balance) .. ' more.'
+      return false
+    end
+    self.profile.progression.insuranceOwed = nil
+    self.repairFeedback = 'Insurance debt paid off. Save to keep it.'
+    self:autoSaveSoon('your payment')
+    return true
   end
 
   function c:insuranceAllowed()
@@ -309,8 +414,11 @@ function M.attach(c)
     end
     if not self.insuranceArmed then
       self.insuranceArmed = true
-      self.repairFeedback = 'Press Confirm claim: your car is fixed and put back on the road for ' .. dollars(self:insuranceFee())
+      local fee = self:insuranceFee()
+      local short = fee - math.min(fee, self.profile.progression.balance)
+      self.repairFeedback = 'Press Confirm claim: your car is fixed and put back on the road for ' .. dollars(fee)
         .. (self.load and ', but your job and its cargo are lost.' or '.')
+        .. (short > 0 and (' You are ' .. dollars(short) .. ' short, so that is owed and comes out of your next deliveries.') or '')
       return false
     end
     self.insuranceArmed = false
@@ -339,7 +447,10 @@ function M.attach(c)
       return false
     end
     local fee = self:insuranceFee()
-    if fee > 0 then self:spend(fee, 'insurance') end
+    local paid = math.min(fee, self.profile.progression.balance)
+    if paid > 0 then self:spend(paid, 'insurance') end
+    local short = fee - paid
+    if short > 0 then self.profile.progression.insuranceOwed = self:insuranceOwed() + short end
     local lost = ''
     if self.load then
       lost = ' Your job and its cargo are lost.'
@@ -349,7 +460,8 @@ function M.attach(c)
     self.quote, self.owedDamage, self.punctureDamage, self.lastDamage = nil, 0, 0, nil
     self.insuredUntil = self.clock + M.GRACE_SECONDS
     self.repairFeedback = nil
-    self:showFlash('delivered', 'INSURANCE CLAIMED', 'Your car is fixed and back on the road for ' .. dollars(fee) .. '.' .. lost .. ' Save to keep it.')
+    local owes = short > 0 and (' You were ' .. dollars(short) .. ' short: half of each delivery\'s pay goes to it until it is paid.') or ''
+    self:showFlash('delivered', 'INSURANCE CLAIMED', 'Your car is fixed and back on the road for ' .. dollars(fee) .. '.' .. lost .. owes .. ' Save to keep it.')
     return true
   end
 
@@ -365,7 +477,10 @@ function M.attach(c)
     local d = self.lastDamage
     return { fee = self:insuranceFee(), armed = self.insuranceArmed, pending = self.insurancePending ~= nil,
       allowed = self:insuranceAllowed(), loseJob = self.load ~= nil,
-      repair = d and pricing.repairCost(d.damage, self:carValueOf(d.id)) or nil }
+      wealth = self:insuranceWealth(), topWealth = M.TOP_WEALTH,
+      topPercent = math.floor(M.TOP_SHARE * 100 + 0.5), sharePercent = math.floor(M.TOP_SHARE * 100 * math.min(1, self:insuranceWealth() / M.TOP_WEALTH) + 0.5),
+      short = math.max(0, self:insuranceFee() - (self.profile and self.profile.progression.balance or 0)),
+      repair = d and self:repairPrice(d.damage, self:carValueOf(d.id)) or nil }
   end
 
   -- Tow, on the Garage tab's Repair card: the player gets out, walks to a clear spot within
@@ -435,6 +550,7 @@ function M.attach(c)
       return false
     end
     self.towArmed = false
+    local away = self:carDistance()
     local ok, why, detail = self.garage:towHere(self.ownedParts.id)
     if not ok then
       self.repairFeedback = 'The tow did not go through. You have not been charged.'
@@ -444,6 +560,9 @@ function M.attach(c)
     local paid = fee == 0 or (not short and self:spend(fee, 'tow'))
     if not paid then self.profile.progression.towOwed = self:towOwed() + fee end
     self.towedAt, self.repairFeedback = self.clock, nil
+    -- The car only comes the few metres (TOW_RANGE) to the player, which is no shortcut on a Mayday Rescue run. A
+    -- longer move would be, so that still ends one.
+    if self.endMaydayRun and (away or math.huge) > mayday.HOP_METRES then self:endMaydayRun('tow') end
     self.diag:event('towed', fee == 0 and 'free' or (paid and 'paid' or 'owed'))
     local cost = fee == 0 and ', free' or (paid and (' for ' .. dollars(fee))
       or (': you owe ' .. dollars(self:towOwed()) .. '. Pay it on the Garage tab before buying parts or cars'))
@@ -477,7 +596,9 @@ function M.attach(c)
   -- Why buying parts or cars is not possible while a tow is owed, or nil.
   function c:towDebtProblem()
     local owed = self:towOwed()
-    return owed > 0 and ('Pay the ' .. dollars(owed) .. ' tow fee on the Repair card first.') or nil
+    if owed > 0 then return 'Pay the ' .. dollars(owed) .. ' tow fee on the Repair card first.' end
+    owed = self:insuranceOwed()
+    return owed > 0 and ('Pay off your ' .. dollars(owed) .. ' insurance debt on the Garage tab first.') or nil
   end
 
   -- The Tow card on the Garage tab.
@@ -501,11 +622,14 @@ function M.attach(c)
     if vehicleId ~= nil and self.garage and self.garage.isWalker and self.garage:isWalker(vehicleId) then return end
     -- The player's trailer coming out is not a change to their car.
     if self.trailerSpawning or (vehicleId ~= nil and self.trailerOut and vehicleId == self.trailerOut.id) then
-      -- A part change in the parts menu respawns the trailer: its bill is worked out next tick.
-      if self.trailerShop then self.trailerShop.due = true end
+      -- Not one we spawned: the game's parts menu (or a reload) respawned it. Its parts are checked
+      -- next tick, and changed ones are put back (watchTrailerParts).
+      if not self.trailerSpawning and self.trailerOut then self.trailerOut.respawned = true end
       return
     end
     self.partsCheckDue, self.respawned, self.wearDue = true, true, true
+    -- The new car drops onto its springs: see SETTLE_SECONDS.
+    self:startSettle()
     -- Seen by a hire waiting for its vehicle, or for the car coming back: when the sightseeing car
     -- and the player's own car are both Moonhawks, the model alone does not tell them apart.
     if self.hire and (self.hire.stage == 'spawning' or self.hire.stage == 'swapping') then self.hire.respawned = true end
@@ -520,6 +644,7 @@ function M.attach(c)
     if not owned or vehicleId ~= owned.id then return end
     if self.fuel and self.fuel.vehicleId == owned.id then self.fuel.restore = true end
     self.appliedWeight, self.respawned = nil, true
+    self:startSettle()
   end
 
   -- Called every tick: when the car's damage drops with no repair or respawn of ours going on, the
@@ -535,7 +660,7 @@ function M.attach(c)
       self.rawDamage = nil
       return
     end
-    local raw, owned = self.garage:inspect(), self.ownedParts
+    local raw, owned = self:vehicleDamage(), self.ownedParts
     if not raw and owned and not self.ourRespawn and not self.insurancePending then return end
     if not raw or not owned or raw.id ~= owned.id or self.ourRespawn or self.insurancePending then
       self.rawDamage = nil
@@ -547,7 +672,7 @@ function M.attach(c)
     self.owedDamage = self.owedDamage + before.damage - raw.damage
     self.quote = nil
     self.diag:event('reset_owed', string.format('%.1f damage', before.damage - raw.damage))
-    local owed = pricing.repairCost(self.owedDamage, owned.value)
+    local owed = pricing.repairCost(self.owedDamage, pricing.carWorth(owned))
     if owed > 0 then
       local towed = self.towedAt and self.clock - self.towedAt <= M.GRACE_SECONDS
       self:showFlash('cancelled', 'REPAIR STILL OWED', (towed and 'Towing does not fix the car. ' or 'Resetting the car does not fix it for free. ')
@@ -555,15 +680,18 @@ function M.attach(c)
     end
   end
 
-  -- Adopts the fitted parts as paid for, when there is nothing to charge against.
+  -- Adopts the fitted parts as paid for, when there is nothing to charge against. Lines them up
+  -- with the parts the car's config comes with, so the parts fitted since count in its worth.
   function c:adoptParts(snapshot)
+    if snapshot.stock == nil and self.garage and self.garage.stockParts then
+      local ok, stock = pcall(self.garage.stockParts, self.garage, snapshot)
+      snapshot.stock = ok and stock or nil
+    end
     self.ownedParts, self.pendingParts, self.pendingCar = snapshot, nil, nil
     self.diag:event('parts_owned', tostring(snapshot.model) .. ' #' .. tostring(snapshot.id))
   end
 
   function c:checkParts()
-    -- While the player is in their trailer for its parts, the vehicle they are in is not a car to buy.
-    if self.trailerShop then return false end
     local snapshot = self.garage:parts()
     if not snapshot then return false end
     -- A second-hand car is priced once it has spawned (watchParts drops one that never does).
@@ -756,10 +884,11 @@ function M.attach(c)
   -- player's, opens a bill: the car's price, plus parts changed on it since, less the trade-in of
   -- the player's car. The swap mends the old car, so its damage is frozen into the bill.
   -- What the player's car trades in for, less the repair its damage needs: the trade-in and repair.
+  -- Both go by what the car is worth with its parts.
   function c:tradeIn(oldDamage)
-    local owned = self.ownedParts
-    local repair = pricing.repairCost(oldDamage, owned.value)
-    return math.max(0, math.floor((owned.value or pricing.DEFAULT_CAR_PRICE) * pricing.CAR_TRADE_IN_SHARE + 0.5) - repair), repair
+    local worth = pricing.carWorth(self.ownedParts)
+    local repair = pricing.repairCost(oldDamage, worth)
+    return math.max(0, math.floor((worth or pricing.DEFAULT_CAR_PRICE) * pricing.CAR_TRADE_IN_SHARE + 0.5) - repair), repair
   end
 
   -- The damage the player's car has now, frozen into a car bill when it opens.
@@ -802,16 +931,16 @@ function M.attach(c)
   end
 
   function c:buyCarAllowed()
-    return self.pendingCar ~= nil and not self.load and self:canAfford(self.pendingCar.cost) and self:towOwed() == 0
+    return self.pendingCar ~= nil and not self.load and self:canAfford(self.pendingCar.cost) and self:debtOwed() == 0
   end
 
-  -- Keep and store at home: allowed with a home that has room.
+  -- Keep the old car: allowed with a free slot in Your cars.
   function c:keepCarAllowed()
-    return self.pendingCar ~= nil and self:homeSpaceFree() and not self.load and self:canAfford(self.pendingCar.keepCost)
-      and self:towOwed() == 0
+    return self.pendingCar ~= nil and self:carSlotFree() and not self.load and self:canAfford(self.pendingCar.keepCost)
+      and self:debtOwed() == 0
   end
 
-  -- The player's car as home keeps it, from the parts paid for, after another car has taken its place.
+  -- The player's car as Your cars keeps it parked, from the parts paid for, after another car has taken its place.
   function c:oldCarRecord(pending)
     local owned = self.ownedParts
     if not owned or type(owned.config) ~= 'table' then return nil end
@@ -822,10 +951,11 @@ function M.attach(c)
     local name = self:savedVehicleName()
     return persistence.storedCar({ config = config, name = name,
       damage = pending.oldDamage and pending.oldDamage > 0 and math.min(9007199254740991, pending.oldDamage) or nil,
-      fuelLitres = pending.oldFuel, value = owned.used and owned.value or nil, km = owned.used and owned.km or nil })
+      fuelLitres = pending.oldFuel, value = owned.used and owned.value or nil, km = owned.used and owned.km or nil,
+      worth = pricing.carWorth(owned) })
   end
 
-  -- Pays the car bill. With keep, the old car is sent home instead of traded in.
+  -- Pays the car bill. With keep, the old car is parked in a free slot of Your cars instead of traded in.
   function c:buyCar(keep)
     if not self.profile or self.error then
       self.carFeedback = 'Buying cars is unavailable right now. Check the status above.'
@@ -855,8 +985,8 @@ function M.attach(c)
     end
     local cost, kept = pending.cost, nil
     if keep then
-      if not self:homeSpaceFree() then
-        self.carFeedback = self.property and 'Your home has no room for another car.' or 'You need a home to keep your old car.'
+      if not self:carSlotFree() then
+        self.carFeedback = 'Every slot in Your cars is taken. Sell a parked car first, or trade this one in.'
         return false
       end
       kept = self:oldCarRecord(pending)
@@ -872,8 +1002,8 @@ function M.attach(c)
       return false
     end
     if kept then
-      self.storedCars = { kept }
-      self.homeCard = nil
+      self.storedCars = self.storedCars or {}
+      self.storedCars[#self.storedCars + 1] = kept
     end
     -- Later part changes are priced against what was paid for, so the car keeps its own Value. A
     -- second-hand car's value is its price, and it keeps the kilometres it came with.
@@ -895,7 +1025,7 @@ function M.attach(c)
     self.photoModel, self.photoStamp = nil, nil
     self.owedDamage, self.punctureDamage, self.fuel = 0, 0, nil
     self.carFeedback = 'Bought ' .. tostring(pending.name) .. ' for ' .. dollars(cost) .. '.'
-      .. (kept and (' Your ' .. tostring(kept.name or kept.config.model) .. ' is stored at home.') or '')
+      .. (kept and (' Your ' .. tostring(kept.name or kept.config.model) .. ' is parked in slot ' .. tostring(#self.storedCars + 1) .. ' of Your cars.') or '')
     self:autoSaveSoon('buying your car')
     self:photoSoon()
     return true
@@ -954,8 +1084,8 @@ function M.attach(c)
     for slot, offer in ipairs(offers) do
       local cost = math.max(0, offer.price - tradeIn)
       local sold = self.soldUsed[offer.id] == true
-      -- With room at home, the old car can be kept instead: the full price.
-      local keepCost = self:homeSpaceFree() and offer.price or nil
+      -- With a free slot in Your cars, the old car can be kept instead: the full price.
+      local keepCost = self:carSlotFree() and offer.price or nil
       list[slot] = { slot = slot, name = offer.name, preview = offer.preview, price = offer.price, newPrice = offer.newPrice,
         share = offer.share, km = offer.km, cost = cost, keepCost = keepCost, sold = sold, short = cost > balance and cost - balance or nil,
         allowed = problem == nil and not sold and self:canAfford(cost) }
@@ -1130,7 +1260,7 @@ function M.attach(c)
   end
 
   function c:buyPartsAllowed()
-    return self.pendingParts ~= nil and self:canAfford(self.pendingParts.cost) and self:towOwed() == 0
+    return self.pendingParts ~= nil and self:canAfford(self.pendingParts.cost) and self:debtOwed() == 0
       and (not self.fittedParts or self:loadFits(self.fittedParts))
   end
 

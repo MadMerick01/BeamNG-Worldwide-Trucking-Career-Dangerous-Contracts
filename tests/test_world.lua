@@ -68,7 +68,7 @@ end
 
 -- The boost becomes a road bonus on a job's pay, at the average of its two ends.
 local yolosaRun = places.nearest(coroico, 1, coroico.id)[1].place
-T.near(jobs.roadBonus(coroico, laPaz), math.min(2, 1 + ((coroico.boost + laPaz.boost) / 2 - 1) / 2), 1e-9, 'the road bonus is from the average boost')
+T.near(jobs.roadBonus(coroico, laPaz), math.min(3, (coroico.boost + laPaz.boost) / 2), 1e-9, 'the road bonus is from the average boost')
 local run = { id = 'food_' .. yolosaRun.id, good = 'food', from = coroico.id, to = yolosaRun.id, km = jobs.roadKm(coroico, yolosaRun) }
 local q = jobs.quote(run, 10, {}, 0)
 T.check(q.road > 1.75, 'Death Road jobs pay nearly double: ' .. q.road)

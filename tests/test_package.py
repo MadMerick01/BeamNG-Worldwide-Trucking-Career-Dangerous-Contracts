@@ -1,6 +1,7 @@
 """Validate the distributed layout/assets, not just the development checkout."""
 import hashlib
 import json
+import re
 import struct
 import subprocess
 import sys
@@ -12,7 +13,7 @@ from zipfile import ZipFile
 
 from lupa.luajit21 import LuaRuntime
 
-from tools.package import build, build_server
+from tools.package import build
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -62,19 +63,23 @@ class PackageTest(unittest.TestCase):
         self.assertIn(b"'" + (prefix + 'earth_freight_starter.pc').encode() + b"'", workshop)
 
     def test_trailers_for_sale_are_packaged(self):
-        prefix = 'vehicles/boxutility/'
         with ZipFile(self.output) as archive:
-            trailers = archive.read('lua/ge/extensions/earthFreight/trailers.lua')
-            for key, name in (('earth_freight_trailer_boxes', 'Cargo Boxes XL'), ('earth_freight_trailer_fluid', 'Fluid Tanks XL')):
+            trailers = archive.read('lua/ge/extensions/earthFreight/trailers.lua').decode()
+            ours = re.findall(r"id = '([a-z_]+)/(earth_freight_[a-z0-9_]+)'", trailers)
+            self.assertEqual(len(ours), 13)
+            for model, key in ours:
+                prefix = 'vehicles/' + model + '/'
                 config = json.loads(archive.read(prefix + key + '.pc'))
                 info = json.loads(archive.read(prefix + 'info_' + key + '.json'))
                 thumbnail = archive.read(prefix + key + '.jpg')
-                self.assertEqual(config['model'], 'boxutility')
+                self.assertEqual(config['model'], model)
                 self.assertIsInstance(config['parts'], dict)
-                self.assertEqual(info['Configuration'], name)
+                self.assertTrue(info['Configuration'])
                 self.assertGreater(info['Value'], 0)
                 self.assertEqual(thumbnail[:3], b'\xff\xd8\xff')
-                self.assertIn(b"'boxutility/" + key.encode() + b"'", trailers)
+                # A tank setup fits tanks, a box setup leaves the game's own boxes in.
+                tanks = [part for part in config['parts'].values() if 'cargo_load_tank' in part]
+                self.assertEqual(bool(tanks), 'Tanks' in info['Configuration'] or 'Fluid' in info['Configuration'], key)
 
     def test_png_is_complete_with_valid_checksums(self):
         with ZipFile(self.output) as archive:
@@ -125,25 +130,10 @@ class PackageTest(unittest.TestCase):
         self.assertEqual(hashlib.sha256(self.output.read_bytes()).digest(),
                          hashlib.sha256(second.read_bytes()).digest())
 
-    def test_server_download_holds_the_plugin_and_the_mod(self):
-        server = build_server(Path(self.temp.name) / 'server.zip', self.output)
-        with ZipFile(server) as archive:
-            names = set(archive.namelist())
-            self.assertEqual(names, {'Resources/Server/WorldwideTrucking/main.lua',
-                                     'Resources/Client/worldwide-trucking-dangerous-contracts.zip', 'MULTIPLAYER-SETUP.md',
-                                     'SERVER-UPDATES.md', 'update-server.ps1', 'update-server.bat',
-                                     'update-settings.example.json'})
-            self.assertNotIn('update-settings.json', names, 'the host\'s own settings are never in the download')
-            self.assertEqual(archive.read('Resources/Client/worldwide-trucking-dangerous-contracts.zip'), self.output.read_bytes())
-            self.assertIsNone(archive.testzip())
-
-    def test_build_number_is_stamped_into_both_downloads(self):
+    def test_build_number_is_stamped_into_the_download(self):
         mod = build(Path(self.temp.name) / 'numbered.zip', 160)
-        server = build_server(Path(self.temp.name) / 'numbered-server.zip', mod, 160)
         with ZipFile(mod) as archive:
             self.assertEqual(archive.read('lua/ge/extensions/earthFreight/build.lua'), b'return 160\n')
-        with ZipFile(server) as archive:
-            self.assertEqual(archive.read('Resources/Server/WorldwideTrucking/build.txt'), b'160\n')
         with ZipFile(self.output) as archive:
             self.assertNotIn('lua/ge/extensions/earthFreight/build.lua', archive.namelist(), 'no number, no build file')
 

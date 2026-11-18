@@ -21,6 +21,16 @@ local info = g:inspect()
 T.eq(info.id, 7, 'reads the player vehicle id'); T.eq(info.damage, 1234, 'reads damage from map.objects')
 T.check(g:repair(), 'repair accepted'); T.eq(replaced.model, 'pickup', 'respawns the same model')
 T.eq(replaced.options.config.model, 'pickup', 'respawns with the current parts config'); T.eq(replaced.veh:getID(), 7, 'replaces the player vehicle in place')
+-- A trailer put back as it was sold: another vehicle, by id, respawned from its .pc path.
+do
+  local trailer = { getID = function() return 42 end, getJBeamFilename = function() return 'tiltdeck' end }
+  local tg = G.new(env({ objectById = function(id) return id == 42 and trailer or nil end,
+    manager = function() return { getVehicleData = function(id) return id == 42 and { config = { model = 'tiltdeck', parts = { box = 'x' } } } or nil end } end }))
+  T.check(tg:repair('vehicles/tiltdeck/earth_freight_22ft_boxes.pc', 42), 'trailer respawn accepted')
+  T.eq(replaced.veh:getID(), 42, 'the trailer, not the player vehicle'); T.eq(replaced.model, 'tiltdeck', 'its own model')
+  T.eq(replaced.options.config, 'vehicles/tiltdeck/earth_freight_22ft_boxes.pc', 'as its .pc file sets it up')
+  T.eq(select(2, tg:repair('x.pc', 43)), 'vehicle_required', 'a vehicle that is gone is refused')
+end
 
 local _, why = G.new(env({ vehicle = function() return nil end })):inspect()
 T.eq(why, 'vehicle_required', 'no vehicle, no quote')
@@ -113,6 +123,43 @@ T.eq(parts.values.pickup_intake_race, 800, 'part value read'); T.eq(parts.names.
 T.eq(parts.values.pickup_engine_v8, nil, 'unreadable value left out'); T.eq(parts.names.pickup, 'pickup', 'lookup errors contained')
 _, why = G.new(env()):parts()
 T.eq(why, 'parts_unavailable', 'no parts tree, no parts')
+T.eq(parts.slots['/pickup_engine/pickup_intake/'], 'pickup_intake', 'slot names kept')
+T.eq(parts.parents['/pickup_engine/pickup_intake/'], '/pickup_engine/', 'with the slot above')
+T.eq(parts.slots['/'], '', 'the root has no slot name')
+-- The parts the car's own config comes with, lined up with the fitted slots.
+local stockEnv = env({
+  manager = partsEnv.manager,
+  jbeam = function() return { getPart = function(_, name)
+    if name == 'pickup_engine_i6' then return { information = { value = 3000, name = 'I6 Engine' } } end
+    if name == 'pickup_intake_race' then return { information = { value = 800, name = 'Race Intake' } } end
+  end } end,
+  read = function(path)
+    if path == 'vehicles/pickup/base.pc' then return { format = 2, mainPartName = 'pickup', parts = {
+      pickup_engine = 'pickup_engine_i6', pickup_bumper = 'pickup_bumper_f', pickup_i6_intake = 'pickup_i6_intake_stock' } } end
+    if path == 'vehicles/pickup/tree.pc' then return { partsTree = { chosenPartName = 'pickup', path = '/', children = {
+      pickup_engine = { chosenPartName = 'pickup_engine_v8', path = '/pickup_engine/' } } } } end
+    error('missing')
+  end,
+})
+local sg = G.new(stockEnv)
+local snap = sg:parts(); snap.configFile = 'vehicles/pickup/base.pc'
+local stock = sg:stockParts(snap)
+T.eq(stock['/'], 'pickup', 'the root is the main part')
+T.eq(stock['/pickup_engine/'], 'pickup_engine_i6', 'a slot the config names, by slot name')
+T.eq(stock['/pickup_bumper/'], 'pickup_bumper_f', 'an emptied slot keeps the part it came with')
+T.eq(stock['/pickup_engine/pickup_intake/'], '', 'a slot under a changed part came with it')
+T.eq(stock['#pickup_i6_intake'], 'pickup_i6_intake_stock', 'a config slot the car no longer has')
+T.eq(snap.values.pickup_engine_i6, 3000, 'stock parts priced'); T.eq(snap.names.pickup_engine_i6, 'I6 Engine', 'and named')
+snap.stock = stock
+T.eq(require('earthFreight/pricing').partsWorth(snap), 250 + 800 - 3000 - 250 - 250,
+  'the V8 and its intake added, the I6, its intake and the bumper taken off')
+snap = sg:parts(); snap.configFile = 'vehicles/pickup/tree.pc'
+stock = sg:stockParts(snap)
+T.eq(stock['/pickup_engine/'], 'pickup_engine_v8', 'a config with a tree lines up by path')
+T.eq(stock['/pickup_engine/pickup_intake/'], 'pickup_intake_race', 'slots it does not have stay as fitted')
+snap.configFile = 'vehicles/pickup/gone.pc'; T.eq(sg:stockParts(snap), nil, 'an unreadable config, no stock parts')
+snap.configFile = nil; T.eq(sg:stockParts(snap), nil, 'nor without a config')
+T.eq(G.new(partsEnv):stockParts(sg:parts()), nil, 'nor without a way to read it')
 local revert = { model = 'pickup', partsTree = { chosenPartName = 'pickup' }, vars = { ['$tune'] = 1 }, paints = { 'blue' } }
 T.check(G.new(partsEnv):repair(revert), 'respawn with given parts accepted')
 T.eq(replaced.options.config.partsTree.chosenPartName, 'pickup', 'respawns with the given parts')
@@ -266,6 +313,26 @@ do
   local list = G.new(env({ vehicles = function() return { getConfigList = function() return { configs = {
     a = { model_key = 'pickup', key = 'd15', Value = 1 }, b = { model_key = 'pickup', key = G.PHOTO_KEY, Value = 1 } } } end } end }))
   local configs = list:configs(); T.eq(#configs, 1, 'the photo config is not for sale'); T.eq(configs[1].key, 'd15', 'the real one is')
+end
+
+-- A tanker's Load Volume setting: found by its title, read from the config, and set by a respawn.
+do
+  local tanker = { getID = function() return 60 end, getJBeamFilename = function() return 'tanker' end }
+  local data = { config = { model = 'tanker', parts = { tank = 'x' }, vars = { ['$airtank'] = 125, ['$load_volume'] = 0 } },
+    vdata = { variables = {
+      ['$airtank'] = { name = '$airtank', title = 'Air Tank Pressure', unit = 'psi', category = 'Chassis', max = 150 },
+      ['$load_volume'] = { name = '$load_volume', title = 'Load Volume', unit = 'L', category = 'Load', min = 0, max = 34000, default = 0 } } } }
+  local tg = G.new(env({ objectById = function(id) return id == 60 and tanker or nil end,
+    manager = function() return { getVehicleData = function(id) return id == 60 and data or nil end } end }))
+  local s = tg:loadVolume(60)
+  T.eq(s and s.name, '$load_volume', 'the Load Volume setting found'); T.eq(s and s.max, 34000, 'its most'); T.eq(s and s.value, 0, 'empty now')
+  T.eq(tg:loadVolume(7), nil, 'a vehicle without one has none')
+  T.check(tg:setLoadVolume(60, '$load_volume', 12000), 'respawn asked')
+  T.eq(replaced.veh:getID(), 60, 'the tanker respawned in place'); T.eq(replaced.options.config.vars['$load_volume'], 12000, 'filled to 12,000 L')
+  T.eq(replaced.options.config.vars['$airtank'], 125, 'its other settings kept'); T.eq(replaced.options.config.parts.tank, 'x', 'and its parts')
+  T.eq(data.config.vars['$load_volume'], 0, 'the game data itself is not changed')
+  local ok, why = tg:setLoadVolume(61, '$load_volume', 1)
+  T.check(not ok and why == 'vehicle_required', 'no such vehicle')
 end
 
 T.done('garage')

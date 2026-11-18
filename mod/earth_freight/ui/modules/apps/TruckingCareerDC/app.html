@@ -6,7 +6,10 @@
     .ef-sum { flex: 1; min-width: 0; text-align: right; font-size: 12px; color: #c9d6d2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
     .ef-sb { padding: 0 0 8px 18px } .ef-link { padding: 0; background: none; border: none; color: #a7e5c9; font-size: 12px; text-decoration: underline; cursor: pointer }
     .ef-strip { display: block; max-width: 440px; pointer-events: auto; padding: 5px 12px; background: rgba(12,19,24,.9); color: #f2f6f5; text-align: left; font: 14px/1.35 sans-serif; border: 1px solid #568d7a; border-radius: 8px; cursor: pointer }
-    .ef-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }</style>
+    .ef-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+    .ef-coffee { flex: none; white-space: nowrap; padding: 1px 8px; font-size: 12px; color: #c9ad5f; background: none; border: 1px solid rgba(201,173,95,.55); border-radius: 4px; cursor: pointer }
+    .ef-coffee:hover { color: #f2c94c; border-color: #f2c94c }
+    .ef-mayday { box-sizing: border-box; padding: 8px 10px; border: 2px solid #eb5757; border-radius: 6px; background: rgba(12,19,24,.94); color: #f2f6f5; font: 13px/1.4 sans-serif; text-align: left; box-shadow: 0 0 18px rgba(235,87,87,.35) }</style>
   <button type="button" ng-if="hud.minimised && !intro.open" ng-click="setMinimised(false)" ng-class="{'ef-arrive': atDestination(data)}" ng-style="hudAlert(data) === 'bad' ? {borderColor:'#eb5757'} : {}" class="ef-strip" title="{{atDestination(data) ? 'You are there: open the HUD to deliver' : 'Open the Worldwide Trucking HUD'}}">
     <div class="ef-line" style="display:flex;align-items:center;gap:10px;">
       <span ng-if="data.balance != null" style="flex:none;font-size:22px;font-weight:900;">${{data.balance | number:0}}</span>
@@ -16,10 +19,26 @@
       <span ng-if="!flashBad(data) && atDestination(data)" class="ef-line" style="font-weight:bold;">{{data.beacon && data.beacon.pickUpAllowed ? 'PICK IT UP' : 'DELIVER HERE'}}<span ng-if="trip(data)"> &middot; ${{trip(data).pay | number:0}}</span></span>
       <span ng-if="!flashBad(data) && !atDestination(data) && trip(data)" class="ef-line"><b ng-style="{color: trip(data).danger ? '#eb5757' : '#f2f6f5'}">&rarr; {{trip(data).to}}</b><span ng-if="trip(data).metres != null" style="color:#c9d6d2;"> {{distance(trip(data).metres)}}<span ng-if="trip(data).letters"> {{trip(data).letters}}</span></span> <b style="color:#6fcf97;">${{trip(data).pay | number:0}}</b></span>
       <span ng-if="!flashBad(data) && !atDestination(data) && !trip(data) && data.fuel" style="flex:none;color:#c9d6d2;" title="Fuel in the tank"><span aria-hidden="true" style="display:inline-block;width:40px;height:7px;border-radius:4px;background:#33423f;vertical-align:middle;overflow:hidden;"><span ng-style="fuelStyle(data.fuel)" style="display:block;height:100%;"></span></span> {{data.fuel.litres | number:0}} L</span>
-      <span ng-if="hudAlert(data) && !atDestination(data)" ng-style="{color: hudAlert(data) === 'bad' ? '#eb5757' : '#f2c94c'}" aria-label="needs attention" style="flex:none;">&#9679;</span>
+      <span ng-if="hudAlert(data) && !atDestination(data)" ng-style="{color: hudAlert(data) === 'waiting' ? '#f2c94c' : '#eb5757'}" aria-label="needs attention" style="flex:none;">&#9679;</span>
     </div>
     <div ng-if="data.where" class="ef-line" style="font-size:14px;color:#c9d6d2;"><b style="color:#f2f6f5;">{{data.where.title}}</b><span ng-if="data.where.area"> &middot; {{data.where.area}}</span><span ng-if="data.where.street" style="color:#a7e5c9;"> &middot; {{data.where.street}}</span></div>
+    <div ng-if="data.where && data.turf" class="ef-line" style="font-size:13px;font-weight:bold;" ng-style="{color: (data.turf.mine || data.turf.corp) ? '#6fcf97' : '#f2994a'}"><span ng-if="data.turf.mine">Your turf &middot; up to +{{data.turf.percent}}% pay</span><span ng-if="data.turf.corp">Your corp's turf &middot; up to +{{data.turf.percent}}% pay</span><span ng-if="!data.turf.mine && !data.turf.corp">{{data.turf.owner || 'Another trucker'}}'s turf &middot; {{data.turf.toll}}% toll on deliveries here</span></div>
   </button>
+  <div ng-if="hud.minimised && !intro.open && maydayCard(data)" role="alert" class="ef-mayday" style="max-width:440px;margin-top:6px;pointer-events:auto;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="flex:1;min-width:0;font-weight:bold;letter-spacing:1px;font-size:15px;color:#eb5757;">&#9888; MAYDAY RESCUE</div>
+      <div ng-if="data.mayday.secondsLeft != null" title="When this call moves on to somewhere else" style="flex:none;color:#c9d6d2;">moves on in {{until(data.mayday.secondsLeft)}}</div>
+      <button type="button" ng-click="closeMaydayCard()" title="Close. The Mayday Rescue tab still has the call." aria-label="Close" style="flex:none;padding:0 7px;border:1px solid #568d7a;border-radius:4px;">&#10005;</button>
+    </div>
+    <div style="margin-top:3px;font-weight:bold;font-size:14px;">Near {{data.mayday.name}}<span ng-if="data.mayday.region">, {{data.mayday.region}}</span></div>
+    <div ng-if="data.mayday.story" style="color:#c9d6d2;">{{data.mayday.story}}</div>
+    <div style="margin-top:4px;">First to the scene gets <b style="color:#6fcf97;">${{data.mayday.reward | number:0}}</b>.<span ng-if="data.mayday.distanceMetres != null"> You're {{distance(data.mayday.distanceMetres)}} away.</span><span ng-if="data.mayday.racers" style="color:#f2c94c;"> {{data.mayday.racers}} {{data.mayday.racers === 1 ? 'trucker has' : 'truckers have'}} set off.</span></div>
+    <div ng-if="data.mayday.problem" style="margin-top:3px;color:#c9d6d2;">{{data.mayday.problem}}</div>
+    <div style="margin-top:7px;display:flex;gap:8px;">
+      <button type="button" ng-click="openMaydayCard()" style="padding:4px 14px;border:1px solid #eb5757;border-radius:4px;background:#eb5757;color:#0c1318;font-weight:bold;">Open Mayday Rescue</button>
+      <button type="button" ng-click="closeMaydayCard()" style="padding:4px 14px;border:1px solid #568d7a;border-radius:4px;">Not now</button>
+    </div>
+  </div>
   <div class="ef-start" ng-show="intro.open" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(4,8,10,.6);color:#f2f6f5;font:15px/1.45 sans-serif;pointer-events:auto;">
     <div role="dialog" aria-label="Worldwide Trucking start page" style="width:920px;max-width:94vw;max-height:90vh;overflow:auto;box-sizing:border-box;padding:20px 24px;background:rgba(12,19,24,.97);border:3px solid #568d7a;border-radius:12px;box-shadow:0 0 40px rgba(0,0,0,.8);">
       <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 24px;padding-bottom:12px;border-bottom:1px solid rgba(86,141,122,.5);">
@@ -106,15 +125,45 @@
               <div><div style="color:#c9d6d2;">Condition</div><div style="font-weight:bold;font-size:17px;" ng-style="{color: data.car.repair > 0 ? '#eb5757' : '#6fcf97'}">{{data.car.repair > 0 ? 'Repair $' + (data.car.repair | number:0) : 'No damage'}}</div></div>
               <div ng-if="data.fuel"><div style="color:#c9d6d2;">Fuel in the tank</div><div style="font-weight:bold;font-size:17px;">{{data.fuel.litres | number:0}} of {{data.fuel.capacity | number:0}} L</div></div>
               <div ng-if="data.space"><div style="color:#c9d6d2;">Cargo space</div><div style="font-weight:bold;font-size:17px;">{{data.space.slots}} slots, {{data.space.kg | number:0}} kg</div><div ng-if="data.space.boot" style="font-size:12px;color:#c9d6d2;">boot only</div><div ng-if="data.space.litres > 0" style="font-size:12px;color:#c9d6d2;">tank {{data.space.litres | number:0}} L</div></div>
-              <div ng-if="data.trailer.owned" style="grid-column:1 / -1;"><div style="color:#c9d6d2;">Trailer</div><div style="font-weight:bold;font-size:17px;overflow-wrap:anywhere;">{{data.trailer.owned.name}}</div><div style="font-size:12px;color:#c9d6d2;">{{data.trailer.owned.stored ? 'in the garage' : (data.trailer.owned.hitched ? 'hitched' : 'out, not hitched')}}</div></div>
+              <div ng-if="data.trailer.owned" style="grid-column:1 / -1;"><div style="color:#c9d6d2;">Trailer</div><div style="font-weight:bold;font-size:17px;overflow-wrap:anywhere;">{{data.trailer.owned.name}}</div><div style="font-size:12px;color:#c9d6d2;">{{data.trailer.owned.stored ? (data.trailer.owned.at === 'base' ? 'at your base' : 'at the depot') : (data.trailer.owned.hitched ? 'hitched' : 'out, not hitched')}}</div></div>
             </div>
           </div>
-          <div ng-if="!firstLaunch(data)" style="margin-top:12px;font-size:12px;font-weight:bold;letter-spacing:2px;color:#c9d6d2;">YOUR CAREER</div>
+          <div ng-if="!firstLaunch(data)" style="display:flex;align-items:baseline;gap:8px;margin-top:12px;"><span style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#c9d6d2;">{{data.online ? 'YOUR CAREER ON THIS SERVER' : 'YOUR CAREER'}}</span><span ng-if="!data.online" title="Kept on this PC. A server keeps a separate career for you." style="padding:0 6px;border:1px solid #7d8b88;border-radius:3px;font-size:11px;font-weight:bold;letter-spacing:1px;color:#c9d6d2;">OFFLINE CAREER</span></div>
           <div ng-if="!firstLaunch(data)" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 14px;margin-top:6px;padding:10px;border:1px solid #568d7a;border-radius:8px;">
             <div><div style="color:#c9d6d2;">Money</div><div style="font-weight:bold;font-size:17px;">${{data.balance | number:0}}</div></div>
             <div><div style="color:#c9d6d2;">Driven</div><div style="font-weight:bold;font-size:17px;">{{data.totalDistanceKm | number:0}} km</div></div>
             <div ng-if="data.career"><div style="color:#c9d6d2;">Jobs done</div><div style="font-weight:bold;font-size:17px;">{{data.career.jobsDone | number:0}}</div></div>
             <div ng-if="data.career"><div style="color:#c9d6d2;">Dangerous</div><div style="font-weight:bold;font-size:17px;" ng-style="{color: data.career.contractsDone > 0 ? '#eb5757' : '#f2f6f5'}">{{data.career.contractsDone}} of {{data.career.contractsTotal}}</div></div>
+          </div>
+          <div ng-if="!data.online" style="margin-top:12px;padding:10px;border:2px solid #f2c94c;border-radius:8px;background:rgba(242,201,76,.06);">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#f2c94c;">PLAY ONLINE</div>
+                <div role="status" style="margin-top:2px;font-weight:bold;" ng-style="{color: server.status === 'online' ? '#6fcf97' : (server.status === 'offline' ? '#eb5757' : '#c9d6d2')}"><span aria-hidden="true">&#9679;</span>
+                  <span ng-if="server.status === 'online'">Server online<span ng-if="server.players != null"> &middot; {{server.players}}<span ng-if="server.max"> of {{server.max}}</span> trucking now</span></span>
+                  <span ng-if="server.status === 'offline'">Server offline right now</span>
+                  <span ng-if="server.status === 'checking'">Checking the server&hellip;</span>
+                  <span ng-if="server.status === 'unknown'">Can't reach the server's status</span></div>
+                <div ng-if="server.season" style="font-size:12px;color:#c9d6d2;">Season {{server.season}}<span ng-if="server.day">, day {{server.day}}</span><span ng-if="server.truckers"> &middot; {{server.truckers}} truckers so far</span></div>
+              </div>
+              <button type="button" ng-click="toggleOnline()" aria-expanded="{{!!intro.online}}" style="flex:none;padding:7px 14px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">{{intro.online ? 'Hide' : 'Play online'}}</button>
+            </div>
+            <div style="margin-top:6px;font-size:13px;color:#c9d6d2;">Online, everyone trucks on the same Earth. Other truckers' bases with their turf and tolls, Mayday Rescue and the season leaderboard are online only.</div>
+            <div ng-if="intro.online" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(242,201,76,.35);font-size:13px;">
+              <div style="font-weight:bold;color:#f2c94c;">How to join</div>
+              <ol style="margin:4px 0 0;padding-left:20px;">
+                <li>Install <b>BeamMP</b> from beammp.com and sign in. Signed-in players keep their online career on any PC.</li>
+                <li>Keep the <b>BeamNG.Earth app</b> running, the same version as the server.</li>
+                <li>Start BeamNG from the BeamMP launcher, open the server browser's BeamNG.Earth tab and join <b>{{server.name || 'WW Trucking Career | MadMerick'}}</b>. The server sends its own copy of this mod.</li>
+                <li>If the server says your copy is out of date, turn this mod off on the BeamNG.Earth Add-ons page and in the Mod Manager, close BeamNG and join again.</li>
+              </ol>
+              <div style="margin-top:6px;color:#c9d6d2;">Your offline career stays here on this PC. The server keeps a separate one that starts in the rusty starter car.</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+                <button type="button" ng-click="openLink('server')" title="Opens the live server page in your browser and copies the link" style="padding:5px 12px;">Live map and leaderboard</button>
+                <button type="button" ng-click="openLink('discord')" title="Opens the Discord invite in your browser and copies the link" style="padding:5px 12px;">Discord</button>
+              </div>
+              <div ng-if="intro.linkOpened" role="status" style="margin-top:4px;font-size:12px;color:#7d8b88;">The link is copied too, in case your browser didn't open.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -131,12 +180,21 @@
       <button type="button" ng-click="openIntro()" title="Your name, how to play and new game" style="padding:1px 9px;border:1px solid #568d7a;border-radius:4px;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{data.playerName || 'Profile'}}</button>
       <button type="button" ng-click="setMinimised(true)" title="Minimise to a small strip with your money, job and where you are" aria-label="Minimise" style="padding:1px 9px;border:1px solid #568d7a;border-radius:4px;">&#8211;</button>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+      <div style="flex:1;min-width:0;font-size:12px;color:#7d8b88;">This mod will always be free to play</div>
+      <button type="button" ng-click="copySupport()" class="ef-coffee" title="Copies ko-fi.com/madmerick so you can paste it into your web browser">{{hud.supportCopied ? 'Ko-fi link copied' : 'Buy MadMerick a coffee'}}</button>
+    </div>
+    <div ng-if="hud.supportCopied" role="status" style="font-size:12px;color:#7d8b88;text-align:right;">Paste it into your web browser. Thank you!</div>
 
     <div>
     <div ng-if="data.where" style="margin-top:4px;">
       <div title="Where you are" style="font-size:20px;font-weight:bold;line-height:1.2;overflow-wrap:anywhere;">{{data.where.title}}</div>
       <div style="color:#c9d6d2;">{{data.where.area}}<span ng-if="data.region && data.region.boost > 1.05" title="Rough roads: jobs here pay this much more than on flat, busy ground" style="color:#f2c94c;font-weight:bold;"> &middot; rough roads &times;{{data.region.boost | number:1}}</span></div>
       <div ng-if="data.where.street" title="The road you are on, from BeamNG.Earth" style="font-size:13px;color:#a7e5c9;overflow-wrap:anywhere;">{{data.where.street}}</div>
+      <div ng-if="data.turf && data.turf.mine" title="Jobs that start or end in your own turf pay you more" style="font-size:13px;font-weight:bold;color:#6fcf97;">Your turf &middot; up to +{{data.turf.percent}}% pay</div>
+      <div ng-if="data.turf && data.turf.corp" title="Jobs that start or end in your corp's turf pay you more, and you pay no toll here" style="font-size:13px;font-weight:bold;color:#6fcf97;overflow-wrap:anywhere;">Your corp's turf &middot; up to +{{data.turf.percent}}% pay</div>
+      <div ng-if="data.turf && !data.turf.mine && !data.turf.corp" title="Deliver here and part of the pay goes to this base's owner" style="font-size:13px;font-weight:bold;color:#f2994a;overflow-wrap:anywhere;">{{data.turf.owner || 'Another trucker'}}'s turf &middot; {{data.turf.toll}}% toll on deliveries here</div>
+      <div ng-if="data.land" title="The land race: the first base to cover this much of Earth's land with its corp wins the season" style="font-size:12px;color:#c9d6d2;overflow-wrap:anywhere;">Land race<span ng-if="data.land.percent != null"> &middot; <b style="color:#a7e5c9;">{{data.land.who}} {{data.land.percent | number:1}}%</b> of Earth</span><span ng-if="data.land.leader"> &middot; {{data.land.leader}} leads with {{data.land.leaderLand | number:1}}%</span> &middot; {{data.land.win}}% wins<span ng-if="data.land.daysLeft"> &middot; {{data.land.daysLeft}} {{data.land.daysLeft === 1 ? 'day' : 'days'}} left</span></div>
     </div>
     <div ng-if="!data.where" style="margin-top:2px;color:#c9d6d2;">{{data.here ? 'In ' + data.here.name : 'A world freight economy for BeamNG.Earth'}}<span ng-if="data.region" title="Rough roads: jobs here pay this much more than on flat, busy ground"> &middot; {{data.region.name}} <span ng-style="{color: data.region.boost > 1.05 ? '#f2c94c' : '#c9d6d2', fontWeight: data.region.boost > 1.05 ? 'bold' : 'normal'}">&times;{{data.region.boost | number:1}}</span></span></div>
     <div ng-if="notice(data)" ng-attr-role="{{notice(data).alert ? 'alert' : 'status'}}" ng-style="{borderColor: notice(data).color, color: notice(data).color}" style="margin:8px 0;padding:6px 10px;border:2px solid;border-radius:6px;background:rgba(0,0,0,.35);">
@@ -158,6 +216,33 @@
       <span ng-if="data.streetView.on && !data.sightseeing.on" style="margin-left:auto;white-space:nowrap;"><button type="button" ng-click="setTab('streetview')" title="Street View is following your truck in your web browser. Open the Street View tab." style="padding:1px 8px;font-size:12px;color:#6fcf97;border:1px solid #6fcf97;border-radius:4px;"><span aria-hidden="true">&#9679;</span> Street View on</button></span>
     </div>
     <div ng-if="data.saveFeedback" style="margin-top:2px;color:#c9d6d2;font-size:12px;">{{data.saveFeedback}}</div>
+    <div ng-if="maydayCard(data)" role="alert" class="ef-mayday" style="margin:8px 0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;min-width:0;font-weight:bold;letter-spacing:1px;font-size:15px;color:#eb5757;">&#9888; MAYDAY RESCUE</div>
+        <div ng-if="data.mayday.secondsLeft != null" title="When this call moves on to somewhere else" style="flex:none;color:#c9d6d2;">moves on in {{until(data.mayday.secondsLeft)}}</div>
+        <button type="button" ng-click="closeMaydayCard()" title="Close. The Mayday Rescue tab still has the call." aria-label="Close" style="flex:none;padding:0 7px;border:1px solid #568d7a;border-radius:4px;">&#10005;</button>
+      </div>
+      <div style="margin-top:3px;font-weight:bold;font-size:14px;">Near {{data.mayday.name}}<span ng-if="data.mayday.region">, {{data.mayday.region}}</span></div>
+      <div ng-if="data.mayday.story" style="color:#c9d6d2;">{{data.mayday.story}}</div>
+      <div style="margin-top:4px;">First to the scene gets <b style="color:#6fcf97;">${{data.mayday.reward | number:0}}</b>.<span ng-if="data.mayday.distanceMetres != null"> You're {{distance(data.mayday.distanceMetres)}} away.</span><span ng-if="data.mayday.racers" style="color:#f2c94c;"> {{data.mayday.racers}} {{data.mayday.racers === 1 ? 'trucker has' : 'truckers have'}} set off.</span></div>
+      <div ng-if="data.mayday.problem" style="margin-top:3px;color:#c9d6d2;">{{data.mayday.problem}}</div>
+      <div style="margin-top:7px;display:flex;gap:8px;">
+        <button type="button" ng-click="openMaydayCard()" style="padding:4px 14px;border:1px solid #eb5757;border-radius:4px;background:#eb5757;color:#0c1318;font-weight:bold;">Open Mayday Rescue</button>
+        <button type="button" ng-click="closeMaydayCard()" style="padding:4px 14px;border:1px solid #568d7a;border-radius:4px;">Not now</button>
+      </div>
+    </div>
+    <div ng-if="data.away" role="status" style="margin:8px 0;padding:8px 10px;border:2px solid #f2c94c;border-radius:6px;background:rgba(242,201,76,.06);font-size:13px;">
+      <div style="display:flex;align-items:baseline;gap:8px;">
+        <div style="flex:1;min-width:0;font-weight:bold;letter-spacing:1px;font-size:15px;color:#f2c94c;">WHILE YOU WERE AWAY</div>
+        <div ng-if="data.away.since != null" style="flex:none;color:#c9d6d2;">{{until(data.away.since)}}</div>
+      </div>
+      <div ng-if="data.away.tolls" style="margin-top:4px;"><b style="color:#6fcf97;">${{data.away.tolls.amount | number:0}}</b> in turf tolls from {{data.away.tolls.jobs}} {{data.away.tolls.jobs === 1 ? 'delivery' : 'deliveries'}}<span ng-if="data.away.tolls.from.length">: <span ng-repeat="f in data.away.tolls.from">{{f.name}} ${{f.amount | number:0}}{{$last ? '' : ', '}}</span><span ng-if="data.away.tolls.others"> and {{data.away.tolls.others}} more</span></span>. It's added to your money.</div>
+      <div ng-repeat="line in data.away.news" style="margin-top:4px;">{{line}}</div>
+      <div ng-if="data.away.place" style="margin-top:4px;">You're <b>{{ordinal(data.away.place)}}</b><span ng-if="data.away.of"> of {{data.away.of}}</span> on the season leaderboard<span ng-if="data.away.was && data.away.was > data.away.place" style="color:#6fcf97;">, up from {{ordinal(data.away.was)}}</span><span ng-if="data.away.was && data.away.was < data.away.place" style="color:#f2994a;">, down from {{ordinal(data.away.was)}}</span>.</div>
+      <div ng-if="data.mayday.open && !maydayCard(data)" style="margin-top:4px;">Mayday Rescue: a call is out near {{data.mayday.name}}. First to the scene gets ${{data.mayday.reward | number:0}}. See the Mayday Rescue tab.</div>
+      <div ng-if="!data.away.tolls && !data.away.news" style="margin-top:4px;color:#c9d6d2;">No tolls or corp news this time.</div>
+      <button type="button" ng-click="dismissAway()" style="margin-top:6px;padding:4px 14px;border:1px solid #f2c94c;border-radius:4px;">Got it</button>
+    </div>
     <div ng-if="data.mode === 'start' && data.startHereAllowed" style="margin:8px 0;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
       <div style="font-weight:bold;color:#a7e5c9;">Choose where you start</div>
       <div style="margin-top:2px;font-size:13px;">Where you are now becomes your start. A new game brings you back here, or you can choose somewhere else then.</div>
@@ -190,6 +275,7 @@
         </div>
       </div>
     </div>
+    <div ng-if="data.rockets && !data.sightseeing.on" role="alert" style="margin:8px 0 0;padding:7px 10px;border:2px solid #eb5757;border-radius:6px;font-size:13px;"><b style="color:#eb5757;">JATO rockets are not allowed online.</b> While they are fitted you can't take jobs, and a job you are on pays nothing. Remove them in the parts menu.</div>
     <div ng-if="data.load && !data.sightseeing.on" style="margin:8px 0 0;padding:7px 10px;border:2px solid #f2c94c;border-radius:6px;">
       <div style="display:flex;align-items:baseline;gap:8px;">
         <div style="flex:1;min-width:0;font-size:16px;font-weight:bold;overflow-wrap:anywhere;" ng-style="{color: trip(data).danger ? '#eb5757' : '#f2f6f5'}">&rarr; {{trip(data).to}}</div>
@@ -197,6 +283,8 @@
       </div>
       <div ng-if="trip(data).metres != null" title="{{data.load.drop ? 'Distance left to the spot, in a straight line' : 'Distance left by road, roughly: straight line × 1.3'}}" style="margin:2px 0 1px;line-height:1;"><span ng-if="!data.load.drop && !atShop(data)" style="font-size:18px;font-weight:bold;color:#c9d6d2;">&asymp;</span> <span style="font-size:28px;font-weight:900;">{{distance(trip(data).metres)}}</span><span ng-if="data.load.direction" style="font-size:15px;color:#c9d6d2;"> {{data.load.direction}}</span></div>
       <div style="font-size:12px;color:#c9d6d2;"><span ng-if="data.load.beacon" style="color:#eb5757;">A package, no questions</span><span ng-if="!data.load.beacon && !data.load.litres">{{data.load.units}} {{data.load.good | lowercase}}</span><span ng-if="!data.load.beacon && data.load.litres">{{data.load.litres | number:0}} L of {{data.load.good | lowercase}}</span> &middot; {{data.load.kg | number:0}} kg &middot; from {{data.load.from}} &middot; driven {{data.load.drivenKm | number:1}} km</div>
+      <div ng-if="data.load.rockets" style="margin-top:2px;font-size:12px;font-weight:bold;color:#eb5757;">JATO rockets were fitted on this job, so it pays nothing.</div>
+      <div ng-if="data.load.fuelRun" style="margin-top:2px;font-size:12px;color:#f2994a;">Fuel run from {{data.load.fuelRun.from}}</div>
       <div ng-if="data.load.business" style="margin-top:2px;font-size:12px;color:#c9d6d2;">{{data.load.business.kind}} in {{data.load.to}} &middot; stop within {{data.load.business.radiusMetres}} m of the spot out front</div>
       <div ng-if="data.load.business.near && !data.load.business.inZone" role="status" style="margin-top:4px;font-size:14px;font-weight:bold;color:#f2c94c;">{{data.load.business.distanceMetres | number:0}} m to {{data.load.business.name}} &middot; pull up out front</div>
       <div ng-if="data.load.business.inZone" style="margin-top:4px;font-size:14px;font-weight:bold;color:#6fcf97;">At {{data.load.business.name}}</div>
@@ -205,7 +293,7 @@
     </div>
     <div role="tablist" ng-if="!data.sightseeing.on" style="margin-top:10px;padding-bottom:6px;border-bottom:1px solid #568d7a;">
       <div ng-repeat="row in tabRows" style="display:flex;gap:4px;" ng-style="$first ? {} : {marginTop:'4px'}">
-        <button type="button" role="tab" ng-repeat="t in row" ng-click="setTab(t.id)" aria-selected="{{tab === t.id}}" ng-style="tab === t.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="flex:1;min-width:0;padding:4px 2px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid #568d7a;border-radius:6px;">{{t.label}}<span ng-if="tabAlert(t.id)" style="color:#f2c94c;" aria-label="needs attention"> &#9679;</span></button>
+        <button type="button" role="tab" ng-repeat="t in row" ng-if="tabShown(t.id)" ng-click="setTab(t.id)" aria-selected="{{tab === t.id}}" ng-style="tab === t.id ? {background:'#568d7a',color:'#0c1318',fontWeight:'bold'} : {}" style="flex:1;min-width:0;padding:4px 2px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid #568d7a;border-radius:6px;">{{t.label}}<span ng-if="tabAlert(t.id)" style="color:#f2c94c;" aria-label="needs attention"> &#9679;</span></button>
       </div>
     </div>
     <div role="tabpanel" ng-if="!data.sightseeing.on" style="padding-top:8px;">
@@ -224,11 +312,11 @@
           <div style="font-weight:bold;color:#eb5757;">Don't ask questions &middot; ${{data.beacon.pay | number:0}}</div>
           <div style="font-size:13px;">{{data.beacon.line}} No weight, no questions. Pick it up, then take it {{km(data.beacon.dropMetres)}} km off road.</div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
-            <div ng-if="data.beacon.arrow != null && !data.beacon.inZone" aria-hidden="true" ng-style="arrowStyle(data.beacon)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;">&#9650;</div>
+            <div ng-if="data.beacon.arrow != null && !data.beacon.inZone" aria-hidden="true" ng-style="arrowStyle(data.beacon)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="flex:1;min-width:0;">
               <div ng-if="!data.beacon.inZone && data.beacon.distanceMetres != null" style="font-size:18px;font-weight:bold;">Beacon <span ng-if="data.beacon.distanceMetres >= 1000">{{km(data.beacon.distanceMetres)}} km</span><span ng-if="data.beacon.distanceMetres < 1000">{{data.beacon.distanceMetres | number:0}} m</span><span ng-if="data.beacon.direction"> {{data.beacon.direction}}</span></div>
               <div ng-if="data.beacon.inZone" style="font-size:18px;font-weight:bold;color:#6fcf97;">At the beacon</div>
-              <div style="font-size:12px;color:#c9d6d2;">Goes quiet in {{clock(data.beacon.secondsLeft)}}. No GPS: follow the arrow and stop within {{data.beacon.radiusMetres}} m. A crash costs ${{data.beacon.insurance | number:0}} insurance and loses it.</div>
+              <div style="font-size:12px;color:#c9d6d2;">Goes quiet in {{clock(data.beacon.secondsLeft)}}. No GPS: follow the arrow and stop within {{data.beacon.radiusMetres}} m. A crash loses it, and an insurance claim costs at least ${{data.beacon.insurance | number:0}}.</div>
             </div>
           </div>
           <div style="display:flex;gap:6px;margin-top:4px;">
@@ -249,17 +337,28 @@
             <button type="button" aria-label="Copy start coordinates" ng-click="copyCoordinates(data.load.contract.start)">Copy</button>
           </div>
         </div>
+        <div ng-if="data.mayday.running" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">
+          <div style="font-weight:bold;color:#eb5757;">Mayday Rescue: near {{data.mayday.name}}</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
+            <div ng-if="data.mayday.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.mayday)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
+            <div style="flex:1;min-width:0;">
+              <div ng-if="data.mayday.distanceMetres != null" style="font-size:18px;font-weight:bold;">{{distance(data.mayday.distanceMetres)}}<span ng-if="data.mayday.direction"> {{data.mayday.direction}}</span></div>
+              <div ng-if="data.mayday.place" style="font-size:13px;font-weight:bold;color:#f2c94c;">You're {{data.mayday.place}} of {{data.mayday.field}}</div>
+              <div style="font-size:12px;color:#c9d6d2;">No GPS: head off road and follow the arrow to the scene. First within {{data.mayday.winMetres}} m wins ${{data.mayday.reward | number:0}}.</div>
+            </div>
+          </div>
+        </div>
         <div ng-if="data.load.drop && (!data.load.contract || data.load.contract.started)" style="margin:0 0 8px;padding:10px;border:1px solid #f2c94c;border-radius:6px;">
           <div ng-if="!data.load.contract && !data.load.beacon" style="font-weight:bold;color:#f2c94c;">Off-road drop</div>
           <div ng-if="data.load.beacon" style="font-weight:bold;color:#eb5757;">Don't ask questions</div>
           <div ng-if="data.load.contract" style="font-weight:bold;color:#eb5757;">Dangerous contract: {{data.load.contract.name}}</div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
-            <div ng-if="data.load.drop.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.load.drop)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#f2c94c;">&#9650;</div>
+            <div ng-if="data.load.drop.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.load.drop)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#f2c94c;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="flex:1;min-width:0;">
               <div ng-if="!data.load.drop.inZone" style="font-size:18px;font-weight:bold;"><span ng-if="data.load.drop.distanceMetres >= 1000">{{km(data.load.drop.distanceMetres)}} km</span><span ng-if="data.load.drop.distanceMetres < 1000">{{data.load.drop.distanceMetres | number:0}} m</span><span ng-if="data.load.direction"> {{data.load.direction}}</span></div>
               <div ng-if="data.load.drop.inZone" style="font-size:18px;font-weight:bold;color:#6fcf97;">{{data.load.contract ? 'At the finish' : 'In the drop zone'}}</div>
-              <div ng-if="data.load.contract" style="font-size:12px;color:#c9d6d2;">Follow the road and the arrow to the finish. Stop within {{data.load.drop.radiusMetres}} m of it to deliver. A crash ends the contract, and insurance costs ${{data.load.contract.insurance | number:0}}.</div>
-              <div ng-if="!data.load.contract" style="font-size:12px;color:#c9d6d2;">No GPS route: head off road and follow the arrow. Stop within {{data.load.drop.radiusMetres}} m of the spot to deliver.<span ng-if="data.load.beacon"> A crash costs ${{data.load.insurance | number:0}} insurance and loses it.</span></div>
+              <div ng-if="data.load.contract" style="font-size:12px;color:#c9d6d2;">Follow the road and the arrow to the finish. Stop within {{data.load.drop.radiusMetres}} m of it to deliver. A crash ends the contract.</div>
+              <div ng-if="!data.load.contract" style="font-size:12px;color:#c9d6d2;">No GPS route: head off road and follow the arrow. Stop within {{data.load.drop.radiusMetres}} m of the spot to deliver.<span ng-if="data.load.beacon"> A crash loses it, and an insurance claim costs at least ${{data.load.insurance | number:0}}.</span></div>
             </div>
           </div>
           <div ng-if="data.load.drop.delivery.problem && data.load.drop.inZone" style="margin-top:4px;color:#c9d6d2;">{{data.load.drop.delivery.problem}}</div>
@@ -267,6 +366,35 @@
         </div>
         <div ng-repeat="s in data.shortages" role="alert" style="margin:0 0 6px;padding:4px 8px;border:1px solid #f2c94c;border-radius:6px;color:#f2c94c;font-size:13px;" title="Towns nearby have the job"><b>Shortage:</b> {{s.town}} pays &times;{{s.pays}} for {{s.good | lowercase}} &middot; {{clock(s.secondsLeft)}}<span ng-if="s.distanceMetres > 0"> &middot; &asymp; {{km(s.distanceMetres)}} km</span></div>
         <div ng-if="data.bestJob" style="margin:0 0 6px;font-size:13px;color:#6fcf97;">Best job in {{data.bestJob.from}}: {{data.bestJob.good | lowercase}} to {{data.bestJob.to}}, &asymp; {{km(data.bestJob.distanceMetres)}} km, ${{data.bestJob.pay | number:0}}</div>
+        <div ng-if="data.fuelRuns && !data.load" class="ef-sec">
+          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('fuelruns')" aria-expanded="{{isOpen('fuelruns', data.fuelRuns.atDepot)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('fuelruns', data.fuelRuns.atDepot) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t" style="color:#f2994a;">Fuel runs</div><span class="ef-sum"><span ng-if="data.fuelRuns.hub">from {{data.fuelRuns.hub.name}}<span ng-if="!data.fuelRuns.atDepot && data.fuelRuns.distanceMetres != null">, {{km(data.fuelRuns.distanceMetres)}} km {{data.fuelRuns.direction}}</span></span><span ng-if="!data.fuelRuns.hub">no depot near</span></span></div></div>
+          <div ng-if="isOpen('fuelruns', data.fuelRuns.atDepot)" class="ef-sb" style="font-size:13px;">
+            <div style="font-size:12px;color:#c9d6d2;">Long hauls of fuel, {{data.fuelRuns.minKm}} to {{data.fuelRuns.maxKm}} km out to a country town's petrol station, paying more the further you go. They load at a depot in a quiet regional town, away from the big cities. GPS on a run shows its route before you go.</div>
+            <div ng-if="!data.fuelRuns.hub" style="margin-top:4px;color:#f2c94c;">No fuel depot within {{data.fuelRuns.reachKm}} km. Head out of the city towards a regional town.</div>
+            <div ng-if="data.fuelRuns.hub" style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+              <div style="flex:1;min-width:0;"><b>Depot:</b> <span ng-if="data.fuelRuns.depot">{{data.fuelRuns.depot.name}} ({{data.fuelRuns.depot.kind | lowercase}}), </span>{{data.fuelRuns.hub.name}}<span ng-if="!data.fuelRuns.depot" style="color:#7d8b88;"> town centre</span><span ng-if="data.fuelRuns.atDepot" style="color:#6fcf97;font-weight:bold;"> &middot; you are here</span></div>
+              <button type="button" ng-if="!data.fuelRuns.atDepot" aria-label="Set the GPS to the fuel depot in {{data.fuelRuns.hub.name}}" title="See the route to the depot" ng-click="gpsToDepot()" ng-disabled="!data.gpsAllowed" ng-style="data.fuelRuns.gps ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="flex:none;padding:1px 5px;font-size:12px;">GPS</button>
+              <button type="button" ng-if="!data.fuelRuns.atDepot" aria-label="Teleport to the fuel depot in {{data.fuelRuns.hub.name}}" title="Free: go straight to the depot to start a run" ng-click="teleportToDepot()" ng-disabled="!data.fuelRuns.teleportAllowed || data.fuelRuns.teleporting" style="flex:none;padding:1px 5px;font-size:12px;background:#f2994a;color:#0c1318;font-weight:bold;border:1px solid #f2994a;">Teleport</button>
+            </div>
+            <div ng-if="data.fuelRuns.teleporting" style="margin-top:2px;font-size:12px;color:#c9d6d2;">Teleporting. The terrain takes a few seconds to load.</div>
+            <div ng-repeat="r in data.fuelRuns.runs track by r.id" style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+              <div style="flex:1;min-width:0;">
+                <div><b>Fuel</b> &rarr; <span ng-if="r.station">{{r.station}}, </span>{{r.to}} <span style="color:#7d8b88;font-size:12px;">{{km(r.distanceMetres)}} km</span></div>
+                <div style="font-size:12px;color:#c9d6d2;"><span ng-if="r.units > 0">{{taken(r).units * r.unitLitres | number:0}} L, {{taken(r).kg | number:0}} kg</span><span ng-if="r.units === 0" style="color:#eb5757;">Needs a tanker</span><span ng-if="r.region"> &middot; {{r.region}}</span><span ng-if="r.road"> &middot; rough road &times;{{r.road | number:1}}</span><span ng-if="r.basePercent" style="color:#6fcf97;"> &middot; base bonus +{{r.basePercent}}%</span><span ng-if="r.tollTo" style="color:#f2994a;"> &middot; {{r.tollTo}}'s turf: 20% toll</span></div>
+                <div ng-if="r.units > 1" style="display:flex;align-items:center;gap:8px;margin-top:2px;font-size:12px;color:#c9d6d2;">
+                  <span style="flex:none;width:62px;">Load {{shareOf(r)}}%</span>
+                  <input type="range" min="10" max="100" step="10" ng-model="shares[r.id]" ng-init="shares[r.id] = shareOf(r)" aria-label="How much fuel to take to {{r.to}}" style="flex:1;min-width:0;">
+                </div>
+              </div>
+              <div ng-if="r.units > 0" style="flex:none;font-weight:bold;color:#f2994a;">${{taken(r).pay | number:0}}</div>
+              <button type="button" aria-label="Set the GPS to show the run to {{r.to}}" title="See the whole run: the depot, then the station" ng-click="gpsToRun(r)" ng-disabled="!data.gpsAllowed" ng-style="r.gps ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="flex:none;padding:2px 6px;font-size:12px;">GPS</button>
+              <button type="button" ng-click="takeFuelRun(r)" ng-disabled="!r.allowed" style="flex:none;padding:3px 8px;">Load</button>
+            </div>
+            <div ng-if="data.fuelRuns.hub && !data.fuelRuns.runs.length && data.fuelRuns.finding" style="margin-top:4px;color:#c9d6d2;">Finding petrol stations in the country towns around {{data.fuelRuns.hub.name}}...</div>
+            <div ng-if="data.fuelRuns.hub && !data.fuelRuns.runs.length && !data.fuelRuns.finding" style="margin-top:4px;color:#c9d6d2;">No country towns with a petrol station {{data.fuelRuns.minKm}} to {{data.fuelRuns.maxKm}} km from {{data.fuelRuns.hub.name}}.</div>
+            <div ng-if="data.fuelRuns.problem && data.fuelRuns.runs.length" style="margin-top:4px;color:#f2c94c;">{{data.fuelRuns.problem}}</div>
+          </div>
+        </div>
         <div ng-if="data.load.destination" class="ef-sec">
           <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('dropoff')" aria-expanded="{{isOpen('dropoff')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('dropoff') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Drop-off: <span ng-if="data.load.business">{{data.load.business.name}}, </span>{{data.load.to}}</div><span class="ef-sum">coordinates, if the GPS is missing</span></div></div>
           <div ng-if="isOpen('dropoff')" class="ef-sb">
@@ -286,7 +414,7 @@
               <div style="width:58px;text-align:right;font-size:11px;color:#7d8b88;">km</div>
               <div style="width:40px;"></div>
             </div>
-            <div ng-repeat="p in data.nearby" style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:13px;">
+            <div ng-repeat="p in data.nearby track by p.id" style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:13px;">
               <div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{p.name}}, {{p.size}}"><span ng-style="{fontWeight: p.destination ? 'bold' : 'normal', color: p.destination ? '#f2c94c' : '#f2f6f5'}">{{p.name}}</span></div>
               <div ng-repeat="g in p.dots" style="width:18px;text-align:center;"><span title="{{g.name}}: {{g.level === 'sweet' ? 'shortage, pays double' : (g.level === 'high' ? 'wanted, pays well' : (g.level === 'low' ? 'has plenty, pays less' : 'usual pay'))}}" ng-style="{background: dotColor(g.level)}" style="display:inline-block;width:9px;height:9px;border-radius:5px;"></span></div>
               <div style="width:58px;text-align:right;color:#c9d6d2;white-space:nowrap;" title="About {{km(p.distanceMetres)}} km by road, to the {{p.direction}}">{{km(p.distanceMetres)}} <span ng-if="p.letters" style="font-size:11px;color:#a7e5c9;">{{p.letters}}</span></div>
@@ -315,39 +443,6 @@
         <p role="status" ng-if="data.tradeFeedback" style="margin:6px 0;">{{data.tradeFeedback}}</p>
       </div>
       <div ng-if="tab === 'town'">
-        <div ng-if="data.shipDay" style="margin:0 0 8px;padding:6px 10px;border:2px solid #56ccf2;border-radius:6px;">
-          <div class="ef-hit" role="button" tabindex="0" ng-click="toggle('shipday')" aria-expanded="{{shipDayOpen()}}" title="{{shipDayOpen() ? 'Hide the containers' : 'Show the containers'}}">
-            <span class="ef-ar" aria-hidden="true" style="color:#56ccf2;">{{shipDayOpen() ? '&#9660;' : '&#9654;'}}</span>
-            <div style="flex:1;min-width:0;">
-              <div class="ef-line" style="font-weight:bold;color:#56ccf2;">Ship Day: {{data.shipDay.name}} at {{data.shipDay.port}}</div>
-              <div class="ef-line" style="font-size:13px;color:#c9d6d2;">{{data.shipDay.region}} &middot; {{data.shipDay.free}} of {{data.shipDay.total}} containers left &middot; sails in {{until(data.shipDay.secondsLeft)}}</div>
-            </div>
-          </div>
-          <div ng-if="data.shipDay.carrying" style="color:#6fcf97;padding-left:18px;">Container {{data.shipDay.carrying}} is on board: drive it to its town and press Deliver there.</div>
-          <div ng-if="!data.shipDay.atPort" style="margin:4px 0 0 18px;">
-            <button type="button" ng-click="goToPort()" ng-disabled="!data.shipDay.goAllowed" ng-style="{opacity: data.shipDay.goAllowed ? 1 : 0.5}" style="padding:4px 10px;background:#56ccf2;color:#0c1318;font-weight:bold;border:1px solid #56ccf2;border-radius:4px;">Go to port (free)</button>
-            <div ng-if="shipDayOpen()" style="font-size:12px;color:#c9d6d2;margin-top:2px;">Takes your empty car to {{data.shipDay.town}}, next to the docks.</div>
-            <div ng-if="data.shipDay.goProblem" style="color:#f2c94c;">{{data.shipDay.goProblem}}</div>
-          </div>
-          <div ng-if="data.shipDay.atPort && data.shipDay.problem" style="color:#f2c94c;margin-top:4px;">{{data.shipDay.problem}}</div>
-          <div ng-if="shipDayOpen() && data.shipDay.units === 0" style="font-size:12px;color:#eb5757;">Container cargo needs a cargo box: fit one with Buy parts on the Garage tab.</div>
-          <div ng-if="shipDayOpen()" style="margin-top:4px;">
-            <div ng-if="data.shipDay.atPort && !data.shipDay.carrying && data.shipDay.units > 1" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c9d6d2;">
-              <span style="flex:none;width:62px;">Load {{shareOf(containerJob())}}%</span>
-              <input type="range" min="10" max="100" step="10" ng-model="shares.container" ng-init="shares.container = shareOf(containerJob())" aria-label="How much container cargo to take" style="flex:1;min-width:0;">
-              <span style="flex:none;">{{containerTaken().units}} units, {{containerTaken().kg | number:0}} kg</span>
-            </div>
-            <div ng-repeat="b in data.shipDay.containers" style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(86,141,122,.3);font-size:13px;">
-              <div style="flex:1;min-width:0;"><b>#{{b.n}}</b> &rarr; {{b.to}} <span style="color:#7d8b88;font-size:12px;">{{km(b.distanceMetres)}} km</span></div>
-              <div ng-if="b.state === 'free'" style="flex:none;font-weight:bold;color:#56ccf2;" title="${{b.pay | number:0}} for a full load">${{containerTaken(b).pay | number:0}}</div>
-              <button type="button" ng-if="b.state === 'free' && data.shipDay.atPort" ng-click="takeContainer(b)" ng-disabled="!b.allowed" style="flex:none;padding:3px 8px;">Take</button>
-              <div ng-if="b.state === 'mine'" style="flex:none;color:#6fcf97;">Yours</div>
-              <div ng-if="b.state === 'taken'" style="flex:none;color:#7d8b88;font-size:12px;">Taken{{b.by ? ' by ' + b.by : ''}}</div>
-              <div ng-if="b.state === 'delivered'" style="flex:none;color:#7d8b88;font-size:12px;">Delivered</div>
-            </div>
-          </div>
-          <div ng-if="data.shipDay.feedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.shipDay.feedback}}</div>
-        </div>
         <div ng-if="!data.town" style="color:#c9d6d2;">Drive into a town and stop to take jobs and deliver. The Route tab lists the places nearby.</div>
         <div ng-if="data.town">
           <div style="font-weight:bold;color:#a7e5c9;">{{data.town.name}} <span style="color:#7d8b88;font-weight:normal;font-size:12px;">{{data.town.size}}</span> <span ng-if="data.town.boost > 1.02" style="color:#f2c94c;font-size:12px;">{{data.town.region}}: rough roads &times;{{data.town.boost | number:1}} pay</span></div>
@@ -370,7 +465,7 @@
             <div ng-if="data.load" style="font-size:12px;color:#c9d6d2;">Deliver or abandon your job to take another.</div>
             <div ng-if="hasOutside(data.town.jobs)" style="font-size:12px;color:#f2c94c;">No towns that far from {{data.town.name}}, so the jobs marked "nearest" go to the closest towns instead.</div>
             <div ng-if="data.beacon" style="padding:5px 0;border-bottom:1px solid rgba(86,141,122,.3);font-size:13px;"><span style="color:#eb5757;font-weight:bold;">Don't ask questions</span> &middot; ${{data.beacon.pay | number:0}} <span style="color:#7d8b88;font-size:12px;">beacon {{km(data.beacon.distanceMetres)}} km {{data.beacon.direction}}, quiet in {{clock(data.beacon.secondsLeft)}}. Follow it on the Route tab.</span></div>
-            <div ng-repeat="j in data.town.jobs" ng-style="jobOpen(j.id) ? {background:'rgba(167,229,201,.06)'} : {}" style="padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+            <div ng-repeat="j in data.town.jobs track by $index" ng-style="jobOpen(j.id) ? {background:'rgba(167,229,201,.06)'} : {}" style="padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
              <div style="display:flex;align-items:center;gap:6px;">
               <div class="ef-hit" role="button" tabindex="0" ng-click="toggleJob(j.id)" aria-expanded="{{jobOpen(j.id)}}" title="Details, load and GPS" style="font-size:13px;">
                 <span class="ef-ar" aria-hidden="true">{{jobOpen(j.id) ? '&#9660;' : '&#9654;'}}</span>
@@ -385,9 +480,9 @@
               <button type="button" ng-click="takeJob(j)" ng-disabled="!j.allowed" style="flex:none;padding:3px 8px;">Take job</button>
              </div>
              <div ng-if="jobOpen(j.id)" style="padding:2px 0 2px 18px;font-size:12px;color:#c9d6d2;">
-              <div ng-if="j.contract">{{j.contract.region}}. {{j.contract.summary}} Pays {{j.contract.pays}} times a normal job. You pay ${{j.contract.fee | number:0}} to be relocated to the start; a crash ends it, and insurance costs ${{j.contract.insurance | number:0}}.</div>
+              <div ng-if="j.contract">{{j.contract.region}}. {{j.contract.summary}} Pays {{j.contract.pays}} times a normal job. You pay ${{j.contract.fee | number:0}} to be relocated to the start; a crash ends it.</div>
               <div ng-if="j.drop">No roads: follow the arrow on the Route tab.</div>
-              <div><span ng-if="j.units > 0 && !j.fluid">{{taken(j).units}} {{j.good | lowercase}}, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units > 0 && j.fluid">{{taken(j).units * j.unitLitres | number:0}} L, {{taken(j).kg | number:0}} kg</span><span ng-if="j.shortage" style="color:#f2c94c;"> &middot; shortage &times;2</span><span ng-if="j.jackpot" style="color:#f2c94c;"> &middot; jackpot &times;{{j.jackpot | number:1}}</span><span ng-if="j.road && !j.drop && !j.contract"> &middot; rough road &times;{{j.road | number:1}}</span><span ng-if="j.road && j.drop"> &middot; steep ground &times;{{j.road | number:1}}</span></div>
+              <div><span ng-if="j.units > 0 && !j.fluid">{{taken(j).units}} {{j.good | lowercase}}, {{taken(j).kg | number:0}} kg</span><span ng-if="j.units > 0 && j.fluid">{{taken(j).units * j.unitLitres | number:0}} L, {{taken(j).kg | number:0}} kg</span><span ng-if="j.shortage" style="color:#f2c94c;"> &middot; shortage &times;2</span><span ng-if="j.jackpot" style="color:#f2c94c;"> &middot; jackpot &times;{{j.jackpot | number:1}}</span><span ng-if="j.road && !j.drop && !j.contract"> &middot; rough road &times;{{j.road | number:1}}</span><span ng-if="j.road && j.drop"> &middot; steep ground &times;{{j.road | number:1}}</span><span ng-if="j.basePercent" style="color:#6fcf97;"> &middot; base bonus +{{j.basePercent}}%</span><span ng-if="j.tollTo" style="color:#f2994a;"> &middot; drop-off in {{j.tollTo}}'s turf: {{j.tollPercent}}% toll</span></div>
               <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
                <span ng-if="j.units > 1" style="flex:none;width:62px;">Load {{shareOf(j)}}%</span>
                <input ng-if="j.units > 1" type="range" min="10" max="100" step="10" ng-model="shares[j.id]" ng-init="shares[j.id] = shareOf(j)" ng-disabled="!j.allowed" aria-label="How much of the {{j.good | lowercase}} to take" style="flex:1;min-width:0;">
@@ -406,6 +501,8 @@
           <div style="font-weight:bold;color:#eb5757;">Serious crash</div>
           <div>Claim insurance for ${{data.insurance.fee | number:0}}: your car is fixed and put back on the nearest road<span ng-if="data.insurance.loseJob">, but your job and its cargo are lost</span>.</div>
           <div ng-if="data.insurance.repair != null" style="font-size:13px;color:#c9d6d2;">Or repair it below for about ${{data.insurance.repair | number:0}}<span ng-if="data.insurance.loseJob"> and keep the job</span>.</div>
+          <div ng-if="data.insurance.topWealth" style="font-size:12px;color:#c9d6d2;">Insurance covers less the richer you are. You're worth ${{data.insurance.wealth | number:0}} with your truck, so a claim is {{data.insurance.sharePercent}}% of the repair (at least $1,000). From ${{data.insurance.topWealth | number:0}} it's {{data.insurance.topPercent}}%.</div>
+          <div ng-if="data.insurance.short > 0" style="font-size:12px;color:#f2c94c;">You're ${{data.insurance.short | number:0}} short, so that much would be owed and come out of your next deliveries.</div>
           <button type="button" ng-click="claimInsurance()" ng-disabled="!data.insurance.allowed" ng-style="data.insurance.armed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="margin-top:6px;padding:7px 12px;">{{data.insurance.pending ? 'Towing to the road...' : (data.insurance.armed ? 'Confirm claim' : 'Claim insurance')}}</button>
         </div>
         <div ng-if="data.carChange" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
@@ -418,11 +515,11 @@
           <div ng-if="data.balance >= data.carChange.cost" style="font-size:13px;color:#c9d6d2;">You have ${{data.balance | number:0}}, leaving ${{data.balance - data.carChange.cost | number:0}}.</div>
           <div ng-if="data.balance < data.carChange.cost" style="font-size:13px;color:#eb5757;">You have ${{data.balance | number:0}}: ${{data.carChange.cost - data.balance | number:0}} short.</div>
           <div ng-if="data.load" style="font-size:13px;color:#eb5757;">Deliver or abandon your job before you change cars.</div>
-          <div ng-if="data.carChange.keepCost != null" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Or keep your {{data.carChange.oldName || 'old car'}} and store it at home: no trade-in, ${{data.carChange.keepCost | number:0}}.</div>
-          <div ng-if="data.carChange.homeFull" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Your home is full, so your old car can only be traded in.</div>
+          <div ng-if="data.carChange.keepCost != null" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Or keep your {{data.carChange.oldName || 'old car'}} in slot {{data.carChange.keepSlot}} of Your cars: no trade-in, ${{data.carChange.keepCost | number:0}}.</div>
+          <div ng-if="data.carChange.slotsFull" style="margin-top:6px;font-size:13px;color:#c9d6d2;">Every slot in Your cars is taken, so your old car can only be traded in. Sell a parked car to free a slot.<span ng-if="data.carChange.slotHint"> {{data.carChange.slotHint}}</span></div>
           <div ng-if="!isConfirming('car', data.carChange.cost) && !isConfirming('keep', data.carChange.keepCost)" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
             <button type="button" ng-click="askToPay('car', data.carChange.cost)" ng-disabled="!data.buyCarAllowed" ng-style="data.buyCarAllowed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">{{data.carChange.keepCost != null ? 'Trade in' : 'Buy'}} for ${{data.carChange.cost | number:0}}</button>
-            <button type="button" ng-if="data.carChange.keepCost != null" ng-click="askToPay('keep', data.carChange.keepCost)" ng-disabled="!data.keepCarAllowed" ng-style="data.keepCarAllowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Keep and store at home for ${{data.carChange.keepCost | number:0}}</button>
+            <button type="button" ng-if="data.carChange.keepCost != null" ng-click="askToPay('keep', data.carChange.keepCost)" ng-disabled="!data.keepCarAllowed" ng-style="data.keepCarAllowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Keep it in slot {{data.carChange.keepSlot}} for ${{data.carChange.keepCost | number:0}}</button>
             <button type="button" ng-click="revertCar()" ng-disabled="!data.revertCarAllowed" style="padding:7px 12px;">Get my car back</button>
           </div>
           <div ng-if="isConfirming('car', data.carChange.cost)" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;">
@@ -431,7 +528,7 @@
             <button type="button" ng-click="cancelPay()" style="padding:7px 12px;">Cancel</button>
           </div>
           <div ng-if="isConfirming('keep', data.carChange.keepCost)" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;">
-            <span style="font-weight:bold;">Pay ${{data.carChange.keepCost | number:0}} and send your {{data.carChange.oldName || 'old car'}} home?</span>
+            <span style="font-weight:bold;">Pay ${{data.carChange.keepCost | number:0}} and park your {{data.carChange.oldName || 'old car'}} in slot {{data.carChange.keepSlot}}?</span>
             <button type="button" ng-click="cancelPay(); keepCar()" ng-disabled="!data.keepCarAllowed" style="padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Yes, keep both</button>
             <button type="button" ng-click="cancelPay()" style="padding:7px 12px;">Cancel</button>
           </div>
@@ -467,7 +564,7 @@
             <div style="flex:1;min-width:0;">
               <div style="font-weight:bold;overflow-wrap:anywhere;">{{offer.name}}</div>
               <div style="font-size:13px;color:#c9d6d2;">{{offer.km | number:0}} km &middot; ${{offer.price | number:0}} <span>({{offer.share}}% of new)</span> <span ng-if="offer.share < 80" style="padding:0 5px;border-radius:3px;background:#6fcf97;color:#0c1318;font-weight:bold;font-size:12px;">Good deal</span></div>
-              <div style="font-size:13px;">You pay ${{offer.cost | number:0}} after your trade-in<span ng-if="offer.keepCost != null">, or ${{offer.keepCost | number:0}} to keep your car at home</span>.</div>
+              <div style="font-size:13px;">You pay ${{offer.cost | number:0}} after your trade-in<span ng-if="offer.keepCost != null">, or ${{offer.keepCost | number:0}} to keep your car in Your cars</span>.</div>
               <div ng-if="offer.short && !offer.sold" style="font-size:13px;color:#eb5757;">${{offer.short | number:0}} short.</div>
               <button type="button" ng-click="buyUsedCar(offer)" ng-disabled="!offer.allowed" ng-style="offer.allowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="margin-top:4px;padding:5px 12px;border:1px solid #568d7a;border-radius:4px;">{{offer.sold ? 'Bought' : 'Buy this one'}}</button>
             </div>
@@ -491,6 +588,49 @@
             <li>Pay to keep it, or undo it.</li>
           </ol>
         </div>
+        <div ng-if="data.fleet && !data.partsChange && !data.usedCars" class="ef-sec">
+          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('fleet')" aria-expanded="{{isOpen('fleet')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('fleet') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Your cars</div><span class="ef-sum">{{data.fleet.used}} of {{data.fleet.slots}} slots used<span ng-if="data.fleet.worth > 0"> &middot; ${{data.fleet.worth | number:0}}</span></span></div></div>
+          <div ng-if="isOpen('fleet')" class="ef-sb">
+            <div ng-if="data.fleet.driving" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #6fcf97;border-radius:6px;background:rgba(111,207,151,.08);">
+              <span style="flex:none;width:12px;font-size:12px;color:#7d8b88;text-align:center;">1</span>
+              <div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:bold;letter-spacing:1px;color:#6fcf97;">DRIVING</div><div style="font-weight:bold;overflow-wrap:anywhere;">{{data.fleet.driving.name}}</div></div>
+              <span ng-if="data.fleet.driving.value" style="flex:none;font-size:13px;color:#c9d6d2;">${{data.fleet.driving.value | number:0}}</span>
+            </div>
+            <div ng-repeat="car in data.fleet.parked track by car.index" style="display:flex;align-items:center;gap:8px;margin-top:4px;padding:6px 8px;border:1px solid #33423f;border-radius:6px;">
+              <span style="flex:none;width:12px;font-size:12px;color:#7d8b88;text-align:center;">{{car.slot}}</span>
+              <img ng-if="car.preview" ng-src="{{car.preview}}" alt="" style="width:56px;height:32px;object-fit:cover;border-radius:3px;flex:none;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:bold;overflow-wrap:anywhere;">{{car.name}}</div>
+                <div style="font-size:12px;color:#c9d6d2;">Parked<span ng-if="car.fuelLitres != null"> &middot; {{car.fuelLitres | number:0}} L</span><span ng-if="car.km != null"> &middot; {{car.km | number:0}} km</span><span ng-if="car.repair" style="color:#f2c94c;"> &middot; repair ${{car.repair | number:0}}</span><span ng-if="!car.repair"> &middot; no damage</span></div>
+                <div ng-if="isConfirming('sell' + car.index, car.sale)" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;">
+                  <span style="font-size:13px;font-weight:bold;">Sell it for ${{car.sale | number:0}}?</span>
+                  <button type="button" ng-click="cancelPay(); sellParkedCar(car)" ng-disabled="!car.sellAllowed" style="padding:3px 10px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">Yes, sell</button>
+                  <button type="button" ng-click="cancelPay()" style="padding:3px 10px;">Cancel</button>
+                </div>
+              </div>
+              <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+                <span ng-if="car.value" style="font-size:13px;color:#c9d6d2;">${{car.value | number:0}}</span>
+                <button type="button" ng-click="swapCars(car)" ng-disabled="!car.driveAllowed" ng-style="car.driveAllowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:3px 10px;border:1px solid #568d7a;border-radius:4px;white-space:nowrap;">Drive &middot; ${{data.fleet.fee | number:0}}</button>
+                <button type="button" ng-if="!isConfirming('sell' + car.index, car.sale)" ng-click="askToPay('sell' + car.index, car.sale)" ng-disabled="!car.sellAllowed" style="padding:3px 10px;white-space:nowrap;">Sell &middot; ${{car.sale | number:0}}</button>
+              </div>
+            </div>
+            <div ng-repeat="n in fleetEmpty(data.fleet) track by n" style="display:flex;align-items:center;gap:8px;margin-top:4px;padding:6px 8px;border:1px dashed #33423f;border-radius:6px;color:#7d8b88;font-style:italic;font-size:13px;">
+              <span style="flex:none;width:12px;font-size:12px;text-align:center;font-style:normal;">{{n}}</span><span>Empty<span ng-if="$first">: when you buy a car, keep your old one here</span></span>
+            </div>
+            <div ng-if="data.fleet.over" style="margin-top:4px;font-size:13px;color:#f2c94c;">You have {{data.fleet.used}} cars and {{data.fleet.slots}} slots. Your cars are safe and you can still drive or sell them, but you can't keep another one until you sell some.</div>
+            <div ng-if="data.fleet.hint" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.fleet.hint}} You can then buy a {{data.fleet.boughtSlots}}th for ${{data.fleet.slotPrice | number:0}}.</div>
+            <div ng-if="data.fleet.buySlot" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;">
+              <button type="button" ng-if="!isConfirming('slot', data.fleet.buySlot.price)" ng-click="askToPay('slot', data.fleet.buySlot.price)" ng-disabled="!data.fleet.buySlot.allowed" ng-style="data.fleet.buySlot.allowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:5px 12px;border:1px solid #568d7a;border-radius:4px;">Buy a {{data.fleet.boughtSlots}}th slot &middot; ${{data.fleet.buySlot.price | number:0}}</button>
+              <span ng-if="isConfirming('slot', data.fleet.buySlot.price)" style="font-weight:bold;">Pay ${{data.fleet.buySlot.price | number:0}} for a {{data.fleet.boughtSlots}}th car slot?</span>
+              <button type="button" ng-if="isConfirming('slot', data.fleet.buySlot.price)" ng-click="cancelPay(); buyCarSlot()" ng-disabled="!data.fleet.buySlot.allowed" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Yes, buy it</button>
+              <button type="button" ng-if="isConfirming('slot', data.fleet.buySlot.price)" ng-click="cancelPay()" style="padding:5px 12px;">Cancel</button>
+              <span ng-if="data.fleet.buySlot.problem && !isConfirming('slot', data.fleet.buySlot.price)" style="font-size:13px;color:#c9d6d2;">{{data.fleet.buySlot.problem}}</span>
+            </div>
+            <div ng-if="data.fleet.swapProblem" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.fleet.swapProblem}}</div>
+            <div ng-if="data.fleet.feedback" role="status" style="margin-top:4px;">{{data.fleet.feedback}}</div>
+            <div style="margin-top:4px;font-size:12px;color:#7d8b88;">Drive brings a parked car to you anywhere for ${{data.fleet.fee | number:0}}, and parks the one you are in. Each car keeps its own parts, fuel and damage. Sell pays the trade-in price: {{data.fleet.sharePercent}}% of its worth, less any repair.</div>
+          </div>
+        </div>
         <div ng-if="!data.carChange && !data.partsChange && !data.usedCars" class="ef-sec">
           <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('cargo')" aria-expanded="{{isOpen('cargo')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('cargo') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Cargo space</div><span class="ef-sum"><span ng-if="data.space.boot">boot</span><span ng-if="!data.space.boot">{{data.space.boxes.length}} {{data.space.boxes.length === 1 ? 'box' : 'boxes'}}</span> &middot; {{data.space.slots}} slots &middot; {{data.space.kg | number:0}} kg &middot; <span ng-if="data.space.litres > 0">{{data.space.litres | number:0}} L tank</span><span ng-if="!(data.space.litres > 0)">no tank</span></span></div></div>
           <div ng-if="isOpen('cargo')" class="ef-sb" style="font-size:13px;color:#c9d6d2;">
@@ -499,57 +639,67 @@
           </div>
         </div>
         <div ng-if="!data.carChange && !data.partsChange && !data.usedCars && data.trailer" class="ef-sec" ng-class="{'ef-need': data.trailer.storeArmed || (data.trailer.owned && data.trailer.owned.out && !data.trailer.owned.hitched)}">
-          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('trailer')" aria-expanded="{{isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed || data.trailer.shop)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed || data.trailer.shop) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Trailer</div><span class="ef-sum"><span ng-if="!data.trailer.owned">none</span><span ng-if="data.trailer.owned">{{data.trailer.owned.name}} &middot; <span ng-if="data.trailer.owned.stored">in the garage</span><span ng-if="data.trailer.owned.out && data.trailer.owned.hitched">hitched</span><span ng-if="data.trailer.owned.out && !data.trailer.owned.hitched" style="color:#f2c94c;">not hitched</span></span></span></div></div>
-          <div ng-if="isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed || data.trailer.shop)" class="ef-sb" style="font-size:13px;">
+          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('trailer')" aria-expanded="{{isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Trailer</div><span class="ef-sum"><span ng-if="!data.trailer.owned">none</span><span ng-if="data.trailer.owned">{{data.trailer.owned.name}} &middot; <span ng-if="data.trailer.owned.stored">{{data.trailer.owned.at === 'base' ? 'at your base' : 'at the depot'}}</span><span ng-if="data.trailer.owned.out && data.trailer.owned.hitched">hitched</span><span ng-if="data.trailer.owned.out && !data.trailer.owned.hitched" style="color:#f2c94c;">not hitched</span></span></span></div></div>
+          <div ng-if="isOpen('trailer', data.trailer.open || data.trailer.storeArmed || data.trailer.sellArmed)" class="ef-sb" style="font-size:13px;">
             <div ng-if="!data.trailer.owned && !data.trailer.open">
-              <div style="color:#c9d6d2;">A trailer adds cargo space. Jobs fill the trailer first, then your car. You need the right hitch on your car for it: fit one with Buy parts.</div>
+              <div style="color:#c9d6d2;">A trailer adds cargo space. Each load is shared between your car and the trailer, so both carry the same share of what they can take, and the trailer's load sits just ahead of its axles so it tows steadily. You need the right hitch on your car for it: fit one with Buy parts.</div>
               <button type="button" ng-click="openTrailers(true)" ng-disabled="data.garageLocked" ng-style="{opacity: data.garageLocked ? 0.5 : 1}" style="margin-top:4px;padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Buy new trailer</button>
             </div>
-            <div ng-if="!data.trailer.owned && data.trailer.open">
+            <div ng-if="data.trailer.open">
               <div style="display:flex;gap:8px;align-items:baseline;"><span style="flex:1;min-width:0;font-weight:bold;color:#a7e5c9;">New trailers</span><button type="button" ng-click="openTrailers(false)" style="padding:3px 10px;">Close</button></div>
-              <div style="font-size:12px;color:#7d8b88;">Utility trailers built for freight. They take a ball hitch, so check your car has one before you buy.</div>
+              <div style="font-size:12px;color:#7d8b88;">Trailers built for freight, from small ones on a ball hitch to semi trailers on a fifth wheel. Each card says the hitch it needs and whether your car has one.</div>
               <div ng-if="data.trailer.offers.length === 0" style="margin-top:6px;color:#c9d6d2;">No trailers found.</div>
-              <div style="max-height:260px;overflow-y:auto;">
-                <div ng-repeat="offer in data.trailer.offers track by offer.index" style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(167,229,201,.3);align-items:center;">
+              <div style="max-height:320px;overflow-y:auto;">
+                <div ng-repeat="offer in data.trailer.offers track by offer.name" style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(167,229,201,.3);align-items:flex-start;">
                   <img ng-if="offer.preview" ng-src="{{offer.preview}}" alt="" style="width:72px;height:40px;object-fit:cover;border-radius:4px;flex:none;">
-                  <div style="flex:1;min-width:0;"><div style="font-weight:bold;overflow-wrap:anywhere;">{{offer.name}}</div><div>${{offer.price | number:0}}<span ng-if="offer.short" style="color:#eb5757;"> &middot; ${{offer.short | number:0}} short</span></div></div>
-                  <button type="button" ng-click="buyTrailer(offer)" ng-disabled="!offer.allowed" ng-style="offer.allowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="flex:none;padding:5px 10px;border:1px solid #568d7a;border-radius:4px;">Buy</button>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-weight:bold;overflow-wrap:anywhere;">{{offer.name}}</div>
+                    <div style="font-size:12px;color:#c9d6d2;">Carries up to {{offer.maxKg | number:0}} kg<span ng-if="offer.buys.length === 1"> &middot; {{offer.room}}</span></div>
+                    <div ng-if="offer.hitchName" style="font-size:12px;" ng-style="{color: offer.hitchFound ? '#6fcf97' : '#f2c94c'}"><span ng-if="offer.hitchFound">&#10003; Takes a {{offer.hitchName}}: your car has one.</span><span ng-if="!offer.hitchFound">Needs a {{offer.hitchName}}. Fit one with Buy parts first.</span></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+                      <button type="button" ng-repeat="buy in offer.buys track by buy.index" ng-click="buyTrailer(buy)" ng-disabled="!buy.allowed" ng-style="buy.allowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="flex:none;padding:5px 10px;border:1px solid #568d7a;border-radius:4px;"><span ng-if="buy.fit && offer.buys.length > 1">{{buy.fit}} ({{buy.room}}) &middot; </span><span ng-if="!(buy.fit && offer.buys.length > 1)">Buy &middot; </span>${{buy.price | number:0}}</button>
+                    </div>
+                    <div ng-repeat="buy in offer.buys track by buy.index" ng-if="buy.short" style="font-size:12px;color:#eb5757;"><span ng-if="buy.fit && offer.buys.length > 1">{{buy.fit}}: </span>${{buy.short | number:0}} short</div>
+                  </div>
                 </div>
               </div>
-              <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Buy pays straight away and puts the trailer behind your car.</div>
+              <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Buy pays straight away and puts the trailer behind your car, with its boxes or tanks fitted.</div>
             </div>
-            <div ng-if="data.trailer.owned">
-              <div>Your {{data.trailer.owned.name}}, bought for ${{data.trailer.owned.paid | number:0}}.</div>
-              <div ng-if="data.trailer.owned.out && data.trailer.owned.space" style="color:#c9d6d2;">Cargo: {{data.trailer.owned.space.slots}} slots &middot; {{data.trailer.owned.space.kg | number:0}} kg<span ng-if="data.trailer.owned.space.litres > 0"> &middot; {{data.trailer.owned.space.litres | number:0}} L tank</span><span ng-if="!(data.trailer.owned.space.slots > 0) && !(data.trailer.owned.space.litres > 0)">: none for our jobs</span>.</div>
-              <div ng-if="data.trailer.owned.out && data.trailer.owned.hitched" style="color:#6fcf97;">Hitched. Jobs fill it first, then your car.</div>
+            <div ng-if="data.trailer.owned && !data.trailer.open">
+              <div>Your {{data.trailer.owned.name}}, worth ${{data.trailer.owned.paid | number:0}}: what you paid for it and its parts.</div>
+              <div ng-if="data.trailer.owned.out && data.trailer.owned.space" style="color:#c9d6d2;">Cargo: {{data.trailer.owned.space.slots}} slots &middot; {{data.trailer.owned.space.kg | number:0}} kg<span ng-if="data.trailer.owned.space.litres > 0"> &middot; {{data.trailer.owned.space.litres | number:0}} L tank</span><span ng-if="data.trailer.owned.space.maxKg"> &middot; carries up to {{data.trailer.owned.space.maxKg | number:0}} kg</span><span ng-if="!(data.trailer.owned.space.slots > 0) && !(data.trailer.owned.space.litres > 0)">: none for our jobs</span>.</div>
+              <div ng-if="data.trailer.owned.out && data.trailer.owned.hitched" style="color:#6fcf97;">Hitched. Jobs fill it first, up to the most it can carry, then your car.</div>
               <div ng-if="data.trailer.owned.out && !data.trailer.owned.hitched" style="color:#f2c94c;">Not hitched. Back up to it slowly and it hitches itself, or use the game's couple key. It adds no cargo space until it is hitched<span ng-if="data.trailer.owned.loaded">, and you can't deliver until it is</span>.</div>
-              <div ng-if="data.trailer.owned.out && !data.trailer.shop" style="font-size:12px;color:#7d8b88;">Buy trailer parts puts you in the trailer and opens the parts menu, so you can fit cargo boxes or tanks to it. They're billed like car parts.</div>
-              <div ng-if="data.trailer.owned.stored" style="color:#c9d6d2;">In the garage. Bring it out anywhere, any time, for free.</div>
+              <div ng-if="data.trailer.owned.out" style="font-size:12px;color:#7d8b88;">Trailers come with their cargo boxes or tanks fitted, and their parts can't be changed. For more room, buy a bigger trailer.</div>
+              <div ng-if="data.trailer.owned.stored && data.trailer.owned.at === 'base'" style="color:#c9d6d2;">Parked at your base. <span ng-if="data.trailer.atBase">Hitch it from here for free.</span><span ng-if="!data.trailer.atBase">A haulier can bring it to you for ${{data.trailer.bringOutFee | number:0}}, or hitch it for free at your base.</span></div>
+              <div ng-if="data.trailer.owned.stored && data.trailer.owned.at !== 'base'" style="color:#c9d6d2;">At the depot. Bring it out anywhere for ${{data.trailer.depotFee | number:0}}.</div>
+              <div ng-if="data.trailer.owned.out && !data.trailer.base" style="font-size:12px;color:#7d8b88;">Store it at the depot for ${{data.trailer.depotFee | number:0}}. A base of operations keeps your trailers for free.</div>
               <div ng-if="data.trailer.owned.repair">Repair needed: ${{data.trailer.owned.repair | number:0}}<span ng-if="data.trailer.owned.out && !(data.trailer.owned.owed > 0)">, once it is stored</span>.</div>
-              <div ng-if="data.trailer.shop" style="margin:6px 0;padding:8px;border:2px solid #f2c94c;border-radius:6px;">
-                <div style="font-weight:bold;color:#f2c94c;">Trailer parts<span ng-if="data.trailer.shop.bill"> &middot; not paid yet</span></div>
-                <div ng-if="data.trailer.shop.due" style="color:#c9d6d2;">Working out the bill...</div>
-                <div ng-if="!data.trailer.shop.due && !data.trailer.shop.bill" style="color:#c9d6d2;">You are in your trailer. Fit cargo boxes or tanks in the parts menu, or go back to your car.</div>
-                <div ng-repeat="part in data.trailer.shop.bill.added" style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">+ {{part.name}}</span><span>${{part.price | number:0}}</span></div>
-                <div ng-repeat="part in data.trailer.shop.bill.removed" style="display:flex;gap:8px;"><span style="flex:1;min-width:0;">&minus; {{part.name}} <span style="color:#c9d6d2;font-size:12px;">(sold back)</span></span><span ng-if="part.refund != null">&minus;${{part.refund | number:0}}</span></div>
-                <div ng-if="data.trailer.shop.bill" style="display:flex;gap:8px;margin-top:4px;padding-top:4px;border-top:1px solid rgba(242,201,76,.5);font-weight:bold;"><span style="flex:1;">Total</span><span>${{data.trailer.shop.bill.cost | number:0}}</span></div>
-                <div ng-if="data.trailer.shop.bill && data.balance < data.trailer.shop.bill.cost" style="font-size:13px;color:#eb5757;">You have ${{data.balance | number:0}}: ${{data.trailer.shop.bill.cost - data.balance | number:0}} short.</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
-                  <button type="button" ng-click="payTrailerParts()" ng-disabled="!data.trailer.shop.payAllowed" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;"><span ng-if="data.trailer.shop.bill">Pay ${{data.trailer.shop.bill.cost | number:0}}</span><span ng-if="!data.trailer.shop.bill">Back to my car</span></button>
-                  <button type="button" ng-if="data.trailer.shop.bill" ng-click="undoTrailerParts()" style="padding:5px 12px;">Undo</button>
-                  <button type="button" ng-click="openPartsMenu(true)" style="padding:5px 12px;">Parts menu</button>
-                </div>
-              </div>
-              <div ng-if="data.trailer.storeArmed" style="margin-top:4px;color:#eb5757;font-weight:bold;">Storing your trailer now loses your whole load and costs the abandon fee.</div>
+              <div ng-if="data.trailer.storeArmed" style="margin-top:4px;color:#eb5757;font-weight:bold;">{{data.trailer.storeArmed.indexOf('swap') === 0 ? 'Swapping' : 'Storing'}} your trailer now loses your whole load and costs the abandon fee.</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-                <button type="button" ng-if="data.trailer.owned.out && !data.trailer.shop" ng-click="buyTrailerParts()" ng-disabled="!data.trailer.partsAllowed" style="padding:5px 12px;">Buy trailer parts</button>
-                <button type="button" ng-if="data.trailer.owned.out" ng-click="storeTrailer()" ng-disabled="!data.trailer.storeAllowed" ng-style="data.trailer.storeArmed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="padding:5px 12px;">{{data.trailer.storeArmed ? 'Confirm store' : 'Store trailer'}}</button>
+                <button type="button" ng-if="data.trailer.owned.out && data.trailer.atBase && data.trailer.spotFree" ng-click="storeTrailer('base')" ng-disabled="!data.trailer.parkAllowed && data.trailer.storeArmed !== 'base'" ng-style="data.trailer.storeArmed === 'base' ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="padding:5px 12px;">{{data.trailer.storeArmed === 'base' ? 'Confirm park' : 'Park at base'}}</button>
+                <button type="button" ng-if="data.trailer.owned.out && data.trailer.base && !data.trailer.atBase && data.trailer.spotFree" ng-click="storeTrailer('base')" ng-disabled="!data.trailer.sendAllowed && data.trailer.storeArmed !== 'base'" ng-style="data.trailer.storeArmed === 'base' ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="padding:5px 12px;">{{data.trailer.storeArmed === 'base' ? 'Confirm send' : 'Send to base'}} &middot; ${{data.trailer.haulFee | number:0}}</button>
+                <button type="button" ng-if="data.trailer.owned.out && !data.trailer.atBase" ng-click="storeTrailer('depot')" ng-disabled="!data.trailer.depotAllowed && data.trailer.storeArmed !== 'depot'" ng-style="data.trailer.storeArmed === 'depot' ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="padding:5px 12px;">{{data.trailer.storeArmed === 'depot' ? 'Confirm store' : 'Store at depot'}} &middot; ${{data.trailer.depotFee | number:0}}</button>
                 <button type="button" ng-if="data.trailer.storeArmed" ng-click="cancelStoreTrailer()" style="padding:5px 12px;">Keep it out</button>
-                <button type="button" ng-if="data.trailer.owned.stored" ng-click="bringOutTrailer()" ng-disabled="!data.trailer.bringOutAllowed" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Bring out</button>
+                <button type="button" ng-if="data.trailer.owned.stored" ng-click="bringOutTrailer()" ng-disabled="!data.trailer.bringOutAllowed" style="padding:5px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;"><span ng-if="data.trailer.owned.at === 'base' && data.trailer.atBase">Hitch from base</span><span ng-if="data.trailer.owned.at === 'base' && !data.trailer.atBase">Have it delivered &middot; ${{data.trailer.bringOutFee | number:0}}</span><span ng-if="data.trailer.owned.at !== 'base'">Bring out &middot; ${{data.trailer.bringOutFee | number:0}}</span></button>
                 <button type="button" ng-if="data.trailer.owned.owed > 0" ng-click="repairTrailer()" ng-disabled="!data.trailer.repairAllowed" style="padding:5px 12px;">Repair trailer &middot; ${{data.trailer.owned.owed | number:0}}</button>
                 <button type="button" ng-if="data.trailer.owned.stored" ng-click="sellTrailer()" ng-disabled="!data.trailer.sellAllowed" ng-style="data.trailer.sellArmed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:5px 12px;">{{data.trailer.sellArmed ? 'Confirm sale' : 'Sell'}} &middot; ${{data.trailer.owned.sale | number:0}}</button>
               </div>
-              <div ng-if="data.trailer.owned.stored" style="margin-top:4px;font-size:12px;color:#7d8b88;">Sell pays 75% of what you paid, less any repair it needs.</div>
+              <div ng-if="data.trailer.owned.stored" style="margin-top:4px;font-size:12px;color:#7d8b88;">Sell pays 75% of what you paid, less any repair it needs.<span ng-if="data.trailer.base"> Repairs cost half at your base.</span></div>
+              <div ng-if="data.trailer.spares.length" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(167,229,201,.3);">
+                <div style="font-weight:bold;color:#a7e5c9;">Your trailers <span style="font-weight:normal;color:#7d8b88;">&middot; {{data.trailer.count}} of {{data.trailer.allowed}}</span></div>
+                <div ng-repeat="spare in data.trailer.spares track by spare.index" style="margin-top:4px;">
+                  <div style="overflow-wrap:anywhere;">{{spare.name}}, {{spare.at === 'base' ? 'parked at your base' : 'at the depot'}} &middot; worth ${{spare.paid | number:0}}</div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;">
+                    <button type="button" ng-if="!data.trailer.owned.out" ng-click="hitchSpareTrailer(spare)" ng-disabled="!spare.hitchAllowed" style="padding:4px 10px;">Hitch<span ng-if="spare.hitchFee > 0"> &middot; ${{spare.hitchFee | number:0}}</span></button>
+                    <button type="button" ng-if="data.trailer.owned.out && spare.swapShown" ng-click="swapTrailers(spare)" ng-disabled="!spare.swapAllowed && !spare.swapArmed" ng-style="spare.swapArmed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="padding:4px 10px;">{{spare.swapArmed ? 'Confirm swap' : 'Swap'}}</button>
+                    <button type="button" ng-click="sellSpareTrailer(spare)" ng-style="spare.sellArmed ? {background:'#f2c94c',color:'#0c1318',fontWeight:'bold',borderColor:'#f2c94c'} : {}" style="padding:4px 10px;">{{spare.sellArmed ? 'Confirm sale' : 'Sell'}} &middot; ${{spare.sale | number:0}}</button>
+                  </div>
+                </div>
+                <div ng-if="data.trailer.owned.out && data.trailer.base && !data.trailer.atBase" style="margin-top:4px;font-size:12px;color:#7d8b88;">Drive to your base to swap trailers, or store this one first to hitch another.</div>
+              </div>
+              <button type="button" ng-if="data.trailer.buyAllowed" ng-click="openTrailers(true)" ng-disabled="data.garageLocked" style="margin-top:6px;padding:5px 12px;">Buy another trailer</button>
+              <div style="margin-top:4px;font-size:12px;color:#7d8b88;">You can own as many trailers as you have car slots: 2, 3 with a base or corp, 4 with the bought slot.</div>
             </div>
             <div ng-if="data.trailer.foreign" style="margin-top:4px;color:#f2c94c;">The trailer you are towing isn't yours, so it adds no cargo space. Buy one with Buy new trailer.</div>
             <div ng-if="data.trailer.problem && (data.trailer.open || (data.trailer.owned && data.trailer.owned.stored))" style="margin-top:4px;color:#f2c94c;">{{data.trailer.problem}}</div>
@@ -563,13 +713,18 @@
             <div ng-if="data.repairOwed > 0">Repair still owed: ${{data.repairOwed | number:0}}</div>
             <div ng-if="data.puncture" style="color:#eb5757;">Puncture: the tyre repair adds ${{data.puncture.tyreCost | number:0}} to the repair.</div>
             <div ng-if="data.repairQuote != null">Repair quote: ${{data.repairQuote | number:0}}</div>
-            <div ng-if="data.repairAtHome" style="font-size:13px;color:#6fcf97;">You are at home: repairs are half price.</div>
+            <div ng-if="data.repairAtHome" style="font-size:13px;color:#6fcf97;">You are at your base: repairs are half price.</div>
             <div ng-if="!(data.repairOwed > 0) && !data.puncture && data.repairQuote == null" style="font-size:13px;color:#c9d6d2;">Get a quote to price the damage to the car you are in.</div>
             <div style="display:flex;gap:8px;margin-top:4px;">
               <button type="button" ng-click="requestRepairQuote()" ng-disabled="!data.repairQuoteAllowed" style="padding:5px 12px;">Get repair quote</button>
               <button type="button" ng-click="repairVehicle()" ng-disabled="!data.repairAllowed" style="padding:5px 12px;">Repair</button>
             </div>
           </div>
+        </div>
+        <div ng-if="data.insuranceDebt" role="alert" style="margin:0 0 8px;padding:10px;border:2px solid #f2c94c;border-radius:6px;">
+          <div style="font-weight:bold;color:#f2c94c;">Insurance debt: ${{data.insuranceDebt.owed | number:0}}</div>
+          <div style="font-size:13px;color:#c9d6d2;">{{data.insuranceDebt.sharePercent}}% of every delivery's pay goes to it until it's paid. Buying parts and cars is off until then.</div>
+          <button type="button" ng-click="payInsurance()" ng-disabled="!data.insuranceDebt.payAllowed" style="margin-top:6px;padding:5px 12px;">Pay off ${{data.insuranceDebt.owed | number:0}}</button>
         </div>
         <div ng-if="data.tow" class="ef-sec" ng-class="{'ef-need': data.tow.owed || data.tow.onFoot}">
           <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('tow')" aria-expanded="{{isOpen('tow', data.tow.owed || data.tow.onFoot)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('tow', data.tow.owed || data.tow.onFoot) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Stuck? Tow your car to you<span ng-if="data.tow.fee > 0"> for ${{data.tow.fee | number:0}}</span><span ng-if="!(data.tow.fee > 0)">, free</span></div><span class="ef-sum"><span ng-if="data.tow.owed">${{data.tow.owed | number:0}} owed</span></span></div></div>
@@ -591,27 +746,23 @@
           </div>
         </div>
         <div class="ef-sec">
-          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('fuel')" aria-expanded="{{isOpen('fuel')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('fuel') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Fuel</div><span class="ef-sum"><span ng-if="!data.town">stop in a town<span ng-if="data.fuel"> &middot; ${{data.fuel.pricePerLitre | number:2}} a litre</span></span><span ng-if="data.town && data.town.refuel && data.town.refuel.full">tank full</span><span ng-if="data.town && data.town.refuel && !data.town.refuel.full">{{data.town.refuel.litres | number:1}} L for ${{data.town.refuel.cost | number:0}}</span></span></div>
-            <button type="button" ng-click="refuel()" ng-disabled="!(data.town && data.town.refuelAllowed)" style="flex:none;padding:3px 10px;">Refuel</button></div>
-          <div ng-if="isOpen('fuel')" class="ef-sb" style="font-size:13px;color:#c9d6d2;">
-            <div ng-if="!data.town">Stop in a town to refuel<span ng-if="data.fuel"> at ${{data.fuel.pricePerLitre | number:2}} a litre</span>.</div>
-            <div ng-if="data.town && data.town.refuel && data.town.refuel.full">Your tank is full.</div>
-            <div ng-if="data.town && data.town.refuel && !data.town.refuel.full">{{data.town.refuel.litres | number:1}} L for ${{data.town.refuel.cost | number:0}} at ${{data.fuel.pricePerLitre | number:2}} a litre.</div>
-            <div ng-if="data.town && !data.town.refuel">Reading your fuel gauge...</div>
+          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('fuel')" aria-expanded="{{isOpen('fuel')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('fuel') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Fuel</div><span class="ef-sum" ng-if="data.refuel"><span ng-if="data.refuel.full">tank full</span><span ng-if="!data.refuel.full">{{data.refuel.fuelType}} ${{data.refuel.pricePerLitre | number:2}}/L<span ng-if="data.refuel.atPump"> at the pump</span><span ng-if="!data.refuel.atPump && !data.refuel.problem" style="color:#f2c94c;"> town price</span></span></span></div>
+            <button type="button" ng-click="refuel()" ng-disabled="!(data.refuel && data.refuel.allowed)" style="flex:none;padding:3px 10px;">Refuel<span ng-if="data.refuel && data.refuel.allowed"> &middot; ${{data.refuel.cost | number:0}}</span></button></div>
+          <div ng-if="isOpen('fuel') && data.refuel" class="ef-sb" style="font-size:13px;color:#c9d6d2;">
+            <div>{{data.refuel.fuelType}} in {{data.refuel.continent}}: ${{data.refuel.pumpPricePerLitre | number:2}} a litre at a petrol station pump.</div>
+            <div ng-if="data.refuel.atPump" style="margin-top:2px;">You are at <b>{{data.refuel.station || 'a petrol station'}}</b>. Press Refuel, or use the pump&rsquo;s own Refuel prompt: both are charged at the pump price.</div>
+            <div ng-if="!data.refuel.atPump" style="margin-top:2px;">Drive slowly up to a pump at any petrol station to fill up.</div>
+            <div ng-if="data.refuel.full" style="margin-top:2px;">Your tank is full.</div>
+            <div ng-if="!data.refuel.full && data.refuel.litres != null" style="margin-top:2px;">Refuel: {{data.refuel.litres | number:1}} L for ${{data.refuel.cost | number:0}} at ${{data.refuel.pricePerLitre | number:2}} a litre.</div>
+            <div ng-if="data.refuel.reading" style="margin-top:2px;">Reading your fuel gauge...</div>
           </div>
-          <div ng-if="data.town && data.town.problem" style="margin:0 0 6px;font-size:13px;color:#f2c94c;">{{data.town.problem}}</div>
+          <div ng-if="data.refuel && data.refuel.warning && !data.refuel.problem && !data.refuel.full" role="note" style="margin:0 0 6px;font-size:13px;color:#f2c94c;">&#9888; {{data.refuel.warning}}</div>
+          <div ng-if="data.refuel && data.refuel.problem" style="margin:0 0 6px;font-size:13px;color:#f2c94c;">{{data.refuel.problem}}</div>
           <div ng-if="data.fuelFeedback" role="status" style="margin:0 0 6px;">{{data.fuelFeedback}}</div>
         </div>
         <p role="status" ng-repeat="text in [data.carChange || data.usedCars ? null : data.carFeedback, data.partsChange ? null : data.partsFeedback, data.repairFeedback] track by $index" ng-if="text" style="margin:6px 0;">{{text}}</p>
       </div>
       <div ng-if="tab === 'relocate'">
-        <div ng-if="data.shipDay && !data.shipDay.atPort && !data.shipping.booking" style="margin:0 0 8px;padding:10px;border:2px solid #56ccf2;border-radius:6px;">
-          <div style="font-weight:bold;color:#56ccf2;">Ship Day: {{data.shipDay.name}} at {{data.shipDay.port}}</div>
-          <div style="font-size:13px;color:#c9d6d2;">{{data.shipDay.region}} &middot; {{data.shipDay.free}} of {{data.shipDay.total}} containers left &middot; sails in {{until(data.shipDay.secondsLeft)}}. The trip to {{data.shipDay.town}} is free.</div>
-          <button type="button" ng-click="goToPort()" ng-disabled="!data.shipDay.goAllowed" ng-style="{opacity: data.shipDay.goAllowed ? 1 : 0.5}" style="margin-top:6px;padding:6px 12px;background:#56ccf2;color:#0c1318;font-weight:bold;border:1px solid #56ccf2;border-radius:4px;">Go to port (free)</button>
-          <div ng-if="data.shipDay.goProblem" style="color:#f2c94c;">{{data.shipDay.goProblem}}</div>
-          <div ng-if="data.shipDay.feedback" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.shipDay.feedback}}</div>
-        </div>
         <div ng-if="data.shipping.players && !data.shipping.booking" style="margin:0 0 8px;padding:10px;border:1px solid #56ccf2;border-radius:6px;">
           <div style="font-weight:bold;color:#56ccf2;">Relocate to a player</div>
           <div style="font-size:13px;color:#c9d6d2;">Join another trucker on this server and work near them. Same fee as any relocation, with an empty car.</div>
@@ -653,12 +804,12 @@
             <div ng-if="isOpen('howreloc')" style="font-size:13px;color:#c9d6d2;">Pick a region, find a town, or paste coordinates. Book with an empty car, pay, then press Teleport or use the coordinates. Teleporting without a booking cancels your job (for the ${{data.abandonFee | number:0}} abandon fee) and stops pay until you go back.</div>
             <div ng-if="data.shipping.problem" style="color:#f2c94c;">{{data.shipping.problem}}</div>
             <div ng-if="data.shipping.home" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
-              <div style="flex:1;min-width:0;"><b>Home</b> <span style="color:#7d8b88;font-size:12px;">{{data.shipping.home.region}}</span></div>
+              <div style="flex:1;min-width:0;"><b>Base</b> <span style="color:#7d8b88;font-size:12px;">{{data.shipping.home.region}}</span></div>
               <div ng-if="data.shipping.home.here" style="color:#7d8b88;font-size:12px;">You are here</div>
               <div ng-if="!data.shipping.home.here">${{data.shipping.home.fee | number:0}}</div>
               <button type="button" ng-click="bookShipping('home')" ng-disabled="!data.shipping.home.allowed" style="padding:4px 8px;">Book</button>
             </div>
-            <div ng-repeat="d in data.shipping.destinations" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+            <div ng-repeat="d in data.shipping.destinations track by d.id" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
               <div style="flex:1;min-width:0;">{{d.name}} <span style="color:#7d8b88;font-size:12px;">{{d.region}}</span></div>
               <div ng-if="d.here" style="color:#7d8b88;font-size:12px;">You are here</div>
               <div ng-if="!d.here">${{d.fee | number:0}}</div>
@@ -669,7 +820,7 @@
               <input aria-label="Town to relocate to" type="text" ng-model="ship.query" ng-focus="typing(true)" ng-blur="typing(false)" placeholder="Town name, like Chamonix" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
               <button type="submit" style="padding:4px 8px;">Find</button>
             </form>
-            <div ng-repeat="d in data.shipping.found" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+            <div ng-repeat="d in data.shipping.found track by $index" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
               <div style="flex:1;min-width:0;">{{d.name}} <span style="color:#7d8b88;font-size:12px;">{{d.region}}</span></div>
               <div ng-if="d.here" style="color:#7d8b88;font-size:12px;">You are here</div>
               <div ng-if="!d.here">${{d.fee | number:0}}</div>
@@ -685,45 +836,101 @@
         </div>
       </div>
       <div ng-if="tab === 'home'">
-        <div ng-if="!data.home" style="color:#c9d6d2;">Home opens once you are in your car at your start or last save.</div>
-        <div ng-if="data.home && !data.home.owned" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
-          <div style="font-weight:bold;color:#a7e5c9;">Buy a home</div>
-          <div style="font-size:13px;">Make the spot where you are parked your own, for ${{data.home.price | number:0}}. Home keeps a second car for you, and repairs there are {{data.home.repairShare}}% off.</div>
+        <div ng-if="!data.home" style="color:#c9d6d2;">Base opens once you are in your car at your start or last save.</div>
+        <div ng-if="data.home && data.home.conquest" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;font-size:13px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Land race &middot; {{data.home.conquest.land | number:1}}% of Earth's land</div>
+          <div aria-hidden="true" style="margin:6px 0;height:8px;border-radius:4px;background:#33423f;overflow:hidden;"><div ng-style="{width: landBar(data.home.conquest) + '%'}" style="height:100%;background:#6fcf97;"></div></div>
+          <div ng-if="data.home.conquest.race" style="color:#c9d6d2;">The first base to cover {{data.home.conquest.race.win}}% of Earth's land (Antarctica left out) with its corp wins the season<span ng-if="data.home.conquest.race.leader">. {{data.home.conquest.race.leader}} leads with {{data.home.conquest.race.leaderLand | number:1}}%</span><span ng-if="data.home.conquest.race.daysLeft">. If nobody gets there in {{data.home.conquest.race.daysLeft}} {{data.home.conquest.race.daysLeft === 1 ? 'day' : 'days'}}, whoever holds the most wins</span>. Then a new season starts and everyone starts over.</div>
+          <div style="margin-top:4px;">Your corp's bases: <span ng-repeat="b in data.home.conquest.bases">{{b.town || 'a town'}} {{b.radiusKm | number:0}} km<span ng-if="b.full" style="color:#6fcf97;"> (full size)</span>{{$last ? '' : ', '}}</span>.</div>
+          <div ng-if="!data.home.conquest.grown" style="color:#c9d6d2;">Your newest base<span ng-if="data.home.conquest.newest"> in {{data.home.conquest.newest}}</span> is full size ({{data.home.conquest.maxKm | number:0}} km) at ${{data.home.conquest.fullAt | number:0}} of corp wealth: ${{data.home.conquest.wealth | number:0}} so far ({{data.home.conquest.progress}}%). Then anyone in your corp can open a new base, free, in a town outside your turf.</div>
+          <div ng-if="data.home.conquest.grown" style="color:#6fcf97;">Your newest base is full size. Anyone in your corp can open a new base, free, in a town outside all of your circles. It starts at {{data.home.conquest.startKm | number:0}} km. Drive there and press Open a base here.</div>
+          <button type="button" ng-if="data.home.conquest.grown" ng-click="openBase()" ng-disabled="!data.home.conquest.openAllowed" ng-style="data.home.conquest.openAllowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="margin-top:6px;padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Open a base here</button>
+          <div ng-if="data.home.conquest.grown && data.home.conquest.openProblem" style="margin-top:4px;color:#f2c94c;">{{data.home.conquest.openProblem}}</div>
+        </div>
+        <div ng-if="data.home && data.home.corp" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Your corp: {{data.home.corp.owner}}'s base<span ng-if="data.home.corp.town"> in {{data.home.corp.town}}</span></div>
+          <div style="font-size:13px;">Jobs in your corp's turf pay you up to +{{data.home.corp.percent}}%: +{{data.home.corp.percent / 2 | number:0}}% when one end is in it, +{{data.home.corp.percent}}% when both are. You pay no toll there, and the tolls everyone else pays there are split equally between you, the owner and the other members.<span ng-if="data.home.corp.radiusKm"> Its circle reaches {{data.home.corp.radiusKm | number:0}} km, and half of what you're worth helps it grow.</span></div>
+          <div style="font-size:13px;color:#c9d6d2;">Members: {{data.home.corp.members || 'just you'}}.</div>
+          <div ng-if="data.home.corp.here" style="font-size:13px;color:#6fcf97;">You are at the corp yard. Repairs here are {{data.home.repairShare}}% off.</div>
+          <div ng-if="!data.home.corp.here && data.home.corp.distanceMetres != null" style="font-size:13px;color:#c9d6d2;">The corp yard is {{km(data.home.corp.distanceMetres)}} km away. Within {{data.home.radiusMetres}} m you can swap trailers, and repairs are {{data.home.repairShare}}% off. Relocate lists Corp yard at the usual fee.</div>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <input aria-label="Corp yard coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.home.corp)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+            <button type="button" aria-label="Copy corp yard coordinates" ng-click="copyCoordinates(data.home.corp)">Copy</button>
+          </div>
+          <div style="margin-top:8px;">
+            <button type="button" ng-if="!data.home.corp.leaveArmed" ng-click="leaveCorp()" style="padding:5px 10px;">Leave corp</button>
+            <span ng-if="data.home.corp.leaveArmed" style="display:flex;flex-wrap:wrap;gap:8px;">
+              <button type="button" ng-click="leaveCorp()" style="padding:5px 10px;background:#eb5757;color:#fff;font-weight:bold;border:1px solid #eb5757;border-radius:4px;">Yes, leave</button>
+              <button type="button" ng-click="cancelLeaveCorp()" style="padding:5px 10px;">Cancel</button>
+            </span>
+          </div>
+        </div>
+        <div ng-if="data.home && !data.home.owned && !data.home.corp" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Buy a base of operations</div>
+          <div style="font-size:13px;">Make the spot where you are parked your base, for ${{data.home.price | number:0}}. Around its town grows a circle of influence: jobs that start or end inside it pay you more, and it gets bigger as you get richer. Your base also keeps a second trailer for you, and repairs there are {{data.home.repairShare}}% off.</div>
+          <div ng-if="data.home.online" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Or join someone else's base as part of their corp: press <b>Ask to join</b> next to it under Other truckers' bases below.</div>
           <div ng-if="data.home.short" style="font-size:13px;color:#eb5757;">You are ${{data.home.short | number:0}} short.</div>
           <div ng-if="!isConfirming('home', data.home.price)" style="margin-top:6px;">
             <button type="button" ng-click="askToPay('home', data.home.price)" ng-disabled="!data.home.claimAllowed" ng-style="data.home.claimAllowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Buy this spot for ${{data.home.price | number:0}}</button>
           </div>
           <div ng-if="isConfirming('home', data.home.price)" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;">
-            <span style="font-weight:bold;">Pay ${{data.home.price | number:0}} and make this spot your home? It can't be moved later.</span>
+            <span style="font-weight:bold;">Pay ${{data.home.price | number:0}} and make this spot your base? It can't be moved later.</span>
             <button type="button" ng-click="cancelPay(); claimHome()" ng-disabled="!data.home.claimAllowed" style="padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Yes, buy it</button>
             <button type="button" ng-click="cancelPay()" style="padding:7px 12px;">Cancel</button>
           </div>
           <div ng-if="data.home.claimProblem && !data.home.short" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.home.claimProblem}}</div>
         </div>
         <div ng-if="data.home && data.home.owned" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
-          <div style="font-weight:bold;color:#a7e5c9;">Your home<span ng-if="data.home.owned.name"> near {{data.home.owned.name}}</span></div>
-          <div ng-if="data.home.owned.here" style="font-size:13px;color:#6fcf97;">You are at home. Repairs here are {{data.home.repairShare}}% off.</div>
-          <div ng-if="!data.home.owned.here && data.home.owned.distanceMetres != null" style="font-size:13px;color:#c9d6d2;">{{km(data.home.owned.distanceMetres)}} km away. Within {{data.home.radiusMetres}} m you can swap cars, and repairs are {{data.home.repairShare}}% off. Relocate lists Home at the usual fee.</div>
+          <div style="font-weight:bold;color:#a7e5c9;">Your base<span ng-if="data.home.owned.name"> near {{data.home.owned.name}}</span></div>
+          <div ng-if="data.home.circle" style="margin:6px 0;padding:8px;border:1px solid rgba(167,229,201,.4);border-radius:6px;font-size:13px;">
+            <div><b>Your circle reaches {{data.home.circle.radiusKm | number:0}} km</b> around {{data.home.circle.town || 'your base'}}<span ng-if="data.home.circle.boost > 1.05"> (&times;{{data.home.circle.boost | number:1}} region: steep ground makes it bigger)</span>.<span ng-if="data.home.circle.inside" style="color:#6fcf97;"> You are inside it.</span></div>
+            <div style="color:#c9d6d2;">Jobs in your turf pay you up to +{{data.home.circle.percent}}%: +{{data.home.circle.percent / 2 | number:0}}% when one end is in it, +{{data.home.circle.percent}}% when both are, and a little more on steep ground.</div>
+            <div ng-if="data.home.circle.commission" style="color:#c9d6d2;">When another trucker delivers in your turf, {{data.home.tollPercent}}% of their pay is a turf toll<span ng-if="!data.home.owned.corp.members.length">, and it's all yours</span><span ng-if="data.home.owned.corp.members.length">, split equally between you and your corp members</span>. It's paid to you when you're next on the server.</div>
+            <div style="color:#c9d6d2;">Your wealth: ${{data.home.circle.wealth | number:0}} (cash, truck, trailer and base).<span ng-if="data.home.circle.nextKm"> At ${{data.home.circle.nextWealth | number:0}} your circle reaches {{data.home.circle.nextKm | number:0}} km.</span><span ng-if="!data.home.circle.nextKm"> Your circle is as big as it gets.</span> It never shrinks.<span ng-if="data.home.circle.memberWealth"> Your corp members add ${{data.home.circle.memberWealth | number:0}} (half of what they're worth).</span></div>
+          </div>
+          <div ng-if="data.home.owned.corp" style="margin:6px 0;padding:8px;border:1px solid rgba(167,229,201,.4);border-radius:6px;font-size:13px;">
+            <div><b>Your corp</b> &middot; {{data.home.owned.corp.size}} of {{data.home.owned.corp.max}} truckers</div>
+            <div style="color:#c9d6d2;">Other truckers can ask to join your base. Members get up to +{{data.home.owned.corp.percent}}% in your turf, pay no toll there, and keep a trailer at your base. Half of what each member is worth grows your circle, but the tolls everyone else pays in your turf are split equally between you and every member. On your own, you keep them all.</div>
+            <div ng-repeat="m in data.home.owned.corp.members track by $index" style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+              <span style="flex:1;min-width:0;overflow-wrap:anywhere;">{{m.name}}</span>
+              <button type="button" ng-if="removing !== m.id" ng-click="setRemoving(m.id)" style="padding:3px 8px;">Remove</button>
+              <span ng-if="removing === m.id" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;"><span style="font-size:12px;">They can't join another corp for 24 hours.</span><button type="button" ng-click="corpRemove(m.id); setRemoving(null)" style="padding:3px 8px;background:#eb5757;color:#fff;font-weight:bold;border:1px solid #eb5757;border-radius:4px;">Yes, remove</button><button type="button" ng-click="setRemoving(null)" style="padding:3px 8px;">Cancel</button></span>
+            </div>
+            <div ng-if="data.home.owned.corp.requests.length" style="margin-top:6px;font-weight:bold;">Asking to join</div>
+            <div ng-repeat="r in data.home.owned.corp.requests track by $index" style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
+              <span style="flex:1;min-width:0;overflow-wrap:anywhere;">{{r.name}}</span>
+              <button type="button" ng-click="corpAccept(r.id)" style="padding:3px 8px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Accept</button>
+              <button type="button" ng-click="corpRefuse(r.id)" style="padding:3px 8px;">Turn down</button>
+            </div>
+            <div ng-if="!data.home.owned.corp.members.length && !data.home.owned.corp.requests.length" style="color:#7d8b88;">No members yet.</div>
+          </div>
+          <div ng-if="data.home.owned.here" style="font-size:13px;color:#6fcf97;">You are at your base. Repairs here are {{data.home.repairShare}}% off.</div>
+          <div ng-if="!data.home.owned.here && data.home.owned.distanceMetres != null" style="font-size:13px;color:#c9d6d2;">{{km(data.home.owned.distanceMetres)}} km away. Within {{data.home.radiusMetres}} m you can park a trailer for free, and repairs are {{data.home.repairShare}}% off. Relocate lists Base at the usual fee.</div>
           <div style="display:flex;gap:6px;margin-top:4px;">
-            <input aria-label="Home coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.home.owned)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
-            <button type="button" aria-label="Copy home coordinates" ng-click="copyCoordinates(data.home.owned)">Copy</button>
+            <input aria-label="Base coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.home.owned)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+            <button type="button" aria-label="Copy base coordinates" ng-click="copyCoordinates(data.home.owned)">Copy</button>
           </div>
-          <div style="margin-top:8px;font-weight:bold;color:#a7e5c9;font-size:13px;">Your cars</div>
-          <div ng-if="data.home.active" style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
-            <span style="flex:none;width:64px;color:#6fcf97;font-size:12px;">Driving</span>
-            <span style="flex:1;min-width:0;overflow-wrap:anywhere;">{{data.home.active.name}}</span>
-            <span ng-if="data.home.active.value" style="color:#c9d6d2;font-size:12px;">${{data.home.active.value | number:0}}</span>
+        </div>
+        <div ng-if="data.home.others" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Other truckers' bases</div>
+          <div style="font-size:12px;color:#7d8b88;">Deliver in someone else's turf and {{data.home.tollPercent}}% of the pay goes to them as a turf toll. The job board shows it before you take the job. Where circles overlap, the bigger one pushes the border towards the smaller one, and every base keeps the 100 km around its town.</div>
+          <div ng-repeat="b in data.home.others track by $index" style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);font-size:13px;">
+            <span style="flex:1;min-width:0;overflow-wrap:anywhere;"><b>{{b.name}}</b> in {{b.town || 'a town'}}<span ng-if="b.corp" style="color:#6fcf97;"> &middot; your corp</span><span ng-if="b.inside" style="color:#6fcf97;"> &middot; you are inside</span><span ng-if="b.members" style="display:block;font-size:12px;color:#7d8b88;">Corp: {{b.members}}</span></span>
+            <span style="color:#c9d6d2;white-space:nowrap;">{{b.radiusKm | number:0}} km circle<span ng-if="b.distanceMetres != null">, {{km(b.distanceMetres)}} km away</span></span>
+            <button type="button" ng-if="b.canAsk" ng-click="askToJoin(b.id)" ng-disabled="!b.askAllowed" style="padding:3px 8px;">{{b.full ? 'Full' : 'Ask to join'}}</button>
+            <span ng-if="b.asked" style="display:flex;gap:6px;align-items:center;white-space:nowrap;"><span style="color:#f2c94c;font-size:12px;">Asked</span><button type="button" ng-click="cancelJoin()" style="padding:3px 8px;">Cancel</button></span>
           </div>
-          <div ng-if="data.home.stored" style="display:flex;gap:8px;padding:4px 0;align-items:center;">
-            <span style="flex:none;width:64px;color:#c9d6d2;font-size:12px;">At home</span>
-            <img ng-if="data.home.stored.preview" ng-src="{{data.home.stored.preview}}" alt="" style="width:64px;height:36px;object-fit:cover;border-radius:4px;flex:none;">
-            <span style="flex:1;min-width:0;overflow-wrap:anywhere;">{{data.home.stored.name}}<span ng-if="data.home.stored.repair > 0" style="display:block;font-size:12px;color:#f2c94c;">Needs ${{data.home.stored.repair | number:0}} of repair</span></span>
-            <span ng-if="data.home.stored.value" style="color:#c9d6d2;font-size:12px;">${{data.home.stored.value | number:0}}</span>
+          <div ng-if="data.home.joinProblem" style="margin-top:4px;font-size:12px;color:#f2c94c;">{{data.home.joinProblem}}</div>
+        </div>
+        <div ng-if="data.home && data.baseMap" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-weight:bold;color:#a7e5c9;">Base map</div>
+          <div style="margin-top:2px;font-size:13px;">An overhead map in your web browser with every base's circle, the borders between them, your truck and your job's pickup and drop-off. It follows your truck and tells you whose turf you are in. Handy on a second screen, and it can pop out into its own window.</div>
+          <button type="button" ng-click="openBaseMap()" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Open base map</button>
+          <div ng-if="data.baseMap.feedback" role="status" style="margin-top:6px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.baseMap.feedback}}</div>
+          <div ng-if="data.baseMap.on && data.baseMap.url" style="display:flex;gap:6px;margin-top:4px;font-size:12px;">
+            <input aria-label="Base map address" type="text" readonly ng-value="data.baseMap.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
+            <button type="button" aria-label="Copy the base map address" ng-click="copyBaseMap()">Copy</button>
           </div>
-          <div ng-if="!data.home.stored" style="padding:4px 0;font-size:13px;color:#c9d6d2;">Room for {{data.home.spaces}} more car. When you buy a car on the Garage tab, choose <b>Keep and store at home</b> on its bill and your old car comes here.</div>
-          <button type="button" ng-if="data.home.stored" ng-click="swapCars()" ng-disabled="!data.home.swapAllowed" ng-style="data.home.swapAllowed ? {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'} : {}" style="margin-top:6px;padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Swap cars</button>
-          <div ng-if="data.home.stored && data.home.swapProblem" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.home.swapProblem}}</div>
-          <div ng-if="data.home.stored" style="margin-top:4px;font-size:12px;color:#7d8b88;">Each car keeps its own parts, fuel and damage.</div>
         </div>
         <div ng-if="data.home.feedback" role="status" style="margin-top:4px;">{{data.home.feedback}}</div>
       </div>
@@ -740,6 +947,7 @@
             <button type="button" ng-if="data.streetView.on" ng-click="openStreetView()" title="Opens the Street View page in your web browser again, if you closed it" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Open again</button>
             <button type="button" ng-if="data.streetView.on" ng-click="stopStreetView()" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">Turn off</button>
           </div>
+          <div style="margin-top:6px;font-size:12px;color:#c9d6d2;">Opens in your web browser. Play BeamNG in Borderless or Windowed mode to switch with Alt+Tab, or put the browser beside or on top of the game.</div>
           <div ng-if="data.streetView.feedback" role="status" style="margin-top:6px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.streetView.feedback}}</div>
           <div ng-if="data.streetView.on && data.streetView.url" style="display:flex;gap:6px;margin-top:4px;font-size:12px;">
             <input aria-label="Street View address" type="text" readonly ng-value="data.streetView.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
@@ -753,6 +961,140 @@
           <button type="button" ng-click="goSightseeing()" ng-disabled="!data.sightseeing.allowed" ng-style="{opacity: data.sightseeing.allowed ? 1 : 0.5}" style="margin-top:6px;padding:7px 12px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Go sightseeing</button>
           <div ng-if="data.sightseeing.problem" style="margin-top:4px;font-size:12px;color:#c9d6d2;">{{data.sightseeing.problem}}</div>
           <div ng-if="data.sightseeing.feedback" role="status" style="margin-top:4px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.sightseeing.feedback}}</div>
+        </div>
+      </div>
+      <div ng-if="tab === 'radio'">
+        <div ng-if="!data.radio" style="color:#c9d6d2;">The radio is not available in this version of BeamNG.</div>
+        <div ng-if="data.radio" style="margin:0 0 8px;padding:10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <div style="flex:1;font-weight:bold;color:#a7e5c9;">Local radio</div>
+            <div ng-style="{color: data.radio.playing ? '#6fcf97' : '#7d8b88'}" style="font-size:13px;font-weight:bold;">{{data.radio.playing ? 'On air' : (data.radio.open ? 'Open' : 'Off')}}</div>
+          </div>
+          <div ng-if="data.radio.playing" style="margin-top:4px;font-size:16px;font-weight:bold;overflow-wrap:anywhere;">&#9835; {{data.radio.playing}}</div>
+          <div style="margin-top:2px;font-size:13px;">Live radio stations near your truck, wherever you are on Earth, in your web browser. As you drive, it finds the stations around you and can switch to a nearby one on its own. The music keeps playing with the browser in the background.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+            <button type="button" ng-click="openRadio()" ng-style="data.radio.open ? {} : {background:'#a7e5c9',color:'#0c1318',fontWeight:'bold',borderColor:'#a7e5c9'}" style="padding:7px 12px;border:1px solid #568d7a;border-radius:4px;">{{data.radio.open ? 'Open again' : 'Open radio'}}</button>
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#c9d6d2;">Opens in your web browser. Play BeamNG in Borderless or Windowed mode to switch with Alt+Tab, or put the browser beside or on top of the game.</div>
+          <div ng-if="data.radio.feedback" role="status" style="margin-top:6px;color:#c9d6d2;font-size:12px;overflow-wrap:anywhere;">{{data.radio.feedback}}</div>
+          <div ng-if="data.radio.on && data.radio.url" style="display:flex;gap:6px;margin-top:4px;font-size:12px;">
+            <input aria-label="Radio address" type="text" readonly ng-value="data.radio.url" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
+            <button type="button" aria-label="Copy the radio address" ng-click="copyRadio()">Copy</button>
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#7d8b88;">Play, Stop, Next station, the volume and Follow my truck are on the radio page. Stations come from Radio Browser, a free list of internet radio, and use about 60 MB of internet an hour.</div>
+        </div>
+      </div>
+      <div ng-if="tab === 'mayday' && data.mayday">
+        <div style="margin:0 0 8px;padding:8px 10px;border:2px solid #eb5757;border-radius:6px;background:rgba(235,87,87,.06);">
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <div style="flex:1;min-width:0;font-weight:bold;letter-spacing:1px;font-size:15px;color:#eb5757;">MAYDAY RESCUE</div>
+            <div ng-if="data.mayday.open" title="When this call moves on to somewhere else" style="flex:none;font-size:13px;color:#c9d6d2;">moves on in {{until(data.mayday.secondsLeft)}}</div>
+          </div>
+          <div style="margin-top:2px;font-weight:bold;">Near {{data.mayday.name}}<span ng-if="data.mayday.region">, {{data.mayday.region}}</span></div>
+          <div style="font-size:13px;color:#c9d6d2;">{{data.mayday.story}}</div>
+          <div ng-if="data.mayday.open" style="margin-top:4px;font-size:13px;">First to the scene gets <b style="color:#6fcf97;">${{data.mayday.reward | number:0}}</b>.<span ng-if="data.mayday.racers"> {{data.mayday.racers}} {{data.mayday.racers === 1 ? 'trucker has' : 'truckers have'}} set off.</span></div>
+          <div ng-if="!data.mayday.open" role="status" style="margin-top:4px;font-size:13px;"><b style="color:#6fcf97;">{{data.mayday.winner || 'Someone'}}</b> got there first and won ${{data.mayday.reward | number:0}}. The next call goes out in {{clock(data.mayday.secondsLeft)}}.</div>
+        </div>
+        <div ng-if="data.mayday.running" style="margin:0 0 8px;padding:8px 10px;border:2px solid #f2c94c;border-radius:6px;">
+          <div style="font-size:13px;color:#c9d6d2;">On your way from the {{data.mayday.running.edge | lowercase}} edge &middot; {{until(data.mayday.running.seconds)}}<b ng-if="data.mayday.place" style="color:#f2c94c;"> &middot; {{data.mayday.place}} of {{data.mayday.field}}</b></div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
+            <div ng-if="data.mayday.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.mayday)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#eb5757;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
+            <div style="flex:1;min-width:0;">
+              <div ng-if="data.mayday.distanceMetres != null" style="line-height:1;"><span style="font-size:28px;font-weight:900;">{{distance(data.mayday.distanceMetres)}}</span><span ng-if="data.mayday.direction" style="font-size:15px;color:#c9d6d2;"> {{data.mayday.direction}}</span></div>
+              <div style="font-size:12px;color:#c9d6d2;">to the scene. No GPS: head off road and follow the arrow. Get within {{data.mayday.winMetres}} m of it.</div>
+            </div>
+          </div>
+          <div ng-if="data.mayday.checking" role="status" style="margin-top:4px;font-weight:bold;color:#6fcf97;">You're at the scene! Checking with the server...</div>
+        </div>
+        <div ng-if="data.mayday.standings" style="margin:0 0 8px;padding:8px 10px;border:1px solid #2c3a40;border-radius:6px;">
+          <div style="font-weight:bold;">Standings</div>
+          <div style="font-size:12px;color:#c9d6d2;">How far each trucker on a run is from the scene, in a straight line.</div>
+          <div ng-repeat="r in data.mayday.standings track by $index" ng-style="r.you ? {color:'#f2c94c',fontWeight:'bold'} : {}" style="display:flex;gap:8px;margin-top:3px;font-size:13px;">
+            <span style="flex:none;width:28px;color:#c9d6d2;">{{$index + 1}}.</span>
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{r.name}}<span ng-if="r.you"> (you)</span></span>
+            <span style="flex:none;">{{r.km | number:1}} km</span>
+          </div>
+        </div>
+        <div ng-if="data.mayday.open && !data.mayday.running && data.mayday.inside" style="margin:0 0 8px;font-size:13px;color:#f2c94c;">You're inside the circle, but not on a run. Start from an edge for it to count.</div>
+        <div ng-if="data.mayday.open">
+          <div style="font-weight:bold;">{{data.mayday.running ? 'Start again from an edge' : 'Pick an edge to start from'}}</div>
+          <div style="font-size:12px;color:#c9d6d2;">Free, with an empty car. Each edge is {{data.mayday.radiusKm | number:0}} km from the scene. Bring a car that can go off road.</div>
+          <div style="display:flex;gap:4px;margin-top:6px;">
+            <button type="button" ng-repeat="e in data.mayday.edges track by e.id" ng-click="maydayEdge(e)" ng-disabled="!e.allowed" ng-style="{opacity: e.allowed ? 1 : 0.5}" title="Teleport to the {{e.name | lowercase}} edge of the circle" style="flex:1;min-width:0;padding:6px 2px;background:#eb5757;color:#0c1318;font-weight:bold;border:1px solid #eb5757;border-radius:4px;">{{e.name}}</button>
+          </div>
+          <div ng-if="data.mayday.booked" style="margin-top:4px;font-size:12px;color:#c9d6d2;">Booked to the {{data.mayday.booked | lowercase}} edge.</div>
+          <div ng-if="data.mayday.problem" style="margin-top:4px;color:#f2c94c;">{{data.mayday.problem}}</div>
+          <div style="margin-top:6px;font-size:12px;color:#c9d6d2;">While the call is out, nobody can relocate inside the circle. Any teleport, a helicopter or changing cars ends your run (a tow, repair or insurance claim does not), but you can start again from any edge at any time.</div>
+        </div>
+        <div ng-if="data.mayday.feedback" role="status" style="margin-top:6px;color:#c9d6d2;">{{data.mayday.feedback}}</div>
+        <label ng-if="data.mayday.open" style="display:block;margin-top:8px;font-size:13px;">The scene, for the BeamNG.Earth map
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <input aria-label="The scene's coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.mayday.scene)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+            <button type="button" aria-label="Copy the scene's coordinates" ng-click="copyCoordinates(data.mayday.scene)">Copy</button>
+          </div>
+        </label>
+      </div>
+      <div ng-if="tab === 'race'">
+        <div style="margin:0 0 8px;padding:8px 10px;border:1px solid #568d7a;border-radius:6px;">
+          <div style="font-size:13px;"><b>Watch the race from anywhere.</b> <span style="color:#c9d6d2;">Open this page on your phone or PC to follow the land race and leaderboard when you're out of the game.</span></div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+            <input aria-label="The live server page's address" type="text" readonly ng-value="liveAddress" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;font-size:12px;" />
+            <button type="button" ng-click="copyLiveAddress()" title="Copies the live server page's address" style="flex:none;padding:4px 10px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">{{intro.liveCopied ? 'Copied' : 'Copy address'}}</button>
+          </div>
+          <div ng-if="intro.liveCopied" role="status" style="margin-top:3px;font-size:12px;color:#6fcf97;">Copied. Paste it into your browser.</div>
+        </div>
+        <div ng-if="data.standings">
+          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px;font-size:13px;">
+            <span style="flex:1;color:#c9d6d2;"><span ng-if="data.standings.season">Season {{data.standings.season}}<span ng-if="data.standings.day">, day {{data.standings.day}}</span></span><span ng-if="data.standings.race.daysLeft"> &middot; {{raceDays(data.standings.race.daysLeft)}}</span></span>
+            <span style="font-size:12px;color:#7d8b88;">live from the server</span>
+          </div>
+          <div class="ef-sec">
+            <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('landrace')" aria-expanded="{{isOpen('landrace')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('landrace') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Land race</div><span class="ef-sum">{{raceSummary(data.standings)}}</span></div></div>
+            <div ng-if="isOpen('landrace')" class="ef-sb">
+              <div ng-if="data.standings.race.win" style="font-size:13px;">First to own <b>{{data.standings.race.win}}%</b> of Earth's land wins the season.</div>
+              <div ng-if="!data.standings.corps.length" style="font-size:13px;color:#c9d6d2;">Nobody holds any land yet. Buy a base on the Base tab to start.</div>
+              <div ng-repeat="b in data.standings.corps">
+                <div style="display:flex;gap:8px;align-items:baseline;padding:3px 4px 0;margin:0 -4px;font-size:13px;border-radius:4px;" ng-style="b.mine ? {background:'rgba(111,207,151,.1)'} : {}">
+                  <b style="flex:none;">{{b.mine ? (b.members ? 'Your corp' : 'You') : b.name}}</b>
+                  <span style="flex:1;min-width:0;color:#c9d6d2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{b.town}}<span ng-if="b.outposts"> + {{b.outposts}} more {{b.outposts === 1 ? 'base' : 'bases'}}</span><span ng-if="b.members"> &middot; {{b.members + 1}} truckers</span><span ng-if="b.worth"> &middot; ${{b.worth | number:0}}</span></span>
+                  <span style="flex:none;font-size:12px;color:#f2c94c;">{{b.land}}%</span>
+                </div>
+                <div aria-hidden="true" style="height:6px;border-radius:3px;background:#33423f;overflow:hidden;margin:3px 0 4px;"><span ng-style="{width: landWidth(b.land, data.standings.race.win)}" style="display:block;height:100%;background:#f2c94c;"></span></div>
+              </div>
+              <div ng-if="data.standings.winner" style="margin-top:4px;font-size:12px;color:#7d8b88;">Last winner: {{data.standings.winner.owner}}<span ng-if="data.standings.winner.members"> ({{data.standings.winner.members.join(', ')}})</span><span ng-if="data.standings.winner.town"> from {{data.standings.winner.town}}</span>, Season {{data.standings.winner.season}}<span ng-if="data.standings.winner.land != null">, with {{data.standings.winner.land}}%</span>.</div>
+            </div>
+          </div>
+          <div class="ef-sec">
+            <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('leaderboard')" aria-expanded="{{isOpen('leaderboard')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('leaderboard') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Season leaderboard</div><span class="ef-sum">{{boardSummary(data.standings)}}</span></div></div>
+            <div ng-if="isOpen('leaderboard')" class="ef-sb" style="padding-left:4px;">
+              <div ng-if="data.standings.waiting" style="font-size:13px;color:#c9d6d2;">Waiting for the server's leaderboard&hellip;</div>
+              <div ng-if="!data.standings.waiting && !data.standings.board.length" style="font-size:13px;color:#c9d6d2;">Nobody on the leaderboard yet.</div>
+              <table ng-if="data.standings.board.length" style="width:100%;border-collapse:collapse;font-size:13px;">
+                <tr><th style="padding:3px 2px;"></th><th style="padding:3px 2px;text-align:left;font-size:11px;font-weight:normal;color:#7d8b88;">Trucker</th><th style="padding:3px 2px;text-align:right;font-size:11px;font-weight:normal;color:#7d8b88;">Wealth</th><th style="padding:3px 2px;text-align:right;font-size:11px;font-weight:normal;color:#7d8b88;">Runs</th></tr>
+                <tr ng-repeat="r in data.standings.board.concat(data.standings.me ? [data.standings.me] : [])" ng-style="r.mine ? {background:'rgba(111,207,151,.1)'} : {}">
+                  <td style="padding:3px 2px;" ng-style="{color: r.rank <= 3 ? '#f2c94c' : '#f2f6f5'}">{{r.rank}}</td>
+                  <td style="padding:3px 2px;"><b>{{r.mine ? 'You' : r.name}}</b> <span ng-if="r.baseTown" style="font-size:11px;color:#7d8b88;">{{r.baseTown}}</span><span ng-if="!r.baseTown && r.corp" style="font-size:11px;color:#7d8b88;">{{r.corp}}&#8217;s corp</span> <span ng-if="r.wins" style="font-size:11px;color:#f2c94c;">&#9733; {{r.wins}} {{r.wins === 1 ? 'win' : 'wins'}}</span></td>
+                  <td style="padding:3px 2px;text-align:right;">${{r.wealth | number:0}}</td>
+                  <td style="padding:3px 2px;text-align:right;">{{r.deliveries}}</td>
+                </tr>
+              </table>
+              <div style="margin-top:4px;font-size:12px;color:#7d8b88;">Wealth is cash plus your truck, trailer and base. Runs are deliveries.</div>
+            </div>
+          </div>
+        </div>
+        <div ng-if="!data.standings && data.online" style="font-size:13px;color:#c9d6d2;">Joining the server&hellip; the land race and leaderboard show here once your career is in.</div>
+        <div ng-if="!data.online" style="padding:8px 10px;border:2px solid #f2c94c;border-radius:8px;background:rgba(242,201,76,.06);font-size:13px;">
+          <div style="font-weight:bold;color:#f2c94c;">The land race is online only</div>
+          <div style="margin-top:2px;">Online, everyone trucks on the same Earth. Buy a base, grow your turf and race the other truckers to own Earth's land. Your single player career stays on this PC.</div>
+          <div style="margin-top:8px;font-weight:bold;color:#f2c94c;">How to play online</div>
+          <ol style="margin:4px 0 0;padding-left:20px;">
+            <li>Install <b>BeamMP</b> from beammp.com and sign in.</li>
+            <li>Keep the <b>BeamNG.Earth app</b> running, the same version as the server.</li>
+            <li>Start BeamNG from the BeamMP launcher, open the server browser's BeamNG.Earth tab and join <b>WW Trucking Career | MadMerick</b>. The server sends its own copy of this mod.</li>
+          </ol>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"><button type="button" ng-click="openLink('discord')" title="Opens the Discord invite in your browser and copies the link" style="padding:5px 12px;">Discord</button></div>
+          <div ng-if="intro.linkOpened === 'discord'" role="status" style="margin-top:4px;font-size:12px;color:#7d8b88;">The link is copied too, in case your browser didn't open.</div>
+          <div style="margin-top:8px;font-size:12px;color:#7d8b88;">Single player doesn't use your internet for any of this. The race and leaderboard are on the web page above.</div>
         </div>
       </div>
       <div ng-if="tab === 'heli'">
@@ -779,7 +1121,7 @@
             <div style="font-size:12px;color:#c9d6d2;">{{data.heli.hired.here.region}}<span ng-if="data.heli.hired.here.boost > 1.02" style="color:#f2c94c;"> &middot; rough roads &times;{{data.heli.hired.here.boost | number:1}} pay</span><span ng-if="data.heli.hired.height != null"> &middot; {{data.heli.hired.height | number:0}} m above the ground</span></div>
           </div>
           <div ng-if="data.heli.hired.car.distanceMetres != null" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-            <div ng-if="data.heli.hired.car.arrow != null && !data.heli.hired.car.near" aria-hidden="true" ng-style="arrowStyle(data.heli.hired.car)" style="width:28px;height:28px;line-height:28px;text-align:center;font-size:22px;color:#a7e5c9;">&#9650;</div>
+            <div ng-if="data.heli.hired.car.arrow != null && !data.heli.hired.car.near" aria-hidden="true" ng-style="arrowStyle(data.heli.hired.car)" style="width:28px;height:28px;line-height:28px;text-align:center;font-size:22px;color:#a7e5c9;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="font-size:13px;">Your car is <span ng-if="data.heli.hired.car.near">right here</span><span ng-if="!data.heli.hired.car.near">{{km(data.heli.hired.car.distanceMetres)}} km {{data.heli.hired.car.direction}}</span>.</div>
           </div>
           <div ng-if="data.beacon" style="margin-top:6px;font-size:13px;color:#eb5757;"><b>Beacon:</b> <span ng-if="data.beacon.distanceMetres >= 1000">{{km(data.beacon.distanceMetres)}} km</span><span ng-if="data.beacon.distanceMetres < 1000">{{data.beacon.distanceMetres | number:0}} m</span> {{data.beacon.direction}}. Fly over to look at it; pick it up in your car.</div>

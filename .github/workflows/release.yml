@@ -51,7 +51,7 @@ jobs:
       - name: Build mod ZIP
         env:
           BUILD: ${{ github.run_number }}
-        run: python tools/package.py --build "$BUILD" --output dist/worldwide-trucking-dangerous-contracts.zip --server-output dist/worldwide-trucking-server.zip
+        run: python tools/package.py --build "$BUILD" --output dist/worldwide-trucking-dangerous-contracts.zip
 
       # Main may have moved on since this commit, so the notes only list the
       # entries main still has waiting in "Coming next".
@@ -83,11 +83,9 @@ jobs:
             echo
             echo 'Copy `worldwide-trucking-dangerous-contracts.zip` into the `mods` folder of your BeamNG user folder. Do not extract it.'
             echo
-            echo 'Hosting a BeamMP server? Unzip `worldwide-trucking-server.zip` into your BeamMP server folder. MULTIPLAYER-SETUP.md inside it explains the rest.'
-            echo
             echo "Built from $short_sha on $(date -u +%Y-%m-%d)."
           } > notes.md
-          gh release create "$TAG" dist/worldwide-trucking-dangerous-contracts.zip dist/worldwide-trucking-server.zip \
+          gh release create "$TAG" dist/worldwide-trucking-dangerous-contracts.zip \
             --target "$GITHUB_SHA" \
             --title "Worldwide Trucking Career build ${{ github.run_number }} ($short_sha)" \
             --notes-file notes.md \

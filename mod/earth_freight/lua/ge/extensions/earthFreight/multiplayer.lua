@@ -1,10 +1,11 @@
 -- Careers on a BeamMP server. On a server running the Worldwide Trucking server plugin
--- (server/WorldwideTrucking/main.lua), the career is the server's: it is fetched on joining, kept in a folder of its
+-- (MadMerick's own server), the career is the server's: it is fetched on joining, kept in a folder of its
 -- own on this PC while playing (never the single-player save folder), and every save is sent back to the server.
 -- On a server without the plugin, the multiplayer career is kept on this PC only, again apart from the single-player
 -- one. The messages and frames are described at the top of the server plugin. No game globals here: the game's
 -- sending, JSON and files are given to new().
 local persistence = require('earthFreight/persistence')
+local mayday = require('earthFreight/mayday')
 local M = {
   PROTO = 1, CHUNK = 20000, SAVE_MAX = 4 * 1024 * 1024,
   ROOT = '/settings/earthFreight/mp/',
@@ -15,6 +16,15 @@ local M = {
   -- giving up it is still asked every LATE_EVERY seconds for LATE_FOR seconds, and a late answer brings the server's
   -- career in.
   HELLO_EVERY = 5, LATE_EVERY = 15, LATE_FOR = 600,
+  -- A save the server hasn't confirmed after CONFIRM_SECONDS is shown as not kept there yet, and sent again every
+  -- RESEND_EVERY seconds until it is. BeamMP can lose a player while their game keeps running (a "ghost"
+  -- connection): their saves then never reach the server, and joining again used to bring back the server's older
+  -- career over the newer one on their PC.
+  CONFIRM_SECONDS = 30, RESEND_EVERY = 30,
+  -- Next to the career's save slots: the generation and money of the newest save sent and not yet confirmed. A
+  -- save on this PC newer than the server's is only kept on joining when it matches this, so a copy edited by hand
+  -- still loses to the server's.
+  UNCONFIRMED = 'unconfirmed.json',
 }
 -- This copy's build number, written into the ZIP by the release workflow (tools/package.py); nil in a copy not
 -- built by it. Sent on joining, so a server can turn away an older copy than its own.
@@ -48,7 +58,163 @@ function M.cleanPlayers(list)
   return out
 end
 
+-- A { latitude, longitude } from the server, checked, or nil.
+local function spotOf(t)
+  local lat, lon = type(t) == 'table' and tonumber(t.latitude), type(t) == 'table' and tonumber(t.longitude)
+  if not lat or not lon or math.abs(lat) > 90 or math.abs(lon) > 180 then return nil end
+  return { latitude = lat, longitude = lon }
+end
+
+-- A corp's members or join requests from the server: { id, name } each.
+local function people(list)
+  local out = {}
+  for _, m in ipairs(type(list) == 'table' and list or {}) do
+    local id = type(m) == 'table' and tonumber(m.id)
+    if id and id >= 1 and id == math.floor(id) and #out < 32 then out[#out + 1] = { id = id, name = M.cleanText(m.name, 32) or 'A trucker' } end
+  end
+  return out
+end
+
+-- The server's bases of operations, checked: each owner's name, the town, its centre and the circle's radius in km,
+-- and whether it is this player's own. Since corps (Magnate 3) also its number, its members, whether it is full,
+-- half its members' wealth (which grows the circle), and for this player: whether they are a member (then the yard,
+-- the owner's spot) or have asked to join, and for the owner the requests waiting.
+-- Since the land race (Magnate 4) also each base's outposts (its corp's further bases: town, centre and radius), the
+-- share of Earth's land its corp holds (land, a percentage), and for this player's own corp: whether its newest circle
+-- is full size (grown), the corp wealth that fills it (fullAt) and the corp's wealth now.
+local function outpostsOf(list)
+  local out = {}
+  for _, o in ipairs(type(list) == 'table' and list or {}) do
+    local spot, r = spotOf(o), type(o) == 'table' and tonumber(o.radiusKm)
+    if spot and r and r > 0 and r <= 20000 and #out < 64 then
+      out[#out + 1] = { town = M.cleanText(o.town, 40), latitude = spot.latitude, longitude = spot.longitude, radiusKm = r }
+    end
+  end
+  return out
+end
+local function money(v)
+  v = tonumber(v)
+  return v and v >= 0 and v < 1e15 and math.floor(v) or nil
+end
+local function percent(v)
+  v = tonumber(v)
+  return v and v >= 0 and v <= 100 and v or nil
+end
+
+function M.cleanBases(list)
+  local out = {}
+  for _, b in ipairs(type(list) == 'table' and list or {}) do
+    local lat, lon, r = type(b) == 'table' and tonumber(b.latitude), type(b) == 'table' and tonumber(b.longitude),
+      type(b) == 'table' and tonumber(b.radiusKm)
+    if lat and lon and r and math.abs(lat) <= 90 and math.abs(lon) <= 180 and r > 0 and r <= 20000 and #out < 256 then
+      local id, extra = tonumber(b.id), tonumber(b.memberWealth)
+      local corp = b.corp == true and b.mine ~= true
+      out[#out + 1] = { name = M.cleanText(b.name, 32) or 'A trucker', town = M.cleanText(b.town, 40),
+        latitude = lat, longitude = lon, radiusKm = r, mine = b.mine == true,
+        id = id and id >= 1 and id == math.floor(id) and id or nil,
+        memberWealth = extra and extra >= 0 and extra < 1e15 and math.floor(extra) or 0,
+        members = people(b.members), full = b.full == true, held = b.held == true,
+        corp = corp, asked = b.asked == true and not corp, yard = corp and spotOf(b.yard) or nil,
+        requests = b.mine == true and people(b.requests) or nil,
+        outposts = outpostsOf(b.outposts), land = percent(b.land) or 0, grown = b.grown == true,
+        fullAt = money(b.fullAt), wealth = money(b.wealth), worth = money(b.worth) }
+    end
+  end
+  return out
+end
+
+-- The land race from the server, checked: the land that wins (a percentage), the seconds left when it came (at the
+-- session clock now), and who leads with how much. nil if it's missing.
+function M.cleanRace(r, now)
+  if type(r) ~= 'table' then return nil end
+  local left = tonumber(r.left)
+  return { win = percent(r.win), left = left and left >= 0 and left < 3650 * 86400 and math.floor(left) or nil, at = now or 0,
+    leader = M.cleanText(r.leader, 32), leaderLand = percent(r.leaderLand) }
+end
+
+-- The season's leaderboard from the server, checked (wwtcBoard): the top truckers by wealth with their place, base towns
+-- (every town a corp's owner holds), the corp a member is in,
+-- deliveries and season wins, which one is this player, this player's own row when they're further down, and the
+-- last season's winner. nil if it's missing.
+local function boardRow(r)
+  if type(r) ~= 'table' then return nil end
+  local rank, wealth = tonumber(r.rank), money(r.wealth)
+  if not rank or rank < 1 or rank > 100000 or rank ~= math.floor(rank) or not wealth then return nil end
+  local deliveries, wins = tonumber(r.deliveries), tonumber(r.wins)
+  return { rank = rank, name = M.cleanText(r.name, 32) or 'A trucker', baseTown = M.cleanText(r.baseTown, 40), corp = M.cleanText(r.corp, 32), wealth = wealth,
+    deliveries = deliveries and deliveries >= 0 and deliveries < 1e9 and math.floor(deliveries) or 0,
+    wins = wins and wins >= 1 and wins < 1000 and math.floor(wins) or nil, mine = r.mine == true }
+end
+function M.cleanBoard(d)
+  if type(d) ~= 'table' or type(d.board) ~= 'table' then return nil end
+  local board = {}
+  for _, r in ipairs(d.board) do
+    local row = boardRow(r)
+    if row and #board < 20 then board[#board + 1] = row end
+  end
+  local w, winner = d.winner, nil
+  if type(w) == 'table' and tonumber(w.season) then
+    local members = {}
+    for _, m in ipairs(type(w.members) == 'table' and w.members or {}) do
+      local name = M.cleanText(m, 32)
+      if name and #members < 32 then members[#members + 1] = name end
+    end
+    winner = { season = math.floor(tonumber(w.season)), owner = M.cleanText(w.owner, 32) or 'A trucker', town = M.cleanText(w.town, 40),
+      members = #members > 0 and members or nil, land = percent(w.land) }
+  end
+  local season, day, truckers = tonumber(d.season), tonumber(d.day), tonumber(d.truckers)
+  local me = boardRow(d.me)
+  if me then me.mine = true end
+  return { season = season and season >= 1 and math.floor(season) or nil, day = day and day >= 1 and day < 100000 and math.floor(day) or nil,
+    truckers = truckers and truckers >= 0 and truckers < 1e6 and math.floor(truckers) or nil,
+    board = board, me = me, winner = winner }
+end
+
+-- The server's "while you were away" summary, checked: how long ago this player left, their leaderboard place now and
+-- then, the turf tolls paid to them (the biggest payers by name) and what happened to their corp. nil if it's empty.
+local function whole(v, max)
+  v = tonumber(v)
+  return v and v >= 0 and v <= (max or 1e12) and math.floor(v) or nil
+end
+function M.cleanAway(d)
+  if type(d) ~= 'table' then return nil end
+  local away = { since = whole(d.since, 3650 * 86400), place = whole(d.place, 1e6), was = whole(d.was, 1e6),
+    of = whole(d.of, 1e6), news = {} }
+  if away.place == 0 then away.place = nil end
+  if away.was == 0 then away.was = nil end
+  local t = type(d.tolls) == 'table' and d.tolls or nil
+  local amount = t and whole(t.amount, 1e9)
+  if amount and amount > 0 then
+    local from = {}
+    for _, f in ipairs(type(t.from) == 'table' and t.from or {}) do
+      local paid = type(f) == 'table' and whole(f.amount, 1e9)
+      if paid and #from < 5 then from[#from + 1] = { name = M.cleanText(f.name, 32) or 'A trucker', amount = paid } end
+    end
+    away.tolls = { amount = amount, jobs = math.max(1, whole(t.jobs, 1e6) or 1), from = from, others = whole(t.others, 1e6) }
+  end
+  for _, line in ipairs(type(d.news) == 'table' and d.news or {}) do
+    local text = M.cleanText(line, 160)
+    if text and #away.news < 10 then away.news[#away.news + 1] = text end
+  end
+  if not away.since and not away.tolls and #away.news == 0 then return nil end
+  return away
+end
+
 local function validId(k) return type(k) == 'string' and #k == 32 and not k:find('[^0-9a-f]') end
+
+-- On joining: the save on this PC in dir when it is newer than the server's (serverSave, or nil for none) and is
+-- the one this PC sent and the server never confirmed (UNCONFIRMED). Otherwise nil, and the server's career wins.
+function M.unsent(io, dir, serverSave)
+  local ok, present = pcall(io.exists, dir .. M.UNCONFIRMED)
+  if not ok or not present then return nil end
+  local readOK, marker = pcall(io.read, dir .. M.UNCONFIRMED)
+  if not readOK or type(marker) ~= 'table' then return nil end
+  local save = persistence.new(io, dir):load()
+  if not save or save.generation ~= marker.generation or save.progression.balance ~= marker.balance then return nil end
+  local serverGeneration = serverSave and tonumber(serverSave.generation) or 0
+  if save.generation <= serverGeneration then return nil end
+  return save
+end
 
 -- Splits text into frames ('v|id|i|n|piece'), as the server does.
 function M.frames(id, text, size)
@@ -99,7 +265,9 @@ function M.new(deps)
   -- asks now and then for a while.
   function s:tick(clock)
     clock = clock or 0
-    if self.server or self.state == 'server' or not self.askedAt then return end
+    self.now = clock
+    if self.state == 'server' then return self:resend(clock) end
+    if self.server or not self.askedAt then return end
     local since = clock - self.askedAt
     if self.state == 'waiting' and since > M.WAIT_SECONDS then self.state, self.dir = 'local', M.LOCAL end
     local every = self.state == 'waiting' and M.HELLO_EVERY or M.LATE_EVERY
@@ -143,24 +311,48 @@ function M.new(deps)
       end
       local dir = M.ROOT .. self.server .. '/season-' .. tostring(self.season) .. '/'
       pcall(io.mkdir, dir)
-      -- The server's career replaces whatever this PC kept of it; none on the server means a new career.
-      for _, slot in ipairs({ 'save-a.json', 'save-b.json' }) do
-        if io.remove then pcall(io.remove, dir .. slot) end
+      local serverSave = type(d.save) == 'table' and d.save or nil
+      self.confirmedBalance = serverSave and type(serverSave.progression) == 'table'
+        and tonumber(serverSave.progression.balance) or nil
+      -- Saves made here that never reached the server (a lost connection) are kept and sent to it now.
+      local unsent = M.unsent(io, dir, serverSave)
+      if not unsent then
+        -- The server's career replaces whatever this PC kept of it; none on the server means a new career.
+        for _, slot in ipairs({ 'save-a.json', 'save-b.json', M.UNCONFIRMED }) do
+          if io.remove then pcall(io.remove, dir .. slot) end
+        end
+        if serverSave then pcall(io.write, dir .. 'save-a.json', serverSave) end
       end
-      if type(d.save) == 'table' then pcall(io.write, dir .. 'save-a.json', d.save) end
       self.key, self.dir, self.state = d.key, dir, 'server'
+      if unsent then
+        self.recovered = { balance = unsent.progression.balance, from = self.confirmedBalance }
+        self:push(unsent)
+      end
       return true
-    elseif event == 'wwtcShip' then
-      -- Ship Day: the ship in port and its containers' states (checked by shipday.clean in the game).
+    elseif event == 'wwtcRejoined' then
+      -- The server had lost this player and has them back (see 'rejoin' below): what it missed is sent again.
+      local d = decode(data)
+      if not d or d.key ~= self.key then return false end
+      self.rejoinAskedAt = nil
+      if self.pending then self:sendText(self.pending.text) end
+      return true
+    elseif event == 'wwtcMayday' then
+      -- Mayday Rescue: the call out now (checked by mayday.clean in the game).
       local d = decode(data)
       if not d then return false end
-      self.ship = d
+      self.mayday = d
       return true
-    elseif event == 'wwtcClaimed' then
-      -- The server's answer to a claim: { ship, n, ok, why }.
+    elseif event == 'wwtcMaydayWon' then
+      -- The server's answer to maydayWin: { round, ok, why, reward } (checked by mayday.cleanAnswer).
       local d = decode(data)
       if not d then return false end
-      self.claimed = d
+      self.maydayWon = d
+      return true
+    elseif event == 'wwtcReward' then
+      -- Money the server owes this player (a Mayday Rescue win): { id, amount, why }, added to the money in core.lua.
+      local r = mayday.cleanReward(decode(data))
+      if not r then return false end
+      self.reward = r
       return true
     elseif event == 'wwtcSaveNow' then
       -- The server restarts for an update soon: the game saves now (core.lua).
@@ -180,6 +372,56 @@ function M.new(deps)
       if not d or type(d.ask) ~= 'number' then return false end
       self.locate = { ask = d.ask, name = M.cleanText(d.name, 32) or 'A trucker' }
       return true
+    elseif event == 'wwtcBases' then
+      -- Every base of operations on the server, for the circles (magnate.lua).
+      local d = decode(data)
+      if not d or type(d.bases) ~= 'table' then return false end
+      self.bases = M.cleanBases(d.bases)
+      local wait = type(d.corp) == 'table' and tonumber(d.corp.wait) or nil
+      self.corpWait = wait and wait > 0 and { seconds = math.min(wait, 7 * 86400), at = self.now or 0 } or nil
+      self.race = M.cleanRace(d.race, self.now)
+      return true
+    elseif event == 'wwtcBoard' then
+      -- The season's leaderboard, for the Land Race and Leaderboard tab.
+      local d = decode(data)
+      local board = M.cleanBoard(d)
+      if not board then return false end
+      self.board = board
+      return true
+    elseif event == 'wwtcOutpostDone' then
+      -- The answer to openBase(): { ok, why, by, town }.
+      local d = decode(data)
+      if not d then return false end
+      self.outpostDone = { ok = d.ok == true, why = M.cleanText(d.why, 20), by = M.cleanText(d.by, 32), town = M.cleanText(d.town, 40) }
+      return true
+    elseif event == 'wwtcCorpDone' then
+      -- The answer to corp(): { do, ok, why, wait }.
+      local d = decode(data)
+      if not d then return false end
+      self.corpDone = { what = M.cleanText(d['do'], 10), ok = d.ok == true, why = M.cleanText(d.why, 20),
+        wait = tonumber(d.wait) }
+      return true
+    elseif event == 'wwtcBaseClaimed' then
+      -- The answer to claimBase(): { ok, why, by, town }.
+      local d = decode(data)
+      if not d then return false end
+      self.baseClaimed = { ok = d.ok == true, why = M.cleanText(d.why, 20), by = M.cleanText(d.by, 32), town = M.cleanText(d.town, 40) }
+      return true
+    elseif event == 'wwtcCommission' then
+      -- Commission owed to this player's base: { id, amount, jobs, by }, added to the money in core.lua.
+      local d = decode(data)
+      if not d then return false end
+      local id, amount = tonumber(d.id), tonumber(d.amount)
+      if not id or id < 1 or id ~= math.floor(id) or not amount or amount < 0 or amount > 1000000 then return false end
+      self.commission = { id = id, amount = math.floor(amount), jobs = math.max(1, math.floor(tonumber(d.jobs) or 1)),
+        by = M.cleanText(d.by, 32) }
+      return true
+    elseif event == 'wwtcAway' then
+      -- What happened while this player was off the server, for the HUD's card (core.lua awayView).
+      local d = decode(data)
+      if not d then return false end
+      self.away = M.cleanAway(d)
+      return true
     elseif event == 'wwtcFound' then
       -- The answer to find(): the other player's spot, or why not.
       local d = decode(data)
@@ -189,24 +431,77 @@ function M.new(deps)
     elseif event == 'wwtcSaved' then
       local d = decode(data)
       if not d then return false end
-      if d.ok == true then self.saveError, self.savedGeneration = nil, d.generation
-      else self.saveError = type(d.why) == 'string' and d.why:sub(1, 40) or 'refused' end
+      if d.ok == true then
+        self.saveError, self.savedGeneration = nil, d.generation
+        if self.pending and tonumber(d.generation) and d.generation >= self.pending.generation then
+          self.confirmedBalance = self.pending.balance
+          self:clearPending()
+        end
+      elseif d.why == 'rejoin' then
+        -- The server no longer knows this player (it lost the connection, or its plugin was reloaded): join again,
+        -- without reloading the career, then send the save again. Not a refusal: nothing is shown for it.
+        self:rejoin()
+      else
+        self.saveError = type(d.why) == 'string' and d.why:sub(1, 40) or 'refused'
+        -- The server has a newer save than this one (from another PC): this one is never going to be kept.
+        if self.saveError == 'out_of_date' then self:clearPending() end
+      end
       return true
     end
     return false
   end
 
-  -- Sends a save to the server, after the game wrote it here.
+  function s:sendText(text)
+    self.sent = self.sent + 1
+    if self.pending then self.pending.sentAt = self.now end
+    for _, frame in ipairs(M.frames(self.sent, text)) do deps.send('wwtcSave', frame) end
+  end
+
+  function s:clearPending()
+    self.pending = nil
+    if self.dir and io.remove then pcall(io.remove, self.dir .. M.UNCONFIRMED) end
+  end
+
+  -- Sends a save to the server, after the game wrote it here. Until the server says it kept it, it is pending: noted
+  -- on this PC (see UNCONFIRMED) and sent again now and then.
   function s:push(save)
     if self.state ~= 'server' then return false end
     local ok, text = pcall(deps.encode, save)
     if not ok or type(text) ~= 'string' then return false end
-    self.sent = self.sent + 1
-    for _, frame in ipairs(M.frames(self.sent, text)) do deps.send('wwtcSave', frame) end
+    local balance = type(save.progression) == 'table' and save.progression.balance or nil
+    self.pending = { generation = save.generation, balance = balance, text = text,
+      since = self.pending and self.pending.since or self.now }
+    if self.dir then pcall(io.write, self.dir .. M.UNCONFIRMED, { generation = save.generation, balance = balance }) end
+    self:sendText(text)
     return true
   end
 
-  -- Ship Day: asks for a container, gives one back (an abandoned job), and says one was delivered.
+  -- Sends a pending save again every RESEND_EVERY seconds.
+  function s:resend(clock)
+    local p = self.pending
+    if not p then return end
+    p.since, p.sentAt = p.since or clock, p.sentAt or clock
+    if clock - p.sentAt >= M.RESEND_EVERY then self:sendText(p.text) end
+  end
+
+  -- Asks the server to take this player back, at most every RESEND_EVERY seconds.
+  function s:rejoin()
+    local now = self.now or 0
+    if self.rejoinAskedAt and now - self.rejoinAskedAt < M.RESEND_EVERY then return end
+    self.rejoinAskedAt = now
+    deps.send('wwtcJoin', deps.encode({ v = M.PROTO, key = self.key, build = M.BUILD, again = true }))
+  end
+
+  -- When the server hasn't confirmed a save for CONFIRM_SECONDS: { balance = the money in its last confirmed save
+  -- (nil for none), seconds = how long }. Otherwise nil.
+  function s:unconfirmed(clock)
+    local p = self.pending
+    clock = clock or self.now
+    if not p or not p.since or not clock or clock - p.since < M.CONFIRM_SECONDS then return nil end
+    return { balance = self.confirmedBalance, seconds = clock - p.since }
+  end
+
+  -- A message to the server's plugin, once the career is the server's.
   local function shipEvent(event, body)
     if s.state ~= 'server' then return false end
     body.v = M.PROTO
@@ -215,8 +510,11 @@ function M.new(deps)
     deps.send(event, text)
     return true
   end
-  function s:claim(ship, n) return shipEvent('wwtcClaim', { ship = ship, n = n }) end
-  function s:release(ship, n) return shipEvent('wwtcRelease', { ship = ship, n = n }) end
+  -- Mayday Rescue: this player landed on an edge (n, e, s or w) of the circle, or reached the scene.
+  function s:maydayStart(round, edge) return shipEvent('wwtcMaydayStart', { round = round, edge = edge }) end
+  function s:maydayWin(round) return shipEvent('wwtcMaydayWin', { round = round }) end
+  -- On a run: how far the car is from the scene (to 100 m, never where it is), for everyone's standings.
+  function s:maydayPos(round, metres) return shipEvent('wwtcMaydayPos', { round = round, metres = metres }) end
   -- The server page: where the player is (a town, never exact coordinates) and what they're doing, and each delivery.
   function s:where(t) return shipEvent('wwtcWhere', t) end
   function s:delivered(t) return shipEvent('wwtcDelivered', t) end
@@ -238,7 +536,16 @@ function M.new(deps)
     pcall(io.write, M.PREFS, { findable = self.findableKept })
     return self.findableKept
   end
-  function s:shipDelivered(ship, n, town, pay) return shipEvent('wwtcShipDone', { ship = ship, n = n, town = town, pay = pay }) end
+  -- A base of operations: asks the server whether this town is free (one base a town, 10 km apart).
+  function s:claimBase(t) return shipEvent('wwtcBaseClaim', t) end
+  -- The land race: opens the corp's next base in this town, once its newest circle is full size.
+  function s:openBase(t) return shipEvent('wwtcOutpost', t) end
+  -- Corps: ask to join a base (base = its number), cancel, leave, or as its owner accept, refuse or remove (who).
+  function s:corp(what, t)
+    t = t or {}
+    t['do'] = what
+    return shipEvent('wwtcCorp', t)
+  end
   return s
 end
 
@@ -280,8 +587,9 @@ function M.game()
   local listening = false
   function g.listen(handler)
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
-    for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcShip', 'wwtcClaimed', 'wwtcSaveNow',
-        'wwtcPlayers', 'wwtcLocate', 'wwtcFound' }) do
+    for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcMayday', 'wwtcMaydayWon', 'wwtcReward', 'wwtcSaveNow',
+        'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission', 'wwtcRejoined',
+        'wwtcCorpDone', 'wwtcAway', 'wwtcOutpostDone', 'wwtcBoard' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true

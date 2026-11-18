@@ -17,6 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 CHANGELOG = ROOT / 'CHANGELOG.md'
 NEXT_HEADING = '## Coming next'
 NO_CHANGES = 'No changes were listed for this build.'
+# GitHub refuses release notes over 125,000 characters. The newest entries and
+# the workflow's own lines need room too, so the earlier builds get this much.
+HISTORY_LIMIT = 90_000
+MORE_IN_CHANGELOG = '_Older builds are in CHANGELOG.md._'
 
 
 def split(text):
@@ -65,11 +69,25 @@ def release(released, current, build, date):
     return '\n'.join(shipped) + '\n' + earlier(tail), section + tail
 
 
-def earlier(tail):
-    """Fold the earlier builds into a collapsed block, one heading level down."""
-    history = ''.join('#' + line if line.startswith('## ') else line
-                      for line in tail.strip().splitlines(keepends=True))
-    if not history:
+def earlier(tail, limit=HISTORY_LIMIT):
+    """Fold the earlier builds into a collapsed block, one heading level down.
+
+    Only the newest builds that fit in limit characters are listed, so the
+    notes stay under GitHub's size limit; the rest are left to CHANGELOG.md.
+    """
+    sections = []
+    for line in tail.strip().splitlines(keepends=True):
+        if line.startswith('## ') or not sections:
+            sections.append('')
+        sections[-1] += '#' + line if line.startswith('## ') else line
+    history, used = '', 0
+    for section in sections:
+        if used + len(section) > limit and history:
+            history = history.rstrip() + '\n\n' + MORE_IN_CHANGELOG
+            break
+        history += section
+        used += len(section)
+    if not history.strip():
         return ''
     return f'\n<details>\n<summary>Earlier builds</summary>\n\n{history.rstrip()}\n\n</details>\n'
 

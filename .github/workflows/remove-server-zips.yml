@@ -1,0 +1,38 @@
+name: Remove old server downloads
+
+# One-off cleanup, run by hand from the Actions tab: removes worldwide-trucking-server.zip from every release.
+# The releases, their notes and their mod ZIPs stay. The server download is built in MadMerick's private repo now.
+# Leave "Only list them" ticked for a dry run first.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only list them, delete nothing'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove worldwide-trucking-server.zip from every release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          assets=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | .tag_name as $tag | .assets[] | select(.name == "worldwide-trucking-server.zip") | "\(.id) \($tag)"')
+          count=$(printf '%s\n' "$assets" | grep -c . || true)
+          echo "Releases with a server download: $count"
+          printf '%s\n' "$assets" | while read -r id tag; do
+            [ -n "$id" ] || continue
+            if [ "$DRY_RUN" = 'true' ]; then
+              echo "Would remove it from $tag"
+            else
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id"
+              echo "Removed it from $tag"
+            fi
+          done

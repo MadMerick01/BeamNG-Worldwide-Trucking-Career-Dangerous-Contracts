@@ -1,5 +1,6 @@
 """Filesystem/JSON and exported game-hook tests. BeamNG engine APIs are stubs."""
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -104,6 +105,18 @@ class InstalledHooksTest(unittest.TestCase):
         self.assertEqual(state['here']['name'], 'Penrith')
         self.assertEqual(state['base']['latitude'], -33.75)
         self.assertFalse(list(self.user.rglob('save-*.json')))
+
+    def test_every_hud_button_reaches_the_game(self):
+        # Each command the HUD sends must exist in the game, and take what the HUD passes it.
+        app = (MOD / 'ui' / 'modules' / 'apps' / 'TruckingCareerDC' / 'app.js').read_text()
+        lua = (MOD / 'lua' / 'ge' / 'extensions' / 'earthFreight' / 'core.lua').read_text()
+        calls = re.findall(r"""core\((['"])([A-Za-z_]+)\((.?)""", app)
+        self.assertGreater(len(calls), 20)
+        for _, name, first in calls:
+            self.assertEqual(self.lua.eval('type')(self.core[name]), 'function', name)
+            if first and first != ')':
+                params = re.search(r'^function M\.' + name + r'\(([^)]*)\)', lua, re.M)
+                self.assertTrue(params and params.group(1).strip(), name + ' drops what the HUD sends it')
 
     def test_save_restart_and_a_delivery_load_survive_on_disk(self):
         self.core.onExtensionLoaded()

@@ -1,0 +1,22 @@
+{
+  "format": 2,
+  "mainPartName": "tiltdeck",
+  "model": "tiltdeck",
+  "parts": {
+    "tiltdeck_bed_30ft": "tiltdeck_bed_30ft",
+    "tiltdeck_brake_F_heavy": "tiltdeck_brake_F_heavy",
+    "tiltdeck_brake_R_heavy": "tiltdeck_brake_R_heavy",
+    "tiltdeck_bumpe": "tiltdeck_bumpe",
+    "tiltdeck_frame": "tiltdeck_frame_30ft",
+    "tiltdeck_front": "tiltdeck_front_gooseneck",
+    "tiltdeck_hydraulics_30ft": "tiltdeck_hydraulics_30ft",
+    "tiltdeck_leafspring_2ax_heavy": "tiltdeck_leafspring_2ax_heavy",
+    "tiltdeck_load_30ft": "tiltdeck_load_30ft_cargo_load_box_7XL",
+    "tiltdeck_suspension_30ft": "tiltdeck_suspension_30ft_heavy"
+  },
+  "vars": {
+    "$brakestrength": 0.6,
+    "$tirepressure_F": 50,
+    "$tirepressure_R": 50
+  }
+}

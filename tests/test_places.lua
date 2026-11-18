@@ -50,19 +50,21 @@ T.eq(cargo.fits(starter, food), 10, '10 food')
 local units, slots, kg = cargo.fits(starter, bricks)
 T.eq(units, 6, '6 bricks: the slots run out first'); T.eq(slots, 18, 'in 18 slots'); T.eq(kg, 765, 'weighing 765 kg')
 T.eq(cargo.fits({ slots = 2, kg = 60 }, bricks), 0, 'no bricks in the boot')
-T.near(jobs.basePay(parts, 20, 5), 2000 * 300 / 780, 1e-6, '20 slots of parts (300 kg) pay about $770 over 5 km')
+T.near(jobs.basePay(parts, 20, 5), 1500 * 300 / 780, 1e-6, '20 slots of parts (300 kg) pay about $580 over 5 km')
 -- The starter Burnside with 52 slots of boxes (3 L and an M: 1,330 kg).
 local big = { slots = 52, kg = 3 * cargo.BOXES[2].kg + cargo.BOXES[3].kg }
 T.eq(big.kg, 1330, 'L boxes take 400 kg and M 130 kg')
 T.eq(cargo.fits(big, parts), 52, '52 parts'); T.eq(cargo.fits(big, bricks), 10, '10 bricks: the weight runs out first')
-T.near(jobs.basePay(parts, 52, 5), 2000, 1e-6, '52 slots of parts (780 kg) pay $2,000 over 5 km')
-T.near(jobs.basePay(bricks, 8, 5), 2624, 1, 'bricks (1,200 kg) about $2,620')
-T.near(jobs.basePay(parts, 52, 20), 12000, 1e-6, 'parts $12,000 over 20 km')
+T.eq(jobs.PAY_PERCENT, 75, 'jobs pay 75% of the curve (a quarter less, MadMerick, 11 Nov)')
+T.near(jobs.basePay(parts, 52, 5), 1500, 1e-6, '52 slots of parts (780 kg) pay $1,500 over 5 km')
+T.near(jobs.basePay(bricks, 8, 5), 1861, 1, 'bricks (1,200 kg) about $1,860')
+T.near(jobs.basePay(parts, 52, 20), 9000, 1e-6, 'parts $9,000 over 20 km')
 -- Pay by weight: heavier loads pay more, but less a kg; lighter ones a straight share.
 T.near(jobs.weightPay(30), 2000 * 30 / 780, 1e-6, 'a 30 kg boot load pays about $77')
-T.near(jobs.weightPay(8000), 8669, 1, 'an 8,000 kg load about $8,700')
-T.near(jobs.weightPay(10000), 9977, 1, 'a 10,000 kg load about $10,000')
-T.near(jobs.weightPay(12000), 11192, 1, 'a 12,000 kg load about $11,200')
+T.eq(jobs.WEIGHT_POWER, 0.5, 'heavy loads pay by the square root of their weight (MadMerick, 12 Nov)')
+T.near(jobs.weightPay(8000), 6405, 1, 'an 8,000 kg load about $6,400')
+T.near(jobs.weightPay(16000), 9058, 1, 'a 16,000 kg load about $9,100: 4.5 times the Burnside, not 6.6')
+T.near(jobs.weightPay(22400), 10718, 1, 'a 22,400 kg load about $10,700')
 T.check(jobs.weightPay(12000) / 12000 < jobs.weightPay(780) / 780 / 2.5, 'the truck earns well under half as much a kg')
 do
   local percent = jobs.PAY_PERCENT
@@ -70,15 +72,27 @@ do
   T.near(jobs.basePay(parts, 52, 5), 2400, 1e-6, 'the pay percentage scales every job')
   jobs.PAY_PERCENT = percent
 end
+do
+  -- A shortage in a town that badly needs the good, on a jackpot job: still twice at most.
+  local shortage, need = jobs.shortage, jobs.need
+  jobs.shortage = function() return true, 60 end
+  jobs.need = function() return jobs.MAX_NEED end
+  local job = jobs.board(places.get(config.START_PLACE) or places.list[1], 0, {}, 5000)[1]
+  job.jackpot = jobs.JACKPOT_MAX
+  local q = jobs.quote(job, 10, {}, 5000)
+  T.eq(q.factor, 2, 'bonuses no longer stack past twice')
+  T.check(q.shortage and q.jackpot ~= nil, 'the shortage and jackpot still show')
+  jobs.shortage, jobs.need = shortage, need
+end
 -- Fluids: litres in a tank, paid by their weight like any load.
 local water, fuel = goods.get('water'), goods.get('fuel')
 local tank = { slots = 20, kg = 1000, litres = 800, tankKg = 800 }
 T.eq(cargo.fits(starter, water), 0, 'no fluid without a tank')
 units, slots, kg = cargo.fits(tank, water)
 T.eq(units, 80, '80 units of 10 L'); T.eq(slots, 800, 'filling 800 L'); T.eq(kg, 680, 'weighing 680 kg, 15% under a kg a litre')
-units, slots, kg = cargo.fits(tank, fuel); T.eq(slots, 800, 'fuel fills the tank too'); T.eq(kg, 510, 'lighter: 510 kg')
-T.near(jobs.basePay(water, 80, 5), 2000 * (800 / 780) ^ 0.63, 1e-6, 'a full tank of water (800 kg) pays about $2,030 over 5 km')
-T.near(jobs.basePay(fuel, 80, 5), 2000 * 600 / 780, 1e-6, 'fuel (600 kg) about $1,540')
+units, slots, kg = cargo.fits(tank, fuel); T.eq(slots, 800, 'fuel fills the tank too'); T.eq(kg, 680, 'as heavy as water: 680 kg')
+T.near(jobs.basePay(water, 80, 5), 1500 * (800 / 780) ^ 0.5, 1e-6, 'a full tank of water (800 kg) pays about $1,520 over 5 km')
+T.near(jobs.basePay(fuel, 80, 5), 1500 * 600 / 780, 1e-6, 'fuel (600 kg) about $1,150')
 -- Goods weigh 15% less than their pay weight, so a unit pays what it did.
 T.eq(goods.WEIGHT_PERCENT, 85, 'goods are 15% lighter')
 T.near(parts.kg, 12.75, 1e-9, 'a part weighs 12.75 kg'); T.eq(parts.payKg, 15, 'and pays as 15 kg')
@@ -89,8 +103,8 @@ for _, n in ipairs(places.nearest(penrith, 40)) do fluidsSeen[jobs.fluid(n.place
 T.check(fluidsSeen.water and fluidsSeen.fuel, 'some towns post water, others fuel')
 T.eq(jobs.fluid(penrith).id, jobs.fluid(penrith).id, 'a town keeps its fluid')
 -- Rough roads: half the region boost above 1, at most 2x.
-T.near(jobs.roadBonusFor(1), 1, 1e-9, 'flat roads add nothing'); T.near(jobs.roadBonusFor(1.5), 1.25, 1e-9, 'the Blue Mountains')
-T.near(jobs.roadBonusFor(3), 2, 1e-9, 'Death Road doubles'); T.near(jobs.roadBonusFor(5), 2, 1e-9, 'never more than 2x')
+T.near(jobs.roadBonusFor(1), 1, 1e-9, 'flat roads add nothing'); T.near(jobs.roadBonusFor(1.5), 1.5, 1e-9, 'the Blue Mountains pay their whole boost')
+T.near(jobs.roadBonusFor(3), 3, 1e-9, 'Death Road triples'); T.near(jobs.roadBonusFor(5), 3, 1e-9, 'never more than 3x')
 
 -- Town need: within 30% of the base, lowered by each delivery, recovering over the hours after.
 do
@@ -158,9 +172,10 @@ do
         T.check(j.km <= jobs.MAX_KM + 1e-9 and j.to ~= n.place.id, 'jobs go to another town within 20 km')
         local q = jobs.quote(j, 10, {}, 5000)
         if q.factor >= 1 then decent = true end
+        T.check(q.factor <= jobs.MAX_BONUS, 'need, shortage and jackpot together pay at most twice')
         if j.jackpot then
           jackpots = jackpots + 1
-          T.check(j.jackpot >= 2 and j.jackpot <= 3, 'a jackpot pays 2x to 3x')
+          T.check(j.jackpot >= 1.5 and j.jackpot <= 2, 'a jackpot pays 1.5x to 2x')
         end
         jobsSeen = jobsSeen + 1
       end
@@ -202,7 +217,8 @@ do
   T.eq(q.shortage, false, 'no shortages off road'); T.eq(q.need, 1, 'and no town need')
   T.eq(jobs.steepBonus({ id = 'x', boost = 1 }), 1, 'flat ground pays the base')
   T.eq(jobs.steepBonus({ id = 'x', boost = 1.5 }), 1.5, 'steep ground pays the whole region boost')
-  T.eq(jobs.steepBonus({ id = 'x', boost = 3 }), 2, 'at most twice')
+  T.eq(jobs.steepBonus({ id = 'x', boost = 3 }), 3, 'Death Road pays three times')
+  T.eq(jobs.steepBonus({ id = 'x', boost = 5 }), 3, 'at most three times')
 end
 T.near(jobs.drivenNeeded(penrith, near[1].place), near[1].metres * 0.7, 1e-6, '70% of the straight line must be driven')
 -- The Distance filter: every town job in the band picked, each to a different town where it can,

@@ -9,7 +9,8 @@ local M = {}
 -- FIND_CHANCE, unless one is already waiting or on board.
 M.FIND_SECONDS, M.FIND_CHANCE, M.MIN_HEIGHT = 300, 0.5, 30
 -- What it pays, and what an insurance claim costs while it is on board (as on a dangerous contract).
-M.PAY, M.INSURANCE_FEE = 12000, 4000
+-- The pay was $12,000 until the economy went a quarter lower (MadMerick, 11 Nov).
+M.PAY, M.INSURANCE_FEE = 9000, 4000
 -- A beacon not picked up within EXPIRE_SECONDS of play goes quiet.
 M.EXPIRE_SECONDS = 3600
 -- The pickup is SPOT_MIN to SPOT_MAX metres from the helicopter, and no more than CAR_METRES from

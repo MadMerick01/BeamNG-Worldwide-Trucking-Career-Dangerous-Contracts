@@ -110,6 +110,13 @@ function F.garage()
       parts = F.copy(self.fitted), values = F.copy(self.values), names = names,
       value = self.carValues[self.model], name = self.model }
   end
+  -- Whether JATO rockets are fitted to the car, or to the trailer with id.
+  function g:rockets(id)
+    local rockets = require('earthFreight/rockets')
+    if id ~= nil and self.trailers[id] then return rockets.inParts(self.trailers[id].fitted) end
+    if self.partsUnreadable then return nil end
+    return rockets.inParts(self.fitted)
+  end
   -- Parts menu stand-in: fits parts for free and respawns, which mends the damage.
   function g:fit(slot, part)
     self.fitted[slot], self.damage = part, 0
@@ -185,10 +192,16 @@ function F.garage()
   end
   g.partsMenus = 0
   function g:openPartsMenu() self.partsMenus = self.partsMenus + 1; return true end
-  function g:repair(config)
+  -- Respawns the player vehicle (or the vehicle with id) with config: a parts table, or a .pc path,
+  -- which puts a trailer back to the deck it spawns with.
+  g.trailerRepairs = 0
+  function g:repair(config, id)
     if not self.accepts then return false, 'repair_failed', 'rejected' end
-    if self.trailers[self.vehicleId] then
-      if config then self.trailers[self.vehicleId].fitted = F.copy(config.parts) end
+    local target = id or self.vehicleId
+    if self.trailers[target] then
+      if type(config) == 'table' then self.trailers[target].fitted = F.copy(config.parts)
+      elseif type(config) == 'string' then self.trailers[target].fitted = { deck = 'flatbed_deck' } end
+      self.trailerRepairs = self.trailerRepairs + 1
       return true
     end
     self.repairs, self.damage = self.repairs + 1, 0
@@ -214,7 +227,7 @@ function F.cargo()
   local c = { weights = {}, tankReads = 0 }
   function c:setWeight(kg, parts, fluid) self.weights[#self.weights + 1] = { kg = kg, parts = F.copy(parts), fluid = F.copy(fluid) }; return true end
   c.trailerWeights = {}
-  function c:setWeightOn(id, kg, parts, fluid) self.trailerWeights[#self.trailerWeights + 1] = { id = id, kg = kg, fluid = F.copy(fluid) }; return true end
+  function c:setWeightOn(id, kg, parts, fluid, hitchShare) self.trailerWeights[#self.trailerWeights + 1] = { id = id, kg = kg, fluid = F.copy(fluid), hitchShare = hitchShare }; return true end
   function c:readTanks() self.tankReads = self.tankReads + 1; return true end
   return c
 end
@@ -224,6 +237,9 @@ function F.fuel()
   local f = { reads = 0, sets = {} }
   function f:read() self.reads = self.reads + 1; return true end
   function f:set(litres, serial) self.sets[#self.sets + 1] = { litres = litres, serial = serial }; return true end
+  -- The pump the car stands at (set f.pump), and the game's freeroam gas stations setting.
+  function f:pumpNear() return self.pump end
+  function f:showStations() self.shown = (self.shown or 0) + 1; return true end
   return f
 end
 -- Stand-in for the helicopter's game side: the player's vehicle stands at player, ground metres up.
@@ -247,6 +263,8 @@ function F.controller(options)
     streetView = options.streetView, openUrl = options.openUrl, multiplayer = options.multiplayer,
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
+  -- Damage set in a test is a crash, not the car settling after a spawn: no settle time unless asked for.
+  c.settleOff = not options.settle
   return c, io, adapter, garage, cargo, fuel, logs
 end
 -- Puts a job on every board, first: a good from wherever the board is to the place given. Returns its id.

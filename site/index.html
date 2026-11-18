@@ -4,21 +4,43 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Worldwide Trucking Server</title>
-<meta name="description" content="What's happening on MadMerick's Worldwide Trucking Career multiplayer server for BeamNG.Earth: who's driving, Ship Day, deliveries and the season leaderboard.">
+<meta name="description" content="What's happening on MadMerick's Worldwide Trucking Career multiplayer server for BeamNG.Earth: who's driving, Mayday Rescue, deliveries and the season leaderboard.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@500;600;700&display=swap">
 <style>
   :root {
     --bg: #0c1318; --panel: #121c22; --line: #24343c; --text: #f2f6f5; --muted: #9fb0ac; --faint: #6f7f7b;
-    --accent: #a7e5c9; --green: #6fcf97; --ship: #56ccf2; --warn: #f2c94c; --red: #eb5757;
+    --accent: #a7e5c9; --green: #6fcf97; --mayday: #eb5757; --warn: #f2c94c; --red: #eb5757; --gold: #f2c94c;
+    --tag: rgba(14, 16, 20, .9); --head: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 Barlow, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   a { color: var(--accent); }
   .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
-  header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
-  header h1 { margin: 0; font-size: 24px; line-height: 1.2; }
-  header .sub { color: var(--muted); font-size: 14px; }
+  /* The Magnate update banner: the hillside shot with the update's title, and the game's dark title card over it. */
+  .hero { position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 14px; background: #10181d url(magnate.jpg) center 62% / cover no-repeat; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6, 10, 14, .55) 0%, rgba(6, 10, 14, .15) 45%, rgba(6, 10, 14, .55) 100%); }
+  .hero > * { position: relative; }
+  .magnate { padding: 22px 24px 120px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .35), 0 0 18px rgba(0, 0, 0, .45); }
+  .kicker { font: 700 15px/1.2 var(--head); letter-spacing: 6px; text-transform: uppercase; color: var(--gold); }
+  .magnate h2 { margin: 2px 0 4px; font: 900 clamp(40px, 8vw, 74px)/.9 var(--head); letter-spacing: 1px; text-transform: uppercase; }
+  .magnate h2 span, .gold { color: var(--gold); }
+  .magnate p { margin: 0; font-weight: 700; font-size: 16px; max-width: 640px; }
+  .card { margin: 0 0 0 auto; width: min(100%, 640px); padding: 14px 20px 16px; border-top-left-radius: 10px; border-top: 1px solid rgba(255, 255, 255, .08);
+    background: repeating-linear-gradient(135deg, #131b21 0 14px, #10171c 14px 28px); }
+  .card .kicker { font-size: 12px; letter-spacing: 5px; color: var(--accent); opacity: .8; }
+  .card h1 { margin: 0; font: 900 clamp(30px, 5.4vw, 46px)/1 var(--head); text-transform: uppercase; letter-spacing: .5px; }
+  .card h1 span { color: var(--accent); }
+  .card .contracts { font: 700 15px/1.4 var(--head); letter-spacing: 5px; text-transform: uppercase; color: var(--red); }
+  .card .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; }
+  .road { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 8px; font: 700 13px/1 var(--head); letter-spacing: 2px; color: var(--gold); }
+  .road i { flex: 1; border-top: 2px dashed rgba(242, 201, 76, .55); position: relative; }
+  .road i::after { content: ''; position: absolute; right: -2px; top: -6px; border: 5px solid transparent; border-left: 8px solid var(--gold); }
+  .card .sub { color: var(--muted); font-size: 13px; }
+  @media (max-width: 560px) { .magnate { padding: 18px 16px 70px; } .kicker { letter-spacing: 4px; } .card { border-top-left-radius: 0; padding: 12px 16px 14px; } }
   .grow { flex: 1; min-width: 200px; }
   .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; white-space: nowrap; }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); }
@@ -28,17 +50,22 @@
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
   .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
   .tile .label { color: var(--muted); font-size: 13px; }
-  .tile .value { font-size: 26px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
-  .grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; }
-  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .tile .value { font: 800 30px/1.15 var(--head); letter-spacing: .5px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; }
+  .grid > div { min-width: 0; }
+  @media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 480px) { th, td { padding: 6px 3px; font-size: 13px; } }
   section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 14px; min-width: 0; }
-  section h2 { margin: 0 0 10px; font-size: 16px; color: var(--accent); }
-  .ship { border: 2px solid var(--ship); }
-  .ship h2 { color: var(--ship); }
-  .ship .big { font-size: 20px; font-weight: 700; }
-  .countdown { font-size: 28px; font-weight: 700; color: var(--ship); font-variant-numeric: tabular-nums; }
-  .bar { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; margin: 6px 0 4px; }
-  .bar > div { height: 100%; background: var(--ship); }
+  section h2 { margin: 0 0 10px; font: 800 19px/1.2 var(--head); letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); }
+  .mayday { border: 2px solid var(--mayday); }
+  .mayday h2 { color: var(--mayday); }
+  .mayday .big { font-size: 20px; font-weight: 700; }
+  .mayday .standings { list-style: none; margin: 4px 0 8px; padding: 0; }
+  .mayday .standings li { display: flex; gap: 8px; padding: 3px 0; border-top: 1px solid var(--line, rgba(255,255,255,.08)); font-variant-numeric: tabular-nums; }
+  .mayday .standings li:first-child { border-top: none; font-weight: 700; }
+  .mayday .standings .place { flex: none; width: 2em; color: var(--muted, #8a9a9f); }
+  .mayday .standings .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .countdown { font: 800 34px/1.1 var(--head); letter-spacing: 1px; color: var(--mayday); font-variant-numeric: tabular-nums; }
   .muted { color: var(--muted); }
   .small { font-size: 13px; }
   #map { height: 340px; border-radius: 8px; background: #0a1014; }
@@ -51,24 +78,60 @@
   th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
   th { color: var(--muted); font-weight: 500; font-size: 13px; }
   td.num, th.num { text-align: right; }
+  td.wealth { font-weight: 600; }
+  .board-wrap { overflow-x: auto; }
+  .note { color: var(--faint); font-size: 13px; margin: 8px 0 0; }
+  /* Server radio: a little dash radio playing live radio from where the latest delivery was made and from the bases. */
+  .radio { border: 2px solid var(--gold); background: linear-gradient(180deg, #17150f, #0e0d0a); }
+  .radio h2 { color: var(--gold); }
+  .radio .set { display: flex; align-items: center; gap: 12px; }
+  .radio .play { flex: none; width: 54px; height: 54px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px; color: #111;
+    background: repeating-conic-gradient(from 0deg, #f8f8f8 0deg 5deg, #a0a0a0 5deg 10deg); box-shadow: 0 4px 8px rgba(0,0,0,.6), 0 0 0 2px #2a2a2a; }
+  .radio .play span { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4a4a4a, #050505); color: #ffb347; }
+  .radio .play:disabled { opacity: .45; cursor: default; }
+  .radio .play:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .radio .readout { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 6px; background: #070807; border: 1px solid #333; }
+  .radio .station { font: 700 18px/1.2 "Courier New", ui-monospace, monospace; color: #ffb347; text-shadow: 0 0 8px rgba(255,179,71,.45); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .radio .station.off { color: #7a6238; text-shadow: none; }
+  .bar { height: 6px; margin-top: 4px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--gold); }
   .empty { color: var(--faint); font-style: italic; }
   ol.steps { margin: 0; padding-left: 20px; }
   ol.steps li { margin-bottom: 6px; }
   footer { color: var(--faint); font-size: 13px; text-align: center; margin-top: 10px; }
+  td.base { color: var(--gold); font-weight: 600; }
+  table { font-size: 14px; }
+  #map.far .base-tag { display: none; }
   .leaflet-container { font: inherit; background: #1b2226; }
+  .turf { filter: drop-shadow(0 0 3px rgba(242, 201, 76, .7)); }
+  .leaflet-tooltip.base-tag { background: var(--tag); color: #fff; border: 1.5px solid var(--gold); border-radius: 6px; padding: 3px 9px; font: 700 13px/1.4 Barlow, system-ui, sans-serif; box-shadow: 0 2px 8px rgba(0, 0, 0, .4); white-space: nowrap; }
+  .leaflet-tooltip.base-tag::before { border-top-color: var(--gold); }
   .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.85); }
   .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel); color: var(--text); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div class="grow">
-      <h1 id="server-name">Worldwide Trucking Career</h1>
-      <div class="sub">MadMerick's BeamNG.Earth multiplayer trucking server</div>
+  <div class="hero">
+    <div class="magnate">
+      <div class="kicker">New &middot; Bases of operations</div>
+      <h2>The <span>Magnate</span> Update</h2>
+      <p>Buy a base. Get rich. Watch your turf grow and push your rivals' borders back.</p>
     </div>
-    <span class="pill" id="status"><span class="dot"></span><span id="status-text">Loading&hellip;</span></span>
-  </header>
+    <div class="card">
+      <div class="kicker">BeamNG</div>
+      <h1>Worldwide <span>Trucking</span> Career</h1>
+      <div class="contracts">Dangerous contracts</div>
+      <div class="row">
+        <span class="sub">Start in a rust bucket. Finish in a semi.</span>
+        <span class="road">RUST BUCKET <i></i> RIG</span>
+      </div>
+      <div class="row">
+        <div class="grow"><b id="server-name">A WW Trucking Career | MadMerick</b><div class="sub">MadMerick's BeamNG.Earth multiplayer trucking server</div></div>
+        <span class="pill" id="status"><span class="dot"></span><span id="status-text">Loading&hellip;</span></span>
+      </div>
+    </div>
+  </div>
 
   <div class="banner" id="sample" hidden>Sample data: the server hasn't sent its live stats yet, so everything below is made up to show what the page will look like.</div>
 
@@ -82,13 +145,13 @@
 
   <div class="grid">
     <div>
-      <section class="ship" id="ship-card">
-        <h2>Ship Day</h2>
-        <div id="ship-body" class="empty">No ship in port.</div>
+      <section class="mayday" id="mayday-card">
+        <h2>Mayday Rescue</h2>
+        <div id="mayday-body" class="empty">No call out right now.</div>
       </section>
       <section>
         <h2>Where everyone is</h2>
-        <div id="map" role="img" aria-label="World map of the towns where players are driving, and the Ship Day port"></div>
+        <div id="map" role="img" aria-label="World map of the towns where players are driving, and the Mayday Rescue circle"></div>
         <div class="small muted" style="margin-top:6px;">Towns only, never exact positions.</div>
       </section>
       <section>
@@ -101,20 +164,41 @@
         <h2>Driving now</h2>
         <ul class="list" id="online"><li class="empty">Nobody on right now.</li></ul>
       </section>
+      <section class="radio" id="radio-card" hidden>
+        <h2 id="radio-title">Server radio</h2>
+        <div class="small" id="radio-what" style="margin:-4px 0 8px;"></div>
+        <div class="set">
+          <button type="button" class="play" id="radio-play" disabled aria-label="Play the server radio"><span id="radio-icon">&#9654;</span></button>
+          <div class="readout">
+            <div class="station off" id="radio-station">Tuning&hellip;</div>
+            <div class="small muted" id="radio-where"></div>
+          </div>
+        </div>
+        <div class="small" id="radio-turn" style="margin-top:6px;color:var(--gold);"></div>
+        <div class="small muted" id="radio-note" style="margin-top:4px;">Live radio from where the latest delivery was made and from every player base, a new station every 3 minutes.</div>
+        <audio id="radio-audio" preload="none"></audio>
+      </section>
+      <section>
+        <h2>Land race</h2>
+        <div id="race" class="small muted">No bases yet.</div>
+        <ul class="list" id="land"></ul>
+        <div id="winners"></div>
+      </section>
       <section>
         <h2>Season leaderboard</h2>
-        <table>
-          <thead><tr><th>#</th><th>Trucker</th><th class="num">Money</th><th class="num">Jobs</th></tr></thead>
-          <tbody id="board"><tr><td colspan="4" class="empty">No careers yet.</td></tr></tbody>
-        </table>
+        <div class="board-wrap"><table>
+          <thead><tr><th>#</th><th>Trucker</th><th class="num">Cash</th><th class="num">Truck</th><th>Base</th><th class="num">Wealth</th><th class="num">Jobs</th></tr></thead>
+          <tbody id="board"><tr><td colspan="7" class="empty">No careers yet.</td></tr></tbody>
+        </table></div>
+        <p class="note">Ranked by wealth: cash plus what your truck, your trailer and its parts, and your base of operations are worth, as of your last save.</p>
       </section>
       <section>
         <h2>How to join</h2>
         <ol class="steps">
           <li>Install <b>BeamNG.drive</b> and <a href="https://beammp.com">BeamMP</a>, and sign in to BeamMP. Signed-in players keep their career on any PC.</li>
           <li>Download the <a href="https://github.com/TecnaGamer/BeamNG.Earth/releases/latest">BeamNG.Earth app</a>, the same version as the server (<span id="earth-version">the newest one</span>), and keep it running while you play.</li>
-          <li>In the BeamMP server browser, open the BeamNG.Earth tab and join <b id="join-name">Trucking Career Test | MadMerick</b>. The trucking mod downloads by itself.</li>
-          <li>First time only: press Esc, go to System &gt; HUD Apps &gt; .Earth (edit layout) &gt; + Add app, pick <b>BeamNG Worldwide Trucking Career: Dangerous Contracts</b>, then + Add to layout and Save. Type <b>!hud</b> in chat to see this again.</li>
+          <li>In the BeamMP server browser, open the BeamNG.Earth tab and join <b id="join-name">A WW Trucking Career | MadMerick</b>. The trucking mod downloads by itself.</li>
+          <li>First time on the server: press Esc, go to System &gt; HUD Apps &gt; BeamMP (edit layout) &gt; + Add app, pick <b>BeamNG Worldwide Trucking Career: Dangerous Contracts</b>, then + Add to layout and Save. Added it in single player already? The server uses the BeamMP layout, so add it there too. Type <b>!hud</b> in chat to see this again.</li>
         </ol>
         <p class="small muted" style="margin:8px 0 0;">Your money and trucks are kept on the server, separate from single player. Press Save in the HUD to keep your progress. Want the mod for single player? Get it from the <a href="https://github.com/MadMerick01/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/releases/latest">latest release</a>.</p>
       </section>
@@ -129,12 +213,17 @@
 'use strict'
 // Where the live stats come from: the server sends status.json to the trucking-server-stats repo (its own repo, so the
 // server's GitHub token can't touch this one). Until it does, the sample next to this page is shown, marked as such.
+// GitHub's API first: it has the newest copy as soon as the server sends it. It allows each visitor 60 reads an hour,
+// but asks again with the copy's version (no-cache), and an unchanged answer doesn't count. Past the limit, the raw
+// file, which GitHub can serve up to 5 minutes old.
 var STATS_URLS = [
-  'https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json',
-  'status.json'
+  { url: 'https://api.github.com/repos/MadMerick01/trucking-server-stats/contents/status.json?ref=main',
+    headers: { Accept: 'application/vnd.github.raw+json' }, cache: 'no-cache' },
+  { url: 'https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json', bust: true },
+  { url: 'status.json', bust: true }
 ]
 var REFRESH_MS = 60000
-// Stats older than this mean the server is off (it sends them every few minutes while it runs).
+// Stats older than this mean the server is off (it sends them at least every 10 minutes while it runs).
 var STALE_MS = 15 * 60000
 
 var stats = null
@@ -144,6 +233,8 @@ var map = null, layer = null
 
 function $(id) { return document.getElementById(id) }
 function text(value) { return value === null || value === undefined ? '' : String(value) }
+// A server name without BeamMP's ^ colour and style codes (^l bold, ^f white and so on).
+function plainName(value) { return text(value).replace(/\^[0-9a-z]/gi, '').trim() }
 function num(value) { return typeof value === 'number' && isFinite(value) ? value : null }
 function money(value) { var n = num(value); return n === null ? '–' : '$' + Math.round(n).toLocaleString('en-US') }
 function count(value) { var n = num(value); return n === null ? '–' : Math.round(n).toLocaleString('en-US') }
@@ -190,34 +281,52 @@ function renderStatus(now) {
   $('updated').textContent = updated !== null ? ago(stats.updated, now) : '–'
 }
 
-function renderShip(now) {
-  var body = $('ship-body')
+// Mayday Rescue: where the call is, what happened and the prize, with how long until it moves on, or who won it and
+// when the next call goes out.
+function maydayClock(m, now) { return until(m.state === 'won' ? m.nextAt : m.movesAt, now) }
+function renderMayday(now) {
+  var body = $('mayday-body')
   clear(body)
-  var ship = stats && stats.ship
-  if (!ship || !ship.port) { body.className = 'empty'; body.textContent = 'No ship in port.'; return }
+  var m = stats && stats.mayday
+  if (!m || !m.name) { body.className = 'empty'; body.textContent = 'No call out right now.'; return }
   body.className = ''
-  body.appendChild(el('div', 'big', text(ship.name) + ' at ' + text(ship.port)))
-  body.appendChild(el('div', 'muted small', ship.region))
+  body.appendChild(el('div', 'big', 'Near ' + text(m.name)))
+  if (m.region) body.appendChild(el('div', 'muted small', m.region))
+  if (m.story) body.appendChild(el('div', '', m.story))
   var row = el('div')
   row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px 20px;align-items:flex-end;margin-top:8px;'
   var left = el('div')
-  left.appendChild(el('div', 'muted small', 'Sails in'))
-  var clock = el('div', 'countdown', until(ship.sailsAt, now))
-  clock.id = 'ship-countdown'
+  left.appendChild(el('div', 'muted small', m.state === 'won' ? 'Next call in' : 'Moves on in'))
+  var clock = el('div', 'countdown', maydayClock(m, now))
+  clock.id = 'mayday-countdown'
   left.appendChild(clock)
   row.appendChild(left)
-  var boxes = el('div', 'grow')
-  var total = num(ship.containers) || 0, free = Math.max(0, Math.min(total, num(ship.left) || 0))
-  boxes.appendChild(el('div', 'small', free + ' of ' + total + ' containers left on the dock'))
-  var bar = el('div', 'bar'), fill = el('div')
-  fill.style.width = (total > 0 ? Math.round(100 * free / total) : 0) + '%'
-  bar.appendChild(fill)
-  boxes.appendChild(bar)
-  row.appendChild(boxes)
-  body.appendChild(row)
-  if (ship.next && ship.next.port) {
-    body.appendChild(el('div', 'small muted', 'Next ship: ' + text(ship.next.port) + (ship.next.region ? ', ' + text(ship.next.region) : '')))
+  var prize = el('div', 'grow')
+  if (m.state === 'won') {
+    prize.appendChild(el('div', '', text(m.winner || 'Someone') + ' reached the scene first and won ' + money(m.reward) + '.'))
+  } else {
+    prize.appendChild(el('div', '', 'First to the scene wins ' + money(m.reward) + '.'))
+    var racers = num(m.racers) || 0
+    prize.appendChild(el('div', 'small muted', racers === 0 ? 'Nobody has set off yet.' : racers + (racers === 1 ? ' trucker has' : ' truckers have') + ' set off.'))
   }
+  row.appendChild(prize)
+  body.appendChild(row)
+  // The race so far: each trucker on a run and how far they are from the scene, nearest first.
+  var standings = m.state !== 'won' && Array.isArray(m.standings) ? m.standings.slice(0, 20) : []
+  if (standings.length) {
+    var list = el('ol', 'standings')
+    standings.forEach(function (r, i) {
+      var km = num(r && r.km)
+      var li = el('li')
+      li.appendChild(el('span', 'place', (i + 1) + '.'))
+      li.appendChild(el('span', 'grow', text(r && r.name) || 'A trucker'))
+      li.appendChild(el('span', '', km === null ? '–' : km.toFixed(1) + ' km'))
+      list.appendChild(li)
+    })
+    body.appendChild(el('div', 'small muted', 'Standings: how far each trucker is from the scene, in a straight line.'))
+    body.appendChild(list)
+  }
+  body.appendChild(el('div', 'small muted', 'Teleport to an edge of the ' + (num(m.radiusKm) || 40) + ' km circle in the game, then drive to the middle.'))
 }
 
 function renderTiles() {
@@ -230,7 +339,7 @@ function renderTiles() {
   var season = s.season && num(s.season.number)
   var day = s.season && num(s.season.day)
   $('t-season').textContent = season === null ? '–' : season + (day !== null ? ' · day ' + day : '')
-  if (s.server && s.server.name) { $('server-name').textContent = text(s.server.name); $('join-name').textContent = text(s.server.name) }
+  if (s.server && plainName(s.server.name)) { $('server-name').textContent = plainName(s.server.name); $('join-name').textContent = plainName(s.server.name) }
   if (s.server && s.server.earthVersion) $('earth-version').textContent = text(s.server.earthVersion)
 }
 
@@ -259,7 +368,7 @@ function renderFeed(now) {
     var li = el('li')
     li.appendChild(el('span', 'when', ago(e.at, now)))
     var t = el('span', 'grow', e.text)
-    if (e.kind === 'ship') t.style.color = 'var(--ship)'
+    if (e.kind === 'mayday') t.style.color = 'var(--mayday)'
     if (e.kind === 'season') t.style.color = 'var(--warn)'
     li.appendChild(t)
     list.appendChild(li)
@@ -270,19 +379,122 @@ function renderBoard() {
   var body = $('board')
   clear(body)
   var rows = stats && Array.isArray(stats.leaderboard) ? stats.leaderboard.slice(0, 20) : []
+  // Wealth is cash plus what the truck, trailer and base are worth; a page from an older server sorts by it too.
+  rows = rows.map(function (r) {
+    var cash = Number(r.balance) || 0, truck = Number(r.truckValue) || 0, trailer = Number(r.trailerValue) || 0, base = Number(r.baseValue) || 0
+    return { name: r.name, wins: num(r.wins) || 0, balance: cash, truckValue: truck, baseTown: r.baseTown, corp: typeof r.corp === 'string' ? r.corp : '', hasBase: base > 0, wealth: r.wealth != null ? Number(r.wealth) || 0 : cash + truck + trailer + base, deliveries: r.deliveries }
+  })
+  rows.sort(function (a, b) { return b.wealth - a.wealth })
   if (!rows.length) {
     var tr = el('tr'), td = el('td', 'empty', 'No careers yet.')
-    td.colSpan = 4; tr.appendChild(td); body.appendChild(tr)
+    td.colSpan = 7; tr.appendChild(td); body.appendChild(tr)
     return
   }
   rows.forEach(function (r, i) {
     var tr = el('tr')
     tr.appendChild(el('td', '', i + 1))
-    tr.appendChild(el('td', '', r.name))
+    var who = el('td', '', r.name)
+    if (r.wins > 0) {
+      var cup = el('span', 'gold', ' \u{1F3C6}' + (r.wins > 1 ? ' \u00d7' + r.wins : ''))
+      cup.title = r.wins > 1 ? 'Won ' + r.wins + ' seasons' : 'Won a season'
+      who.appendChild(cup)
+    }
+    tr.appendChild(who)
     tr.appendChild(el('td', 'num', money(r.balance)))
+    tr.appendChild(el('td', 'num', money(r.truckValue)))
+    // A corp's owner gets every town it holds; a member, who owns no base, gets the corp they're in.
+    tr.appendChild(el('td', r.hasBase ? 'base' : '', r.hasBase ? text(r.baseTown || 'Yes') : r.corp ? r.corp + '\u2019s corp' : '–'))
+    tr.appendChild(el('td', 'num wealth', money(r.wealth)))
     tr.appendChild(el('td', 'num', count(r.deliveries)))
     body.appendChild(tr)
   })
+}
+
+// The land race: each base's corp by the share of Earth's land it holds, what wins and the time left, then the
+// winners of past seasons.
+function renderRace() {
+  var race = stats && stats.race, box = $('race'), list = $('land'), past = $('winners')
+  clear(list); clear(past)
+  var win = race && num(race.win), left = race && num(race.left)
+  var days = left !== null && left !== undefined ? Math.max(1, Math.ceil(left / 86400)) : null
+  box.textContent = win === null ? 'No land race on this server yet.'
+    : 'The first base to cover ' + win + '% of Earth\'s land (Antarctica left out) with its corp wins the season'
+      + (days !== null ? ', or whoever holds the most in ' + days + (days === 1 ? ' day' : ' days') : '') + '. Then everyone starts over.'
+  var bases = (stats && Array.isArray(stats.bases) ? stats.bases : []).filter(function (b) { return !b.outpost && num(b.land) !== null })
+  var counts = {}
+  ;(stats && Array.isArray(stats.bases) ? stats.bases : []).forEach(function (b) { counts[b.name] = (counts[b.name] || 0) + 1 })
+  bases.sort(function (a, b) { return b.land - a.land })
+  bases.slice(0, 10).forEach(function (b) {
+    var li = el('li')
+    var box2 = el('div', 'grow')
+    box2.appendChild(el('div', 'who', text(b.name) + (Array.isArray(b.members) && b.members.length ? "'s corp" : '')))
+    box2.appendChild(el('div', 'small muted', (counts[b.name] || 1) + ((counts[b.name] || 1) === 1 ? ' base' : ' bases')
+      + (Array.isArray(b.members) && b.members.length ? ' · with ' + b.members.map(text).join(', ') : '')
+      + (num(b.worth) ? ' · ' + money(b.worth) + (Array.isArray(b.members) && b.members.length ? ' together' : '') : '')))
+    var bar = el('div', 'bar')
+    var fill = el('span')
+    fill.style.width = Math.max(0, Math.min(100, b.land / (win || 100) * 100)) + '%'
+    bar.appendChild(fill)
+    box2.appendChild(bar)
+    li.appendChild(box2)
+    li.appendChild(el('span', 'num gold', b.land.toFixed(1) + '%'))
+    list.appendChild(li)
+  })
+  var winners = stats && Array.isArray(stats.winners) ? stats.winners : []
+  if (winners.length) {
+    past.appendChild(el('div', 'small muted', 'Past winners'))
+    var ul = el('ul', 'list')
+    winners.forEach(function (w) {
+      var li = el('li')
+      li.appendChild(el('span', 'when', 'Season ' + count(w.season)))
+      li.appendChild(el('span', 'grow', '\u{1F3C6} ' + text(w.owner) + (Array.isArray(w.members) && w.members.length ? ' with ' + w.members.map(text).join(', ') : '')
+        + (num(w.land) !== null ? ', ' + w.land.toFixed(1) + '% of the land' : '') + (w.why === 'time' ? ' when time ran out' : '')))
+      ul.appendChild(li)
+    })
+    past.appendChild(ul)
+  }
+}
+
+// Turf, the same rule as the game: a spot inside several circles belongs to the base with the smallest distance ÷ radius,
+// so the bigger circle pushes the shared border towards the smaller one, and everything within CORE_KM of a base is
+// always its own. Circles reach thousands of km, so the map is shaded square by square with real distances on the globe.
+var CORE_KM = 100
+var TURF_COLOURS = ['#f2c94c', '#56ccf2', '#f2994a', '#bb6bd9', '#6fcf97', '#eb5757', '#9b8cff', '#f78fb3', '#2d9cdb', '#27ae60']
+function baseKm(b) { return Math.min(20000, Number(b.radiusKm)) }
+function kmBetween(a, b) {
+  var r = Math.PI / 180, dLat = (b.latitude - a.latitude) * r, dLon = (b.longitude - a.longitude) * r
+  var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.latitude * r) * Math.cos(b.latitude * r) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+function turfOf(bases, p) {
+  var best = -1, bestScore = Infinity
+  for (var i = 0; i < bases.length; i++) {
+    var km = kmBetween(bases[i], p), r = baseKm(bases[i])
+    if (km <= CORE_KM) return i
+    if (km <= r && km / r < bestScore) { best = i; bestScore = km / r }
+  }
+  return best
+}
+function turfColour(i) { return TURF_COLOURS[i % TURF_COLOURS.length] }
+// A map layer shading every 6 px square in the colour of whose turf its middle is.
+function turfLayer(bases) {
+  var Shade = L.GridLayer.extend({
+    createTile: function (coords) {
+      var tile = document.createElement('canvas'), size = this.getTileSize(), step = 6
+      tile.width = size.x; tile.height = size.y
+      var g = tile.getContext('2d'), origin = coords.scaleBy(size)
+      g.globalAlpha = 0.18
+      for (var y = 0; y < size.y; y += step) {
+        for (var x = 0; x < size.x; x += step) {
+          var ll = map.unproject(origin.add([x + step / 2, y + step / 2]), coords.z)
+          var i = turfOf(bases, { latitude: ll.lat, longitude: ll.lng })
+          if (i >= 0) { g.fillStyle = turfColour(bases[i].colour); g.fillRect(x, y, step, step) }
+        }
+      }
+      return tile
+    }
+  })
+  return new Shade({ zIndex: 2 })
 }
 
 function renderMap() {
@@ -296,16 +508,40 @@ function renderMap() {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map)
     layer = L.layerGroup().addTo(map)
+    // Base tags only once zoomed in on a region: across the whole world they'd pile up on each other.
+    var far = function () { $('map').classList.toggle('far', map.getZoom() < 5) }
+    map.on('zoomend', far); far()
   }
   layer.clearLayers()
   var points = []
-  var ship = stats && stats.ship
-  if (ship && validPoint(ship)) {
-    var m = L.circleMarker([ship.latitude, ship.longitude], { radius: 10, color: '#56ccf2', weight: 3, fillOpacity: 0.25 })
-    var pop = el('div'); pop.appendChild(el('b', '', 'Ship Day: ' + text(ship.port))); pop.appendChild(el('div', '', ship.name))
-    m.bindPopup(pop).addTo(layer)
-    points.push([ship.latitude, ship.longitude])
+  var call = stats && stats.mayday
+  if (call && validPoint(call)) {
+    var pop = el('div'); pop.appendChild(el('b', '', 'Mayday Rescue: near ' + text(call.name))); pop.appendChild(el('div', '', call.story))
+    if (Number(call.radiusKm) > 0) L.circle([call.latitude, call.longitude], { radius: Number(call.radiusKm) * 1000, color: '#eb5757', weight: 2, fillOpacity: 0.08 }).addTo(layer)
+    L.circleMarker([call.latitude, call.longitude], { radius: 7, color: '#eb5757', weight: 3, fillOpacity: 0.6 }).bindPopup(pop).addTo(layer)
+    points.push([call.latitude, call.longitude])
   }
+  // Bases of operations: each owner's turf shaded in their colour (a bigger neighbour pushes the border), with the
+  // circle's edge and its 100 km core.
+  var bases = (stats && Array.isArray(stats.bases) ? stats.bases : []).filter(function (b) { return validPoint(b) && Number(b.radiusKm) > 0 })
+  // One colour for each owner: a corp's further bases (outposts, the land race) share it.
+  var owners = {}
+  bases.forEach(function (b) { if (owners[b.name] === undefined) owners[b.name] = Object.keys(owners).length; b.colour = owners[b.name] })
+  var land = {}
+  bases.forEach(function (b) { if (num(b.land) !== null) land[b.name] = b.land })
+  if (bases.length) turfLayer(bases).addTo(layer)
+  bases.forEach(function (b) {
+    var pop = el('div'); pop.appendChild(el('b', '', text(b.name) + "'s base")); pop.appendChild(el('div', '', (text(b.town) || 'A town') + ', ' + Math.round(b.radiusKm).toLocaleString('en') + ' km circle' + (b.radiusKm >= 1599.5 ? ' (full size)' : '')))
+    if (Array.isArray(b.members) && b.members.length) pop.appendChild(el('div', '', 'Corp: ' + b.members.map(text).join(', ')))
+    if (land[b.name] !== undefined) pop.appendChild(el('div', '', 'Holds ' + land[b.name].toFixed(1) + "% of Earth's land"))
+    L.circle([b.latitude, b.longitude], { radius: baseKm(b) * 1000, color: turfColour(b.colour), weight: b.radiusKm >= 1599.5 ? 4 : 2, fill: false, className: 'turf' }).bindPopup(pop).addTo(layer)
+    L.circle([b.latitude, b.longitude], { radius: CORE_KM * 1000, stroke: false, fillColor: turfColour(b.colour), fillOpacity: 0.3 }).bindPopup(pop).addTo(layer)
+    // A dark tag with a gold edge over each base: "Sam's base · 41 km", as on the Magnate update banner.
+    var tag = el('span', '', text(b.name) + "'s base · "); tag.appendChild(el('span', 'gold', Math.round(b.radiusKm).toLocaleString('en') + ' km'))
+    L.circleMarker([b.latitude, b.longitude], { radius: 4, stroke: false, fillColor: '#f2c94c', fillOpacity: 1 })
+      .bindTooltip(tag, { permanent: true, direction: 'top', offset: [0, -6], className: 'base-tag' }).bindPopup(pop).addTo(layer)
+    points.push([b.latitude, b.longitude])
+  })
   var players = stats && Array.isArray(stats.players) ? stats.players : []
   // Players in the same town share one marker.
   var towns = {}
@@ -326,14 +562,172 @@ function renderMap() {
   else if (points.length === 1) map.setView(points[0], 5)
 }
 
+// Server radio: live radio from where things happen on the server, in turn: where the latest delivery in the live feed
+// was made, then each player base (first bases and outposts). Each spot gets the station nearest to it, from Radio
+// Browser, a free list of internet radio stations with where each one is, and the card moves on to the next spot every
+// RADIO_TURN_MS. A new delivery is next up as soon as it's in the feed. This page is served over https, so only https
+// streams can play here. Nothing plays until the visitor presses Play. A spot's station is looked up once, when it's
+// its turn.
+var RADIO_SERVERS = ['de1', 'de2', 'fi1', 'at1', 'nl1', 'all'].map(function (h) { return 'https://' + h + '.api.radio-browser.info' })
+var RADIO_RINGS = [50000, 200000, 800000, 3000000]
+var RADIO_TURN_MS = 3 * 60000
+var radio = { key: null, turnAt: null, playing: false, server: null, found: {}, heard: {}, looking: {} }
+function radioAsk(path) {
+  var order = radio.server ? [radio.server].concat(RADIO_SERVERS.filter(function (s) { return s !== radio.server })) : RADIO_SERVERS
+  function attempt(i) {
+    if (i >= order.length) return Promise.reject(new Error('no radio server answered'))
+    return fetch(order[i] + path).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json() })
+      .then(function (j) { radio.server = order[i]; return j }, function () { return attempt(i + 1) })
+  }
+  return attempt(0)
+}
+// The nearest station with a secure stream from a Radio Browser answer, or null.
+function nearestStation(list, at) {
+  var best = null
+  ;(Array.isArray(list) ? list : []).forEach(function (s) {
+    var url = s && String(s.url_resolved || s.url || '')
+    if (!s || typeof s.name !== 'string' || !s.name.trim() || !/^https:\/\/[^\s"'<>]+$/i.test(url) || s.hls === 1 || /\.m3u8(\?|$)/i.test(url)) return
+    var p = { latitude: parseFloat(s.geo_lat), longitude: parseFloat(s.geo_long) }
+    if (!validPoint(p)) return
+    var km = kmBetween(at, p)
+    if (!best || km < best.km) best = { id: String(s.stationuuid || ''), name: s.name.trim().replace(/\s+/g, ' ').slice(0, 60), url: url, km: km,
+      place: [s.state, s.country].filter(function (x) { return x && String(x).trim() }).join(', ').slice(0, 60) }
+  })
+  return best
+}
+function placeKey(p) { return p.latitude.toFixed(2) + ',' + p.longitude.toFixed(2) }
+// The spots in turn: the latest delivery in the feed (if the server said where), then every base.
+function radioSpots() {
+  var spots = []
+  var feed = stats && Array.isArray(stats.feed) ? stats.feed : []
+  var last = feed.filter(function (e) { return e && e.kind === 'delivery' })[0]
+  if (last && validPoint(last)) {
+    spots.push({ key: 'delivery|' + text(last.at) + '|' + placeKey(last), delivery: true, name: text(last.name) || 'A trucker',
+      town: text(last.town), latitude: last.latitude, longitude: last.longitude })
+  }
+  ;(stats && Array.isArray(stats.bases) ? stats.bases : []).forEach(function (b) {
+    if (validPoint(b)) spots.push({ key: 'base|' + text(b.name) + '|' + placeKey(b), name: text(b.name) || 'A trucker', town: text(b.town),
+      latitude: b.latitude, longitude: b.longitude })
+  })
+  return spots
+}
+function spotLine(spot) {
+  return spot.delivery ? 'Listen to the radio where ' + spot.name + ' just made a delivery'
+    : 'Listen to the radio at ' + spot.name + "'s base" + (spot.town ? ' in ' + spot.town : '')
+}
+// A spot's station: undefined while it's being looked up, then the station or null.
+function stationAt(spot) {
+  var key = placeKey(spot)
+  if (key in radio.found) return radio.found[key]
+  if (radio.looking[key]) return undefined
+  radio.looking[key] = true
+  var at = { latitude: spot.latitude, longitude: spot.longitude }
+  function ring(i) {
+    return radioAsk('/json/stations/search?has_geo_info=true&hidebroken=true&is_https=true&order=clickcount&reverse=true&limit=100'
+      + '&geo_lat=' + at.latitude.toFixed(3) + '&geo_long=' + at.longitude.toFixed(3) + '&geo_distance=' + RADIO_RINGS[i])
+      .then(function (list) {
+        var s = nearestStation(list, at)
+        return s || i + 1 >= RADIO_RINGS.length ? s : ring(i + 1)
+      })
+  }
+  ring(0).then(function (s) { return s }, function () { return null }).then(function (s) {
+    radio.found[key] = s; delete radio.looking[key]
+    var spot = currentSpot()
+    if (spot && placeKey(spot) === key) {
+      if (!s) nextSpot(Date.now(), true)
+      else { if (radio.playing) playRadio(true); showRadio() }
+    }
+  })
+  return undefined
+}
+function currentSpot() {
+  var spots = radioSpots()
+  for (var i = 0; i < spots.length; i++) if (spots[i].key === radio.key) return spots[i]
+  return null
+}
+// The next spot: a delivery not played yet comes first, else the one after this one. skip: this one had no station,
+// so spots without one are passed over (once round at most).
+function nextSpot(now, skip) {
+  var spots = radioSpots()
+  if (!spots.length) { radio.key = null; showRadio(); return }
+  var at = -1
+  for (var i = 0; i < spots.length; i++) if (spots[i].key === radio.key) at = i
+  var pick = null
+  if (spots[0].delivery && !radio.heard[spots[0].key]) pick = spots[0]
+  for (var n = 1; !pick && n <= spots.length; n++) {
+    var s = spots[(at + n) % spots.length]
+    if (!skip || radio.found[placeKey(s)] !== null) pick = s
+  }
+  pick = pick || spots[(at + 1) % spots.length]
+  if (pick.delivery) radio.heard[pick.key] = true
+  radio.key = pick.key
+  radio.turnAt = now + RADIO_TURN_MS
+  if (stationAt(pick) && radio.playing) playRadio(true)
+  else if (radio.found[placeKey(pick)] === null && radio.playing) playRadio(false)
+  showRadio()
+}
+function showRadio() {
+  var spots = radioSpots(), spot = currentSpot()
+  $('radio-card').hidden = !spots.length
+  if (!spot) return
+  var s = radio.found[placeKey(spot)]
+  $('radio-what').textContent = spotLine(spot)
+  var st = $('radio-station')
+  st.textContent = s ? s.name : (s === null ? 'No station found' : 'Tuning…')
+  st.className = 'station' + (radio.playing ? '' : ' off')
+  $('radio-where').textContent = s ? [s.place, Math.round(s.km) + ' km away'].filter(Boolean).join(' · ') : ''
+  $('radio-play').disabled = !s
+  $('radio-icon').textContent = radio.playing ? '■' : '▶'
+  $('radio-play').setAttribute('aria-label', (radio.playing ? 'Stop ' : 'Play ') + (s ? s.name : 'the server radio'))
+  showTurn(Date.now())
+}
+function showTurn(now) {
+  $('radio-turn').textContent = radioSpots().length > 1 && radio.turnAt ? 'Next station in ' + radioClock(Math.max(0, radio.turnAt - now)) : ''
+}
+function radioClock(ms) { var s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2) }
+// Every RADIO_TURN_MS the card moves on to the next spot, and plays it if the radio is on.
+function turnRadio(now) {
+  if (radioSpots().length < 2 || !radio.turnAt || now < radio.turnAt) return
+  nextSpot(now, false)
+}
+function playRadio(on) {
+  var a = $('radio-audio'), spot = currentSpot(), s = spot && radio.found[placeKey(spot)]
+  if (!on || !s) { a.pause(); a.removeAttribute('src'); a.load(); radio.playing = false; showRadio(); return }
+  if (a.getAttribute('src') !== s.url || a.paused) {
+    a.src = s.url
+    var go = a.play()
+    if (go && go.catch) go.catch(function () { radio.playing = false; $('radio-note').textContent = 'This station won’t play right now. Try again later.'; showRadio() })
+    if (/^[0-9a-f-]{36}$/i.test(s.id)) radioAsk('/json/url/' + s.id).catch(function () {})
+  }
+  radio.playing = true
+  $('radio-note').textContent = NOTE
+  showRadio()
+}
+var NOTE = 'Live radio from where the latest delivery was made and from every player base, a new station every 3 minutes.'
+function renderRadio() {
+  // The first time, or when the spot playing is gone (a base moved, or a newer delivery replaced it): pick again. Any
+  // other new delivery is next up at the next turn.
+  if (!currentSpot()) { radio.key = null; nextSpot(Date.now(), false); return }
+  showRadio()
+}
+$('radio-play').addEventListener('click', function () { playRadio(!radio.playing) })
+$('radio-audio').addEventListener('error', function () {
+  if (!radio.playing) return
+  radio.playing = false
+  $('radio-note').textContent = 'This station won’t play right now. Try again later.'
+  showRadio()
+})
+
 function render() {
   var now = Date.now()
   $('sample').hidden = !(stats && stats.sample === true)
   renderStatus(now)
   renderTiles()
-  renderShip(now)
+  renderMayday(now)
   renderOnline()
   renderFeed(now)
+  renderRace()
+  renderRadio()
   renderBoard()
   renderMap()
 }
@@ -341,11 +735,14 @@ function render() {
 // The first stats file that loads and looks right wins.
 function load(i) {
   if (i >= STATS_URLS.length) { if (!stats) render(); return Promise.resolve() }
-  var url = STATS_URLS[i] + (STATS_URLS[i].indexOf('?') < 0 ? '?t=' : '&t=') + Date.now()
-  return fetch(url, { cache: 'no-store' })
+  var source = STATS_URLS[i]
+  var url = source.bust ? source.url + (source.url.indexOf('?') < 0 ? '?t=' : '&t=') + Date.now() : source.url
+  return fetch(url, { cache: source.cache || 'no-store', headers: source.headers || {} })
     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json() })
     .then(function (data) {
       if (!data || data.version !== 1) throw new Error('not stats')
+      // A copy older than the one shown (the raw file lagging behind) changes nothing.
+      if (stats && stats.sample !== true && data.sample !== true && Date.parse(data.updated) < Date.parse(stats.updated)) return
       stats = data
       var sent = Date.parse(data.updated)
       shift = data.sample === true && isFinite(sent) ? Date.now() - sent : 0
@@ -359,9 +756,11 @@ setInterval(function () { load(0) }, REFRESH_MS)
 // The countdown and "updated" line tick every second between refreshes.
 setInterval(function () {
   var now = Date.now()
-  var c = $('ship-countdown')
-  if (c && stats && stats.ship) c.textContent = until(stats.ship.sailsAt, now)
+  var c = $('mayday-countdown')
+  if (c && stats && stats.mayday) c.textContent = maydayClock(stats.mayday, now)
   renderStatus(now)
+  turnRadio(now)
+  showTurn(now)
 }, 1000)
 </script>
 </body>
