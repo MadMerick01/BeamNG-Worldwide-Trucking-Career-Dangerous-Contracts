@@ -683,6 +683,13 @@ function M.new(deps)
       fluid.litres = carUnits * good.litres
       fluid.density = good.kg / good.litres
     end
+    -- A tanker truck with a Load Volume setting carries its fluid by that setting, as a tanker
+    -- trailer does (trailers.lua): the game weighs it, and the mod adds none of its own.
+    if not good or good.kind == 'fluid' then
+      local handled, respawning = self:carLoadVolume(fluid.litres)
+      if respawning then return end
+      if handled then kg, fluid.litres = 0, 0 end
+    end
     local ok, why, detail = self.cargo:setWeight(kg, cargo.partsFor(space, good), fluid)
     if ok then
       self.appliedWeight = key
@@ -697,6 +704,39 @@ function M.new(deps)
     local current = self.lastSample and self.lastSample.vehicle and self.lastSample.vehicle.id
     if current ~= nil and vehicleId ~= current then return end
     self.tankReading = { vehicleId = vehicleId, litres = litres > 0 and math.floor(litres + 0.5) or nil }
+  end
+
+  -- Sets the player's own truck's Load Volume (the tuning setting a tanker truck has, as the game's
+  -- tanker trailers do) to litres. Returns handled (the truck has the setting, so the game carries
+  -- the fluid) and respawning (a respawn to change it was just asked for). The respawn leaves the
+  -- truck as new, so the damage it had is kept owed, and its fuel is put back afterwards. Asked
+  -- once for each amount, so a respawn the game did not take is not asked for over and over.
+  function c:carLoadVolume(litres)
+    local owned = self.ownedParts
+    if not owned or not self.garage or not self.garage.loadVolume then return false end
+    local setting = self.garage:loadVolume(owned.id)
+    if not setting then return false end
+    litres = math.max(0, math.floor((litres or 0) + 0.5))
+    if setting.max and setting.max > 0 then litres = math.min(litres, setting.max) end
+    if math.abs(setting.value - litres) < 1 then self.carLoadVolumeAsked = nil; return true end
+    if self.carLoadVolumeAsked == litres then return true end
+    if not self.garage.setLoadVolume or self.respawned or self.partsCheckDue then return false end
+    local raw = self:vehicleDamage()
+    self:beforeRespawn()
+    local ok, why, detail = self.garage:setLoadVolume(owned.id, setting.name, litres)
+    if not ok then
+      self.ourRespawn = nil
+      if self.fuel then self.fuel.restore = nil end
+      self.diag:event('car_load_volume_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
+      return false
+    end
+    if raw and raw.id == owned.id and type(raw.damage) == 'number' and raw.damage > 0 then
+      self.owedDamage = (self.owedDamage or 0) + raw.damage
+    end
+    self.carLoadVolumeAsked = litres
+    if self.trailerOut and self.garage.hitch then self.garage:hitch(self.trailerOut.id) end
+    self.diag:event('car_load_volume', string.format('%s %d L', setting.name, litres))
+    return true, true
   end
 
   -- A respawn (repair, part change or reverted car) fills the tank and drops the load's weight;

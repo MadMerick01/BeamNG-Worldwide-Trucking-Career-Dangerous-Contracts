@@ -81,4 +81,53 @@ do
   T.near(cargo.trailerWeights[#cargo.trailerWeights].kg, 100 * fuel.kg, 1e-9, 'the mod weighs it instead')
 end
 
+-- A tanker truck with its own Load Volume setting carries its fluid the same way: the setting
+-- is filled with a respawn where it stands, the damage it had stays owed and its fuel is kept.
+do
+  local c, _, _, g, cargo = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c.ownedParts ~= nil, 'the truck is known')
+  local id = c.ownedParts.id
+  local volume, asks = 0, {}
+  function g:loadVolume(vehicleId)
+    if vehicleId ~= id then return nil end
+    return { name = '$load_volume', max = 1600, value = volume }
+  end
+  function g:setLoadVolume(vehicleId, name, litres)
+    asks[#asks + 1] = { id = vehicleId, litres = litres }
+    return true
+  end
+  g.damage = 2500
+  local owed = c.owedDamage or 0
+  local water = goods.get('water')
+  c.load = { good = 'water', units = 150, kg = 150 * water.kg }
+  c:applyWeight(true)
+  T.eq(#asks, 1, 'the truck\'s Load Volume is set'); T.eq(asks[1].id, id, 'on the truck')
+  T.eq(asks[1].litres, 150 * water.litres, 'to the litres it carries')
+  T.near((c.owedDamage or 0) - owed, 2500, 1e-9, 'the damage it had stays owed')
+  c:applyWeight(true)
+  T.eq(#asks, 1, 'one respawn for each amount')
+  volume = 150 * water.litres
+  c:applyWeight(true)
+  T.eq(#asks, 1, 'already filled')
+  T.eq(cargo.weights[#cargo.weights].kg, 0, 'no weight of the mod on top')
+  T.eq(cargo.weights[#cargo.weights].fluid.litres, 0, 'nor fluid of its own')
+  c.load = nil
+  c:applyWeight(true)
+  T.eq(#asks, 2, 'emptied after the job'); T.eq(asks[2].litres, 0, 'to 0 L')
+end
+
+-- A truck whose respawn the game refuses keeps the mod's own weight.
+do
+  local c, _, _, g, cargo = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  function g:loadVolume() return { name = '$load_volume', max = 1600, value = 0 } end
+  function g:setLoadVolume() return false, 'respawn_failed' end
+  local water = goods.get('water')
+  c.load = { good = 'water', units = 100, kg = 100 * water.kg }
+  c:applyWeight(true)
+  T.near(cargo.weights[#cargo.weights].kg, 100 * water.kg, 1e-9, 'the mod weighs it instead')
+  T.check(not c.ourRespawn, 'no respawn is waited for')
+end
+
 T.done('Tanker Load Volume')
