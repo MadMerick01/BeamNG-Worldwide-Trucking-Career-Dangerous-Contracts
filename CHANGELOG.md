@@ -8,6 +8,10 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **You can now buy fuel anywhere, not just at a petrol station or in a town.** Stop the truck anywhere on the road and the **Refuel** button on the Garage tab works, at 20 times the pump price. For example, diesel in Europe costs $2.49 a litre at a pump, $12.45 in a town and $49.80 at the roadside. The Fuel section shows "roadside price" in red with both prices, so you know what you're paying before you press it, and afterwards it tells you what a pump would have cost.
 - Petrol station pumps and town prices are unchanged: the pump price at a pump, and 5 times that in a town. The fuel you haul on a fuel run stays in the tanker and is never used to refuel your truck. Your saves still work.
+## Build 234 · 18 Nov 2026
+
+- **Leaving the parts menu now puts you back on your car's camera.** After pressing **Buy parts** and closing the game's parts menu, you used to be left in the free camera and had to press Shift+C. Now you're back on the camera you were driving with, such as the driver or chase camera. If you were already in the free camera before pressing Buy parts, you stay in it. Your saves still work.
+
 ## Build 233 · 18 Nov 2026
 
 - **Fuel and water in a tanker trailer now weigh it down.** Before, a load in the game's own tanker trailers weighed nothing, so fuel runs drove like an empty trailer while town jobs in a truck's own tanks were heavy. Now when you load, the mod fills the tanker's Load Volume setting (the slider under Load in Vehicle Config, Tuning) with your load, and the game weighs and sloshes it. The trailer blinks and hitches itself again as it fills, and again when it empties after you deliver or abandon. Any damage it had is still on your repair bill.
