@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 235 · 18 Nov 2026
+
 - **Fixed: a tanker truck's tank no longer bends into a huge spike when you load fuel or water.** In a truck whose own tank can't take the load's weight, such as the MD tanker, the weight was put on the tank's thin panels, which tore them apart. Instead, a tanker truck with a **Load Volume** setting on its Tuning page now has that setting filled with the litres you carry, the same way as a tanker trailer, so the game itself makes the tank heavy. The truck respawns where it stands to take the load, keeps its fuel, and any damage it had is still owed for repair. The setting goes back to 0 L when the job is done. Trucks without that setting carry no extra weight in the tank. Tanker trailers still get their full weight. Your saves still work. If your truck is already bent, a repair on the Garage tab puts it right.
 
 ## Build 234 · 18 Nov 2026
