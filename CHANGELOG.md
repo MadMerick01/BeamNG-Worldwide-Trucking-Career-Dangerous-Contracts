@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **You can now buy fuel anywhere, not just at a petrol station or in a town.** Stop the truck anywhere on the road and the **Refuel** button on the Garage tab works, at 20 times the pump price. For example, diesel in Europe costs $2.49 a litre at a pump, $12.45 in a town and $49.80 at the roadside. The Fuel section shows "roadside price" in red with both prices, so you know what you're paying before you press it, and afterwards it tells you what a pump would have cost.
+- Petrol station pumps and town prices are unchanged: the pump price at a pump, and 5 times that in a town. The fuel you haul on a fuel run stays in the tanker and is never used to refuel your truck. Your saves still work.
+
 ## Build 230 · 18 Nov 2026
 
 - **You can't miss a new Mayday Rescue call now, even with the HUD minimised.** When a call goes out online, a red Mayday Rescue card drops in under the small strip, the strip's dot turns red, and a short alert sounds once. The card shows where the call is, its story, the $80,000 reward, how far away you are, how long until it moves on and how many truckers have set off. It also says if something stops you going, such as a job you're still on.

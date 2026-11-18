@@ -1966,8 +1966,9 @@ function M.new(deps)
   end
 
   -- Fuel. The car is asked for its tank every READ_EVERY_SECONDS once arrived; the answer comes back
-  -- through fuelReading. Refuel fills the tank as far as the money goes, stopped at a petrol station
-  -- pump or inside a place's arrival circle, and is charged when the car reports how much went in.
+  -- through fuelReading. Refuel fills the tank as far as the money goes, stopped anywhere: at a petrol
+  -- station pump, dearer inside a place's arrival circle, dearest at the roadside. It is charged when
+  -- the car reports how much went in.
   -- Filling up with the game's own Refuel prompt at a pump is charged too, from the readings.
   function c:watchFuel()
     if not self.fuelTank or self.state ~= 'READY' or not self.arrived or self.partsCheckDue or self.hire or self.onFoot then
@@ -1992,15 +1993,16 @@ function M.new(deps)
   end
 
   -- What fuel costs here: the continent from the nearest town's country, the car's fuel (petrol
-  -- until it says diesel), and whether that is at a pump or a town's dearer Refuel.
+  -- until it says diesel), and where: at a pump, a town's dearer Refuel, or the roadside's dearest.
   function c:fuelPrice()
     local sample = self.lastSample
     local nearest = sample and sample.valid and (places.nearest(sample, 1)[1] or {}).place
     local continent = fuel.continent(nearest and nearest.region)
     local fuelType = self.fuel and self.fuel.fuelType == 'diesel' and 'diesel' or 'gasoline'
     local atPump = self.pump ~= nil
-    return { perLitre = fuel.price(continent, fuelType, not atPump), pumpPerLitre = fuel.price(continent, fuelType, false),
-      continent = continent, fuelType = fuelType, atPump = atPump }
+    local where = atPump and 'pump' or (self:here() and 'town' or 'roadside')
+    return { perLitre = fuel.price(continent, fuelType, where), pumpPerLitre = fuel.price(continent, fuelType, 'pump'),
+      continent = continent, fuelType = fuelType, atPump = atPump, where = where, times = fuel.times(where) }
   end
 
   -- The game's own pump prompt put fuel in: charged at the pump's price, as far as the money goes;
@@ -2074,17 +2076,17 @@ function M.new(deps)
       price = price }
   end
 
-  -- Why Refuel is not possible now, or nil: stopped at a pump, or in a town as for a job.
+  -- Why Refuel is not possible now, or nil: stopped anywhere in your own car. At a pump it is the
+  -- pump price; in a town or at the roadside dearer, and only with the garage bill settled and not
+  -- stranded, as for a job.
   function c:refuelProblem()
-    if not self.pump then
-      local problem = self:tradeProblem(self:here())
-      if problem == 'Drive into a town to find a job.' then return 'Stop at a petrol station pump, or in a town, to refuel.' end
-      return problem
-    end
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Fuel is unavailable right now.' end
     if self.hire then return self:awayText() end
     if self.onFoot then return ON_FOOT end
-    if not self.odometer:stopped() then return 'Stop at the pump to refuel.' end
+    if not self.odometer:stopped() then return self.pump and 'Stop at the pump to refuel.' or 'Stop the car to refuel.' end
+    if self.pump then return nil end
+    if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
     return nil
   end
 
@@ -2101,7 +2103,7 @@ function M.new(deps)
     end
     self.refuelSerial = self.refuelSerial + 1
     local from = self.fuel.litres
-    self.refuelPending = { serial = self.refuelSerial, at = self.clock, price = quote.price.perLitre, town = not quote.price.atPump,
+    self.refuelPending = { serial = self.refuelSerial, at = self.clock, price = quote.price.perLitre, times = quote.price.times,
       from = from, to = from + quote.litres }
     local ok, why = self.fuelTank:set(from + quote.litres, self.refuelSerial)
     if not ok then
@@ -2122,7 +2124,9 @@ function M.new(deps)
     local cost = math.min(fuel.cost(litres, pending.price), self.profile and self.profile.progression.balance or 0)
     if cost > 0 then self:spend(cost, 'fuel') end
     self.fuelFeedback = 'Refuelled ' .. string.format('%.1f', litres) .. ' L for ' .. dollars(cost) .. '.'
-    if pending.town then self.fuelFeedback = self.fuelFeedback .. ' A petrol station pump would have cost a fifth of that.' end
+    if (pending.times or 1) > 1 then
+      self.fuelFeedback = self.fuelFeedback .. ' A petrol station pump would have cost ' .. dollars(fuel.cost(litres, pending.price / pending.times)) .. '.'
+    end
     self.diag:event('refuelled', string.format('%.1f L, %d', litres, cost))
   end
 
@@ -2156,10 +2160,13 @@ function M.new(deps)
       atPump = price.atPump, station = self.pump and (self.pump.brand or self.pump.name) or nil,
       continent = price.continent or 'Rest of the world', fuelType = price.fuelType == 'diesel' and 'Diesel' or 'Petrol',
       pricePerLitre = price.perLitre, pumpPricePerLitre = price.pumpPerLitre, townTimes = fuel.TOWN_PRICE_TIMES,
+      roadsideTimes = fuel.ROADSIDE_PRICE_TIMES, where = price.where, roadside = price.where == 'roadside',
       litres = quote and quote.litres or nil, cost = quote and quote.cost or nil, full = quote and quote.full or nil,
       reading = quote == nil, problem = problem,
-      -- Away from a pump: the town's Refuel costs TOWN_PRICE_TIMES the pump price, and says so.
-      warning = not price.atPump and ('Town fuel costs ' .. fuel.TOWN_PRICE_TIMES .. ' times the pump price: '
+      -- Away from a pump: the town's Refuel costs TOWN_PRICE_TIMES the pump price, the roadside's
+      -- ROADSIDE_PRICE_TIMES, and says so.
+      warning = not price.atPump and ((price.where == 'roadside' and 'Roadside fuel' or 'Town fuel') .. ' costs '
+        .. price.times .. ' times the pump price: '
         .. string.format('$%.2f', price.perLitre) .. ' a litre here, ' .. string.format('$%.2f', price.pumpPerLitre)
         .. ' at a petrol station. Fill up at a pump instead.') or nil,
       allowed = problem == nil and self.fuelTank ~= nil and quote ~= nil and not quote.full and quote.litres > 0
