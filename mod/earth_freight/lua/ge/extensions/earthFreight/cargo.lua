@@ -188,13 +188,20 @@ end
 local function call(name, ...)
   if type(obj[name]) == 'function' then pcall(obj[name], obj, ...) end
 end
+-- Fills a container to volume litres and returns the mass its nodes now have, so what a fill
+-- really added is that less the mass at 0 L.
 local function fill(c, volume)
+  local total = 0
   for _, n in ipairs(c.nodes) do
     local mass = value(n.nodeWeightFunction, volume)
-    if mass then obj:setNodeMass(n.cid, mass) end
+    if mass then obj:setNodeMass(n.cid, mass); total = total + mass end
   end
   for _, n in ipairs(c.legacy) do
-    if type(n.nodeWeight) == 'number' then obj:setNodeMass(n.cid, n.nodeWeight + volume * density / #c.legacy) end
+    if type(n.nodeWeight) == 'number' then
+      local mass = n.nodeWeight + volume * density / #c.legacy
+      obj:setNodeMass(n.cid, mass)
+      total = total + mass
+    end
   end
   for _, b in ipairs(c.beams) do
     if b.beamSpringFunction or b.beamDampFunction then
@@ -212,13 +219,23 @@ local function fill(c, volume)
     local precompression = value(b.beamPrecompressionFunction, volume)
     if precompression then call('setPrecompressionRatio', b.cid, precompression) end
   end
+  return total
 end
-for _, c in ipairs(containers) do fill(c, 0) end
+local empty = {}
+for i, c in ipairs(containers) do empty[i] = fill(c, 0) end
 local poured = litres > 0 and capacity > 0
 if poured then
   local share = math.min(1, litres / capacity)
-  for _, c in ipairs(containers) do fill(c, c.size * share) end
-  extra = math.max(0, extra - math.min(litres, capacity) * density)
+  local took = 0
+  for i, c in ipairs(containers) do took = took + math.max(0, fill(c, c.size * share) - empty[i]) end
+  -- Only what the containers really took comes off the load: a tank whose expressions give no
+  -- weight (some trailers weigh their load by a tuning setting instead) must not make the fluid
+  -- weigh nothing. The rest goes over the tank's nodes, or the vehicle, below.
+  local wanted = math.min(litres, capacity) * density
+  if took < wanted * 0.9 and log then
+    pcall(log, 'W', 'earthFreight', string.format('fluid_weight_short: tanks took %%.0f of %%.0f kg', took, wanted))
+  end
+  extra = math.max(0, extra - math.min(wanted, took))
 end
 report()
 if extra <= 0.001 then return end

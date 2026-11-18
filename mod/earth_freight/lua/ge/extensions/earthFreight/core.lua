@@ -3156,7 +3156,10 @@ function M.takeJob(job, share)
   return safely(function() return ensure():takeJob(id(job), s) end)
 end
 function M.setJobDistance(distance) return safely(function() return ensure():setJobDistance(distance) end) end
-function M.takeFuelRun(job) return safely(function() return ensure():takeFuelRun(id(job)) end) end
+function M.takeFuelRun(job, share)
+  local s = type(share) == 'number' and share >= jobs.SHARE_STEP and share <= 100 and share % jobs.SHARE_STEP == 0 and share or 100
+  return safely(function() return ensure():takeFuelRun(id(job), s) end)
+end
 function M.gpsToDepot() return safely(function() return ensure():gpsToDepot() end) end
 function M.gpsToRun(job) return safely(function() return ensure():gpsToRun(id(job)) end) end
 function M.teleportToDepot() return safely(function() return ensure():teleportToDepot() end) end

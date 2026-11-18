@@ -315,4 +315,24 @@ do
   local configs = list:configs(); T.eq(#configs, 1, 'the photo config is not for sale'); T.eq(configs[1].key, 'd15', 'the real one is')
 end
 
+-- A tanker's Load Volume setting: found by its title, read from the config, and set by a respawn.
+do
+  local tanker = { getID = function() return 60 end, getJBeamFilename = function() return 'tanker' end }
+  local data = { config = { model = 'tanker', parts = { tank = 'x' }, vars = { ['$airtank'] = 125, ['$load_volume'] = 0 } },
+    vdata = { variables = {
+      ['$airtank'] = { name = '$airtank', title = 'Air Tank Pressure', unit = 'psi', category = 'Chassis', max = 150 },
+      ['$load_volume'] = { name = '$load_volume', title = 'Load Volume', unit = 'L', category = 'Load', min = 0, max = 34000, default = 0 } } } }
+  local tg = G.new(env({ objectById = function(id) return id == 60 and tanker or nil end,
+    manager = function() return { getVehicleData = function(id) return id == 60 and data or nil end } end }))
+  local s = tg:loadVolume(60)
+  T.eq(s and s.name, '$load_volume', 'the Load Volume setting found'); T.eq(s and s.max, 34000, 'its most'); T.eq(s and s.value, 0, 'empty now')
+  T.eq(tg:loadVolume(7), nil, 'a vehicle without one has none')
+  T.check(tg:setLoadVolume(60, '$load_volume', 12000), 'respawn asked')
+  T.eq(replaced.veh:getID(), 60, 'the tanker respawned in place'); T.eq(replaced.options.config.vars['$load_volume'], 12000, 'filled to 12,000 L')
+  T.eq(replaced.options.config.vars['$airtank'], 125, 'its other settings kept'); T.eq(replaced.options.config.parts.tank, 'x', 'and its parts')
+  T.eq(data.config.vars['$load_volume'], 0, 'the game data itself is not changed')
+  local ok, why = tg:setLoadVolume(61, '$load_volume', 1)
+  T.check(not ok and why == 'vehicle_required', 'no such vehicle')
+end
+
 T.done('garage')

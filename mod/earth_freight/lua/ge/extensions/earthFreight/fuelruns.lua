@@ -12,6 +12,7 @@ local places = require('earthFreight/places')
 local goods = require('earthFreight/goods')
 local jobs = require('earthFreight/jobs')
 local business = require('earthFreight/business')
+local trailers = require('earthFreight/trailers')
 local rockets = require('earthFreight/rockets')
 local M = {}
 
@@ -381,6 +382,7 @@ function M.attach(c)
       local road = q.road - (q.baseBonus or 0)
       out.runs[#out.runs + 1] = { id = job.id, to = to.name, toId = to.id, region = to.region, size = to.size,
         distanceMetres = job.km * 1000, pay = q.pay, units = q.units, kg = q.kg, litres = q.units * good.litres,
+        unitKg = good.kg, unitLitres = good.litres,
         road = road > 1.005 and road or nil,
         basePercent = q.baseBonus and math.floor(q.baseBonus / road * 100 + 0.5) or nil,
         tollTo = q.toll and q.toll.owner or nil, station = self:station(to) and self:station(to).name or nil,
@@ -477,9 +479,11 @@ function M.attach(c)
     return ok
   end
 
-  -- Loads a fuel run at the depot: the truck and its trailer filled with fuel, the pay locked in,
-  -- and the GPS set to the station (or the town, until one is found).
-  function c:takeFuelRun(jobId)
+  -- Loads a fuel run at the depot: the truck and its trailer filled with fuel, or the share of a
+  -- full load picked on the slider (a percentage, 100 when not given) for that share of the pay,
+  -- the pay locked in, and the GPS set to the station (or the town, until one is found).
+  function c:takeFuelRun(jobId, share)
+    share = share or 100
     local current = self.lastSample and self.lastSample.valid and self.lastSample or nil
     local hub = current and self:fuelHub(current)
     local depot = hub and self:fuelDepot(hub)
@@ -498,9 +502,14 @@ function M.attach(c)
       return false
     end
     local good, destination = goods.get(job.good), places.get(job.to)
+    local full = quote.units
+    local units, pay = jobs.share(quote.units, quote.pay, share)
+    quote.units, quote.slots, quote.kg, quote.pay = units, units * good.slots, units * good.kg, pay
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
       from = hub.id, to = destination.id, drivenKm = 0, toll = quote.toll, fuelRun = true }
-    if (quote.trailerUnits or 0) > 0 then self.load.trailerUnits = quote.trailerUnits end
+    -- Split between the truck and the trailer, each filled to the same share of its room.
+    local inTrailer = trailers.split(units, full, quote.trailerUnits)
+    if inTrailer > 0 then self.load.trailerUnits = inTrailer end
     self.abandonArmed, self.gpsDepot, self.gpsRun = false, nil, nil
     self:applyWeight()
     self.tradeFeedback = nil

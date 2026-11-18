@@ -8,8 +8,8 @@ local M = {}
 -- the load's weight (jobs.weightPay); rate is a good's pay against that, 1 being the curve as is.
 -- A job fills every slot or litre the vehicle has. Before jobs.PAY_PERCENT (75, so a quarter less), a Burnside with 52 slots of boxes carries
 -- 780 kg of parts for $2,000 over 5 km, or 1,200 kg of bricks (8 units with 3 L boxes and an
--- M: the weight runs out first) for about $2,480; a full 800 L tank is 800 kg of water for about $2,030, or 600 kg of
--- fuel for about $1,540. Parcels are heavy for their slots (bricks 50 kg
+-- M: the weight runs out first) for about $2,480; a full 800 L tank is 800 kg of water for about $2,030, or the same weight of
+-- fuel for about $1,540 (fuel weighs as water but pays by 600 kg). Parcels are heavy for their slots (bricks 50 kg
 -- a slot), so a big box runs out of weight before space. Food is no longer posted; it stays known
 -- so a food job in an older save still delivers.
 -- WEIGHT_PERCENT scales what every good weighs (85: everything 15% lighter, MadMerick, 3 Nov). Pay
@@ -23,7 +23,9 @@ M.list = {
   { id = 'grain', name = 'Grain', kind = 'dryBulk', slots = 1, kg = 80 },
   { id = 'gravel', name = 'Gravel / ore', kind = 'dryBulk', slots = 1, kg = 160 },
   { id = 'water', name = 'Water', kind = 'fluid', litres = 10, slots = 10, kg = 10, rate = 1 },
-  { id = 'fuel', name = 'Fuel', kind = 'fluid', litres = 10, slots = 10, kg = 7.5, rate = 1 },
+  -- Fuel weighs as much as water (MadMerick, 18 Nov: simpler, and the game's tankers weigh their
+  -- Load Volume that way too), but still pays by its old 7.5 kg a unit, so its pay is unchanged.
+  { id = 'fuel', name = 'Fuel', kind = 'fluid', litres = 10, slots = 10, kg = 10, payKg = 7.5, rate = 1 },
   -- What a "don't ask questions" job carries (beacons.lua): never posted on a board, and no weight.
   { id = 'package', name = 'Package', kind = 'package', slots = 1, kg = 0 },
   -- Ship Day's container cargo, from before Mayday Rescue replaced it: kept so a container still on board delivers.
@@ -34,7 +36,7 @@ M.CARRIED = { parcel = true, fluid = true }
 
 local byId = {}
 for _, good in ipairs(M.list) do
-  good.payKg = good.kg
+  good.payKg = good.payKg or good.kg
   good.kg = good.kg * M.WEIGHT_PERCENT / 100
   byId[good.id] = good
 end

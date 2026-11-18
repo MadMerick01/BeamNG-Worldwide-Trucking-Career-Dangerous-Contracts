@@ -512,7 +512,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.takeFuelRun = function (run) {
         var f = scope.data.fuelRuns
         if (!f || scope.data.load || !run || !run.allowed || !plainId(run.id)) return
-        core("takeFuelRun('" + run.id + "')")
+        core("takeFuelRun('" + run.id + "', " + scope.shareOf(run) + ')')
       }
       scope.gpsToRun = function (run) { if (scope.data.gpsAllowed && scope.data.fuelRuns && run && plainId(run.id)) core("gpsToRun('" + run.id + "')") }
       scope.teleportToDepot = function () {
