@@ -11,8 +11,8 @@ local A = P.DIRECTORY .. 'save-a.json'
 -- Pay: the same as a town job up to 20 km, then straight with distance, times the bonus.
 do
   T.near(fuelruns.distanceFactor(20), jobs.distanceFactor(20), 1e-9, 'up to 20 km a fuel run pays by the town job curve')
-  T.near(fuelruns.distanceFactor(100) / fuelruns.distanceFactor(20), 1 + 0.9 * 4, 1e-9, '100 km pays 4.6 times 20 km')
-  T.check(fuelruns.distanceFactor(100) > 2 * jobs.distanceFactor(100), 'twice what the square root gives at 100 km')
+  T.near(fuelruns.distanceFactor(100) / fuelruns.distanceFactor(20), 1 + 0.75 * 4, 1e-9, '100 km pays 4 times 20 km')
+  T.check(fuelruns.distanceFactor(100) > 1.5 * jobs.distanceFactor(100), 'well over what the square root gives at 100 km')
   local fuel = goods.get('fuel')
   local units = 34000 / fuel.litres
   local town = jobs.basePay(fuel, units, 20)
@@ -24,9 +24,15 @@ do
   end
   T.check(far ~= nil, 'a flat place about 100 km from Penrith')
   local q = fuelruns.quote({ good = 'fuel', from = penrith.id, to = far.id, km = 100, fuelRun = true }, units)
-  T.near(q.pay, 284000, 3000, 'and about $284,000 over 100 km as a fuel run, in flat country')
+  T.near(q.pay, 206000, 3000, 'and about $206,000 over 100 km as a fuel run, in flat country')
   T.eq(q.factor, fuelruns.BONUS, 'the fuel run bonus'); T.eq(q.shortage, false, 'never a shortage')
   T.eq(fuelruns.quote({ good = 'fuel', from = penrith.id, to = far.id, km = 100 }, 0).pay, 0, 'nothing for no load')
+  -- Half the region bonus: a run between two x2 places pays 1.5 times flat country, where a town job pays 2 times.
+  local steep = { id = 'steepA', boost = 2 }
+  T.near(fuelruns.roadBonus(steep, steep), 1.5, 1e-9, 'a x2 region pays 1.5 times on a fuel run')
+  T.near(fuelruns.roadBonus({ boost = 3 }, { boost = 1 }), 1.5, 1e-9, 'the average of the two ends, halved')
+  T.near(fuelruns.roadBonus({ boost = 3 }, { boost = 3 }), 2, 1e-9, 'at most 2 times, at x3 both ends')
+  T.near(jobs.roadBonus(steep, steep), 2, 1e-9, 'while a town job there pays 2 times')
 end
 
 -- Earth's places answer: the nearest open, named station near the town.

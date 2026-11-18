@@ -2046,7 +2046,7 @@ do
   c.trailer.maxKg = 5000; c:readTrailerSpace()
   local id = c.trailerOut.id
   T.eq(g.trailers[id].config, 'vehicles/boxutility/earth_freight_trailer_boxes.pc', 'spawned behind the car')
-  T.check(not c:buyTrailer(2), 'one trailer at a time'); T.check(c.trailerFeedback:find('already own'), 'told why')
+  T.check(not c:buyTrailer(2), 'not while one is out'); T.check(c.trailerFeedback:find('Store your trailer first', 1, true), 'told why')
   -- A spawn of the trailer is not a change to the car.
   c:vehicleSpawned(id); T.check(not c.partsCheckDue, 'no parts check for the trailer')
   local v = c:view().trailer
@@ -2104,7 +2104,7 @@ do
   T.check(not c:sellTrailer(), 'only a stored trailer sells')
   T.check(c:storeTrailer('depot'), 'stored with no job, no warning')
   T.check(c:repairTrailer(), 'repaired'); T.eq(c:view().trailer.owned.repair, nil, 'nothing owed')
-  T.eq(c:view().trailer.buyProblem:find('base of operations') ~= nil, true, 'a second trailer needs a base')
+  T.eq(c:trailersAllowed(), 2, 'two trailers without a base, as for car slots'); T.eq(c:view().trailer.buyProblem, nil, 'a second can be bought')
   before = c:view().balance
   T.check(not c:sellTrailer(), 'asks first'); T.check(c:sellTrailer(), 'sold')
   T.eq(c:view().balance, before + 3750, 'for 75%'); T.eq(c.trailer, nil, 'gone')
@@ -2202,59 +2202,69 @@ do
   T.eq(type(odd.config), 'table', 'a config naming no .pc file is kept as it is')
 end
 
--- A trailer spot at the base: two trailers with a base, parked and hitched for free within 200 m,
--- sent and delivered for the haulier's fee away from it, swapped, repaired at half price, saved.
+-- Trailer slots match car slots: 2, 3 with a base, 4 with the bought slot. The base keeps every
+-- parked trailer, hitched and swapped for free within 200 m, sent and delivered for the haulier's
+-- fee away from it; repairs there are half price; Your trailers lists the parked ones.
 do
   local TR = require('earthFreight/trailers')
   local location = require('earthFreight/location')
   local c, io, a, g = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  c.profile.progression.balance = 1000000
+  c.profile.progression.balance = 2000000
+  T.eq(c:trailersAllowed(), 2, 'two to start')
   local spot = F.copy(a.pose)
   T.check(c:buyBase(spot), 'base bought'); T.check(c:atHome(), 'at the base')
-  T.eq(c:trailersAllowed(), 2, 'a base keeps two trailers')
+  T.eq(c:trailersAllowed(), 3, 'three with a base')
   T.check(c:buyTrailer(1), 'first trailer'); local first = c.trailerOut.id
   local v = c:view().trailer
   T.check(v.parkAllowed, 'Park at base offered'); T.check(not v.sendAllowed, 'no sending when already there')
   T.eq(c:trailerMoveFee('base'), 0, 'free at the base')
-  T.eq(v.buyProblem:find('Store your trailer first', 1, true) ~= nil, true, 'store before buying the second')
+  T.check(v.buyProblem:find('Store your trailer first', 1, true), 'store before buying the next')
   local before = c:view().balance
   T.check(c:storeTrailer('base'), 'parked'); T.eq(c:view().balance, before, 'for nothing')
-  T.eq(g.trailers[first], nil, 'out of the world'); T.eq(c.trailer.at, 'base', 'in the spot')
-  T.check(not c:view().trailer.spotFree, 'the spot is taken')
-  -- The second trailer: the first stays parked.
-  T.check(c:view().trailer.buyAllowed, 'a second can be bought')
+  T.eq(g.trailers[first], nil, 'out of the world'); T.eq(c.trailer.at, 'base', 'at the base')
+  T.check(c:view().trailer.spotFree, 'the base keeps more')
+  -- Two more: each one bought parks the one before it in Your trailers.
   local wealth = c:wealth()
-  T.check(c:buyTrailer(1), 'second trailer'); T.eq(c.spareTrailer.at, 'base', 'the first kept at the base')
-  T.eq(c:view().trailer.spare.at, 'base', 'shown as the other trailer')
-  T.eq(c:trailerWorth(), 10000, 'both count')
-  T.eq(c:wealth(), wealth, 'both trailers in wealth: buying the second keeps it the same')
-  T.check(not c:buyTrailer(1), 'no third'); T.check(c.trailerFeedback:find('two trailers', 1, true), 'told why')
-  -- Spot taken: this one can only go to the depot.
-  T.check(not c:view().trailer.parkAllowed, 'no parking with the spot taken')
-  T.check(c:view().trailer.depotAllowed, 'the depot takes it')
-  -- Swap at the base: the one out parks, the one parked comes out, free.
-  local second = c.trailerOut.id
-  T.check(c:view().trailer.swapAllowed, 'swap offered')
+  T.check(c:buyTrailer(1), 'second'); T.check(c:storeTrailer('base'), 'parked')
+  T.check(c:buyTrailer(1), 'third')
+  T.eq(#c.spareTrailers, 2, 'two parked'); T.eq(c.spareTrailers[1].at, 'base', 'at the base')
+  T.eq(#c:view().trailer.spares, 2, 'listed on Your trailers'); T.eq(c:view().trailer.count, 3, 'three owned')
+  T.eq(c:trailerWorth(), 15000, 'all three count'); T.eq(c:wealth(), wealth, 'buying keeps wealth the same')
+  T.check(c:storeTrailer('base'), 'parked')
+  T.check(not c:buyTrailer(1), 'no fourth yet'); T.check(c.trailerFeedback:find('Buy a 4th slot', 1, true), 'told how')
+  -- The bought slot gives a 4th trailer too.
+  c.extraCarSlot = true
+  T.eq(c:trailersAllowed(), 4, 'four with the bought slot')
+  T.check(c:buyTrailer(1), 'fourth'); T.eq(#c.spareTrailers, 3, 'three parked')
+  T.check(not c:view().trailer.buyAllowed, 'no fifth')
+  T.check(c:view().trailer.buyProblem:find('Sell one first', 1, true), 'sell one first')
+  -- Swap at the base: the one out parks, the one chosen comes out, free.
+  local fourth = c.trailerOut.id
+  local row = c:view().trailer.spares[2]
+  T.check(row.swapShown and row.swapAllowed, 'Swap offered on each parked trailer')
+  local chosen = c.spareTrailers[2]
   before = c:view().balance
-  T.check(c:swapTrailers(), 'swapped'); T.eq(c:view().balance, before, 'for nothing')
-  T.eq(g.trailers[second], nil, 'the second parked'); T.check(c.trailerOut ~= nil, 'the first out')
-  T.eq(c.spareTrailer.at, 'base', 'the second in the spot'); T.eq(c.trailer.stored, false, 'the first in use')
+  T.check(c:swapTrailers(2), 'swapped'); T.eq(c:view().balance, before, 'for nothing')
+  T.eq(g.trailers[fourth], nil, 'the fourth parked'); T.eq(c.trailer, chosen, 'the chosen one in use')
+  T.eq(c.spareTrailers[2].at, 'base', 'the fourth in its place'); T.eq(c.trailer.stored, false, 'out')
+  T.check(not c:swapTrailers(9), 'no such trailer')
   -- Away from the base the swap is refused and Send to base charges the haulier.
-  local away = location.destination(spot, 90, 50000)
-  F.drive(c, a, away)
-  T.check(not c:atHome(), 'away'); T.check(not c:swapTrailers(), 'no swap away')
+  F.drive(c, a, location.destination(spot, 90, 50000))
+  T.check(not c:atHome(), 'away'); T.check(not c:swapTrailers(1), 'no swap away')
   T.check(c.trailerFeedback:find('Drive to your base', 1, true), 'told to drive there')
-  T.check(not c:view().trailer.sendAllowed, 'no sending with the spot taken')
-  c.spareTrailer = nil
   local d = c:homeDistance()
   local fee = TR.haulFee(d)
   T.eq(fee, 100 + math.floor(d / 1000 * 0.02 + 0.5), '$100 and 2 cents a km')
   T.check(c:view().trailer.sendAllowed, 'Send to base offered'); T.eq(c:view().trailer.haulFee, fee, 'at the haulier fee')
   before = c:view().balance
   T.check(c:storeTrailer('base'), 'sent'); T.eq(c:view().balance, before - fee, 'charged the fee')
-  T.eq(c:view().trailer.bringOutFee, fee, 'delivered back for the same fee')
-  T.check(c:bringOutTrailer(), 'delivered'); T.eq(c:view().balance, before - 2 * fee, 'charged again')
+  -- Hitch on Your trailers brings a parked one out, for the haulier's fee away from the base.
+  T.eq(c:view().trailer.spares[1].hitchFee, fee, 'Hitch shows the fee')
+  local wanted = c.spareTrailers[1]
+  T.check(c:hitchSpareTrailer(1), 'hitched'); T.eq(c.trailer, wanted, 'that one in use')
+  T.eq(c:view().balance, before - 2 * fee, 'charged again'); T.check(c.trailerOut ~= nil, 'out')
+  T.check(not c:hitchSpareTrailer(1), 'not with one out')
   -- Repairs at the base cost half.
   T.check(c:storeTrailer('depot'), 'to the depot'); T.eq(c.trailer.at, 'depot', 'at the depot')
   c.trailer.damage = 4000
@@ -2262,26 +2272,33 @@ do
   F.drive(c, a, spot)
   T.check(c:atHome(), 'back at the base'); T.eq(c:trailerRepairPrice(), math.floor(full * 0.5 + 0.5), 'half price at the base')
   T.eq(c:view().trailer.bringOutFee, TR.DEPOT_FEE, 'the depot costs the same anywhere')
-  -- Use this trailer: the two change places while neither is out.
-  c.spareTrailer = { model = 'boxutility', config = 'vehicles/boxutility/earth_freight_trailer_boxes.pc', name = 'Spare', paid = 4000, stored = true, at = 'base' }
-  T.check(c:view().trailer.switchAllowed, 'Use this trailer offered')
-  T.check(c:switchTrailer(), 'switched'); T.eq(c.trailer.name, 'Spare', 'the spare in use'); T.eq(c.spareTrailer.at, 'depot', 'the other kept')
+  -- Use this trailer: a parked one changes places with the one in use while none is out.
+  local inUse = c.trailer
+  T.check(c:switchTrailer(3), 'switched'); T.eq(c.spareTrailers[3], inUse, 'the other parked in its place')
+  -- Sell on Your trailers asks first, then pays 75% less its repair.
+  local selling = c.spareTrailers[3]
+  local price = c:view().trailer.spares[3].sale
+  T.eq(price, TR.salePrice(selling.paid, require('earthFreight/pricing').repairCost(4000, selling.paid)), '75% less the repair')
+  before = c:view().balance
+  T.check(not c:sellSpareTrailer(3), 'asks first'); T.check(c:view().trailer.spares[3].sellArmed, 'Confirm sale shown')
+  T.check(c:sellSpareTrailer(3), 'sold'); T.eq(c:view().balance, before + price, 'paid'); T.eq(#c.spareTrailers, 2, 'two parked')
+  -- All saved, and loaded back.
   T.check(c:bringOutTrailer(), 'hitched from base')
-  T.check(not c:switchTrailer(), 'no switching with one out')
-  -- Both saved, and loaded back.
   c:couplerChanged(1, c.trailerOut.id, true); c:tick(0.6); c:tick(0.6)
   T.check(c:manualSave(), 'saved')
-  local saved = io.files[A].spareTrailer and io.files[A] or io.files[B]
-  T.eq(saved.spareTrailer.at, 'depot', 'the spare saved where it is')
+  local saved = io.files[A].spareTrailers and io.files[A] or io.files[B]
+  T.eq(#saved.spareTrailers, 2, 'the parked trailers saved'); T.eq(saved.spareTrailer, nil, 'not the old way')
   local r = F.controller({ io = io })
   r:tick(0.1)
-  T.eq(r.spareTrailer.at, 'depot', 'and loaded'); T.eq(r:trailerWorth(), 4000 + c.spareTrailer.paid, 'both counted after loading')
-  -- Selling the one in use makes the other the one in use.
+  T.eq(#r.spareTrailers, 2, 'and loaded'); T.eq(r:trailerWorth(), c:trailerWorth(), 'all counted after loading')
+  -- Selling the one in use makes the first parked one the one in use.
   T.check(c:storeTrailer('base'), 'parked again')
-  c:sellTrailer(); T.check(c:sellTrailer(), 'sold'); T.eq(c.spareTrailer, nil, 'one left'); T.eq(c.trailer.at, 'depot', 'the other in use')
+  local nextUp = c.spareTrailers[1]
+  c:sellTrailer(); T.check(c:sellTrailer(), 'sold'); T.eq(c.trailer, nextUp, 'the first parked in use'); T.eq(#c.spareTrailers, 1, 'one parked')
 end
 
--- An older save's stored trailer goes to the base if it has a free spot, else the depot.
+-- An older save's stored trailer goes to the base if there is one, else the depot; its second
+-- trailer joins Your trailers.
 do
   local s = F.save(1)
   s.trailer = { model = 'boxutility', config = 'vehicles/boxutility/earth_freight_trailer_boxes.pc', name = 'Old', paid = 5000, stored = true }
@@ -2289,14 +2306,20 @@ do
   c:tick(0.1)
   T.eq(c.trailer.at, 'depot', 'no base: the depot')
   s.property = { latitude = 1, longitude = 2, paid = 250000 }
+  s.spareTrailer = { model = 'boxutility', config = 'vehicles/boxutility/earth_freight_trailer_boxes.pc', name = 'Two', paid = 1, stored = true, at = 'base' }
   c = F.controller({ io = F.io({ [F.CONFIG] = F.config(), [A] = F.copy(s) }) })
   c:tick(0.1)
-  T.eq(c.trailer.at, 'base', 'with a base: its spot')
+  T.eq(c.trailer.at, 'base', 'with a base: at the base')
+  T.eq(#c.spareTrailers, 1, 'the old second trailer is on Your trailers'); T.eq(c.spareTrailers[1].name, 'Two', 'that one')
   local P2 = require('earthFreight/persistence')
-  s.spareTrailer = { model = 'boxutility', config = 'vehicles/boxutility/earth_freight_trailer_boxes.pc', name = 'Two', paid = 1, stored = false }
-  T.eq(select(2, P2.validate(s)), 'invalid_trailer', 'the second trailer is always stored')
-  s.spareTrailer.stored = true; T.check(P2.validate(s), 'a stored second trailer loads')
-  s.trailer = nil; T.eq(select(2, P2.validate(s)), 'invalid_trailer', 'no second without a first')
+  s.spareTrailer.stored = false
+  T.eq(select(2, P2.validate(s)), 'invalid_trailer', 'a parked trailer is always stored')
+  s.spareTrailer = nil
+  s.spareTrailers = { { model = 'boxutility', config = 'vehicles/boxutility/earth_freight_trailer_boxes.pc', name = 'A', paid = 1, stored = true } }
+  T.check(P2.validate(s), 'a list of parked trailers loads'); T.eq(#P2.validate(s).spareTrailers, 1, 'kept')
+  s.spareTrailers = { 1, 2, 3, 4, 5 }; T.eq(select(2, P2.validate(s)), 'invalid_trailer', 'no more than the slots')
+  s.spareTrailers = { { model = 'boxutility', name = 'A', paid = 1, stored = true } }
+  s.trailer = nil; T.eq(select(2, P2.validate(s)), 'invalid_trailer', 'none parked without one in use')
 end
 
 -- A saved trailer is checked like the rest of the save.
@@ -2515,6 +2538,17 @@ do
   c = watched({ adapter = adapter })
   F.advance(c, Core.HUD_HINT_SECONDS * 3)
   T.eq(hints(c), 0, 'nor on a level without BeamNG.Earth')
+
+  c = watched()
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'playing alone: the .Earth layout')
+
+  local mp = { inSession = function() return true end, send = function() end, listen = function() return true end,
+    encode = function() return '' end, decode = function() return {} end }
+  c = watched({ multiplayer = mp })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(hints(c), 1, 'on a server too')
+  T.check(c.toasts[1].msg:find('BeamMP (edit layout)', 1, true) ~= nil, 'on a server: the BeamMP layout')
 end
 
 T.done('Earth Freight controller')

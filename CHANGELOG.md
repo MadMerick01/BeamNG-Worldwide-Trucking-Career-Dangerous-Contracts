@@ -8,6 +8,27 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **Trailer cargo stays in the trailer when your truck returns.** Loading a saved job could briefly put the trailer's whole load on the truck before the trailer appeared, making parts break off. The truck now receives only its own cargo, and the trailer's load is applied when it returns. Your saves still work.
 
+## Build 229 · 17 Nov 2026
+
+- **JATO rockets are not allowed online.** On a multiplayer server, while rockets are fitted to your truck or its hitched trailer you can't take jobs, fuel runs or beacon packages, and a red warning on the HUD tells you to remove them in the parts menu. If rockets go on at any point during a job, that job pays $0 when you deliver it, even if you take them off before the drop-off. A Mayday Rescue run ends as soon as rockets are fitted, and the server won't count a win with rockets on.
+- Single player is unchanged: rockets still work there as before. Your saves still work.
+
+## Build 228 · 17 Nov 2026
+
+- **Fuel runs pay about 40% less.** They were earning two to three times as much an hour as town jobs, so they now pay a little more than the best town jobs rather than far more. A full long tanker now earns about $206,000 for a 100 km run in flat country, down from about $284,000, and about $399,000 for 200 km, down from about $562,000.
+- Rough regions add half as much to a fuel run as they do to a town job, because most of a long run is on main roads. A run in a ×2 region now pays ×1.5, and the most it can reach is ×2. Your base's bonus still counts in full. A fuel run you have already loaded keeps its pay, and your saves still work.
+
+## Build 227 · 17 Nov 2026
+
+- **You can now own as many trailers as you have car slots.** That's 2 trailers at the start, 3 with a base or a corp, and 4 once you buy the 4th slot on Your cars. Before, it was 1 trailer, or 2 with a base. The $200,000 Buy a 4th slot button now gives you a 4th trailer slot too, and if you already bought it you get the extra trailer slot straight away.
+- **New: Your trailers, on the Trailer section of the Garage tab.** It lists the trailers you aren't using, each with where it is and what it's worth. Press **Hitch** to bring one out (free at your base, the haulier's fee away from it, or $250 from the depot), **Swap** at your base to park the trailer you're towing and hitch that one instead, or **Sell** for 75% of what you paid, less any repair. You confirm before it sells.
+- Your base or corp yard now keeps all your parked trailers, not just one, so you never have to send one to the depot because the spot is taken. Without a base, the depot keeps them for $250 each way, as before.
+- If you leave a corp and own more trailers than your slots allow, you keep them all, but you can't buy another until you've sold enough. Your saves still work: a second trailer you already had is on Your trailers.
+
+## Build 226 · 17 Nov 2026
+
+- **The steps for turning on the HUD now name the right layout on a server.** Since BeamNG.Earth 1.10.1, a BeamMP server usually shows BeamMP's own layout instead of .Earth, so a HUD you added in single player isn't there. On a server, the "Turn on the trucking HUD" pop-up now tells you to add it to the **BeamMP** layout (Esc > System > HUD Apps > BeamMP (edit layout) > + Add app). Playing alone it still says .Earth. The README and the server page say the same. Nothing for you to delete, and your saves still work.
+
 ## Build 225 · 16 Nov 2026
 
 - **The Season Leaderboard now shows every base a corp holds.** Once a corp opens a second base, its owner's row lists both towns (for example "Elk Grove Village, Marrakesh"), or the first few and how many more. Corp members, who don't own a base themselves, now show which corp they're in instead of a dash. This is on the server page and on the Land Race and Leaderboard tab in the HUD. Wealth is worked out the same as before: opening another base is free, so it doesn't add to anyone's wealth. Your saves still work.

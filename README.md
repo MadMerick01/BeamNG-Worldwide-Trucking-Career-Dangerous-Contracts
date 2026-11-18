@@ -19,7 +19,7 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 - **178,700 real earth towns, each with a job board.** Move parts, bricks, water and fuel.
 - **Garage - Build your Rig.** Upgrade parts, buy and sell **new** and **second hand** vehicles.
-- **Trailers.** Buy one of 16 trailers, from a small box trailer to a 34,000 L tanker, with cargo boxes or fluid tanks fitted. Hitch it for extra cargo space. Your base of operations has a spot for one trailer, so with a base you can own two; without one, a depot keeps your trailer for a fee.
+- **Trailers.** Buy one of 16 trailers, from a small box trailer to a 34,000 L tanker, with cargo boxes or fluid tanks fitted. Hitch it for extra cargo space. You can own as many trailers as you have car slots: 2, 3 with a base, 4 with the bought slot. Your base keeps them for free; without one, a depot keeps them for a fee.
 - **Real businesses.** Many town jobs end at a real shop, yard or warehouse in that town, found on OpenStreetMap. Pull up within 25 m of it to deliver; with Street View open you see the real place.
 - **Off-road drops.** No GPS route: follow the arrow on the Route tab to a spot off the road.
 - **Dangerous highly paid contracts.** Death Road, Carhuaz, Anta, Marcará, Zoji La, Ravin de Piquet, Sani Pass and Grimsel, for up to **8x the pay**. They stay in rotation after you deliver them, so you can drive your favourites again.
@@ -37,8 +37,8 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 1. Download `worldwide-trucking-dangerous-contracts.zip` from the [latest release](../../releases/latest).
 2. Drop it, **still zipped**, into the `mods` folder of your BeamNG user folder. If an older `earth-freight-sim.zip` or `earth_freight.zip` is there, delete it so two copies don't load. Your saves carry over.
-3. In game, turn on the **BeamNG Worldwide Trucking Career: Dangerous Contracts** HUD app. Go to System >  HUD Apps > .Earth (edit layout) > +Add app > Scroll down to bottom of HUD APPS >
-   BeamNG Worldwide Trucking Career: Dangerous Contracts > + Add to layout > (move it where you wish onscreen) > Save
+3. In game, turn on the **BeamNG Worldwide Trucking Career: Dangerous Contracts** HUD app. Press Esc, go to System > HUD Apps and edit the layout you're using: **.Earth** when you play alone, **BeamMP** on a server. Then + Add app > scroll down to the bottom of HUD APPS >
+   BeamNG Worldwide Trucking Career: Dangerous Contracts > + Add to layout > (move it where you wish onscreen) > Save. Each layout keeps its own apps, so if you play both alone and on a server, add it to both.
 
 ## How to Start
 
