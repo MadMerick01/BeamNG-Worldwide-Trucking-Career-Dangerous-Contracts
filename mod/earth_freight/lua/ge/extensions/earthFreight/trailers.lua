@@ -719,7 +719,8 @@ function M.attach(c)
       if not vehicle or vehicle.id ~= self.ownedParts.id then return end
       -- A trailer saved out comes back behind the car, once; if it cannot, it is stored.
       self.trailerRestored = true
-      if not self:spawnTrailer() then t.stored, t.at = true, fallbackPlace(self) end
+      if self:spawnTrailer() then self:applyWeight()
+      else t.stored, t.at = true, fallbackPlace(self) end
       return
     end
     if self.clock - (out.checkedAt or -math.huge) < M.CHECK_SECONDS then return end
@@ -755,8 +756,9 @@ function M.attach(c)
   function c:applyTrailerWeight(kg, good)
     local out, load = self.trailerOut, self.load
     local units = load and load.trailerUnits or 0
-    if not out or not self.cargo or not self.cargo.setWeightOn then return kg end
     local trailerKg = (good and units > 0) and math.min(kg, units * good.kg) or 0
+    -- The car may respawn before the trailer. Its reserved cargo must never fall back onto the car.
+    if not out or not self.cargo or not self.cargo.setWeightOn then return kg - trailerKg end
     local fluid = { litres = 0, density = 1, tanks = {} }
     if good and good.kind == 'fluid' and units > 0 then
       fluid.litres, fluid.density = units * good.litres, good.kg / good.litres
