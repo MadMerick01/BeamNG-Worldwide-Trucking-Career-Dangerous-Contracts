@@ -44,6 +44,16 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     } catch (e) { return {} }
   }
   var storeFolds = function (folds) { try { window.localStorage.setItem(FOLDS, JSON.stringify(folds)) } catch (e) {} }
+  // The last Mayday Rescue call the player closed the card for or looked at on its tab, by its round, kept the same way
+  // so a call's card doesn't come back after a restart. The next call gets a new card.
+  var MAYDAY = 'earthFreight.maydaySeen'
+  var storedMayday = function () {
+    try { var v = parseInt(window.localStorage.getItem(MAYDAY), 10); return isFinite(v) ? v : null } catch (e) { return null }
+  }
+  var storeMayday = function (round) { try { window.localStorage.setItem(MAYDAY, String(round)) } catch (e) {} }
+  kept.maydaySeen = storedMayday()
+  // MadMerick's alert, played once when a new call's card shows.
+  var MAYDAY_SOUND = '/ui/modules/apps/TruckingCareerDC/mayday_alert.wav'
   // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
   // bill here and the box goes on the page itself, over the menu. It stays until the player closes
   // it, Lua says the bill was paid or undone, or the menu closes and the HUD is built again.
@@ -172,9 +182,14 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // Mayday Rescue is a server event: its tab only shows while the server has a call out.
       scope.tabShown = function (id) { return id !== 'mayday' || !!(scope.data && scope.data.mayday) }
       scope.tab = kept.tab
+      var seeMayday = function (call) {
+        if (!call || typeof call.round !== 'number' || kept.maydaySeen === call.round) return
+        kept.maydaySeen = call.round
+        storeMayday(call.round)
+      }
       scope.setTab = function (id) {
         scope.tab = kept.tab = id
-        if (id === 'mayday' && scope.data && scope.data.mayday) kept.maydaySeen = scope.data.mayday.round
+        if (id === 'mayday' && scope.data) seeMayday(scope.data.mayday)
       }
       // Marks a tab that has something waiting for the player.
       var alerts = {
@@ -222,6 +237,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.hudAlert = function (d) {
         d = d || scope.data || {}
         if (d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) return 'bad'
+        if (scope.maydayCard(d)) return 'mayday'
         for (var id in alerts) if (alerts[id](d)) return 'waiting'
         return ''
       }
@@ -255,6 +271,31 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         } catch (e) {}
       }
       scope.chimes = function () { return kept.chimes || 0 }
+      // The Mayday Rescue card: a call is out that the player hasn't closed the card for or looked at, and they aren't
+      // on a run. It hangs under the minimised strip, or sits above the tabs, and waits for the start page to close.
+      scope.maydayCard = function (d) {
+        d = d || scope.data || {}
+        var m = d.mayday
+        return !!(m && m.open && !m.running && kept.maydaySeen !== m.round && !(scope.intro && scope.intro.open))
+      }
+      scope.closeMaydayCard = function () { if (scope.data) seeMayday(scope.data.mayday) }
+      scope.openMaydayCard = function () {
+        if (!scope.data || !scope.data.mayday) return
+        scope.setMinimised(false)
+        scope.setTab('mayday')
+      }
+      // The alert sound, once for each call's card. Where the game can't play it, the chime stands in.
+      var maydayAlert = function () {
+        kept.maydayAlerts = (kept.maydayAlerts || 0) + 1
+        try {
+          if (typeof Audio === 'undefined') return chime()
+          var sound = new Audio(MAYDAY_SOUND)
+          sound.volume = 0.6
+          var played = sound.play()
+          if (played && played.catch) played.catch(function () { chime() })
+        } catch (e) { chime() }
+      }
+      scope.maydayAlerts = function () { return kept.maydayAlerts || 0 }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
@@ -268,6 +309,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         // The start page opens once on a new game or on loading a save, until the player is there.
         if (next.arrived || (previous.mode && previous.mode !== next.mode)) kept.introShown = false
         if (scope.atDestination(next) && !scope.atDestination(previous)) chime()
+        if (scope.maydayCard(next) && kept.maydayRung !== next.mayday.round) {
+          kept.maydayRung = next.mayday.round
+          maydayAlert()
+        }
         if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
           kept.introShown = true; scope.openIntro(next)
         }
@@ -284,7 +329,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         }
         if (scope.tab === 'town' && !next.town) scope.setTab('route')
         if (scope.tab === 'mayday' && !next.mayday) scope.setTab('route')
-        if (scope.tab === 'mayday' && next.mayday) kept.maydaySeen = next.mayday.round
+        // On the Mayday Rescue tab a new call is seen, but not while the HUD is minimised to the strip.
+        if (scope.tab === 'mayday' && next.mayday && !scope.hud.minimised) seeMayday(next.mayday)
       }
       // The start page: the player's name, how to play, their truck and their career. It fills a big
       // window in the middle of the screen, so it is moved onto the page body, out of the small app
