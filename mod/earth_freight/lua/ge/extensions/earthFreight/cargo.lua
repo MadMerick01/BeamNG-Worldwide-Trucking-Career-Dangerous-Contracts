@@ -222,9 +222,29 @@ if poured then
 end
 report()
 if extra <= 0.001 then return end
+-- Changing a coupling node's mass during initialization can release the latch.
+-- Put solid cargo on the remaining nodes, leaving both coupling endpoints alone.
+local coupled = {}
+local function reserve(names)
+  if type(names) == 'table' then for _, name in pairs(names) do coupled[name] = true end
+  elseif names ~= nil then coupled[names] = true end
+end
+local function reserveCouplers(data)
+  if type(data) ~= 'table' or type(data.couplerNodes) ~= 'table' then return end
+  for _, pair in pairs(tableFromHeaderTable(data.couplerNodes)) do reserve(pair.cid1); reserve(pair.cid2) end
+end
+for _, data in pairs(v.data.controller or {}) do
+  if type(data) == 'table' and data.fileName == 'advancedCouplerControl' then
+    reserveCouplers(data)
+    reserveCouplers(v.data[data.name or data.fileName])
+  end
+end
+local function loadable(n)
+  return type(n) == 'table' and n.cid ~= nil and not n.couplerTag and not n.tag and not coupled[n.name]
+end
 local list = {}
-for _, n in pairs(v.data.nodes) do if type(n) == 'table' and n.cid and parts[n.partOrigin] then list[#list + 1] = n end end
-if #list == 0 then for _, n in pairs(v.data.nodes) do if type(n) == 'table' and n.cid then list[#list + 1] = n end end end
+for _, n in pairs(v.data.nodes) do if loadable(n) and parts[n.partOrigin] then list[#list + 1] = n end end
+if #list == 0 then for _, n in pairs(v.data.nodes) do if loadable(n) then list[#list + 1] = n end end end
 if #list == 0 then return end
 local weights = BALANCE(list) or {}
 local total = 0

@@ -48,6 +48,54 @@ do
   run(vehicle.commands[5], { v = {}, obj = {} }) -- a car without nodes: nothing happens, no error
 end
 
+-- Boot cargo must not alter the endpoints of mirror couplers or advanced hood/door latches.
+-- The MD70 can release these during initialization even with a small, correctly allocated load.
+do
+  local vehicle = car()
+  local w = cargo.new({ player = function() return vehicle end })
+  local nodes = {
+    [0] = { cid = 0, name = 'mirror', nodeWeight = .55, couplerTag = 'mirror' },
+    [1] = { cid = 1, name = 'mirrorTarget', nodeWeight = .25, tag = 'mirror' },
+    [2] = { cid = 2, name = 'hoodLatch', nodeWeight = 1 },
+    [3] = { cid = 3, name = 'hoodTarget', nodeWeight = 1 },
+    [4] = { cid = 4, name = 'hoodAlternate', nodeWeight = 1 },
+    [5] = { cid = 5, name = 'doorLatch', nodeWeight = 1 },
+    [6] = { cid = 6, name = 'doorTarget', nodeWeight = 1 },
+    [7] = { cid = 7, name = 'frameA', nodeWeight = 10, partOrigin = 'frame' },
+    [8] = { cid = 8, name = 'frameB', nodeWeight = 10, partOrigin = 'frame' },
+  }
+  local header = { 'cid1', 'cid2' }
+  local masses, writes = {}, {}
+  for cid, n in pairs(nodes) do masses[cid] = n.nodeWeight end
+  local world = { v = { data = { nodes = nodes,
+    controller = {
+      { fileName = 'advancedCouplerControl', name = 'hood' },
+      { fileName = 'advancedCouplerControl', name = 'door', couplerNodes = { header, { 'doorLatch', 'doorTarget' } } },
+    },
+    hood = { couplerNodes = { header, { 'hoodLatch', { 'hoodTarget', 'hoodAlternate' } } } },
+  } }, obj = {
+    getNodeMass = function(_, cid) return masses[cid] end,
+    setNodeMass = function(_, cid, mass) masses[cid], writes[cid] = mass, true end,
+  }, tableFromHeaderTable = function(rows)
+    local out = {}
+    for i = 2, #rows do out[#out + 1] = { cid1 = rows[i][1], cid2 = rows[i][2] } end
+    return out
+  end }
+  local function apply(kg, parts)
+    w:setWeight(kg, parts or {}); run(vehicle.commands[#vehicle.commands], world)
+    for cid = 0, 6 do T.check(not writes[cid], 'coupling endpoint ' .. cid .. ' untouched') end
+  end
+  apply(25.5)
+  T.near(masses[7] + masses[8] - 20, 25.5, 1e-9, 'all boot cargo remains on the truck')
+  apply(25.5)
+  T.near(masses[7] + masses[8] - 20, 25.5, 1e-9, 'repeat replaces the existing load')
+  apply(30, { 'frame' })
+  T.near(masses[7] + masses[8] - 20, 30, 1e-9, 'selected-part cargo keeps its full weight')
+  apply(0)
+  T.eq(masses[7], 10, 'unloading restores the first frame node')
+  T.eq(masses[8], 10, 'unloading restores the second frame node')
+end
+
 -- A trailer's load is centred just ahead of its axles, so hitchShare of it rests on the hitch.
 do
   local trailer = car(42)
@@ -82,7 +130,8 @@ do
   -- Without wheels to find the axles, it is spread evenly as before.
   world.v.data.wheels = nil
   w:setWeightOn(42, 900, {}, {}, 0.12); run(trailer.commands[2], world)
-  T.near(masses[1] - 5, 900 / 12, 1e-6, 'even spread over every node')
+  T.near(masses[1] - 5, 900 / 11, 1e-6, 'even spread over nodes other than the coupler')
+  T.eq(masses[0], 5, 'fallback also leaves the coupler mass unchanged')
   -- A share outside 0..1 is never sent: the load is then spread evenly.
   w:setWeightOn(42, 10, {}, {}, 2)
   T.check(trailer.commands[3]:match('^[^\n]*') :sub(-5) == ', nil', 'a share outside 0..1 is sent as none')
