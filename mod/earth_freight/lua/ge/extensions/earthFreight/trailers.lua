@@ -765,9 +765,47 @@ function M.attach(c)
     end
     local t = self.trailer
     local hitch = t and M.hitchOf(t.model, t.config)
+    -- A tanker with a Load Volume setting (the game's own tankers) carries its fluid by that
+    -- setting, so the game weighs it and sloshes it; the mod adds nothing of its own on top.
+    if (not good or good.kind == 'fluid') and self:trailerLoadVolume(out, fluid.litres) then
+      trailerKg, fluid = 0, { litres = 0, density = 1, tanks = {} }
+    end
     local ok, why = self.cargo:setWeightOn(out.id, trailerKg, {}, fluid, M.HITCH_SHARE[hitch or 'ball'])
     if not ok then self.diag:event('trailer_weight_failed', tostring(why), 'W') end
-    return kg - trailerKg
+    return kg - ((good and units > 0) and math.min(kg, units * good.kg) or 0)
+  end
+
+  -- Sets the trailer's Load Volume to litres, when it has that setting: true when it does (the
+  -- game then carries the fluid), false when it has none or it could not be set. Changing it
+  -- respawns the trailer where it stands, which leaves it as new, so the damage it had is kept
+  -- owed first; then it hitches again and the player stays in their car. Asked once for each
+  -- amount, so a respawn the game did not take is not asked for over and over.
+  function c:trailerLoadVolume(out, litres)
+    if not self.garage or not self.garage.loadVolume then return false end
+    local setting = self.garage:loadVolume(out.id)
+    if not setting then return false end
+    litres = math.max(0, math.floor((litres or 0) + 0.5))
+    if setting.max and setting.max > 0 then litres = math.min(litres, setting.max) end
+    if math.abs(setting.value - litres) < 1 then out.loadVolumeAsked = nil; return true end
+    if out.loadVolumeAsked == litres then return true end
+    if not self.garage.setLoadVolume then return false end
+    local t = self.trailer
+    local inspected = self.garage.inspect and self.garage:inspect(out.id)
+    if inspected and finite(inspected.damage) then out.damage = inspected.damage end
+    local ok, why, detail = self.garage:setLoadVolume(out.id, setting.name, litres)
+    if not ok then
+      self.diag:event('trailer_load_volume_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
+      return false
+    end
+    if t then
+      t.damage = self:trailerDamage()
+      if t.damage <= 0 then t.damage = nil end
+    end
+    out.damage, out.loadVolumeAsked = 0, litres
+    if self.ownedParts and self.garage.enter then self.garage:enter(self.ownedParts.id) end
+    if self.garage.hitch then self.garage:hitch(out.id) end
+    self.diag:event('trailer_load_volume', string.format('%s %d L', setting.name, litres))
+    return true
   end
 
   -- Why the job cannot be delivered for the trailer, or nil.

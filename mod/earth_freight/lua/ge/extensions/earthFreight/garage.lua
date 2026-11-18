@@ -395,6 +395,49 @@ function M.new(environment)
     return true
   end
 
+  -- The tuning setting that fills a vehicle's load in litres, as the game's own tanker trailers
+  -- have ("Load Volume" under Load in Vehicle Config, Tuning): { name, max, value }, value being
+  -- what it is set to now. nil when the vehicle has none.
+  function g:loadVolume(id)
+    local data = vehicleData(id)
+    local variables = data and type(data.vdata) == 'table' and data.vdata.variables or nil
+    if type(variables) ~= 'table' then return nil end
+    for key, v in pairs(variables) do
+      if type(v) == 'table' then
+        local title = tostring(v.title or ''):lower()
+        local unit = tostring(v.unit or ''):lower()
+        local name = type(v.name) == 'string' and v.name or (type(key) == 'string' and key or nil)
+        if name and title:find('load', 1, true) and title:find('volume', 1, true) and (unit == 'l' or unit == '') then
+          local vars = type(data.config.vars) == 'table' and data.config.vars or {}
+          local value = tonumber(vars[name]) or tonumber(v.val) or tonumber(v.default) or 0
+          return { name = name, max = tonumber(v.max), value = value }
+        end
+      end
+    end
+    return nil
+  end
+
+  -- Sets a vehicle's Load Volume (the name loadVolume gave) to litres and respawns it where it
+  -- stands with everything else as it was, as the game's own Apply does. The respawn leaves it as
+  -- new. Returns true once the game accepted the respawn.
+  function g:setLoadVolume(id, name, litres)
+    local found, vehicle = pcall(env.objectById, id)
+    if not found or not vehicle then return false, 'vehicle_required' end
+    local vehicles = env.vehicles()
+    if type(vehicles) ~= 'table' or type(vehicles.replaceVehicle) ~= 'function' then return false, 'respawn_unavailable' end
+    local data = vehicleData(id)
+    if not data then return false, 'config_unavailable' end
+    local config = copy(data.config)
+    config.vars = copy(type(data.config.vars) == 'table' and data.config.vars or {})
+    config.vars[name] = litres
+    local modelOK, model = pcall(function() return vehicle:getJBeamFilename() end)
+    if not modelOK or type(model) ~= 'string' or model == '' then model = config.model end
+    if type(model) ~= 'string' or model == '' then return false, 'config_unavailable' end
+    local ok, why = pcall(vehicles.replaceVehicle, model, { config = config, keepOtherVehRotation = true }, vehicle)
+    if not ok then return false, 'respawn_failed', tostring(why) end
+    return true
+  end
+
   -- Puts the player vehicle back on the road it was last on, as the game's recovery menu does.
   -- Returns true once the game was asked; the move happens a moment later.
   function g:toRoad()
