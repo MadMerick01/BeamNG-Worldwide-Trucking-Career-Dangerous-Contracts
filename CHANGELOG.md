@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 232 · 18 Nov 2026
+
 - **Small loads no longer release mirrors or hood and door latches when a truck spawns.** Cargo carried without a fitted box now leaves coupling nodes alone and puts its full weight on the remaining nodes.
 
 ## Build 230 · 18 Nov 2026
