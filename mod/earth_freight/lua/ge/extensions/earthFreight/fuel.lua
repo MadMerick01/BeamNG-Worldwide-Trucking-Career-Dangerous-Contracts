@@ -28,6 +28,9 @@ M.PRICE_PERCENT = 100
 -- A town's Refuel button, away from any pump: this many times that continent's pump price, so
 -- players use the pumps (MadMerick, 14 Nov: 5 times, with a warning).
 M.TOWN_PRICE_TIMES = 5
+-- The Refuel button anywhere else, stopped at the roadside: this many times the pump price, for
+-- when the tank runs dry far from a pump (MadMerick, 18 Nov: 20 times, towns kept at 5).
+M.ROADSIDE_PRICE_TIMES = 20
 -- How close the car's middle must be to a pump to fill up there (a truck is long).
 M.PUMP_METRES = 10
 -- The station list is gathered again at most this often (seconds).
@@ -90,13 +93,21 @@ function M.continent(region)
   return type(region) == 'string' and M.CONTINENT_OF[region] or nil
 end
 
+-- How many times the pump price the Refuel button costs: 'pump' (or nil) 1, 'town' (or true)
+-- TOWN_PRICE_TIMES, 'roadside' ROADSIDE_PRICE_TIMES.
+function M.times(where)
+  if where == 'roadside' then return M.ROADSIDE_PRICE_TIMES end
+  if where == 'town' or where == true then return M.TOWN_PRICE_TIMES end
+  return 1
+end
+
 -- Dollars a litre, to the cent, for this fuel ('diesel', or anything else as petrol) on this
--- continent; town = true is a town's Refuel button, away from a station.
-function M.price(continent, fuelType, town)
+-- continent; where is 'pump' (or nil), 'town' (or true) for a town's Refuel button away from a
+-- station, or 'roadside' for the Refuel button anywhere else.
+function M.price(continent, fuelType, where)
   local row = M.PRICES[continent] or M.WORLD
   local base = fuelType == 'diesel' and row.diesel or row.gasoline
-  local price = base * M.PRICE_PERCENT / 100
-  if town then price = price * M.TOWN_PRICE_TIMES end
+  local price = base * M.PRICE_PERCENT / 100 * M.times(where)
   return math.floor(price * 100 + 0.5) / 100
 end
 
