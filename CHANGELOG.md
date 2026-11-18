@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Leaving the parts menu now puts you back on your car's camera.** After pressing **Buy parts** and closing the game's parts menu, you used to be left in the free camera and had to press Shift+C. Now you're back on the camera you were driving with, such as the driver or chase camera. If you were already in the free camera before pressing Buy parts, you stay in it. Your saves still work.
+
 ## Build 233 · 18 Nov 2026
 
 - **Fuel and water in a tanker trailer now weigh it down.** Before, a load in the game's own tanker trailers weighed nothing, so fuel runs drove like an empty trailer while town jobs in a truck's own tanks were heavy. Now when you load, the mod fills the tanker's Load Volume setting (the slider under Load in Vehicle Config, Tuning) with your load, and the game weighs and sloshes it. The trailer blinks and hitches itself again as it fills, and again when it empties after you deliver or abandon. Any damage it had is still on your repair bill.
