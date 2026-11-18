@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 234 · 18 Nov 2026
+
 - **Leaving the parts menu now puts you back on your car's camera.** After pressing **Buy parts** and closing the game's parts menu, you used to be left in the free camera and had to press Shift+C. Now you're back on the camera you were driving with, such as the driver or chase camera. If you were already in the free camera before pressing Buy parts, you stay in it. Your saves still work.
 
 ## Build 233 · 18 Nov 2026
