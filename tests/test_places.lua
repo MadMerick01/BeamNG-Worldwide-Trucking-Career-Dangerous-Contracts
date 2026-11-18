@@ -90,7 +90,7 @@ local tank = { slots = 20, kg = 1000, litres = 800, tankKg = 800 }
 T.eq(cargo.fits(starter, water), 0, 'no fluid without a tank')
 units, slots, kg = cargo.fits(tank, water)
 T.eq(units, 80, '80 units of 10 L'); T.eq(slots, 800, 'filling 800 L'); T.eq(kg, 680, 'weighing 680 kg, 15% under a kg a litre')
-units, slots, kg = cargo.fits(tank, fuel); T.eq(slots, 800, 'fuel fills the tank too'); T.eq(kg, 510, 'lighter: 510 kg')
+units, slots, kg = cargo.fits(tank, fuel); T.eq(slots, 800, 'fuel fills the tank too'); T.eq(kg, 680, 'as heavy as water: 680 kg')
 T.near(jobs.basePay(water, 80, 5), 1500 * (800 / 780) ^ 0.5, 1e-6, 'a full tank of water (800 kg) pays about $1,520 over 5 km')
 T.near(jobs.basePay(fuel, 80, 5), 1500 * 600 / 780, 1e-6, 'fuel (600 kg) about $1,150')
 -- Goods weigh 15% less than their pay weight, so a unit pays what it did.

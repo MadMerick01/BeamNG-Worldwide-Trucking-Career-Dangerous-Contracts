@@ -8,6 +8,14 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **You can now buy fuel anywhere, not just at a petrol station or in a town.** Stop the truck anywhere on the road and the **Refuel** button on the Garage tab works, at 20 times the pump price. For example, diesel in Europe costs $2.49 a litre at a pump, $12.45 in a town and $49.80 at the roadside. The Fuel section shows "roadside price" in red with both prices, so you know what you're paying before you press it, and afterwards it tells you what a pump would have cost.
 - Petrol station pumps and town prices are unchanged: the pump price at a pump, and 5 times that in a town. The fuel you haul on a fuel run stays in the tanker and is never used to refuel your truck. Your saves still work.
+- **Fuel and water in a tanker trailer now weigh it down.** Before, a load in the game's own tanker trailers weighed nothing, so fuel runs drove like an empty trailer while town jobs in a truck's own tanks were heavy. Now when you load, the mod fills the tanker's Load Volume setting (the slider under Load in Vehicle Config, Tuning) with your load, and the game weighs and sloshes it. The trailer blinks and hitches itself again as it fills, and again when it empties after you deliver or abandon. Any damage it had is still on your repair bill.
+- **New: a Load slider on fuel runs.** Each run on the Fuel runs card now has the same Load slider as town jobs, from 10% to 100%, so you can take a lighter tanker for a share of the pay. Half a load pays half, and the litres and weight shown follow the slider.
+- **Fuel now weighs the same as water**, so a full tank of fuel is as heavy as a full tank of water. Fuel jobs and fuel runs pay exactly what they did.
+- If any truck or trailer tank can't take the weight of its load, the weight now goes on the vehicle's frame instead of vanishing. Your saves still work, and a job you already have gets its weight the next time it's put on, such as after a repair or loading your save.
+
+## Build 232 · 18 Nov 2026
+
+- **Small loads no longer release mirrors or hood and door latches when a truck spawns.** Cargo carried without a fitted box now leaves coupling nodes alone and puts its full weight on the remaining nodes.
 
 ## Build 230 · 18 Nov 2026
 

@@ -188,13 +188,20 @@ end
 local function call(name, ...)
   if type(obj[name]) == 'function' then pcall(obj[name], obj, ...) end
 end
+-- Fills a container to volume litres and returns the mass its nodes now have, so what a fill
+-- really added is that less the mass at 0 L.
 local function fill(c, volume)
+  local total = 0
   for _, n in ipairs(c.nodes) do
     local mass = value(n.nodeWeightFunction, volume)
-    if mass then obj:setNodeMass(n.cid, mass) end
+    if mass then obj:setNodeMass(n.cid, mass); total = total + mass end
   end
   for _, n in ipairs(c.legacy) do
-    if type(n.nodeWeight) == 'number' then obj:setNodeMass(n.cid, n.nodeWeight + volume * density / #c.legacy) end
+    if type(n.nodeWeight) == 'number' then
+      local mass = n.nodeWeight + volume * density / #c.legacy
+      obj:setNodeMass(n.cid, mass)
+      total = total + mass
+    end
   end
   for _, b in ipairs(c.beams) do
     if b.beamSpringFunction or b.beamDampFunction then
@@ -212,19 +219,49 @@ local function fill(c, volume)
     local precompression = value(b.beamPrecompressionFunction, volume)
     if precompression then call('setPrecompressionRatio', b.cid, precompression) end
   end
+  return total
 end
-for _, c in ipairs(containers) do fill(c, 0) end
+local empty = {}
+for i, c in ipairs(containers) do empty[i] = fill(c, 0) end
 local poured = litres > 0 and capacity > 0
 if poured then
   local share = math.min(1, litres / capacity)
-  for _, c in ipairs(containers) do fill(c, c.size * share) end
-  extra = math.max(0, extra - math.min(litres, capacity) * density)
+  local took = 0
+  for i, c in ipairs(containers) do took = took + math.max(0, fill(c, c.size * share) - empty[i]) end
+  -- Only what the containers really took comes off the load: a tank whose expressions give no
+  -- weight (some trailers weigh their load by a tuning setting instead) must not make the fluid
+  -- weigh nothing. The rest goes over the tank's nodes, or the vehicle, below.
+  local wanted = math.min(litres, capacity) * density
+  if took < wanted * 0.9 and log then
+    pcall(log, 'W', 'earthFreight', string.format('fluid_weight_short: tanks took %%.0f of %%.0f kg', took, wanted))
+  end
+  extra = math.max(0, extra - math.min(wanted, took))
 end
 report()
 if extra <= 0.001 then return end
+-- Changing a coupling node's mass during initialization can release the latch.
+-- Put solid cargo on the remaining nodes, leaving both coupling endpoints alone.
+local coupled = {}
+local function reserve(names)
+  if type(names) == 'table' then for _, name in pairs(names) do coupled[name] = true end
+  elseif names ~= nil then coupled[names] = true end
+end
+local function reserveCouplers(data)
+  if type(data) ~= 'table' or type(data.couplerNodes) ~= 'table' then return end
+  for _, pair in pairs(tableFromHeaderTable(data.couplerNodes)) do reserve(pair.cid1); reserve(pair.cid2) end
+end
+for _, data in pairs(v.data.controller or {}) do
+  if type(data) == 'table' and data.fileName == 'advancedCouplerControl' then
+    reserveCouplers(data)
+    reserveCouplers(v.data[data.name or data.fileName])
+  end
+end
+local function loadable(n)
+  return type(n) == 'table' and n.cid ~= nil and not n.couplerTag and not n.tag and not coupled[n.name]
+end
 local list = {}
-for _, n in pairs(v.data.nodes) do if type(n) == 'table' and n.cid and parts[n.partOrigin] then list[#list + 1] = n end end
-if #list == 0 then for _, n in pairs(v.data.nodes) do if type(n) == 'table' and n.cid then list[#list + 1] = n end end end
+for _, n in pairs(v.data.nodes) do if loadable(n) and parts[n.partOrigin] then list[#list + 1] = n end end
+if #list == 0 then for _, n in pairs(v.data.nodes) do if loadable(n) then list[#list + 1] = n end end end
 if #list == 0 then return end
 local weights = BALANCE(list) or {}
 local total = 0
