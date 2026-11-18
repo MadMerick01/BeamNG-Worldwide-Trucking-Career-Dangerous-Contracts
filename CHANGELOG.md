@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **You can't miss a new Mayday Rescue call now, even with the HUD minimised.** When a call goes out online, a red Mayday Rescue card drops in under the small strip, the strip's dot turns red, and a short alert sounds once. The card shows where the call is, its story, the $80,000 reward, how far away you are, how long until it moves on and how many truckers have set off. It also says if something stops you going, such as a job you're still on.
+- Press **Open Mayday Rescue** to open the HUD on the Mayday Rescue tab, or **Not now** (or the X) to close the card. Either way it won't come back for that call, even after you restart the game, and the next call gets a new card. The card also goes by itself when someone wins, the call moves on, or you start a run. With the HUD open, the same card sits above the tabs. Your saves still work.
+
 ## Build 229 · 17 Nov 2026
 
 - **JATO rockets are not allowed online.** On a multiplayer server, while rockets are fitted to your truck or its hitched trailer you can't take jobs, fuel runs or beacon packages, and a red warning on the HUD tells you to remove them in the parts menu. If rockets go on at any point during a job, that job pays $0 when you deliver it, even if you take them off before the drop-off. A Mayday Rescue run ends as soon as rockets are fitted, and the server won't count a win with rockets on.

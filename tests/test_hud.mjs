@@ -1059,6 +1059,72 @@ test('Mayday Rescue: its tab shows only while a call is out, and the edge button
   assert.ok(route.includes('ng-if="data.mayday.running"') && route.includes('arrowStyle(data.mayday)'), 'and on the Route tab')
   assert.equal(a.scope.arrowStyle({ arrow: 90 }).transform, 'rotate(90deg)')
 })
+test('Mayday Rescue card: shows for a new call even when minimised, plays the alert once, and stays closed after a restart', () => {
+  const saved = { 'earthFreight.hudMinimised': '1' }
+  const storage = { getItem: k => saved[k] ?? null, setItem: (k, v) => { saved[k] = String(v) } }
+  const played = []
+  class Audio { constructor(src) { this.src = src } play() { played.push(this); return { catch() {} } } }
+  let a = app(storage, undefined, { Audio })
+  const call = { round: 7, open: true, name: 'Coober Pedy', region: 'South Australia', story: 'A road train lost a wheel.',
+    reward: 80000, edges: [], secondsLeft: 7000, distanceMetres: 1284000, racers: 2 }
+  a.state({ state: 'READY', arrived: true })
+  assert.equal(a.scope.maydayCard(), false, 'no call: no card')
+  a.state({ state: 'READY', arrived: true, mayday: call })
+  assert.equal(a.scope.hud.minimised, true, 'the HUD stays minimised')
+  assert.equal(a.scope.maydayCard(), true, 'a new call: the card shows')
+  assert.equal(a.scope.hudAlert(), 'mayday', 'and the strip gets a red dot')
+  assert.equal(played.length, 1, 'the alert plays')
+  assert.equal(played[0].src, '/ui/modules/apps/TruckingCareerDC/mayday_alert.wav')
+  a.state({ state: 'READY', arrived: true, mayday: { ...call, secondsLeft: 6990 } })
+  assert.equal(played.length, 1, 'only once for a call')
+  // Closed with Not now: gone, with its dot, and not back after the game restarts.
+  a.scope.closeMaydayCard()
+  assert.equal(a.scope.maydayCard(), false, 'closed')
+  assert.equal(a.scope.tabAlert('mayday'), false, 'counts as seen')
+  assert.equal(saved['earthFreight.maydaySeen'], '7')
+  a = app(storage, undefined, { Audio })
+  a.state({ state: 'READY', arrived: true, mayday: call })
+  assert.equal(a.scope.maydayCard(), false, 'not back after a restart')
+  assert.equal(played.length, 1, 'and no sound')
+  // The next call gets a new card. Open Mayday Rescue opens the HUD on the tab.
+  a.state({ state: 'READY', arrived: true, mayday: { ...call, round: 8 } })
+  assert.equal(a.scope.maydayCard(), true, 'the next call: a new card')
+  assert.equal(played.length, 2)
+  a.scope.openMaydayCard()
+  assert.equal(a.scope.hud.minimised, false, 'Open Mayday Rescue opens the HUD')
+  assert.equal(a.scope.tab, 'mayday', 'on the Mayday Rescue tab')
+  assert.equal(a.scope.maydayCard(), false, 'and the card goes')
+})
+test('Mayday Rescue card: not for a won call, a run, or over the start page, and a minimised Mayday tab does not hide it', () => {
+  const a = app()
+  const call = { round: 3, open: true, name: 'Gobi Desert', reward: 80000, edges: [], secondsLeft: 3600 }
+  a.state({ state: 'READY', arrived: true, mayday: { ...call, open: false, winner: 'Sam' } })
+  assert.equal(a.scope.maydayCard(), false, 'a won call: no card')
+  a.state({ state: 'READY', arrived: true, mayday: { ...call, running: { edge: 'North', seconds: 4 } } })
+  assert.equal(a.scope.maydayCard(), false, 'on a run: no card')
+  assert.equal(a.scope.tab, 'mayday', 'the run opened the tab')
+  a.scope.setTab('route')
+  a.scope.intro.open = true
+  a.state({ state: 'READY', arrived: true, mayday: { ...call, round: 4 } })
+  assert.equal(a.scope.maydayCard(), false, 'waits for the start page')
+  assert.equal(a.scope.maydayAlerts(), 0, 'and so does the sound')
+  a.scope.intro.open = false
+  a.state({ state: 'READY', arrived: true, mayday: { ...call, round: 4 } })
+  assert.equal(a.scope.maydayCard(), true, 'then shows')
+  assert.equal(a.scope.maydayAlerts(), 1, 'without Audio the chime stands in')
+  assert.equal(a.scope.chimes(), 1)
+  // Left on the Mayday tab and minimised, a new call still gets its card.
+  a.scope.setTab('mayday'); a.scope.setMinimised(true)
+  a.state({ state: 'READY', arrived: true, mayday: { ...call, round: 5 } })
+  assert.equal(a.scope.maydayCard(), true, 'minimised on the Mayday tab: still a card')
+  // Both places show it, and the away card's Mayday line makes way for it.
+  const strip = html.slice(html.indexOf('class="ef-strip"'), html.indexOf('class="ef-start"'))
+  assert.ok(strip.includes('ng-if="hud.minimised && !intro.open && maydayCard(data)"'), 'under the strip')
+  assert.ok(html.includes('ng-if="maydayCard(data)"'), 'in the open HUD')
+  for (const part of ['Open Mayday Rescue', 'Not now', 'closeMaydayCard()', 'openMaydayCard()', 'data.mayday.problem', 'until(data.mayday.secondsLeft)'])
+    assert.ok(strip.includes(part), part)
+  assert.ok(html.includes('data.mayday.open && !maydayCard(data)'), 'no double mention on the away card')
+})
 test('Relocate to a player: a Join button for each player, sent by number only, and the opt-out', () => {
   const a = app()
   const relocate = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`), html.indexOf(`ng-if="tab === 'home'"`))
