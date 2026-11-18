@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Small loads no longer release mirrors or hood and door latches when a truck spawns.** Cargo carried without a fitted box now leaves coupling nodes alone and puts its full weight on the remaining nodes.
+
 ## Build 230 · 18 Nov 2026
 
 - **You can't miss a new Mayday Rescue call now, even with the HUD minimised.** When a call goes out online, a red Mayday Rescue card drops in under the small strip, the strip's dot turns red, and a short alert sounds once. The card shows where the call is, its story, the $80,000 reward, how far away you are, how long until it moves on and how many truckers have set off. It also says if something stops you going, such as a job you're still on.
