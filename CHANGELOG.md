@@ -10,6 +10,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **You can't miss a new Mayday Rescue call now, even with the HUD minimised.** When a call goes out online, a red Mayday Rescue card drops in under the small strip, the strip's dot turns red, and a short alert sounds once. The card shows where the call is, its story, the $80,000 reward, how far away you are, how long until it moves on and how many truckers have set off. It also says if something stops you going, such as a job you're still on.
 - Press **Open Mayday Rescue** to open the HUD on the Mayday Rescue tab, or **Not now** (or the X) to close the card. Either way it won't come back for that call, even after you restart the game, and the next call gets a new card. The card also goes by itself when someone wins, the call moves on, or you start a run. With the HUD open, the same card sits above the tabs. Your saves still work.
+- **Trailer cargo stays in the trailer when your truck returns.** Loading a saved job could briefly put the trailer's whole load on the truck before the trailer appeared, making parts break off. The truck now receives only its own cargo, and the trailer's load is applied when it returns. Your saves still work.
 
 ## Build 229 · 17 Nov 2026
 
