@@ -196,12 +196,21 @@ do
   T.eq(masses[0], 60, 'half on each weight node'); T.eq(masses[1], 60, 'both')
   T.eq(replies[1], 'if earthFreight_core then earthFreight_core.tanksRead(9, 300.000) end', 'found by its part')
   -- A tank whose expressions give no weight (a tanker weighed by a tuning setting): the fluid is not
-  -- lost, it goes over the tank's nodes instead.
+  -- lost, and it is not piled on the tank's own panels either, which tears a tank shell apart: it
+  -- goes over the whole vehicle, each node taking a share by its own mass.
   local dead = world()
   dead.v.data.nodes[0].nodeWeightFunction = '=10+$fill_level'
   masses = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }
   w:setWeight(150, { tank }, { litres = 200, density = 0.75, tanks = { tank } }); run(vehicle.commands[#vehicle.commands], dead)
-  T.near((masses[0] - 10) + (masses[1] - 10), 150, 1e-6, 'all 150 kg still on the tank')
+  T.near((masses[0] - 10) + (masses[1] - 10) + (masses[2] - 5) + (masses[3] - 4), 150, 1e-6, 'all 150 kg on the vehicle')
+  T.near(masses[2] - 5, 150 * 5 / 29, 1e-6, 'a light node takes a light share')
+  T.near(masses[1] - 10, 150 * 10 / 29, 1e-6, 'the tank no more than its own share')
+  -- More than the dead tank holds: the part over its size still goes over the tank, as before.
+  masses = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }
+  w:setWeight(450, { tank }, { litres = 600, density = 0.75, tanks = { tank } }); run(vehicle.commands[#vehicle.commands], dead)
+  local sum = 0
+  for i = 0, 3 do sum = sum + masses[i] end
+  T.near(sum - 29, 450, 1e-6, 'the whole 450 kg on the vehicle')
   -- Asking only: reports the size, changes nothing.
   masses = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }
   T.check(w:readTanks({ tank }), 'read sent'); replies = run(vehicle.commands[#vehicle.commands], world())

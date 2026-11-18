@@ -224,21 +224,25 @@ end
 local empty = {}
 for i, c in ipairs(containers) do empty[i] = fill(c, 0) end
 local poured = litres > 0 and capacity > 0
+local shortfall = 0
 if poured then
   local share = math.min(1, litres / capacity)
   local took = 0
   for i, c in ipairs(containers) do took = took + math.max(0, fill(c, c.size * share) - empty[i]) end
   -- Only what the containers really took comes off the load: a tank whose expressions give no
-  -- weight (some trailers weigh their load by a tuning setting instead) must not make the fluid
-  -- weigh nothing. The rest goes over the tank's nodes, or the vehicle, below.
+  -- weight (a tanker weighed by a tuning setting instead) must not make the fluid weigh nothing.
+  -- What it did not take goes over the whole vehicle by each node's own mass (shortfall, below),
+  -- never over the tank's own panels: tonnes on a tank shell's few light nodes tear it apart.
   local wanted = math.min(litres, capacity) * density
   if took < wanted * 0.9 and log then
     pcall(log, 'W', 'earthFreight', string.format('fluid_weight_short: tanks took %%.0f of %%.0f kg', took, wanted))
   end
-  extra = math.max(0, extra - math.min(wanted, took))
+  local load = extra
+  extra = math.max(0, load - wanted)
+  shortfall = math.max(0, math.min(load, wanted) - took)
 end
 report()
-if extra <= 0.001 then return end
+if extra <= 0.001 and shortfall <= 0.001 then return end
 -- Changing a coupling node's mass during initialization can release the latch.
 -- Put solid cargo on the remaining nodes, leaving both coupling endpoints alone.
 local coupled = {}
@@ -259,16 +263,32 @@ end
 local function loadable(n)
   return type(n) == 'table' and n.cid ~= nil and not n.couplerTag and not n.tag and not coupled[n.name]
 end
-local list = {}
-for _, n in pairs(v.data.nodes) do if loadable(n) and parts[n.partOrigin] then list[#list + 1] = n end end
-if #list == 0 then for _, n in pairs(v.data.nodes) do if loadable(n) then list[#list + 1] = n end end end
-if #list == 0 then return end
-local weights = BALANCE(list) or {}
-local total = 0
-for i = 1, #list do weights[i] = weights[i] or 1; total = total + weights[i] end
-for i, n in ipairs(list) do
+local function own(n)
   if base[n.cid] == nil then base[n.cid] = (obj.getNodeMass and obj:getNodeMass(n.cid)) or n.nodeWeight end
-  if type(base[n.cid]) == 'number' then obj:setNodeMass(n.cid, base[n.cid] + extra * weights[i] / total) end
+  return base[n.cid]
+end
+local added = {}
+if extra > 0.001 then
+  local list = {}
+  for _, n in pairs(v.data.nodes) do if loadable(n) and parts[n.partOrigin] then list[#list + 1] = n end end
+  if #list == 0 then for _, n in pairs(v.data.nodes) do if loadable(n) then list[#list + 1] = n end end end
+  local weights = #list > 0 and BALANCE(list) or {}
+  local total = 0
+  for i = 1, #list do weights[i] = weights[i] or 1; total = total + weights[i] end
+  for i, n in ipairs(list) do added[n.cid] = (added[n.cid] or 0) + extra * weights[i] / total end
+end
+if shortfall > 0.001 then
+  local list, total = {}, 0
+  for _, n in pairs(v.data.nodes) do
+    local m = loadable(n) and own(n)
+    if type(m) == 'number' and m > 0 then list[#list + 1] = n; total = total + m end
+  end
+  for _, n in ipairs(list) do added[n.cid] = (added[n.cid] or 0) + shortfall * own(n) / total end
+end
+for cid, kg in pairs(added) do
+  local m = base[cid]
+  if m == nil then m = (obj.getNodeMass and obj:getNodeMass(cid)); base[cid] = m end
+  if type(m) == 'number' then obj:setNodeMass(cid, m + kg) end
 end
 ]]
 

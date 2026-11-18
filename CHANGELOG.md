@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Fixed: a tanker truck's tank no longer bends into a huge spike when you load fuel or water.** In a truck whose own tank can't take the load's weight, such as the MD tanker, the weight was all put on the tank's thin panels, which tore them apart. It's now spread over the whole truck, so it sits on the frame and the truck still feels the load. Your saves still work. If your truck is already bent, a repair on the Garage tab puts it right.
+
 ## Build 234 · 18 Nov 2026
 
 - **Leaving the parts menu now puts you back on your car's camera.** After pressing **Buy parts** and closing the game's parts menu, you used to be left in the free camera and had to press Shift+C. Now you're back on the camera you were driving with, such as the driver or chase camera. If you were already in the free camera before pressing Buy parts, you stay in it. Your saves still work.
