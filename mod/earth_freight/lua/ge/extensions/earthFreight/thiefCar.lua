@@ -1,9 +1,11 @@
 -- The base thief's car (thief.lua): puts it down on the road ahead of the player, sets it fleeing, tells how far it
 -- is, cuts its ignition when the EMP hits, and takes it away. Base-game calls, every one guarded.
 -- The flee: the game's own flee AI, with MadMerick's smartAI profile when that mod is installed (it adds
--- ai.setSmartProfile). The EMP: the ignition is cut and the AI switched off here; when MadMerick's Bolides – The Cut
+-- ai.setSmartProfile), watched over by fleeSupervisor.lua, which slows it and keeps it in lane in traffic. The EMP: the ignition is cut and the AI switched off here; when MadMerick's Bolides – The Cut
 -- mod is installed its EMP effect (shockwave, hazards, sound) plays as well.
 local M = {}
+
+local fleeSupervisor = require('earthFreight/fleeSupervisor')
 
 -- How the thief drives: the smartAI profile name, and the stock AI's settings.
 M.SMART_PROFILE = 'moonhawk'
@@ -40,8 +42,7 @@ try(ai.setSmartProfile, '%s')
 try(ai.setMode, 'flee')
 try(ai.setTargetObjectID, tid)
 try(ai.setAggression, %s)
-try(ai.setAvoidCars, true)
-try(ai.setAllowLaneChanges, true)
+try(ai.setAvoidCars, 'on')
 try(ai.setRecoverOnCrash, true)
 ]], tid, M.SMART_PROFILE, tostring(M.AGGRESSION))
 end
@@ -56,7 +57,8 @@ if input and input.event then pcall(input.event, 'parkingbrake', 1, 1) end
 
 function M.new(env)
   env = env or defaults()
-  local t = {}
+  -- Keeps the fleeing car out of the traffic.
+  local t = { supervisor = env.supervisor or fleeSupervisor.new() }
 
   local function object(id)
     if id == nil then return nil end
@@ -130,7 +132,9 @@ function M.new(env)
     if not thief or not car then return false end
     local ok, tid = pcall(function() return car:getID() end)
     if not ok or type(tid) ~= 'number' then return false end
-    return pcall(function() thief:queueLuaCommand(M.fleeCommand(tid)) end) == true
+    if pcall(function() thief:queueLuaCommand(M.fleeCommand(tid)) end) ~= true then return false end
+    t.supervisor:register(id, tid)
+    return true
   end
 
   -- Metres between the player's car and the thief's, or nil when either is gone.
@@ -164,6 +168,8 @@ function M.new(env)
   function t:emp(id)
     local thief, car = object(id), player()
     if not thief then return false end
+    -- Nothing more to the car's AI: it is switched off now.
+    t.supervisor:unregister(id)
     local effect = env.emp()
     if effect and car then
       pcall(effect.trigger, { playerId = id, sourceId = car:getID(), sourcePos = car:getPosition(), empDurationSec = 10.0,
@@ -175,13 +181,15 @@ function M.new(env)
 
   -- Takes the car out of the world.
   function t:remove(id)
+    t.supervisor:unregister(id)
     local thief = object(id)
     if not thief then return false end
     return pcall(function() thief:delete() end) == true
   end
 
-  -- Every frame: Bolides' EMP effect runs on, unless Bolides itself runs it.
+  -- Every frame: the supervisor looks at the traffic, and Bolides' EMP effect runs on, unless Bolides itself runs it.
   function t:update(dt)
+    t.supervisor:update(dt)
     local effect = t.effect
     if effect and type(effect.onUpdate) == 'function' and not env.bolidesRunning() then pcall(effect.onUpdate, dt, dt, dt) end
   end
