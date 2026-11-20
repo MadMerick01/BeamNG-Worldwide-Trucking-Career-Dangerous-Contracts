@@ -148,7 +148,9 @@ do
   T.eq(c:view().thief.arrow, -90, 'the arrow points to the thief')
   T.eq(thief.EMP_METRES, 15, 'the EMP reaches 15 m')
   T.check(c:view().thief.emp.ready and not c:view().thief.emp.inRange, 'the button: charged, out of range')
+  local sounds = c:view().empSound
   T.check(not c:empThief(), 'too far for the EMP')
+  T.eq(c:view().empSound, sounds + 1, 'the EMP sound plays: it fired, even out of range')
   T.check(c.empFeedback:find('within 15 m', 1, true), 'says how close to get')
   -- Every press charges: 20 s before it fires again.
   T.check(not c:view().thief.emp.ready, 'charging after a miss')
@@ -158,11 +160,13 @@ do
   c.trigger = function(name, data) if name == 'toastrMsg' then toasts[#toasts + 1] = data end end
   car.metres = 4
   T.check(not c:empHotkey(), 'hotkey: still charging')
+  T.eq(c:view().empSound, sounds + 1, 'no sound while it only charges')
   T.eq(toasts[1] and toasts[1].title, 'EMP CHARGING', 'a pop-up says so')
   F.advance(c, emp.CHARGE_SECONDS + 0.2)
   T.check(c:view().thief.empInRange and c:view().thief.emp.inRange and c:view().thief.emp.ready, 'charged and in range')
   T.check(c:empHotkey(), 'the hotkey EMP hits')
   T.eq(car.hit[1], 42, 'on the thief')
+  T.eq(c:view().empSound, sounds + 2, 'and the EMP sound for the hit')
   T.eq(c.profile.progression.balance, start + thief.BOUNTY, 'money back plus $5,000')
   T.eq(c.thief.phase, 'caught', 'caught')
   F.advance(c, thief.CAUGHT_SECONDS + 1)
