@@ -349,6 +349,7 @@ function M.attach(c)
       local struck = r.phase == 'chasing'
       self:dropRobber('admin off')
       if struck then
+        self:robberyNews('robber', 'escaped')
         self:showFlash('cancelled', 'THE ROBBER GOT AWAY', 'They vanished with your ' .. dollars(r.amount or 0) .. '.')
       end
     elseif d.state == 'emp' then
@@ -393,6 +394,7 @@ function M.attach(c)
     self:toast('warning', 'Robbed on the road', text, 10)
     self:autoSaveSoon('the robbery')
     self.mp:robNews('struck')
+    self:robberyNews('robber', 'struck')
     self.diag:event('admin_robber_struck', '')
   end
 
@@ -420,6 +422,7 @@ function M.attach(c)
       if not d or d > M.ESCAPE_METRES then
         self.mp:robNews('escaped')
         self:dropRobber('admin escaped')
+        self:robberyNews('robber', 'escaped')
         self:showFlash('cancelled', 'THE ROBBER GOT AWAY', 'They got ' .. M.ESCAPE_METRES .. ' m clear of you and escaped with your '
           .. dollars(r.amount or 0) .. '.')
       end

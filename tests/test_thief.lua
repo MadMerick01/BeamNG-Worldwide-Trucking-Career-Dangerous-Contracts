@@ -172,8 +172,11 @@ end
 -- The thief gets away 450 m clear: their car disappears and the player is told.
 do
   local c, a, car = ready()
+  local news = {}
+  c.robberyNews = function(_, who, what) news[#news + 1] = who .. ' ' .. what end
   T.check(c:buyBase(F.copy(a.pose)), 'base bought')
   T.check(c:startTheft(true), 'stolen')
+  T.eq(table.concat(news, ', '), 'thief struck', 'the live feed is told')
   T.check(c:thiefChase(), 'already at the base: the chase starts here')
   T.eq(c.thief.phase, 'settling', 'no teleport needed'); T.eq(#a.teleports, 0, 'none')
   F.advance(c, thief.SETTLE_SECONDS + 1)
@@ -184,6 +187,7 @@ do
   F.advance(c, 0.2)
   T.eq(c.thief, nil, 'got away'); T.eq(c.flash.title, 'THE THIEF GOT AWAY', 'told')
   T.check(c.flash.text:find('450 m clear', 1, true), 'how')
+  T.eq(table.concat(news, ', '), 'thief struck, thief escaped', 'and that it got away')
   T.check(car.removed[42], 'its car taken away')
 end
 

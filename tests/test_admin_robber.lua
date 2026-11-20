@@ -113,18 +113,21 @@ do
   car.metres = 40
   c:robNews({ state = 'emp' })
   T.eq(c.robber.phase, 'lurking', 'his EMP from 40 m misses'); T.eq(s.last('wwtcRobNews').what, 'missed', 'he is told')
+  T.eq(s.last('wwtcRobbed'), nil, 'a miss is not news for the live feed')
   T.eq(s.last('wwtcRobNews').metres, 40, 'with how far off'); T.eq(c.profile.progression.balance, before, 'nothing taken')
   car.metres = 10
   c:robNews({ state = 'emp' })
   T.eq(c.robber.phase, 'chasing', 'within 15 m his EMP strikes')
   T.eq(c.profile.progression.balance, before - admin.STOLEN, '$1,000 taken'); T.eq(car.playerHits, 1, 'the engine cut')
   T.eq(s.last('wwtcRobNews').what, 'struck', 'the server is told'); T.eq(c:view().empSound, sounds0 + 2, 'the EMP sound for the hit')
+  T.eq(s.last('wwtcRobbed').who, 'robber', 'the live feed: a road robber, never who'); T.eq(s.last('wwtcRobbed').what, 'struck', 'struck')
   T.check(not c:fireEmp(), 'his hit drained the player\'s EMP'); T.eq(c:view().thief.emp.ready, false, 'it charges from empty')
   T.eq(c:view().thief.road, true, 'the chase card'); T.eq(c:view().thief.distanceMetres, 10, 'with how far')
   F.advance(c, emp.CHARGE_SECONDS + 0.2)
   T.eq(car.playerBack, 1, 'the engine back after 5 s')
   T.check(c:fireEmp(), 'the EMP within range catches them'); T.eq(c:view().empSound, sounds0 + 3, 'and the sound for the player\'s own EMP')
   T.eq(c.profile.progression.balance, before + admin.TRUNK, 'the $1,000 back plus $20,000')
+  T.eq(s.last('wwtcRobbed').what, 'caught', 'the live feed is told he was caught')
   T.eq(#car.hit, 0, 'the admin\'s car is not touched here: his own game shuts it down')
   T.eq(s.last('wwtcRobNews').what, 'caught', 'the server is told')
   c:robNews({ state = 'caught', name = 'MadMerick' })
@@ -141,6 +144,7 @@ do
   car.metres = 5; c:robNews({ state = 'emp' })
   car.metres = 460; c:tick(0.1)
   T.eq(c.robber, nil, 'escaped'); T.eq(s.last('wwtcRobNews').what, 'escaped', 'the server is told')
+  T.eq(s.last('wwtcRobbed').what, 'escaped', 'and the live feed')
   T.eq(c.profile.progression.balance, before - admin.STOLEN, 'the money is gone')
   T.eq(c:view().flash.title, 'THE ROBBER GOT AWAY', 'told so')
 end
@@ -174,6 +178,7 @@ do
   car.metres = 5; c:robNews({ state = 'emp' })
   c:robNews({ state = 'off' })
   T.eq(c.robber, nil, 'gone'); T.eq(c:view().flash.title, 'THE ROBBER GOT AWAY', 'with the money')
+  T.eq(c.mp.last('wwtcRobbed').what, 'escaped', 'the live feed: he got away')
 end
 
 -- Who can't be robbed: robbers unticked, too little money, a short job; asked anyway, the game says no.
