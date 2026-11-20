@@ -39,9 +39,9 @@ local function fakeCar()
   function f:emp(id) self.hit[#self.hit + 1] = id; return true end
   function f:remove(id) self.removed[id] = true; return true end
   function f:update() end
-  function f:aheadOffset(metres)
+  function f:aheadOffset(metres, behind)
     if not self.ground then return nil, 'no_ground' end
-    return { east = 0, north = metres, heading = 0 }
+    return { east = 0, north = behind and -metres or metres, heading = 0 }
   end
   function f:face(heading) self.faced[#self.faced + 1] = heading; return true end
   function f:shutDownPlayer() self.shut = self.shut + 1; return true end
@@ -100,8 +100,8 @@ do
   c:answerRobAsk({ ask = 4 })
   local spot = s.last('wwtcRobSpot')
   T.eq(spot.ask, 4, 'the answer'); T.eq(spot.ok, true, 'yes')
-  T.near(location.distance(c.lastSample, spot), admin.AHEAD_METRES, 2, 'the road spot 300 m ahead')
-  T.near(location.bearing(c.lastSample, spot), 0, 1, 'the way the road goes'); T.eq(spot.heading, 0, 'facing the player\'s way')
+  T.near(location.distance(c.lastSample, spot), admin.BEHIND_METRES, 2, 'the road spot 100 m behind')
+  T.near(location.bearing(c.lastSample, spot), 180, 1, 'back along the road they drove'); T.eq(spot.heading, 0, 'facing the player\'s way')
   c:robNews({ state = 'go', car = '2-0' })
   T.check(c.robber and c.robber.admin, 'the admin robber is on'); T.eq(c.robber.phase, 'lurking', 'lurking')
   T.eq(c:adminRobProblem(), 'busy', 'nobody else can rob them meanwhile')
@@ -198,7 +198,7 @@ do
   c.profile.progression.balance = 100000
   car.ground = false
   c:answerRobAsk({ ask = 2 })
-  T.eq(s.last('wwtcRobSpot').why, 'no_ground', 'no loaded road ahead yet')
+  T.eq(s.last('wwtcRobSpot').why, 'no_ground', 'no loaded road behind yet')
   c.load.to = c.load.from
   T.check(not c:robbableJob(c.load), 'a short job: too short for the AI robber')
   T.eq(c:adminRobProblem(), nil, 'but the admin can rob it')
@@ -261,7 +261,7 @@ do
   T.check(c.hire and c.hire.admin, 'the robber\'s car takes his car\'s place'); T.eq(g.model, 'moonhawk', 'the Moonhawk')
   T.eq(c.adminDrive.stage, 'leaving', 'leaving')
   c:vehicleSpawned(); c:tick(0.1); c:tick(0.1)
-  T.eq(c.adminDrive.stage, 'going', 'teleporting'); T.eq(a.teleports[#a.teleports].latitude, drop.latitude, 'to the spot ahead of Sam')
+  T.eq(c.adminDrive.stage, 'going', 'teleporting'); T.eq(a.teleports[#a.teleports].latitude, drop.latitude, 'to the spot behind Sam')
   T.check(c:view().flash == nil or c:view().flash.title ~= 'SIGHTSEEING', 'not told it is sightseeing')
   a.pose = F.copy(drop); c:tick(0.1)
   local km = c.profile.progression.totalDistanceKm

@@ -1,17 +1,20 @@
 -- The road robber: on a delivery, fuel run or contract of MIN_JOB_METRES or more, CHANCE of the time a robber in the
 -- base thief's Moonhawk (thief.lua) ambushes the player on the road. Its car is loaded out of sight when the job is
--- taken, at the job board, so putting it on the road later doesn't stutter (thiefCar.lua). Somewhere between
--- EDGE_METRES into the job and EDGE_METRES before its end, once the ground AHEAD_METRES in front has loaded, it is
--- put on the road there, in the player's lane and facing their way, and:
---   lurking: drives in its lane a little slower than the player, so they catch up; if they hang back it slows down more
---     (brake-check). If they turn off, go off road or drop back, it hunts them.
---   hunting: the game's chase AI at the player's speed plus HUNT_EXTRA_KPH, never over HUNT_MAX_KPH.
---   Within STRIKE_METRES it strikes: its EMP cuts the player's engine for PLAYER_EMP_SECONDS and jams their brakes for PLAYER_BRAKE_SECONDS, it takes
---     STOLEN and flees (the base thief's flee, fleeSupervisor.lua). Not struck within GIVE_UP_SECONDS, or GIVE_UP_METRES
---     behind: it gives up and goes, and nothing is lost.
---   chasing: the player's EMP (emp.lua) within its range stops it for good: STOLEN back plus TRUNK, and the car goes
---     after CAUGHT_SECONDS. ESCAPE_METRES clear, it gets away with the money. The job carries on throughout, and
---     delivering or abandoning it doesn't end the chase.
+-- taken, at the job board, so putting it on the road later doesn't stutter (thiefCar.lua). While it waits, the game
+-- notes the player's trail (a point every 10 m, the last 150 m). Somewhere between EDGE_METRES into the job and
+-- EDGE_METRES before its end, once the ground there has loaded, it is put on the road BEHIND_METRES behind the player,
+-- on that trail and facing their way (MadMerick's call: coming from behind, the AI never has to turn round), and:
+--   hunting: the game's chase AI at the player's speed plus HUNT_FAR_EXTRA_KPH to catch up, easing to plus
+--     HUNT_EXTRA_KPH within CLOSE_METRES, never over HUNT_MAX_KPH.
+--   Within STRIKE_METRES it strikes: its EMP cuts the player's engine for PLAYER_EMP_SECONDS and jams their brakes for
+--     PLAYER_BRAKE_SECONDS, and it takes STOLEN. Not struck within GIVE_UP_SECONDS, or GIVE_UP_METRES behind: it gives
+--     up and goes, and nothing is lost.
+--   chasing: first it overtakes (passing): it eases off to PASS_START_KPH for PASS_HOLD_SECONDS so it doesn't run into
+--     the braking player, then goes round them at up to PASS_KPH. Once it is ahead of them and PASS_CLEAR_METRES clear
+--     (or after PASS_MAX_SECONDS) it flees (the base thief's flee, fleeSupervisor.lua). The player's EMP (emp.lua)
+--     within its range stops it for good: STOLEN back plus TRUNK, and the car goes after CAUGHT_SECONDS.
+--     ESCAPE_METRES clear, it gets away with the money. The job carries on throughout, and delivering or abandoning it
+--     doesn't end the chase.
 -- The player can turn robbers off with the Route tab's "Robbers can rob me" tick box (saved as noRobbers), which the
 -- base thief obeys too. ROB ME on the Route tab starts one straight away for testing, ticked or not, and doesn't count
 -- as the job's robbery. Never on Mayday Rescue runs, heli flights or the heli's package jobs. Pure Lua: the car is
@@ -27,7 +30,7 @@ local M = {}
 M.CHANCE = 0.5
 M.MIN_JOB_METRES = 5000
 M.EDGE_METRES = 2000
-M.AHEAD_METRES = 300
+M.BEHIND_METRES = 100
 M.STOLEN = 1000
 M.TRUNK = 20000
 M.STRIKE_METRES = emp.RANGE
@@ -45,19 +48,17 @@ M.STUCK_SPEED = 1.5
 M.UNSTICK_EVERY_SECONDS = 10
 -- After a robbery ends, its card shows how it went (and the money) for this long.
 M.RESULT_SECONDS = 20
--- Lurking: this much slower than the player, never under LURK_MIN_KPH; when they hang back more than HANG_BACK_METRES,
--- BRAKE_CHECK_KPH slower instead.
-M.LURK_SLOWER_KPH = 15
-M.LURK_MIN_KPH = 20
-M.HANG_BACK_METRES = 80
-M.BRAKE_CHECK_KPH = 35
--- It starts hunting when the player drops back DROP_BACK_METRES from the closest they've been, or they point
--- TURNED_DEGREES away from its way for TURNED_SECONDS.
-M.DROP_BACK_METRES = 100
-M.TURNED_DEGREES = 60
-M.TURNED_SECONDS = 3
+-- Catching up: the player's speed plus HUNT_FAR_EXTRA_KPH while more than CLOSE_METRES back, then plus HUNT_EXTRA_KPH.
+M.HUNT_FAR_EXTRA_KPH = 40
 M.HUNT_EXTRA_KPH = 15
+M.CLOSE_METRES = 50
 M.HUNT_MAX_KPH = 130
+-- Overtaking after the strike (see the top).
+M.PASS_START_KPH = 30
+M.PASS_HOLD_SECONDS = 1
+M.PASS_KPH = 100
+M.PASS_CLEAR_METRES = 30
+M.PASS_MAX_SECONDS = 15
 -- How often a refused place (no ground yet) or load is tried again; a ROB ME robber that can't find ground gives up.
 M.RETRY_SECONDS = 2
 M.ROB_ME_TRIES = 15
@@ -68,16 +69,10 @@ M.CONFIG = thief.CONFIG
 
 local dollars = pricing.dollars
 
--- Lurking speed: a little slower than the player; slower still when they hang back.
-function M.lurkKph(playerKph, metres)
-  local kph = math.max(0, playerKph or 0)
-  if metres and metres > M.HANG_BACK_METRES then return math.max(M.LURK_MIN_KPH * 0.5, kph - M.BRAKE_CHECK_KPH) end
-  return math.max(M.LURK_MIN_KPH, kph - M.LURK_SLOWER_KPH)
-end
-
--- Hunting speed: the player's plus HUNT_EXTRA_KPH, capped.
-function M.huntKph(playerKph)
-  return math.min(M.HUNT_MAX_KPH, math.max(0, playerKph or 0) + M.HUNT_EXTRA_KPH)
+-- Hunting speed: the player's plus HUNT_FAR_EXTRA_KPH while far back (metres), plus HUNT_EXTRA_KPH once close, capped.
+function M.huntKph(playerKph, metres)
+  local extra = (metres and metres > M.CLOSE_METRES) and M.HUNT_FAR_EXTRA_KPH or M.HUNT_EXTRA_KPH
+  return math.min(M.HUNT_MAX_KPH, math.max(0, playerKph or 0) + extra)
 end
 
 -- How long the job's road is in metres, or nil.
@@ -91,8 +86,9 @@ end
 function M.attach(c)
   -- The controller keeps:
   --   self.robber: the road robber, or nil: { phase, carId, forced, at, placedAt, metres, turnedFor, amount, struckAt,
-  --     empEndAt, caughtAt, nextTry, tries, speedAt }. phase: 'loaded' (out of sight, waiting for its moment), 'lurking',
-  --     'hunting', 'chasing' (struck, fleeing), 'caught'.
+  --     empEndAt, caughtAt, nextTry, tries, speedAt, passing, fastAt }. phase: 'loaded' (out of sight, waiting for its
+  --     moment), 'hunting', 'chasing' (struck: overtaking while passing, then fleeing), 'caught'. The admin robber
+  --     (adminRobber.lua) uses 'lurking' until he strikes.
   --   self.robberJob: the load the 50% roll was made for, and self.robberAtKm: the job's driven km at which it strikes
   --     (nil when this job isn't robbed).
   --   self.noRobbers: true when the player unticked "Robbers can rob me".
@@ -131,7 +127,7 @@ function M.attach(c)
     return true
   end
 
-  -- ROB ME on the Route tab: a robber on the road ahead straight away, for testing. Returns true when one is coming.
+  -- ROB ME on the Route tab: a robber on the road behind straight away, for testing. Returns true when one is coming.
   function c:robMe()
     local problem = self:robberProblem(true)
     if problem then
@@ -231,7 +227,9 @@ function M.attach(c)
     -- The robber's EMP drains the player's too: it charges from empty before they can fire back (emp.lua).
     self.empFiredAt = self.clock
     self:empSound()
-    self.thiefCar:flee(r.carId)
+    -- It came from behind: it eases off, then overtakes before it flees (see the top).
+    if self.thiefCar.pass then self.thiefCar:pass(r.carId, M.PASS_START_KPH) else self.thiefCar:flee(r.carId) end
+    r.passing = self.thiefCar.pass ~= nil or nil
     r.phase, r.amount, r.struckAt, r.empEndAt = 'chasing', M.STOLEN, self.clock, self.clock + M.PLAYER_EMP_SECONDS
     local text = 'A robber hit you with an EMP and took ' .. dollars(M.STOLEN) .. '. Your engine is back in '
       .. M.PLAYER_EMP_SECONDS .. ' s and your EMP is drained: it takes ' .. emp.CHARGE_SECONDS .. ' s to charge. Catch them with your EMP within ' .. emp.RANGE .. ' m to get it back, plus '
@@ -266,6 +264,8 @@ function M.attach(c)
       self:loadRobber(false)
     end
     local r = self.robber
+    -- The trail the robber is put on, behind the player: only noted on a job or while a robber waits (thiefCar.lua).
+    if (load or (r and r.phase == 'loaded')) and not self.onFoot and self.thiefCar.noteTrail then self.thiefCar:noteTrail() end
     if not r then return end
     if r.admin then return self:watchAdminRobber() end
     if r.phase == 'loaded' then
@@ -275,19 +275,19 @@ function M.attach(c)
       end
       if r.nextTry and self.clock < r.nextTry then return end
       if self:robberProblem(r.forced) then r.nextTry = self.clock + M.RETRY_SECONDS return end
-      local ok, why = self.thiefCar:place(r.carId, M.AHEAD_METRES)
+      local ok, why = self.thiefCar:place(r.carId, M.BEHIND_METRES, true)
       if not ok then
         r.tries = (r.tries or 0) + 1
         r.nextTry = self.clock + M.RETRY_SECONDS
         if why == 'gone' or (r.forced and r.tries >= M.ROB_ME_TRIES) then
-          if r.forced then self.robberFeedback = 'No road with loaded ground ahead. Try ROB ME again on a road.' end
+          if r.forced then self.robberFeedback = 'No road with loaded ground behind you. Try ROB ME again on a road.' end
           self:dropRobber(why)
         end
         return
       end
       local kph = self.thiefCar:playerKph() or 0
-      self.thiefCar:lurk(r.carId, M.lurkKph(kph, M.AHEAD_METRES))
-      r.phase, r.placedAt, r.speedAt, r.turnedFor = 'lurking', self.clock, self.clock, 0
+      self.thiefCar:hunt(r.carId, M.huntKph(kph, M.BEHIND_METRES))
+      r.phase, r.placedAt, r.speedAt = 'hunting', self.clock, self.clock
       if r.forced then self.robberFeedback = nil else self.robberAtKm = nil end
       self.diag:event('robber_placed', tostring(r.carId))
       return
@@ -302,8 +302,8 @@ function M.attach(c)
       r.brakesOff = true
       if self.thiefCar.empPlayerBrakeOff then self.thiefCar:empPlayerBrakeOff() end
     end
-    if r.phase == 'lurking' or r.phase == 'hunting' or r.phase == 'chasing' then self:watchStuck(r, dt, 'robber') end
-    if r.phase == 'lurking' or r.phase == 'hunting' then
+    if r.phase == 'hunting' or (r.phase == 'chasing' and not r.passing) then self:watchStuck(r, dt, 'robber') end
+    if r.phase == 'hunting' then
       if not d then self:dropRobber('gone') return end
       if d <= M.STRIKE_METRES then self:robberStrikes() return end
       if self.clock - r.placedAt > M.GIVE_UP_SECONDS or d > M.GIVE_UP_METRES then
@@ -311,23 +311,26 @@ function M.attach(c)
         if r.forced then self:showFlash('delivered', 'THE ROBBER GAVE UP', 'You got away. Nothing was taken.') end
         return
       end
-      local kph = self.thiefCar:playerKph() or 0
-      if r.phase == 'lurking' then
-        local gap = self.thiefCar:headingGap(r.carId)
-        r.turnedFor = (gap and gap > M.TURNED_DEGREES) and (r.turnedFor or 0) + dt or 0
-        r.closest = math.min(r.closest or d, d)
-        if d > r.closest + M.DROP_BACK_METRES or r.turnedFor >= M.TURNED_SECONDS or self.onFoot then
-          self.thiefCar:hunt(r.carId, M.huntKph(kph))
-          r.phase, r.speedAt = 'hunting', self.clock
-          self.diag:event('robber_hunting', string.format('%.0f m', d))
-          return
-        end
-      end
       if self.clock - (r.speedAt or 0) >= M.SPEED_EVERY_SECONDS then
         r.speedAt = self.clock
-        self.thiefCar:setSpeed(r.carId, r.phase == 'lurking' and M.lurkKph(kph, d) or M.huntKph(kph))
+        self.thiefCar:setSpeed(r.carId, M.huntKph(self.thiefCar:playerKph() or 0, d))
       end
       return
+    end
+    if r.phase == 'chasing' and r.passing and d then
+      local since = self.clock - (r.struckAt or self.clock)
+      if not r.fastAt and since >= M.PASS_HOLD_SECONDS then
+        r.fastAt = self.clock
+        self.thiefCar:setSpeed(r.carId, M.PASS_KPH)
+      end
+      -- Ahead of the player (within 90 degrees of where their car points) and clear of them: now it flees.
+      local bearing = self.thiefCar.bearing and self.thiefCar:bearing(r.carId)
+      local past = bearing ~= nil and math.abs(bearing) < 90 and d >= M.PASS_CLEAR_METRES
+      if past or since >= M.PASS_MAX_SECONDS then
+        r.passing = nil
+        self.thiefCar:flee(r.carId)
+        self.diag:event('robber_passed', past and 'past' or 'timed out')
+      end
     end
     if r.phase == 'chasing' then
       r.arrow = d and self.thiefCar.bearing and self.thiefCar:bearing(r.carId) or nil

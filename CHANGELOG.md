@@ -8,6 +8,8 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **Money coming in now plays a cha-ching:** when you're paid for a delivery, catch a robber or thief, get a Mayday Rescue reward or your share of the tolls, or sell a car or trailer. Refunded fees stay quiet.
 - **Your EMP now beeps when it's fully charged,** so you know you can fire again without looking at the button. It works on the chase card and on the admin robber's EMP. Saves still work as before.
+- **Road robbers now come up from behind.** A robber appears on the road you just drove, about 100 m back and facing your way, so it no longer lands off the road or on a different road from yours. It speeds up to catch you, hits you with its EMP from behind, then overtakes and drives off ahead instead of turning round. Chase it down with your EMP as before. Saves still work.
+- **Driving the robber yourself** (server admins): you're now dropped in 100 m behind the player, on the road they just drove, and catch them up.
 
 ## Build 255 · 20 Nov 2026
 

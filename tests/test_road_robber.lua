@@ -10,11 +10,12 @@ local persistence = require('earthFreight/persistence')
 
 -- A stand-in for the robber's car: where it is, as metres from the player, set by the test.
 local function fakeCar()
-  local f = { loaded = 0, placed = 0, removed = {}, fled = {}, hit = {}, lurks = {}, hunts = {}, speeds = {},
+  local f = { loaded = 0, placed = 0, removed = {}, fled = {}, hit = {}, passes = {}, hunts = {}, speeds = {}, trail = 0,
     playerHits = 0, playerBack = 0, metres = 300, ground = true, kph = 80, gap = 0, refuse = false }
   function f:preload() if self.refuse then return nil, 'spawn_failed' end; self.loaded = self.loaded + 1; return 70 + self.loaded end
-  function f:place(id) if self.removed[id] then return false, 'gone' end; if not self.ground then return false, 'no_ground' end; self.placed = self.placed + 1; return true end
-  function f:lurk(id, kph) self.lurks[#self.lurks + 1] = kph; return true end
+  function f:place(id, metres, behind) if self.removed[id] then return false, 'gone' end; if not self.ground then return false, 'no_ground' end; self.placed = self.placed + 1; self.placedAt = { metres = metres, behind = behind }; return true end
+  function f:pass(id, kph) self.passes[#self.passes + 1] = kph; return true end
+  function f:noteTrail() self.trail = self.trail + 1 end
   function f:hunt(id, kph) self.hunts[#self.hunts + 1] = kph; return true end
   function f:setSpeed(id, kph) self.speeds[#self.speeds + 1] = kph; return true end
   function f:playerKph() return self.kph end
@@ -26,7 +27,7 @@ local function fakeCar()
   function f:unstick() self.unstuck = (self.unstuck or 0) + 1; return true end
   function f:flee(id) self.fled[#self.fled + 1] = id; return true end
   function f:distance(id) if self.removed[id] then return nil end; return self.metres end
-  function f:bearing() return 10 end
+  function f:bearing() return self.bearingDeg or 10 end
   function f:emp(id) self.hit[#self.hit + 1] = id; return true end
   function f:remove(id) self.removed[id] = true; return true end
   function f:update() end
@@ -52,15 +53,15 @@ local function townBetween(c, minKm, maxKm)
   end
 end
 
--- Speeds: lurking a little slower than the player, slower still when they hang back; hunting faster, capped.
-T.eq(robber.lurkKph(80, 50), 65, 'lurking: 15 km/h slower')
-T.eq(robber.lurkKph(10, 50), 20, 'never under 20 km/h')
-T.eq(robber.lurkKph(80, 120), 45, 'brake-check: the player hangs back, it slows right down')
-T.eq(robber.huntKph(60), 75, 'hunting: 15 km/h faster')
-T.eq(robber.huntKph(125), 130, 'capped at 130 km/h')
+-- Speeds: catching up fast from behind, easing off once close, capped.
+T.eq(robber.huntKph(60, 100), 100, 'far back: 40 km/h faster')
+T.eq(robber.huntKph(60, 40), 75, 'close: 15 km/h faster')
+T.eq(robber.huntKph(60), 75, 'unknown distance: 15 km/h faster')
+T.eq(robber.huntKph(125, 40), 130, 'capped at 130 km/h')
+T.eq(robber.huntKph(110, 100), 130, 'capped far back too')
 
--- The whole robbery: rolled at the job board, loaded there, put on the road at its moment once the ground has loaded,
--- lurks, hunts, strikes, flees, and the EMP catches it.
+-- The whole robbery: rolled at the job board, loaded there, put on the road behind the player at its moment once the
+-- ground has loaded, catches up, strikes, overtakes, flees, and the EMP catches it.
 do
   local c, a, car = ready(0.1)
   local news = {}
@@ -76,6 +77,7 @@ do
   T.eq(c.robber.phase, 'loaded', 'out of sight')
   F.advance(c, 5)
   T.eq(car.placed, 0, 'not before its moment')
+  T.check(car.trail > 0, 'the player\'s trail is noted while the robber waits')
   c.load.drivenKm = c.robberAtKm + 0.01
   car.ground = false
   F.advance(c, 5)
@@ -83,27 +85,22 @@ do
   T.eq(c.robber.phase, 'loaded', 'still waiting')
   car.ground = true
   F.advance(c, 3)
-  T.eq(c.robber.phase, 'lurking', 'on the road ahead')
-  T.eq(car.lurks[1], 45, 'still 300 m ahead: slow, so the player catches up')
+  T.eq(c.robber.phase, 'hunting', 'on the road and coming')
+  T.eq(car.placedAt.metres, 100, '100 m back'); T.eq(car.placedAt.behind, true, 'behind the player, on their trail')
+  T.eq(car.hunts[1], 120, 'catching up at the player\'s 80 km/h plus 40')
   T.eq(c.robberAtKm, nil, 'the job has had its robber')
   T.eq(c:view().thief, nil, 'no card yet: it looks like traffic')
   -- The EMP can't stop it yet, but the press still charges.
   T.check(not c:fireEmp(), 'nothing to hit yet')
   T.check(c:empChargeLeft() > 19, 'the EMP is charging')
-  -- The player catches up: a little slower than them.
-  car.metres = 50
+  car.metres = 80
   F.advance(c, 1.2)
-  T.eq(car.speeds[#car.speeds], 65, '15 km/h slower than the player')
-  -- The player hangs back: brake-check.
-  car.metres = 120
+  T.eq(car.speeds[#car.speeds], 120, 'still far back: fast')
+  -- Close behind: it eases off so it doesn't ram them.
+  car.metres = 30
   F.advance(c, 1.2)
-  T.eq(car.speeds[#car.speeds], 45, 'slows right down')
-  T.eq(c.robber.phase, 'lurking', 'still lurking 70 m back')
-  -- The player turns off: it hunts.
-  car.gap = 90
-  F.advance(c, robber.TURNED_SECONDS + 0.5)
-  T.eq(c.robber.phase, 'hunting', 'turned off: hunting')
-  T.eq(car.hunts[1], 95, 'at the player\'s speed plus 15')
+  T.eq(car.speeds[#car.speeds], 95, 'close: the player\'s speed plus 15')
+  T.eq(c.robber.phase, 'hunting', 'still coming')
   -- It strikes within 15 m.
   local before, sounds = c.profile.progression.balance, c:view().empSound
   car.metres = 12
@@ -111,7 +108,21 @@ do
   T.eq(c.robber.phase, 'chasing', 'struck, fleeing')
   T.eq(c.profile.progression.balance, before - robber.STOLEN, '$1,000 taken')
   T.eq(c:view().empSound, sounds + 1, 'the EMP sound plays once for the hit')
-  T.eq(car.playerHits, 1, 'the player\'s engine is cut'); T.eq(car.fled[1], c.robber.carId, 'and it flees')
+  T.eq(car.playerHits, 1, 'the player\'s engine is cut')
+  T.eq(car.passes[1], robber.PASS_START_KPH, 'it eases off first, so it doesn\'t run into them')
+  T.eq(#car.fled, 0, 'not fleeing yet: it overtakes first')
+  T.check(c.robber.passing, 'overtaking')
+  -- Still behind them: it speeds up to go round, but doesn't flee until it is past.
+  car.bearingDeg = 170
+  local speeds = #car.speeds
+  F.advance(c, robber.PASS_HOLD_SECONDS + 0.2)
+  T.eq(car.speeds[speeds + 1], robber.PASS_KPH, 'after a second, round them at up to 100 km/h')
+  T.eq(#car.fled, 0, 'still behind: not fleeing yet')
+  -- Past them and clear: now it flees.
+  car.bearingDeg, car.metres = 5, robber.PASS_CLEAR_METRES + 1
+  F.advance(c, 0.2)
+  T.eq(car.fled[1], c.robber.carId, 'ahead and clear: it flees'); T.eq(c.robber.passing, nil, 'done overtaking')
+  car.metres = 12
   T.eq(c.flash.title, 'ROBBED ON THE ROAD: -$1,000', 'told')
   local v = c:view().thief
   T.check(v and v.road and v.phase == 'chasing', 'the chase card, for the robber')
@@ -152,7 +163,7 @@ do
   car.metres = 200
   T.check(c:robMe(), 'ROB ME')
   F.advance(c, 0.5)
-  T.eq(c.robber.phase, 'lurking', 'on the road straight away')
+  T.eq(c.robber.phase, 'hunting', 'on the road behind straight away')
   car.metres = 10; F.advance(c, 0.2)
   T.eq(c.robber.phase, 'chasing', 'struck')
   car.metres = robber.ESCAPE_METRES + 1; F.advance(c, 0.2)
@@ -169,7 +180,7 @@ do
   T.eq(c.robber, nil, 'gave up after 4 minutes'); T.eq(c.profile.progression.balance, start, 'nothing taken')
   T.check(c:robMe(), 'again'); F.advance(c, 0.5)
   car.metres = 400; F.advance(c, 0.2)
-  T.eq(c.robber.phase, 'hunting', 'dropped back: hunting')
+  T.eq(c.robber.phase, 'hunting', 'still coming 400 m back')
   car.metres = robber.GIVE_UP_METRES + 1; F.advance(c, 0.2)
   T.eq(c.robber, nil, 'gave up 500 m behind')
 end
@@ -188,7 +199,7 @@ do
   T.eq(c.robberAtKm, nil, 'no robbery planned'); T.eq(car.loaded, 0, 'nothing loaded')
   T.check(c:view().robMe.allowed, 'ROB ME still allowed')
   T.check(c:robMe(), 'ROB ME works unticked'); F.advance(c, 0.5)
-  T.eq(c.robber.phase, 'lurking', 'a robber on the road')
+  T.eq(c.robber.phase, 'hunting', 'a robber on the road')
   T.check(not c:robMe(), 'one at a time')
 end
 
@@ -257,8 +268,9 @@ end
 
 -- The game side: the commands, and the car put down only where the ground has loaded.
 do
-  T.check(thiefCar.lurkCommand(60):find("'traffic'", 1, true), 'lurking: traffic AI')
-  T.check(thiefCar.lurkCommand(60):find("driveInLane, 'on'", 1, true), 'in its lane')
+  T.check(thiefCar.passCommand(60):find("'traffic'", 1, true), 'overtaking: traffic AI')
+  T.check(thiefCar.passCommand(60):find("driveInLane, 'off'", 1, true), 'free to use the whole road to get round')
+  T.check(thiefCar.passCommand(60):find("setAvoidCars, 'on'", 1, true), 'steering round cars')
   T.check(thiefCar.huntCommand(5, 90):find("'chase'", 1, true), 'hunting: chase AI')
   T.check(thiefCar.huntCommand(5, 90):find('25', 1, true), '90 km/h is 25 m/s')
   T.check(thiefCar.PLAYER_EMP_START:find("'brake', 1", 1, true), 'the player\'s EMP slams the brakes on')
@@ -288,7 +300,28 @@ do
   ground = 10
   T.check(t:place(9, 300), 'placed once the ground is there')
   T.eq(spawned.active[2], 1, 'switched on')
-  T.check(t:lurk(9, 50) and spawned.queued[1]:find("'traffic'", 1, true), 'lurk sent')
+  T.check(t:pass(9, 50) and spawned.queued[1]:find("'traffic'", 1, true), 'overtake sent')
+  -- Behind the player: on their trail, facing the way they drove. No trail yet: straight back, still facing their way.
+  local placedAt
+  local t2 = thiefCar.new({ vehicle = function() return veh end, objectById = function(id) return id == 9 and spawned or nil end,
+    vehicles = function() return nil end, map = function() return nil end,
+    spawn = function() return { safeTeleport = function(_, pos, rot) placedAt = { pos = pos, rot = rot } end } end,
+    enter = function() end, point = vec, upright = function(d) return d end, emp = function() return nil end,
+    bolidesRunning = function() return false end, groundBelow = function() return 10 end })
+  veh.pos, veh.dir = vec(0, 0, 10), vec(0, 1, 0)
+  T.check(t2:place(9, 100, true), 'placed with no trail')
+  T.near(placedAt.pos.y, -100, 0.01, 'straight back 100 m'); T.near(placedAt.rot.y, 1, 1e-6, 'facing the player\'s way')
+  -- The player drives east 60 m, then turns north for 80 m (pointing north now): 100 m back is round the corner.
+  for x = 0, 60, 5 do veh.pos = vec(x, 0, 10); t2:noteTrail() end
+  for y = 5, 80, 5 do veh.pos = vec(60, y, 10); t2:noteTrail() end
+  T.check(t2:place(9, 100, true), 'placed on the trail')
+  T.near(placedAt.pos.x, 40, 0.01, 'round the corner, on the road they came along'); T.near(placedAt.pos.y, 0, 0.01, 'not cutting across')
+  T.near(placedAt.rot.x, 1, 1e-6, 'facing east, the way they drove there')
+  for y = 85, 300, 5 do veh.pos = vec(60, y, 10); t2:noteTrail() end
+  T.eq(t2:trailLength(), thiefCar.TRAIL_POINTS, 'only the last 150 m kept')
+  -- A teleport: the old trail is no road behind them, so it starts again.
+  veh.pos = vec(5000, 5000, 10); t2:noteTrail()
+  T.eq(t2:trailLength(), 1, 'trail started again after a jump')
 end
 
 T.done('road robber')
