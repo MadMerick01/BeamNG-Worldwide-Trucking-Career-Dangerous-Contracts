@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New Let them go button on the thief card.** If you don't want to chase a thief, press it and the card goes away straight away instead of staying up for 10 minutes. The thief keeps the $1,000, just as if you had ignored it. Your saves still work.
+
 ## Build 240 · 20 Nov 2026
 
 - **The base thief now strikes once each time you play.** Each time you load into a map or join a server, one thief robs your base at a random moment in your first 45 minutes. If you can't be robbed right then, for example because you're near your base, it happens as soon as you can. After that, no more thieves until your next session. The Get robbed button on the Base tab still works any time. Your saves still work.
