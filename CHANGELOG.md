@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 257 · 20 Nov 2026
+
 - **The HUD now jumps back to the top when a new Mayday call, a thief at your base or a road robber's hit comes in,** so you see the alert card even if you were scrolled down a long tab. It happens once per alert, and you can scroll back down straight away. Saves still work.
 
 ## Build 256 · 20 Nov 2026
