@@ -513,6 +513,7 @@ function M.new(deps)
     self.profile.commissionId = d.id
     if d.amount > 0 then
       self:addMoney(d.amount)
+      self:cashSound()
       -- In a corp the tolls are split equally between everyone in it: this is the player's share.
       local shared = self.corp ~= nil
       for _, b in ipairs(self.mp.bases or {}) do if b.mine and #(b.members or {}) > 0 then shared = true end end
@@ -614,6 +615,10 @@ function M.new(deps)
     local progression = self.profile.progression
     progression.balance = math.min(MAX_BALANCE, progression.balance + math.floor(amount))
   end
+
+  -- The cha-ching on the HUD: counted for money the player earns or wins back (deliveries, rewards, a caught robber,
+  -- sales), not for fees refunded. The HUD plays it once for each new count.
+  function c:cashSound() self.cashSounds = (self.cashSounds or 0) + 1 end
 
   function c:canAfford(amount)
     return self.profile ~= nil and not self.error and type(amount) == 'number' and amount >= 0
@@ -1261,6 +1266,7 @@ function M.new(deps)
     self.profile.rewardId = r.id
     if r.amount > 0 then
       self:addMoney(r.amount)
+      self:cashSound()
       self:toast('info', 'Mayday Rescue', dollars(r.amount) .. ' for reaching the scene first.')
       self.diag:event('reward', string.format('#%d %d %s', r.id, r.amount, tostring(r.why)))
     end
@@ -1883,6 +1889,7 @@ function M.new(deps)
     local load, good = self.load, goods.get(self.load.good)
     self:loseRocketPay(load)
     self:addMoney(load.pay)
+    self:cashSound()
     -- A delivered dangerous contract's road is counted for the career page (it stays on the boards).
     if load.contract then
       local progression = self.profile.progression
@@ -1948,6 +1955,7 @@ function M.new(deps)
     local load, good = self.load, goods.get(self.load.good)
     self:loseRocketPay(load)
     self:addMoney(load.pay)
+    self:cashSound()
     jobs.delivered(self.needs, place, good, self.now())
     self:finishJob()
     local from = places.get(load.from)
@@ -2839,6 +2847,7 @@ function M.new(deps)
       robMe = self:robMeView(),
       admin = self:adminView(),
       empSound = self.empSounds or 0,
+      cashSound = self.cashSounds or 0,
       away = self:awayView(),
       home = self:homeView(current),
       fleet = self:fleetView(),

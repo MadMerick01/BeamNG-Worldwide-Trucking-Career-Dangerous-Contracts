@@ -79,8 +79,9 @@ do
   -- 20 m off: delivered.
   F.drive(c, a, location.destination(spot, 0, 20))
   T.check(c:view().load.business.inZone, 'inside the circle'); T.check(c:view().load.business.delivery.allowed, 'delivery allowed')
-  local before = c:view().balance
+  local before, cash = c:view().balance, c:view().cashSound
   T.check(c:deliver(), 'delivered at the business')
+  T.eq(c:view().cashSound, cash + 1, 'the pay plays the cha-ching')
   T.check(c:view().balance > before, 'paid'); T.check(c:view().flash.text:find('Bunnings Warehouse, St Clair', 1, true), 'the flash names it')
   T.eq(c.load, nil, 'job done')
 

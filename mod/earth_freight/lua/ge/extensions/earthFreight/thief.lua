@@ -178,6 +178,7 @@ function M.attach(c)
     elseif outcome == 'lost' then
       -- The game wouldn't put the thief's car down: not the player's fault, so the money comes back.
       self:addMoney(t.amount)
+      self:cashSound()
       self:showFlash('delivered', 'THE THIEF DROPPED IT', 'They ran off on foot and left your ' .. dollars(t.amount) .. ' behind.')
     end
     self.diag:event('thief_over', tostring(outcome))
@@ -197,6 +198,7 @@ function M.attach(c)
     self.thiefCar:emp(t.carId)
     local paid = t.amount + M.BOUNTY
     self:addMoney(paid)
+    self:cashSound()
     t.phase, t.caughtAt, t.feedback = 'caught', self.clock, nil
     if t.returnTo then self.thiefReturn, t.returnTo = t.returnTo, nil end
     self:showFlash('delivered', 'THIEF CAUGHT: +' .. dollars(paid), 'The EMP stopped them dead. You got your '

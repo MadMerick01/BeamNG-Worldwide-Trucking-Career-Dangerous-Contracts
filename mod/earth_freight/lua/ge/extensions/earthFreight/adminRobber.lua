@@ -2,8 +2,8 @@
 -- the road robber himself, under its rules. The server tells only an admin's game who can be robbed now: players on a
 -- job the road robber could rob (roadRobber.lua), with "Robbers can rob me" ticked. Everyone else's game never shows it.
 --
--- The admin's side: Rob asks the server, which asks that player's game for the road spot AHEAD_METRES in front of their
--- car. The admin's car is swapped for the robber's Moonhawk where it stands, the same way the sightseeing car is
+-- The admin's side: Rob asks the server, which asks that player's game for the road spot BEHIND_METRES behind their
+-- car, on the road they just drove (roadRobber.lua). The admin's car is swapped for the robber's Moonhawk where it stands, the same way the sightseeing car is
 -- (flights.lua), and BeamNG.Earth teleports it to that spot; once the ground has loaded it is turned to face the
 -- player's way and the robbery is on. When it ends he goes back to his own car where he left it, for free, with its job.
 -- Caught, his car is shut down for CAUGHT_SECONDS first.
@@ -21,7 +21,7 @@ local pricing = require('earthFreight/pricing')
 local emp = require('earthFreight/emp')
 local M = {}
 
-M.AHEAD_METRES = roadRobber.AHEAD_METRES
+M.BEHIND_METRES = roadRobber.BEHIND_METRES
 M.STRIKE_METRES = roadRobber.STRIKE_METRES
 M.STOLEN = roadRobber.STOLEN
 M.TRUNK = roadRobber.TRUNK
@@ -43,7 +43,7 @@ local dollars = pricing.dollars
 -- Why the server's answer said no, for the admin.
 local WHY = {
   gone = 'is not on the server any more.', off = 'cannot be robbed right now.', busy = 'is already being robbed.',
-  no_ground = 'has no road with loaded ground ahead. Try again in a moment.', away = 'is not driving right now.',
+  no_ground = 'has no clear road with loaded ground behind them yet. Try again in a moment.', away = 'is not driving right now.',
 }
 
 function M.attach(c)
@@ -230,7 +230,7 @@ function M.attach(c)
         return self:adminGoBack('BeamNG.Earth did not take the teleport.')
       end
       a.stage, a.at, a.arrivedAt = 'going', self.clock, nil
-      self.adminFeedback = 'Dropping you in ahead of ' .. a.name .. '. The terrain takes a few seconds to load.'
+      self.adminFeedback = 'Dropping you in behind ' .. a.name .. '. The terrain takes a few seconds to load.'
       return
     end
     if a.stage == 'going' then
@@ -245,7 +245,7 @@ function M.attach(c)
         self.mp:adminRob('ready', { car = car or nil })
         a.stage, a.at = 'ready', self.clock
         self.adminFeedback = nil
-        self:showFlash('delivered', 'YOU ARE THE ROBBER', a.name .. ' is coming up behind you in your lane. Get within '
+        self:showFlash('delivered', 'YOU ARE THE ROBBER', a.name .. ' is on the road ahead of you. Catch them up, get within '
           .. M.STRIKE_METRES .. ' m and fire your EMP: the button here or the Fire EMP key. You have '
           .. math.floor(M.STRIKE_SECONDS / 60) .. ' minutes.')
         return
@@ -307,7 +307,7 @@ function M.attach(c)
     return nil
   end
 
-  -- An admin wants to rob this player: the road spot ahead of their car, or why not.
+  -- An admin wants to rob this player: the road spot behind their car, or why not.
   function c:answerRobAsk(ask)
     if not ask or not self.mp then return end
     local why = self:adminRobProblem()
@@ -316,8 +316,8 @@ function M.attach(c)
     local ahead
     if not why then
       local reason
-      ahead, reason = self.thiefCar:aheadOffset(M.AHEAD_METRES)
-      if not ahead then why = reason == 'no_ground' and 'no_ground' or 'away' end
+      ahead, reason = self.thiefCar:aheadOffset(M.BEHIND_METRES, true)
+      if not ahead then why = (reason == 'no_ground' or reason == 'unsafe') and 'no_ground' or 'away' end
     end
     if why then
       self.mp:robSpot({ ask = ask.ask, ok = false, why = why })
