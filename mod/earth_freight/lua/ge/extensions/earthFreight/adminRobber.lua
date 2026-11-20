@@ -302,7 +302,8 @@ function M.attach(c)
     if not self.mp or self.mp.state ~= 'server' then return 'off' end
     if self.robber and self.robber.admin then return 'busy' end
     if self:robberProblem(false) then return 'off' end
-    if not self:robbableJob(self.load) then return 'off' end
+    -- Any job, however short: the admin picks each target himself (the AI robber keeps its 5 km minimum).
+    if not self.load or self.load.beacon then return 'off' end
     return nil
   end
 

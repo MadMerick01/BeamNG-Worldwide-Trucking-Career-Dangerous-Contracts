@@ -117,7 +117,7 @@ do
   T.check(not c:fireEmp(), 'so they can\'t hit back straight away')
   T.eq(table.concat(news, ', '), 'robber struck', 'the live feed is told it struck')
   F.advance(c, robber.PLAYER_EMP_SECONDS + 0.2)
-  T.eq(car.playerBack, 1, 'the engine comes back after 5 s')
+  T.eq(car.playerBack, 1, 'the engine comes back after 10 s')
   -- Delivering doesn't end the chase.
   c.load = nil
   F.advance(c, 1)
@@ -134,7 +134,7 @@ do
   T.eq(table.concat(news, ', '), 'robber struck, robber caught', 'and that it was caught')
   local carId = c.robber.carId
   F.advance(c, robber.CAUGHT_SECONDS + 0.5)
-  T.eq(c.robber, nil, 'over'); T.check(car.removed[carId], 'gone after 10 s')
+  T.eq(c.robber, nil, 'over'); T.check(car.removed[carId], 'gone after 30 s')
 end
 
 -- The robber gets away 450 m clear.
