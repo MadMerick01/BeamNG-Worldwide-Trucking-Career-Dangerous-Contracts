@@ -238,6 +238,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         d = d || scope.data || {}
         if (d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) return 'bad'
         if (scope.maydayCard(d)) return 'mayday'
+        if (scope.thiefCard(d)) return 'bad'
         for (var id in alerts) if (alerts[id](d)) return 'waiting'
         return ''
       }
@@ -278,6 +279,13 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var m = d.mayday
         return !!(m && m.open && !m.running && kept.maydaySeen !== m.round && !(scope.intro && scope.intro.open))
       }
+      // The base thief: the card shows while a theft is on, with Chase and then the EMP.
+      scope.thiefCard = function (d) {
+        d = d || scope.data || {}
+        return !!(d.thief && d.thief.phase && !(scope.intro && scope.intro.open))
+      }
+      scope.thiefChase = function () { if (scope.data && scope.data.thief && scope.data.thief.chaseAllowed) core('thiefChase()') }
+      scope.empThief = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'chasing') core('empThief()') }
       scope.closeMaydayCard = function () { if (scope.data) seeMayday(scope.data.mayday) }
       scope.openMaydayCard = function () {
         if (!scope.data || !scope.data.mayday) return

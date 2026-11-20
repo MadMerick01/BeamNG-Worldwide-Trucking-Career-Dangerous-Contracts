@@ -24,6 +24,23 @@
     <div ng-if="data.where" class="ef-line" style="font-size:14px;color:#c9d6d2;"><b style="color:#f2f6f5;">{{data.where.title}}</b><span ng-if="data.where.area"> &middot; {{data.where.area}}</span><span ng-if="data.where.street" style="color:#a7e5c9;"> &middot; {{data.where.street}}</span></div>
     <div ng-if="data.where && data.turf" class="ef-line" style="font-size:13px;font-weight:bold;" ng-style="{color: (data.turf.mine || data.turf.corp) ? '#6fcf97' : '#f2994a'}"><span ng-if="data.turf.mine">Your turf &middot; up to +{{data.turf.percent}}% pay</span><span ng-if="data.turf.corp">Your corp's turf &middot; up to +{{data.turf.percent}}% pay</span><span ng-if="!data.turf.mine && !data.turf.corp">{{data.turf.owner || 'Another trucker'}}'s turf &middot; {{data.turf.toll}}% toll on deliveries here</span></div>
   </button>
+  <div ng-if="hud.minimised && !intro.open && thiefCard(data)" role="alert" class="ef-mayday" style="max-width:440px;margin-top:6px;pointer-events:auto;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="flex:1;min-width:0;font-weight:bold;letter-spacing:1px;font-size:15px;color:#eb5757;">&#9888; THIEF AT YOUR BASE</div>
+      <div ng-if="data.thief.secondsLeft != null" title="Time left to give chase" style="flex:none;font-weight:bold;font-size:15px;color:#f2c94c;">{{clock(data.thief.secondsLeft)}}</div>
+    </div>
+    <div ng-if="data.thief.phase === 'stolen'" style="margin-top:4px;">A thief took <b style="color:#eb5757;">${{data.thief.amount | number:0}}</b> from your base. Chase takes you there for free. Stop them with the EMP and you get it back, plus <b style="color:#6fcf97;">${{data.thief.bounty | number:0}}</b> from their trunk.</div>
+    <div ng-if="data.thief.phase === 'travelling'" style="margin-top:4px;">On your way to your base. The terrain takes a few seconds to load.</div>
+    <div ng-if="data.thief.phase === 'settling'" style="margin-top:4px;">Back at your base. Get ready: the thief makes a run for it in <b>{{data.thief.settleLeft | number:0}} s</b>.</div>
+    <div ng-if="data.thief.phase === 'chasing'" style="margin-top:4px;">The thief is <b ng-style="{color: data.thief.empInRange ? '#6fcf97' : '#f2f6f5'}">{{data.thief.distanceMetres != null ? distance(data.thief.distanceMetres) : '...'}}</b> away. Get within {{data.thief.empMetres}} m and hit the EMP. If they get {{data.thief.escapeMetres}} m clear, they escape with the money.</div>
+<div ng-if="data.thief.phase === 'caught'" style="margin-top:4px;color:#6fcf97;font-weight:bold;">Caught! You got ${{data.thief.amount | number:0}} back, plus ${{data.thief.bounty | number:0}} from their trunk.</div>
+    <div ng-if="data.thief.problem" style="margin-top:3px;color:#c9d6d2;">{{data.thief.problem}}</div>
+    <div ng-if="data.thief.feedback" style="margin-top:3px;color:#f2c94c;">{{data.thief.feedback}}</div>
+    <div ng-if="data.thief.phase === 'stolen' || data.thief.phase === 'chasing'" style="margin-top:7px;display:flex;gap:8px;">
+      <button type="button" ng-if="data.thief.phase === 'stolen'" ng-click="thiefChase()" ng-disabled="!data.thief.chaseAllowed" style="padding:4px 14px;border:1px solid #eb5757;border-radius:4px;background:#eb5757;color:#0c1318;font-weight:bold;">Chase</button>
+      <button type="button" ng-if="data.thief.phase === 'chasing'" ng-click="empThief()" ng-style="{opacity: data.thief.empInRange ? 1 : 0.6}" style="padding:4px 14px;border:1px solid #f2c94c;border-radius:4px;background:#f2c94c;color:#0c1318;font-weight:bold;">EMP</button>
+    </div>
+  </div>
   <div ng-if="hud.minimised && !intro.open && maydayCard(data)" role="alert" class="ef-mayday" style="max-width:440px;margin-top:6px;pointer-events:auto;">
     <div style="display:flex;align-items:center;gap:8px;">
       <div style="flex:1;min-width:0;font-weight:bold;letter-spacing:1px;font-size:15px;color:#eb5757;">&#9888; MAYDAY RESCUE</div>
@@ -216,6 +233,23 @@
       <span ng-if="data.streetView.on && !data.sightseeing.on" style="margin-left:auto;white-space:nowrap;"><button type="button" ng-click="setTab('streetview')" title="Street View is following your truck in your web browser. Open the Street View tab." style="padding:1px 8px;font-size:12px;color:#6fcf97;border:1px solid #6fcf97;border-radius:4px;"><span aria-hidden="true">&#9679;</span> Street View on</button></span>
     </div>
     <div ng-if="data.saveFeedback" style="margin-top:2px;color:#c9d6d2;font-size:12px;">{{data.saveFeedback}}</div>
+    <div ng-if="thiefCard(data)" role="alert" class="ef-mayday" style="margin:8px 0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;min-width:0;font-weight:bold;letter-spacing:1px;font-size:15px;color:#eb5757;">&#9888; THIEF AT YOUR BASE</div>
+        <div ng-if="data.thief.secondsLeft != null" title="Time left to give chase" style="flex:none;font-weight:bold;font-size:15px;color:#f2c94c;">{{clock(data.thief.secondsLeft)}}</div>
+        </div>
+      <div ng-if="data.thief.phase === 'stolen'" style="margin-top:4px;">A thief took <b style="color:#eb5757;">${{data.thief.amount | number:0}}</b> from your base. Chase takes you there for free. Stop them with the EMP and you get it back, plus <b style="color:#6fcf97;">${{data.thief.bounty | number:0}}</b> from their trunk.</div>
+      <div ng-if="data.thief.phase === 'travelling'" style="margin-top:4px;">On your way to your base. The terrain takes a few seconds to load.</div>
+      <div ng-if="data.thief.phase === 'settling'" style="margin-top:4px;">Back at your base. Get ready: the thief makes a run for it in <b>{{data.thief.settleLeft | number:0}} s</b>.</div>
+      <div ng-if="data.thief.phase === 'chasing'" style="margin-top:4px;">The thief is <b ng-style="{color: data.thief.empInRange ? '#6fcf97' : '#f2f6f5'}">{{data.thief.distanceMetres != null ? distance(data.thief.distanceMetres) : '...'}}</b> away. Get within {{data.thief.empMetres}} m and hit the EMP. If they get {{data.thief.escapeMetres}} m clear, they escape with the money.</div>
+<div ng-if="data.thief.phase === 'caught'" style="margin-top:4px;color:#6fcf97;font-weight:bold;">Caught! You got ${{data.thief.amount | number:0}} back, plus ${{data.thief.bounty | number:0}} from their trunk.</div>
+      <div ng-if="data.thief.problem" style="margin-top:3px;color:#c9d6d2;">{{data.thief.problem}}</div>
+      <div ng-if="data.thief.feedback" style="margin-top:3px;color:#f2c94c;">{{data.thief.feedback}}</div>
+      <div ng-if="data.thief.phase === 'stolen' || data.thief.phase === 'chasing'" style="margin-top:7px;display:flex;gap:8px;">
+        <button type="button" ng-if="data.thief.phase === 'stolen'" ng-click="thiefChase()" ng-disabled="!data.thief.chaseAllowed" style="padding:4px 14px;border:1px solid #eb5757;border-radius:4px;background:#eb5757;color:#0c1318;font-weight:bold;">Chase</button>
+        <button type="button" ng-if="data.thief.phase === 'chasing'" ng-click="empThief()" ng-style="{opacity: data.thief.empInRange ? 1 : 0.6}" style="padding:4px 14px;border:1px solid #f2c94c;border-radius:4px;background:#f2c94c;color:#0c1318;font-weight:bold;">EMP</button>
+      </div>
+    </div>
     <div ng-if="maydayCard(data)" role="alert" class="ef-mayday" style="margin:8px 0;">
       <div style="display:flex;align-items:center;gap:8px;">
         <div style="flex:1;min-width:0;font-weight:bold;letter-spacing:1px;font-size:15px;color:#eb5757;">&#9888; MAYDAY RESCUE</div>

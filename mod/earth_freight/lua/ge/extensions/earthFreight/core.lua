@@ -32,6 +32,8 @@ local rockets = require('earthFreight/rockets')
 local mayday = require('earthFreight/mayday')
 local magnate = require('earthFreight/magnate')
 local fuelruns = require('earthFreight/fuelruns')
+local thief = require('earthFreight/thief')
+local thiefCar = require('earthFreight/thiefCar')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -150,6 +152,8 @@ function M.new(deps)
     cargo = deps.cargo, fuelTank = deps.fuel,
     -- Reads where the hired helicopter is and how high; without it there are no heli flights.
     aircraft = deps.aircraft,
+    -- The base thief's car (thiefCar.lua); without it a thief can't be chased.
+    thiefCar = deps.thiefCar,
     odometer = odometer.new(),
     -- Sends game UI events, such as the pop-ups that show over the game's own menus.
     trigger = deps.trigger,
@@ -167,6 +171,7 @@ function M.new(deps)
   home.attach(c)
   fleet.attach(c)
   fuelruns.attach(c)
+  thief.attach(c)
 
   function c:transition(nextState, reason)
     if self.state == nextState and self.reason == reason then return end
@@ -900,6 +905,11 @@ function M.new(deps)
     local b = self.booking
     self.booking, self.stranded, self.bookingTeleportAt = nil, nil, nil
     self.landing = { latitude = b.latitude, longitude = b.longitude, at = self.clock, name = b.name, region = b.region }
+    if b.thief then
+      self:thiefLanded()
+      self.diag:event('shipped', 'thief')
+      return
+    end
     if b.mayday then
       local call = self:maydayCall()
       if call and call.state == 'open' and call.round == b.mayday.round then
@@ -2230,6 +2240,7 @@ function M.new(deps)
     self:spawnFirstCar(sample, dt)
     self:hintHud(sample, dt)
     self:watchMayday()
+    self:watchThief(dt)
     self:watchFind()
     self:watchCommission()
     self:watchReward()
@@ -2747,6 +2758,7 @@ function M.new(deps)
       heli = self:heliView(current), beacon = self:beaconView(current),
       shipping = self:shippingView(current),
       mayday = self:maydayView(current),
+      thief = self:thiefView(),
       away = self:awayView(),
       home = self:homeView(current),
       fleet = self:fleetView(),
@@ -3093,7 +3105,7 @@ end
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
-      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
+      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
       streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(),
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
@@ -3279,6 +3291,11 @@ function M.searchShipping(query)
 end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 -- edge: 'n', 'e', 's' or 'w'.
+-- The base thief: Chase, the EMP (MadMerick's EMP button can call earthFreight_core.empThief()), and a theft
+-- straight away for testing (earthFreight_core.thiefTest() in the console; it needs a base).
+function M.thiefChase() return safely(function() return ensure():thiefChase() end) end
+function M.empThief() return safely(function() return ensure():empThief() end) end
+function M.thiefTest() return safely(function() return ensure():startTheft(true) end) end
 function M.maydayEdge(edge)
   if edge ~= 'n' and edge ~= 'e' and edge ~= 's' and edge ~= 'w' then return false end
   return safely(function() return ensure():maydayEdge(edge) end)
