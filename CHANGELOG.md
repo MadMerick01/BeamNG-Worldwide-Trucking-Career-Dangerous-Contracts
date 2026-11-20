@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 241 · 20 Nov 2026
+
 - **New Let them go button on the thief card.** If you don't want to chase a thief, press it and the card goes away straight away instead of staying up for 10 minutes. The thief keeps the $1,000, just as if you had ignored it. Your saves still work.
 
 ## Build 240 · 20 Nov 2026
