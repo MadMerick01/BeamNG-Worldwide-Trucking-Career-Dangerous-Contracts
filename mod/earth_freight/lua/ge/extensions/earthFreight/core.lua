@@ -40,6 +40,8 @@ local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
 local MAX_BALANCE = 9007199254740991
+-- How often the game's name tags are checked and turned off again (watchNametags).
+local NAMETAGS_EVERY_SECONDS = 2
 M.STARTING_MONEY = STARTING_MONEY
 -- What the game's traffic police take when they catch the player, for a ticket or an arrest.
 local POLICE_FINE = 200
@@ -165,6 +167,8 @@ function M.new(deps)
     -- The Street View window's little web server, and how a web page is opened in the player's
     -- browser; without them there is no Street View button.
     streetView = deps.streetView, openUrl = deps.openUrl,
+    -- Turns the game's multiplayer name tags off; returns true when they were on (see watchNametags).
+    nametagsOff = deps.nametagsOff,
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
@@ -634,6 +638,14 @@ function M.new(deps)
     end
     self:autoSaveSoon('your police fine')
     return true
+  end
+
+  -- Name tags stay off: checked every NAMETAGS_EVERY_SECONDS, so turning them on in Options doesn't last.
+  function c:watchNametags()
+    if not self.nametagsOff or (self.nametagsAt and self.clock - self.nametagsAt < NAMETAGS_EVERY_SECONDS) then return end
+    self.nametagsAt = self.clock
+    local ok, changed = pcall(self.nametagsOff)
+    if ok and changed then self.diag:event('nametags', 'turned off') end
   end
 
   function c:showFlash(kind, title, text)
@@ -2289,6 +2301,7 @@ function M.new(deps)
     self:watchMayday()
     self:watchThief(dt)
     self:watchRobber(dt)
+    self:watchNametags()
     self:watchFind()
     self:watchCommission()
     self:watchReward()
@@ -3146,6 +3159,15 @@ local function gameCamera()
 end
 -- Opens a page of this computer's own web server in the player's default browser (browser.lua),
 -- and notes in the log which way worked. False when none did.
+-- The game's multiplayer name tags (the mpNametagsEnabled setting): always off with this mod, so no car on a server
+-- shows who drives it, not even a robber driven by a person. Returns true when they were on and were turned off.
+local function gameNametagsOff()
+  if not settings or type(settings.getValue) ~= 'function' or type(settings.setValue) ~= 'function' then return false end
+  if settings.getValue('mpNametagsEnabled') == false then return false end
+  settings.setValue('mpNametagsEnabled', false)
+  return true
+end
+
 local function gameOpenUrl(url)
   local opened, how = browser.open(url)
   local logger = rawget(_G, 'log')
@@ -3158,7 +3180,7 @@ local function ensure()
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
       punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
-      streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(),
+      streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(), nametagsOff = gameNametagsOff,
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
   return active
