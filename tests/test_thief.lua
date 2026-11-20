@@ -65,9 +65,44 @@ do
   -- Nobody gives chase: the money is gone.
   c:endTheft('late')
   T.eq(c.thief, nil, 'over')
-  T.check(c:theftProblem(false) ~= nil, 'not straight away again')
+  -- One a session: no more, however long they play.
+  c.clock = c.clock + 5 * 3600
+  c:watchThief(1)
+  T.eq(c.thief, nil, 'only one a session')
+  T.check(c.theftPlan.done, 'this session has had its theft')
   c.mp = { state = 'server' }
   T.eq(c:theftProblem(true), nil, 'thieves on a server too'); c.mp = nil
+  -- Leaving the map or server ends the session; the next one gets its own.
+  c:endMission()
+  T.eq(c.theftPlan, nil, 'a new session, a new theft to come')
+end
+
+-- The session's theft comes at a random moment in the first 45 minutes, or as soon as it can after that.
+do
+  local c, a = ready({ random = function() return 0.5 end })
+  local base = F.copy(a.pose)
+  T.check(c:buyBase(base), 'base bought')
+  a.pose = location.destination(base, 90, thief.MIN_AWAY_METRES + 1000)
+  c.lastSample = c.adapter:sample()
+  c.stranded, c.booking = nil, nil
+  c:watchThief(0.1)
+  local due = c.theftPlan.at
+  T.near(due - c.clock, thief.WINDOW_MINUTES * 60 / 2, 5, 'due halfway through the first 45 minutes')
+  c.clock = due - 1; c:watchThief(0.1)
+  T.eq(c.thief, nil, 'not before then')
+  -- At the base when it's due: it waits.
+  a.pose = F.copy(base); c.lastSample = c.adapter:sample()
+  c.clock = due + 1; c:watchThief(0.1)
+  T.eq(c.thief, nil, 'not while at the base')
+  a.pose = location.destination(base, 90, thief.MIN_AWAY_METRES + 1000); c.lastSample = c.adapter:sample()
+  c.clock = due + 600; c.stranded, c.booking = nil, nil; c:watchThief(0.1)
+  T.check(c.thief ~= nil, 'then as soon as they can be robbed')
+  -- Get robbed doesn't use up the session's theft.
+  local d = ready({ random = function() return 0.99 end })
+  T.check(d:buyBase(F.copy(a.pose)), 'base bought')
+  d:watchThief(0.1)
+  T.check(d:startTheft(true), 'Get robbed')
+  T.check(not d.theftPlan.done, 'the session still has its own theft to come')
 end
 
 -- The whole chase: Chase relocates to the base for free, the world settles, the thief turns up and flees, the EMP

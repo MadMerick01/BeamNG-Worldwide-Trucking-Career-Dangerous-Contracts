@@ -578,6 +578,8 @@ function M.new(deps)
     self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
+    -- A new session gets a base thief of its own (thief.lua).
+    self.theftPlan = nil
     self:interrupt('earth_level_required')
     self.adapter:invalidate()
   end

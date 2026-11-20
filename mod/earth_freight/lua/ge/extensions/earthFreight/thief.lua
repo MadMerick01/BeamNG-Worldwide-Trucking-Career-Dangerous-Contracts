@@ -34,10 +34,11 @@ M.ESCAPE_METRES = 450
 M.EMP_METRES = 5
 -- A caught thief's car stays this long before it is taken away.
 M.CAUGHT_SECONDS = 20
--- When thefts happen: only with a base, at least MIN_AWAY_METRES from it, with STOLEN in the bank. On average one every MEAN_MINUTES of such play, and never within GAP_SECONDS of the last.
+-- When thefts happen: one per session (each time the player loads in, on a map or a server), at a random moment in
+-- their first WINDOW_MINUTES of play. It needs a base, at least MIN_AWAY_METRES from it, STOLEN in the bank and the
+-- player not busy; if they can't be robbed at that moment, it happens as soon as they can.
 M.MIN_AWAY_METRES = 5000
-M.MEAN_MINUTES = 45
-M.GAP_SECONDS = 30 * 60
+M.WINDOW_MINUTES = 45
 -- The thief's car: for now the same Moonhawk as the sightseeing car, until MadMerick supplies the real one.
 M.MODEL = flights.SIGHTSEEING.model
 M.CONFIG = flights.SIGHTSEEING.config
@@ -49,11 +50,12 @@ function M.attach(c)
   --   self.thief: the theft going on, or nil: { phase, amount, at, settleAt, carId, chaseAt, caughtAt, tries,
   --     nextTry, metres, feedback }. phase: 'stolen' (Chase not pressed yet), 'travelling' (relocating to the base),
   --     'settling' (at the base, waiting for the world), 'chasing', 'caught'.
-  --   self.lastTheftAt: the clock when the last theft happened.
+  --   self.theftPlan: this session's theft: { at (the clock when it is due), done }. nil until the career is ready;
+  --     endMission (leaving the map or server) clears it, so the next session gets one of its own.
   --   self.thiefReturn: once the chase is over, where Back to your job goes: { latitude, longitude, load, mayday,
   --     trailer, feedback }. While the chase is on, it waits in self.thief.returnTo.
 
-  -- Why a theft can't happen now (forced: the test command, which skips distance, chance and the gap), or nil.
+  -- Why a theft can't happen now (forced: the Get robbed button, which skips the distance and the session's plan), or nil.
   function c:theftProblem(forced)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Not ready yet.' end
     if not self.property then return 'You need a base first.' end
@@ -62,7 +64,6 @@ function M.attach(c)
     if not self:canAfford(M.STOLEN) then return 'Less than ' .. dollars(M.STOLEN) .. ' in the bank.' end
     if forced then return nil end
     if self.thiefReturn or self.hire or self.onFoot or self.maydayRun or self.booking or self.stranded then return 'Busy.' end
-    if self.lastTheftAt and self.clock - self.lastTheftAt < M.GAP_SECONDS then return 'Too soon.' end
     local away = self:homeDistance()
     if not away or away < M.MIN_AWAY_METRES then return 'Too close to the base.' end
     return nil
@@ -73,7 +74,6 @@ function M.attach(c)
     if self:theftProblem(forced) then return false end
     if not self:spend(M.STOLEN, 'thief') then return false end
     self.thief = { phase = 'stolen', amount = M.STOLEN, at = self.clock }
-    self.lastTheftAt = self.clock
     local text = 'A thief broke into your base and took ' .. dollars(M.STOLEN) .. '. Press Chase within '
       .. math.floor(M.CHASE_WINDOW_SECONDS / 60) .. ' minutes to go after them. Catch them with the EMP and you get it back, plus '
       .. dollars(M.BOUNTY) .. ' from their trunk.'
@@ -204,8 +204,15 @@ function M.attach(c)
     if self.thiefCar and self.thiefCar.update then self.thiefCar:update(dt) end
     local t = self.thief
     if not t then
-      -- A random theft: on average one every MEAN_MINUTES while one could happen.
-      if dt > 0 and not self:theftProblem(false) and self.random() < dt / (M.MEAN_MINUTES * 60) then self:startTheft(false) end
+      -- This session's theft: its moment is picked once the career is ready, somewhere in the first WINDOW_MINUTES.
+      local ready = self.profile and not self.error and self.state == 'READY' and self.arrived
+      if not self.theftPlan and ready then
+        self.theftPlan = { at = self.clock + self.random() * M.WINDOW_MINUTES * 60, done = false }
+      end
+      local plan = self.theftPlan
+      if plan and not plan.done and self.clock >= plan.at and not self:theftProblem(false) and self:startTheft(false) then
+        plan.done = true
+      end
       return
     end
     if t.phase == 'stolen' or t.phase == 'travelling' then
