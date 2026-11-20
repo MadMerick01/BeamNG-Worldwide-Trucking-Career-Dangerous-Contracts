@@ -124,7 +124,7 @@ do
   T.check(not c:fireEmp(), 'his hit drained the player\'s EMP'); T.eq(c:view().thief.emp.ready, false, 'it charges from empty')
   T.eq(c:view().thief.road, true, 'the chase card'); T.eq(c:view().thief.distanceMetres, 10, 'with how far')
   F.advance(c, emp.CHARGE_SECONDS + 0.2)
-  T.eq(car.playerBack, 1, 'the engine back after 5 s')
+  T.eq(car.playerBack, 1, 'the engine back after 10 s')
   T.check(c:fireEmp(), 'the EMP within range catches them'); T.eq(c:view().empSound, sounds0 + 3, 'and the sound for the player\'s own EMP')
   T.eq(c.profile.progression.balance, before + admin.TRUNK, 'the $1,000 back plus $20,000')
   T.eq(s.last('wwtcRobbed').what, 'caught', 'the live feed is told he was caught')
@@ -133,7 +133,7 @@ do
   c:robNews({ state = 'caught', name = 'MadMerick' })
   T.eq(c:view().flash.title, 'YOU CAUGHT MADMERICK!', 'his name is shown')
   F.advance(c, admin.CAUGHT_SECONDS + 0.5)
-  T.eq(c.robber, nil, 'over after 10 s'); T.eq(next(car.removed), nil, 'his car is never taken away')
+  T.eq(c.robber, nil, 'over after 30 s'); T.eq(next(car.removed), nil, 'his car is never taken away')
 end
 
 -- Escaped: 450 m clear, the money is gone.

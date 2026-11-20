@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **A caught road robber now stays put for 30 seconds** (was 10) before their car disappears, and a road robber's EMP now kills your engine for 10 seconds (was 5). Your saves still work.
+
 - **A thief at your base now sounds the Mayday alert.** When a thief breaks into your base, you hear the same alarm as a new Mayday Rescue call, and the red THIEF AT YOUR BASE card pops up with Chase and Let them go, even with the HUD minimised. Your saves still work.
 
 ## Build 250 · 20 Nov 2026
