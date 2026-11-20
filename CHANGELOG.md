@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Fixed: fuel and water in a tanker trailer no longer lose their weight partway through a job.** If the tanker respawned for any other reason while loaded, for example after you moved the **Load Volume** slider in Vehicle Config and pressed Apply, or after the game put its parts back as you bought them, the tank was left empty and the trailer drove light for the rest of the job. Now the mod fills it again with your load, so a loaded short 17,700 L or long 34,000 L tanker stays heavy until you deliver. While you carry a load the slider always follows it, so you can't set it by hand until the job is done. Your saves still work.
+
 ## Build 241 · 20 Nov 2026
 
 - **New Let them go button on the thief card.** If you don't want to chase a thief, press it and the card goes away straight away instead of staying up for 10 minutes. The thief keeps the $1,000, just as if you had ignored it. Your saves still work.
