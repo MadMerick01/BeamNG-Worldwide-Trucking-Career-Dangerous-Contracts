@@ -282,9 +282,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // The base thief: the card shows while a theft is on, with Chase and then the EMP.
       scope.thiefCard = function (d) {
         d = d || scope.data || {}
-        return !!(d.thief && d.thief.phase && !(scope.intro && scope.intro.open))
+        return !!(d.thief && d.thief.phase && d.thief.phase !== 'caught' && !(scope.intro && scope.intro.open))
       }
       scope.thiefChase = function () { if (scope.data && scope.data.thief && scope.data.thief.chaseAllowed) core('thiefChase()') }
+      scope.getRobbed = function () { if (scope.data && scope.data.robbery && scope.data.robbery.allowed) core('getRobbed()') }
       scope.empThief = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'chasing') core('empThief()') }
       scope.closeMaydayCard = function () { if (scope.data) seeMayday(scope.data.mayday) }
       scope.openMaydayCard = function () {

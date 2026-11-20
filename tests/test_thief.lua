@@ -32,6 +32,14 @@ do
   F.advance(c, 5)
   T.eq(c.thief, nil, 'no base: no thief')
   T.check(not c:startTheft(true), 'the test command needs a base')
+  local r = c:view().robbery
+  T.check(r and not r.allowed and r.problem == 'You need a base first.', 'Get robbed says why not')
+  T.check(c:buyBase(F.copy(a.pose)), 'base bought')
+  T.check(c:view().robbery.allowed, 'Get robbed offered with a base, even at it')
+  T.check(c:startTheft(true), 'pressed')
+  T.eq(c:view().robbery.problem, 'A thief is already about.', 'one at a time')
+  c.mp = { state = 'server' }
+  T.eq(c:robberyView(), nil, 'no button on a server'); c.mp = nil
 end
 
 -- Random thefts: only with a base, far from it, and never on a server.

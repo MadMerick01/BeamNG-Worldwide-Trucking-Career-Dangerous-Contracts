@@ -214,6 +214,14 @@ function M.attach(c)
     end
   end
 
+  -- The Base tab's Get robbed button, which starts a theft whenever the rules allow (not on a server).
+  function c:robberyView()
+    if not self.profile or self.error or onServer(self) then return nil end
+    local problem = self:theftProblem(true)
+    if problem == 'Not ready yet.' then problem = 'Get in your car first.' end
+    return { allowed = problem == nil, problem = problem, amount = M.STOLEN, bounty = M.BOUNTY }
+  end
+
   -- The HUD's card, or nil.
   function c:thiefView()
     local t = self.thief

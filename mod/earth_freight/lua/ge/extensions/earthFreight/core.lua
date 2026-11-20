@@ -2759,6 +2759,7 @@ function M.new(deps)
       shipping = self:shippingView(current),
       mayday = self:maydayView(current),
       thief = self:thiefView(),
+      robbery = self:robberyView(),
       away = self:awayView(),
       home = self:homeView(current),
       fleet = self:fleetView(),
@@ -3292,10 +3293,11 @@ end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 -- edge: 'n', 'e', 's' or 'w'.
 -- The base thief: Chase, the EMP (MadMerick's EMP button can call earthFreight_core.empThief()), and a theft
--- straight away for testing (earthFreight_core.thiefTest() in the console; it needs a base).
+-- straight away: the Base tab's Get robbed button, or earthFreight_core.thiefTest() in the console (it needs a base).
 function M.thiefChase() return safely(function() return ensure():thiefChase() end) end
 function M.empThief() return safely(function() return ensure():empThief() end) end
 function M.thiefTest() return safely(function() return ensure():startTheft(true) end) end
+function M.getRobbed() return safely(function() return ensure():startTheft(true) end) end
 function M.maydayEdge(edge)
   if edge ~= 'n' and edge ~= 'e' and edge ~= 's' and edge ~= 'w' then return false end
   return safely(function() return ensure():maydayEdge(edge) end)

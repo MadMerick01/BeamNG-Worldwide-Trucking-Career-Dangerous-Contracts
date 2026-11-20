@@ -1325,6 +1325,13 @@ test('Base thief: the card shows while a theft is on, and Chase and EMP send fix
   a.state({ state: 'READY', arrived: true, thief: { phase: 'chasing', amount: 1000, bounty: 5000, distanceMetres: 40, empMetres: 5, escapeMetres: 450 } })
   a.scope.empThief()
   assert.deepEqual(a.commands, [fixed('thiefChase()'), fixed('empThief()')])
+  a.commands.length = 0
+  a.state({ state: 'READY', arrived: true, robbery: { allowed: false, problem: 'You need a base first.', amount: 1000, bounty: 5000 } })
+  a.scope.getRobbed()
+  a.state({ state: 'READY', arrived: true, robbery: { allowed: true, amount: 1000, bounty: 5000 } })
+  a.scope.getRobbed()
+  assert.deepEqual(a.commands, [fixed('getRobbed()')], 'Get robbed only when allowed')
+  for (const part of ['ng-click="getRobbed()"', 'Base thief (trial)']) assert.ok(html.includes(part), part)
   for (const part of ['THIEF AT YOUR BASE', 'ng-click="thiefChase()"', 'ng-click="empThief()"', 'escape with the money'])
     assert.ok(html.includes(part), part)
 })
