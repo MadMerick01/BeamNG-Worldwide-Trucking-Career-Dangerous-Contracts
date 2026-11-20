@@ -22,10 +22,10 @@ M.CHASE_WINDOW_SECONDS = 600
 -- After landing at the base, how long the world gets to load and the car to settle before the thief turns up. The
 -- count starts only once the car is really there: within ARRIVED_METRES of the base, in the car, with Earth reading
 -- its position. A jump away again while Earth loads (the car can turn up somewhere near first) starts it over.
-M.SETTLE_SECONDS = 20
+M.SETTLE_SECONDS = 30
 M.ARRIVED_METRES = 500
 -- How far from the player the thief's car turns up: on the nearest road, lined up with it.
-M.SPAWN_METRES = 100
+M.SPAWN_METRES = 50
 -- How often a spawn the game refused is tried again, and how many times.
 M.SPAWN_RETRY_SECONDS = 5
 M.SPAWN_TRIES = 3

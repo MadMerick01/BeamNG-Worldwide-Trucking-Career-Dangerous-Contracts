@@ -136,7 +136,7 @@ do
   T.eq(#car.spawned, 0, 'and no thief')
   a.pose = F.copy(base)
   F.advance(c, 1)
-  T.near(c:view().thief.settleLeft, thief.SETTLE_SECONDS - 1, 0.2, 'the 20 s start once there')
+  T.near(c:view().thief.settleLeft, thief.SETTLE_SECONDS - 1, 0.2, 'the 30 s start once there')
   F.advance(c, thief.SETTLE_SECONDS - 3)
   T.eq(#car.spawned, 0, 'no thief while the world loads')
   F.advance(c, 4)
