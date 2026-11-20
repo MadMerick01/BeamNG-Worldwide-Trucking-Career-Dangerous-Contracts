@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Robberies now show on the server's live feed.** On a server, the feed on the server page posts a line when a road robber or a thief hits someone, and another when they're caught or get away, for example "A road robber hit Sam near Lithgow and took $1,000." Every road robber is just "a road robber" on the feed. Missed EMPs aren't posted. The server needs updating too. Your saves still work.
+
 ## Build 247 · 20 Nov 2026
 
 - **A robber's EMP now drains yours.** When a road robber hits you, your EMP empties and takes the usual 20 seconds to charge before you can fire back, so you have to chase them for a while first. Your saves still work.

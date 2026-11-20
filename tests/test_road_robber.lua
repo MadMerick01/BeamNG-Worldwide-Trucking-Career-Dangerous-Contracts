@@ -60,6 +60,8 @@ T.eq(robber.huntKph(125), 130, 'capped at 130 km/h')
 -- lurks, hunts, strikes, flees, and the EMP catches it.
 do
   local c, a, car = ready(0.1)
+  local news = {}
+  c.robberyNews = function(_, who, what) news[#news + 1] = who .. ' ' .. what end
   local to = townBetween(c, 20, 60)
   T.check(to ~= nil, 'a town for a long job')
   local id = F.offer(c, to, 'food')
@@ -113,6 +115,7 @@ do
   T.eq(v.bounty, 20000, '$20,000 in the trunk')
   T.eq(v.emp.ready, false, 'its EMP drained the player\'s: it charges from empty')
   T.check(not c:fireEmp(), 'so they can\'t hit back straight away')
+  T.eq(table.concat(news, ', '), 'robber struck', 'the live feed is told it struck')
   F.advance(c, robber.PLAYER_EMP_SECONDS + 0.2)
   T.eq(car.playerBack, 1, 'the engine comes back after 5 s')
   -- Delivering doesn't end the chase.
@@ -128,6 +131,7 @@ do
   T.eq(car.hit[1], c.robber.carId, 'on the robber')
   T.eq(c.profile.progression.balance, before + robber.TRUNK, 'money back plus $20,000')
   T.eq(c.flash.title, 'ROBBER CAUGHT: +$21,000', 'told')
+  T.eq(table.concat(news, ', '), 'robber struck, robber caught', 'and that it was caught')
   local carId = c.robber.carId
   F.advance(c, robber.CAUGHT_SECONDS + 0.5)
   T.eq(c.robber, nil, 'over'); T.check(car.removed[carId], 'gone after 10 s')
