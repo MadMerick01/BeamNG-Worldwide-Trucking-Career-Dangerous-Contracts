@@ -11,6 +11,7 @@ local function fakeCar()
   function f:flee(id) self.fled[#self.fled + 1] = id; return true end
   function f:distance(id) if self.removed[id] then return nil end; return self.metres end
   function f:emp(id) self.hit[#self.hit + 1] = id; return true end
+  function f:bearing() return self.arrow end
   function f:remove(id) self.removed[id] = true; return true end
   function f:update() end
   return f
@@ -101,6 +102,8 @@ do
   T.eq(thief.CONFIG, 'vehicles/moonhawk/earth_freight_sightseeing.pc', 'in the sightseeing car for now')
   T.eq(c.thief.phase, 'chasing', 'the chase is on')
   T.eq(c:view().thief.distanceMetres, 60, 'how far away')
+  car.arrow = -90.4; F.advance(c, 0.2)
+  T.eq(c:view().thief.arrow, -90, 'the arrow points to the thief')
   T.check(not c:empThief(), 'too far for the EMP')
   T.check(c.thief.feedback:find('within 5 m', 1, true), 'says how close to get')
   car.metres = 4
@@ -229,6 +232,10 @@ do
   T.eq(rot.x, 0, 'lined up with the road'); T.eq(rot.y, 1, 'facing away from the player')
   T.check(t:flee(9) and queued[1]:find('local tid = 1', 1, true), 'fleeing from the player')
   T.eq(t:distance(9), 5, 'distance')
+  T.near(t:bearing(9), 36.87, 0.01, 'the arrow: ahead and to the right')
+  player.getDirectionVector = function() return vec(0, -1, 0) end
+  T.near(t:bearing(9), -143.13, 0.01, 'behind and to the left when facing the other way')
+  player.getDirectionVector = function() return vec(0, 1, 0) end
   T.check(t:emp(9) and queued[2] == thiefCar.EMP_COMMAND, 'EMP')
   T.check(t:remove(9) and deleted, 'removed')
   T.eq(t:distance(10), nil, 'no car, no distance')

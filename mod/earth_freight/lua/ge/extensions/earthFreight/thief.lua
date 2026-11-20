@@ -228,6 +228,7 @@ function M.attach(c)
     if t.phase == 'chasing' then
       local d = self.thiefCar and self.thiefCar:distance(t.carId)
       t.metres = d
+      t.arrow = d and self.thiefCar.bearing and self.thiefCar:bearing(t.carId) or nil
       if not d then self:endTheft('escaped') return end
       if d > M.ESCAPE_METRES then self:endTheft('escaped') end
       return
@@ -320,6 +321,7 @@ function M.attach(c)
       chaseAllowed = t.phase == 'stolen' and problem == nil, problem = problem,
       settleLeft = settleLeft,
       distanceMetres = t.phase == 'chasing' and t.metres and math.floor(t.metres + 0.5) or nil,
+      arrow = t.phase == 'chasing' and t.arrow and math.floor(t.arrow + 0.5) or nil,
       empMetres = M.EMP_METRES, empInRange = t.phase == 'chasing' and t.metres ~= nil and t.metres <= M.EMP_METRES,
       escapeMetres = M.ESCAPE_METRES, feedback = t.feedback,
       held = t.returnTo and { job = t.returnTo.load, mayday = t.returnTo.mayday } or nil,

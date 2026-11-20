@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **An arrow now points you to the thief.** During a base thief chase, the card shows a red arrow next to the distance. Straight up is the way your car is facing, so turn until it points up and drive. Your saves still work.
+
 ## Build 237 · 20 Nov 2026
 
 - **Base thieves now strike on the trucking server too.** Everything works as in single player: the theft alert, **Chase**, the EMP, **Back to your job** and the **Get robbed** button on the **Base** tab. The money comes out of, and back into, your server career like any other. Other players can see the thief's car while you chase it. A Mayday Rescue run you were on is held while you chase, just like a delivery. Your saves still work.
