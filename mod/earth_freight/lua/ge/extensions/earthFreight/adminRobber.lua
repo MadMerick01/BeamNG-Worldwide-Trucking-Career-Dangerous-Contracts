@@ -409,6 +409,10 @@ function M.attach(c)
     if r.empEndAt and self.clock >= r.empEndAt then
       r.empEndAt = nil
       self.thiefCar:empPlayerEnd()
+    elseif r.empEndAt and self.clock >= (r.brakeAt or 0) then
+      -- The brakes stay slammed on while the EMP lasts (thiefCar.lua).
+      r.brakeAt = self.clock + 1
+      if self.thiefCar.empPlayerHold then self.thiefCar:empPlayerHold() end
     end
     if r.phase == 'lurking' then
       if self.clock - r.placedAt > M.STRIKE_SECONDS or (not d and self.clock - r.placedAt > M.CAR_WAIT_SECONDS) then
