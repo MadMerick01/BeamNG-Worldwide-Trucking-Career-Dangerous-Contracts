@@ -578,6 +578,8 @@ function M.new(deps)
     self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
+    -- A new session gets a base thief of its own (thief.lua).
+    self.theftPlan = nil
     self:interrupt('earth_level_required')
     self.adapter:invalidate()
   end
@@ -3312,6 +3314,7 @@ function M.bookOffer() return safely(function() return ensure():bookOffer() end)
 -- straight away: the Base tab's Get robbed button, or earthFreight_core.thiefTest() in the console (it needs a base).
 function M.thiefChase() return safely(function() return ensure():thiefChase() end) end
 function M.empThief() return safely(function() return ensure():empThief() end) end
+function M.empHotkey() return safely(function() return ensure():empHotkey() end) end
 function M.thiefGoBack() return safely(function() return ensure():thiefGoBack() end) end
 function M.thiefTest() return safely(function() return ensure():startTheft(true) end) end
 function M.getRobbed() return safely(function() return ensure():startTheft(true) end) end

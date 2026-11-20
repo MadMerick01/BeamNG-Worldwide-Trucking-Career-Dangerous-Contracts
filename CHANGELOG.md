@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The base thief now strikes once each time you play.** Each time you load into a map or join a server, one thief robs your base at a random moment in your first 45 minutes. If you can't be robbed right then, for example because you're near your base, it happens as soon as you can. After that, no more thieves until your next session. The Get robbed button on the Base tab still works any time. Your saves still work.
+
+- **You can now fire the EMP with a key.** Go to Options > Controls > Bindings, find Fire EMP under Gameplay and give it any key or wheel button. It has no key until you set one. During a thief chase it works just like the EMP button. If you're too far away, a pop-up tells you how close to get, even with the HUD minimised. The chase card now has a tip about this. Your saves still work.
+
 ## Build 239 · 20 Nov 2026
 
 - **The base thief now drives around traffic instead of through it.** It watches the road ahead, and when it comes up on slow or queued cars it backs off in steps, from 90 km/h on an open road down to 30 km/h right behind a jam, and keeps to its own lane. If it stays stuck in a queue it works out a new way out. Road traffic is halved during a chase and comes back once it's over. On an open road the thief tops out at 90 km/h, so it is a little easier to catch than before. Your saves still work.

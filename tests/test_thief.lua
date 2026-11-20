@@ -65,9 +65,44 @@ do
   -- Nobody gives chase: the money is gone.
   c:endTheft('late')
   T.eq(c.thief, nil, 'over')
-  T.check(c:theftProblem(false) ~= nil, 'not straight away again')
+  -- One a session: no more, however long they play.
+  c.clock = c.clock + 5 * 3600
+  c:watchThief(1)
+  T.eq(c.thief, nil, 'only one a session')
+  T.check(c.theftPlan.done, 'this session has had its theft')
   c.mp = { state = 'server' }
   T.eq(c:theftProblem(true), nil, 'thieves on a server too'); c.mp = nil
+  -- Leaving the map or server ends the session; the next one gets its own.
+  c:endMission()
+  T.eq(c.theftPlan, nil, 'a new session, a new theft to come')
+end
+
+-- The session's theft comes at a random moment in the first 45 minutes, or as soon as it can after that.
+do
+  local c, a = ready({ random = function() return 0.5 end })
+  local base = F.copy(a.pose)
+  T.check(c:buyBase(base), 'base bought')
+  a.pose = location.destination(base, 90, thief.MIN_AWAY_METRES + 1000)
+  c.lastSample = c.adapter:sample()
+  c.stranded, c.booking = nil, nil
+  c:watchThief(0.1)
+  local due = c.theftPlan.at
+  T.near(due - c.clock, thief.WINDOW_MINUTES * 60 / 2, 5, 'due halfway through the first 45 minutes')
+  c.clock = due - 1; c:watchThief(0.1)
+  T.eq(c.thief, nil, 'not before then')
+  -- At the base when it's due: it waits.
+  a.pose = F.copy(base); c.lastSample = c.adapter:sample()
+  c.clock = due + 1; c:watchThief(0.1)
+  T.eq(c.thief, nil, 'not while at the base')
+  a.pose = location.destination(base, 90, thief.MIN_AWAY_METRES + 1000); c.lastSample = c.adapter:sample()
+  c.clock = due + 600; c.stranded, c.booking = nil, nil; c:watchThief(0.1)
+  T.check(c.thief ~= nil, 'then as soon as they can be robbed')
+  -- Get robbed doesn't use up the session's theft.
+  local d = ready({ random = function() return 0.99 end })
+  T.check(d:buyBase(F.copy(a.pose)), 'base bought')
+  d:watchThief(0.1)
+  T.check(d:startTheft(true), 'Get robbed')
+  T.check(not d.theftPlan.done, 'the session still has its own theft to come')
 end
 
 -- The whole chase: Chase relocates to the base for free, the world settles, the thief turns up and flees, the EMP
@@ -106,10 +141,16 @@ do
   T.eq(c:view().thief.arrow, -90, 'the arrow points to the thief')
   T.check(not c:empThief(), 'too far for the EMP')
   T.check(c.thief.feedback:find('within 5 m', 1, true), 'says how close to get')
+  -- The Fire EMP hotkey: out of range it says so in a pop-up as well.
+  local toasts = {}
+  c.trigger = function(name, data) if name == 'toastrMsg' then toasts[#toasts + 1] = data end end
+  T.check(not c:empHotkey(), 'hotkey: too far')
+  T.eq(toasts[1] and toasts[1].title, 'EMP OUT OF RANGE', 'a pop-up says so')
+  T.check(toasts[1].msg:find('within 5 m', 1, true), 'and how close to get')
   car.metres = 4
   F.advance(c, 0.2)
   T.check(c:view().thief.empInRange, 'in range')
-  T.check(c:empThief(), 'EMP hits')
+  T.check(c:empHotkey(), 'the hotkey EMP hits')
   T.eq(car.hit[1], 42, 'on the thief')
   T.eq(c.profile.progression.balance, start + thief.BOUNTY, 'money back plus $5,000')
   T.eq(c.thief.phase, 'caught', 'caught')
@@ -198,6 +239,26 @@ do
   T.eq(c.stranded, nil, 'not stranded')
   F.drive(c, a, location.destination(a.pose, 0, 300))
   T.check(c.load.drivenKm > driven, 'driving counts again')
+end
+
+-- The Fire EMP hotkey does nothing when no chase is on.
+do
+  local c, a, car = ready()
+  local toasts = {}
+  c.trigger = function(name, data) if name == 'toastrMsg' then toasts[#toasts + 1] = data end end
+  T.check(not c:empHotkey(), 'no thief: nothing')
+  T.eq(#toasts, 0, 'and no pop-up'); T.eq(#car.hit, 0, 'no EMP')
+end
+
+-- The Fire EMP action: in the game's Controls list, with no key, calling the hotkey.
+do
+  local json = require('json')
+  local f = assert(io.open((arg[0]:match('^(.*)[/\\]') or '.') .. '/../mod/earth_freight/lua/ge/extensions/core/input/actions/earthFreight.json'))
+  local actions = json.decode(f:read('*a')); f:close()
+  local fire = actions.earthFreightFireEmp
+  T.eq(fire.title, 'Fire EMP', 'named Fire EMP'); T.eq(fire.ctx, 'tlua', 'runs in the game engine')
+  T.check(fire.onDown:find('earthFreight_core.empHotkey()', 1, true), 'calls the hotkey')
+  T.eq(fire.cat, 'gameplay', 'under Gameplay')
 end
 
 -- The game side: the flee and EMP commands, and the car put down ahead of the player.
