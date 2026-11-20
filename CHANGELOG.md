@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The robber and thief cards now show the money in big letters:** "-$1,000 TAKEN" in red while a robbery is on, "+$21,000 WON BACK" in green when you catch them, or "-$1,000 GONE" when they get away. The card stays up after a catch, and for 20 seconds after a robber gets away, so you always see how it ended.
+- A road robber's hit now sounds the Mayday alarm, just like a thief at your base.
+- The admin robber's YOU ARE THE ROBBER card now looks like the other robbery cards and stays on screen with the HUD minimised, with its countdown and FIRE EMP button. Your saves still work.
+
 ## Build 254 · 20 Nov 2026
 
 - **A road robber's EMP now jams your brakes for just half a second**, a jolt, instead of the full 10 seconds. Your engine is still dead for 10 seconds.

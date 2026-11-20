@@ -239,7 +239,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         d = d || scope.data || {}
         if (d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) return 'bad'
         if (scope.maydayCard(d)) return 'mayday'
-        if (scope.thiefCard(d)) return 'bad'
+        if (scope.thiefCard(d) && !scope.robberyGood(d.thief)) return 'bad'
+        if (d.admin && d.admin.drive) return 'bad'
         for (var id in alerts) if (alerts[id](d)) return 'waiting'
         return ''
       }
@@ -283,8 +284,31 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // The base thief: the card shows while a theft is on, with Chase and then the EMP.
       scope.thiefCard = function (d) {
         d = d || scope.data || {}
-        return !!(d.thief && d.thief.phase && d.thief.phase !== 'caught' && !(scope.intro && scope.intro.open))
+        return !!(d.thief && d.thief.phase && !(scope.intro && scope.intro.open))
       }
+      // The card's heading: what to do, or how it ended.
+      scope.thiefTitle = function (t) {
+        if (!t) return ''
+        var who = t.road ? 'ROBBER' : 'THIEF'
+        if (t.phase === 'caught' || (t.phase === 'over' && t.outcome === 'caught')) return who + ' CAUGHT'
+        if (t.phase === 'over' && t.outcome === 'dropped') return 'THE THIEF DROPPED IT'
+        if (t.phase === 'over') return 'THE ' + who + ' GOT AWAY'
+        if (t.phase === 'return') return 'BACK TO YOUR JOB'
+        if (t.phase === 'chasing') return 'CATCH THE ' + who
+        return 'THIEF AT YOUR BASE'
+      }
+      var dollars = function (n) { return '$' + Math.round(n || 0).toLocaleString('en-US') }
+      // The money, big on the card: what was taken while it's on, what came back once it's over.
+      scope.robberyMoney = function (t) {
+        if (!t || !t.phase) return null
+        if (t.phase === 'caught' || ((t.phase === 'over' || t.phase === 'return') && t.paid)) {
+          return { good: true, text: '+' + dollars(t.paid) + (t.outcome === 'dropped' ? ' BACK' : ' WON BACK') }
+        }
+        if ((t.phase === 'over' || t.phase === 'return') && t.outcome) return { good: false, text: '-' + dollars(t.amount) + ' GONE' }
+        if (t.phase === 'return') return null
+        return t.amount ? { good: false, text: '-' + dollars(t.amount) + ' TAKEN' } : null
+      }
+      scope.robberyGood = function (t) { var m = scope.robberyMoney(t); return !!(m && m.good) }
       scope.thiefChase = function () { if (scope.data && scope.data.thief && scope.data.thief.chaseAllowed) core('thiefChase()') }
       scope.getRobbed = function () { if (scope.data && scope.data.robbery && scope.data.robbery.allowed) core('getRobbed()') }
       scope.thiefGoBack = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'return' && scope.data.thief.returnAllowed) core('thiefGoBack()') }
@@ -376,9 +400,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           kept.maydayRung = next.mayday.round
           maydayAlert()
         }
-        // A thief at the player's base rings the Mayday alert too, once as the theft starts (not for one a rebuilt HUD
-        // first sees).
-        var stolen = function (d) { return !!(d && d.thief && d.thief.phase === 'stolen' && !d.thief.road) }
+        // A thief at the player's base or a road robber's hit rings the Mayday alert too, once as it happens (not for one
+        // a rebuilt HUD first sees).
+        var stolen = function (d) {
+          return !!(d && d.thief && ((d.thief.phase === 'stolen' && !d.thief.road) || (d.thief.road && d.thief.phase === 'chasing')))
+        }
         if (previous && previous.state && stolen(next) && !stolen(previous)) maydayAlert()
         if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
           kept.introShown = true; scope.openIntro(next)
