@@ -831,7 +831,8 @@ function M.new(deps)
     if metres <= 0 then return end
     local progression = self.profile.progression
     progression.totalDistanceKm = progression.totalDistanceKm + metres / 1000
-    if self.load then self.load.drivenKm = self.load.drivenKm + metres / 1000 end
+    -- Away chasing a thief, the job waits where it was left (thief.lua).
+    if self.load and not self:awayFromJob() then self.load.drivenKm = self.load.drivenKm + metres / 1000 end
     self:roadPuncture(sample, metres, dt)
   end
 
@@ -848,6 +849,13 @@ function M.new(deps)
   function c:teleported(from, to)
     -- Earth drops the car in while the terrain loads: its bumps on the way down are not damage.
     if self.startSettle then self:startSettle(true, workshop.LANDING_SETTLE_SECONDS) end
+    -- To the base to chase a thief, or back again: the job and any Mayday Rescue run are held, not lost (thief.lua).
+    local b = self.booking
+    if b and (b.thief or b.thiefReturn) then
+      if b.thief and self.trailerOut then self:trailerTeleported() end
+      if self:atBooking(to) then self:landAtBooking('') end
+      return
+    end
     -- Earth still settling the car in at a booking that just landed: not a teleport.
     if not self.booking and not self.load and self:settling(to) then
       if self.stranded then self:settled(to)
@@ -905,6 +913,10 @@ function M.new(deps)
     local b = self.booking
     self.booking, self.stranded, self.bookingTeleportAt = nil, nil, nil
     self.landing = { latitude = b.latitude, longitude = b.longitude, at = self.clock, name = b.name, region = b.region }
+    if b.thiefReturn then
+      self:thiefReturned()
+      return
+    end
     if b.thief then
       self:thiefLanded()
       self.diag:event('shipped', 'thief')
@@ -1144,7 +1156,7 @@ function M.new(deps)
     end
     if not run or self.maydayClaim then return end
     local sample = self.lastSample
-    if self.state ~= 'READY' or not self.arrived or self.stranded or self.hire or self.onFoot or self.load
+    if self.state ~= 'READY' or not self.arrived or self.stranded or self.hire or self.onFoot or self.load or self:awayFromJob()
         or type(sample) ~= 'table' or not sample.valid then return end
     local d = location.distance(sample, call.spot)
     -- Every POS_SECONDS, how far from the scene (to 100 m), for the standings everyone sees.
@@ -1855,6 +1867,10 @@ function M.new(deps)
 
   -- Delivers the job at its drop-off: paid in full, and the town needs that good a little less.
   function c:deliver()
+    if self:awayFromJob() then
+      self.tradeFeedback = 'You left this job to chase a thief. Go back to it first.'
+      return false
+    end
     if self.load and self.load.drop then return self:deliverDrop() end
     local place, problem
     if self.load and self.load.business then
@@ -2931,7 +2947,7 @@ function M.new(deps)
       and not self.stranded and not self.booking and not self.hire and not self.onFoot
       and not self.pendingParts and not self.pendingCar and not self.insurancePending
       and not self.refuelPending and not self.respawned and not self.partsCheckDue
-      and not self:trailerSaveProblem()
+      and not self:trailerSaveProblem() and not self:awayFromJob()
       -- Not while BeamNG.Earth is still taking the car to a dangerous contract's start and loading its terrain.
       and not (self.contractTeleportAt and self.clock - self.contractTeleportAt < TELEPORT_WAIT_SECONDS)
       and sample and sample.valid and self.odometer:stopped()) and true or false
@@ -3296,6 +3312,7 @@ function M.bookOffer() return safely(function() return ensure():bookOffer() end)
 -- straight away: the Base tab's Get robbed button, or earthFreight_core.thiefTest() in the console (it needs a base).
 function M.thiefChase() return safely(function() return ensure():thiefChase() end) end
 function M.empThief() return safely(function() return ensure():empThief() end) end
+function M.thiefGoBack() return safely(function() return ensure():thiefGoBack() end) end
 function M.thiefTest() return safely(function() return ensure():startTheft(true) end) end
 function M.getRobbed() return safely(function() return ensure():startTheft(true) end) end
 function M.maydayEdge(edge)

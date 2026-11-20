@@ -286,6 +286,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       scope.thiefChase = function () { if (scope.data && scope.data.thief && scope.data.thief.chaseAllowed) core('thiefChase()') }
       scope.getRobbed = function () { if (scope.data && scope.data.robbery && scope.data.robbery.allowed) core('getRobbed()') }
+      scope.thiefGoBack = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'return' && scope.data.thief.returnAllowed) core('thiefGoBack()') }
       scope.empThief = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'chasing') core('empThief()') }
       scope.closeMaydayCard = function () { if (scope.data) seeMayday(scope.data.mayday) }
       scope.openMaydayCard = function () {

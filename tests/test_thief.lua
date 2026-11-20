@@ -85,9 +85,15 @@ do
   T.eq(c.booking.fee, 0, 'the relocation is free')
   T.eq(#a.teleports, 1, 'teleported'); T.eq(c.thief.phase, 'travelling', 'on the way')
   T.eq(c.profile.progression.balance, start - thief.STOLEN, 'nothing charged for the trip')
+  -- Earth drops the car in 3 km off first while the terrain loads: no countdown yet.
+  a.pose = location.destination(base, 0, 3000)
+  F.advance(c, 30)
+  T.eq(c.thief.phase, 'settling', 'landed: waiting for the world')
+  T.eq(c:view().thief.settleLeft, nil, 'no countdown until really at the base')
+  T.eq(#car.spawned, 0, 'and no thief')
   a.pose = F.copy(base)
   F.advance(c, 1)
-  T.eq(c.thief.phase, 'settling', 'landed: waiting for the world')
+  T.near(c:view().thief.settleLeft, thief.SETTLE_SECONDS - 1, 0.2, 'the 20 s start once there')
   F.advance(c, thief.SETTLE_SECONDS - 3)
   T.eq(#car.spawned, 0, 'no thief while the world loads')
   F.advance(c, 4)
@@ -144,6 +150,51 @@ do
   T.check(c:startTheft(true), 'stolen'); T.check(c:thiefChase(), 'chase')
   F.advance(c, thief.SETTLE_SECONDS + thief.SPAWN_RETRY_SECONDS * thief.SPAWN_TRIES + 2)
   T.eq(c.thief, nil, 'given up'); T.eq(c.profile.progression.balance, start, 'money back')
+end
+
+-- Chase holds a job: the cargo, the distance driven and the trailer wait, and Back to your job goes back to the spot.
+do
+  local places = require('earthFreight/places')
+  local function placeNamed(name)
+    for _, p in ipairs(places.list) do if p.name == name then return p end end
+  end
+  local c, a, car = ready()
+  local g = c.garage
+  local here = F.copy(a.pose)
+  c.property = { latitude = here.latitude + 0.5, longitude = here.longitude, paid = 250000 }
+  T.check(c:buyTrailer(1), 'a trailer'); local trailerId = c.trailerOut.id
+  local id = F.offer(c, placeNamed('St Clair'), 'food')
+  T.check(c:takeJob(id), 'on a job')
+  local driven = c.load.drivenKm
+  T.check(c:startTheft(true), 'robbed while on the job')
+  T.eq(c:view().thief.problem, nil, 'Chase allowed with cargo on board')
+  T.check(c:thiefChase(), 'Chase')
+  T.check(c:view().thief.held.job, 'the job is held')
+  a.pose = { latitude = c.property.latitude, longitude = c.property.longitude }
+  F.advance(c, 1)
+  T.check(c.load ~= nil, 'the cargo is kept'); T.eq(c.thief.phase, 'settling', 'at the base')
+  T.check(c.trailer.stored, 'the trailer went to the base')
+  T.eq(c.stranded, nil, 'not stranded')
+  F.advance(c, thief.SETTLE_SECONDS + 1)
+  F.drive(c, a, location.destination(a.pose, 0, 300))
+  T.eq(c.load.drivenKm, driven, 'chasing does not count as driving the job')
+  T.check(not c:deliver(), 'no delivering while away'); T.check(c.tradeFeedback:find('Go back to it first', 1, true), 'says why')
+  T.check(not c:autoSaveSettled(), 'nothing saves by itself while away')
+  car.metres = 3; F.advance(c, 0.2)
+  T.check(c:empThief(), 'caught')
+  local v = c:view().thief
+  T.eq(v.phase, 'return', 'the card offers the way back'); T.check(v.job and v.trailer and v.returnAllowed, 'with the job and trailer')
+  T.check(c:thiefGoBack(), 'Back to your job')
+  T.eq(c.booking.fee, 0, 'free')
+  a.pose = F.copy(here)
+  F.advance(c, 1)
+  T.eq(c.thiefReturn, nil, 'back')
+  T.check(c.load ~= nil and c.load.drivenKm == driven, 'the job carries on as it was')
+  T.check(c.trailerOut ~= nil, 'the trailer is out behind the car')
+  T.eq(c.flash.title, 'BACK ON THE ROAD', 'told')
+  T.eq(c.stranded, nil, 'not stranded')
+  F.drive(c, a, location.destination(a.pose, 0, 300))
+  T.check(c.load.drivenKm > driven, 'driving counts again')
 end
 
 -- The game side: the flee and EMP commands, and the car put down ahead of the player.
