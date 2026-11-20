@@ -97,8 +97,11 @@ function M.speedCommand(kph)
   return string.format("if ai and ai.setSpeed then pcall(ai.setSpeed, %s) end", tostring(math.max(0, kph) / 3.6))
 end
 
+-- A stuck car this far or more from the nearest road is put back on it (t:unstick).
+M.UNSTICK_ROAD_METRES = 8
+
 -- What the player's car runs when the road robber's EMP hits it: hazards on, throttle off, ignition off, and the brakes
--- slammed on (MadMerick's call: a truck at speed with a trailer can jackknife). PLAYER_EMP_HOLD keeps them on.
+-- jammed on for a jolt (MadMerick's call), let off again by PLAYER_EMP_BRAKE_OFF half a second later.
 M.PLAYER_EMP_START = [[
 local s = extensions and (extensions.earthFreightEmp or {}) or {}
 if extensions then extensions.earthFreightEmp = s end
@@ -109,14 +112,13 @@ if electrics and electrics.setIgnitionLevel then pcall(electrics.setIgnitionLeve
 elseif controller and controller.mainController and controller.mainController.setIgnitionLevel then pcall(controller.mainController.setIgnitionLevel, 0) end
 ]]
 
--- Sent every second while it lasts, so the player's own pedals can't take the brakes off.
-M.PLAYER_EMP_HOLD = [[
-if input and input.event then pcall(input.event, 'throttle', 0, 1); pcall(input.event, 'brake', 1, 1) end
+-- The jolt is over: the brakes let off (the engine stays dead until PLAYER_EMP_END).
+M.PLAYER_EMP_BRAKE_OFF = [[
+if input and input.event then pcall(input.event, 'brake', 0, 1) end
 ]]
 
--- And when it wears off: the ignition back as it was (on, if unknown), the brakes off, hazards back off.
+-- And when it wears off: the ignition back as it was (on, if unknown), hazards back off.
 M.PLAYER_EMP_END = [[
-if input and input.event then pcall(input.event, 'brake', 0, 1) end
 local s = extensions and extensions.earthFreightEmp or {}
 local level = s.ign
 if level == nil or level < 2 then level = 2 end
@@ -150,6 +152,31 @@ function M.new(env)
     return ok and v or nil
   end
 
+  -- The point on the nearest road to x, y, z, with the road's direction pointing away from (awayX, awayY): x, y, z,
+  -- fx, fy, and how far the road is. nil when the game has no road map here.
+  local function nearestRoad(x, y, z, awayX, awayY)
+    local m = env.map()
+    if type(m) ~= 'table' or type(m.findClosestRoad) ~= 'function' or type(m.getMap) ~= 'function' then return nil end
+    local ok, _, a, b = pcall(m.findClosestRoad, env.point(x, y, z))
+    local nodes = ok and a and b and m.getMap().nodes
+    local na, nb = nodes and nodes[a], nodes and nodes[b]
+    if not (na and nb and na.pos and nb.pos) then return nil end
+    -- The point on that stretch of road closest to x, y.
+    local ax, ay, bx, by = na.pos.x, na.pos.y, nb.pos.x, nb.pos.y
+    local rx, ry = bx - ax, by - ay
+    local len2 = rx * rx + ry * ry
+    local u = len2 > 1e-6 and math.max(0, math.min(1, ((x - ax) * rx + (y - ay) * ry) / len2)) or 0
+    local px, py, pz = ax + rx * u, ay + ry * u, na.pos.z + (nb.pos.z - na.pos.z) * u
+    local fx, fy = 0, 1
+    local len = math.sqrt(len2)
+    if len > 1e-3 then
+      fx, fy = rx / len, ry / len
+      -- Along the road, the way that leads away from the player.
+      if fx * (px - awayX) + fy * (py - awayY) < 0 then fx, fy = -fx, -fy end
+    end
+    return px, py, pz, fx, fy, math.sqrt((px - x) ^ 2 + (py - y) ^ 2)
+  end
+
   -- Where the car goes: the nearest road to a point metres in front of the player, lined up with the road and
   -- pointing away from the player. Without a road map, that point itself, facing away.
   local function spot(car, metres)
@@ -160,26 +187,8 @@ function M.new(env)
     dx, dy = dx / size, dy / size
     local x, y, z = at.x + dx * metres, at.y + dy * metres, at.z
     local fx, fy = dx, dy
-    local m = env.map()
-    if type(m) == 'table' and type(m.findClosestRoad) == 'function' and type(m.getMap) == 'function' then
-      local ok, _, a, b = pcall(m.findClosestRoad, env.point(x, y, z))
-      local nodes = ok and a and b and m.getMap().nodes
-      local na, nb = nodes and nodes[a], nodes and nodes[b]
-      if na and nb and na.pos and nb.pos then
-        -- The point on that stretch of road closest to where it was aimed.
-        local ax, ay, bx, by = na.pos.x, na.pos.y, nb.pos.x, nb.pos.y
-        local rx, ry = bx - ax, by - ay
-        local len2 = rx * rx + ry * ry
-        local u = len2 > 1e-6 and math.max(0, math.min(1, ((x - ax) * rx + (y - ay) * ry) / len2)) or 0
-        x, y, z = ax + rx * u, ay + ry * u, na.pos.z + (nb.pos.z - na.pos.z) * u
-        local len = math.sqrt(len2)
-        if len > 1e-3 then
-          fx, fy = rx / len, ry / len
-          -- Along the road, the way that leads away from the player.
-          if fx * (x - at.x) + fy * (y - at.y) < 0 then fx, fy = -fx, -fy end
-        end
-      end
-    end
+    local rx, ry, rz, rfx, rfy = nearestRoad(x, y, z, at.x, at.y)
+    if rx then x, y, z, fx, fy = rx, ry, rz, rfx, rfy end
     return env.point(x, y, z + 0.5), env.upright(env.point(fx, fy, 0)), fx, fy
   end
 
@@ -340,10 +349,10 @@ function M.new(env)
   end
 
   -- The player's engine comes back.
-  function t:empPlayerHold()
+  function t:empPlayerBrakeOff()
     local car = t.victim or player()
     if not car then return false end
-    return pcall(function() car:queueLuaCommand(M.PLAYER_EMP_HOLD) end) == true
+    return pcall(function() car:queueLuaCommand(M.PLAYER_EMP_BRAKE_OFF) end) == true
   end
 
   function t:empPlayerEnd()
@@ -362,6 +371,33 @@ function M.new(env)
     if pcall(function() thief:queueLuaCommand(M.fleeCommand(tid)) end) ~= true then return false end
     t.supervisor:register(id, tid)
     return true
+  end
+
+  -- The car's speed in metres a second, or nil when it is gone.
+  function t:speed(id)
+    local thief = object(id)
+    if not thief then return nil end
+    local ok, v = pcall(function() local u = thief:getVelocity(); return math.sqrt(u.x * u.x + u.y * u.y + u.z * u.z) end)
+    return ok and type(v) == 'number' and v == v and v or nil
+  end
+
+  -- A car stuck off the road (a ditch, a field, rocks): put back on the nearest road, facing away from the player,
+  -- and set fleeing again. Returns true when it was moved. Not when there is no road map, or it is on the road
+  -- already (UNSTICK_ROAD_METRES): there, the AI's own stuck recovery (smartAI's, when installed) works it out.
+  function t:unstick(id)
+    local thief, car = object(id), player()
+    if not thief or not car then return false end
+    local ok, done = pcall(function()
+      local at, p = thief:getPosition(), car:getPosition()
+      local x, y, z, fx, fy, off = nearestRoad(at.x, at.y, at.z, p.x, p.y)
+      if not x or off < M.UNSTICK_ROAD_METRES then return false end
+      local pos, rot = env.point(x, y, z + 0.5), env.upright(env.point(fx, fy, 0))
+      local s = env.spawn()
+      if type(s) == 'table' and type(s.safeTeleport) == 'function' then s.safeTeleport(thief, pos, rot)
+      else thief:setPositionRotation(pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, rot.w) end
+      return true
+    end)
+    return ok and done == true
   end
 
   -- Metres between the player's car and the thief's, or nil when either is gone.

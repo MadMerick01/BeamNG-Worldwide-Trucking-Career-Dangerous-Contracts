@@ -310,6 +310,22 @@ do
   road:spawn('moonhawk', nil, 100)
   T.eq(spawnedAt.x, 20, 'moved onto the road'); T.eq(spawnedAt.y, 100, 'at the closest point of it')
   T.eq(rot.x, 0, 'lined up with the road'); T.eq(rot.y, 1, 'facing away from the player')
+  -- Stuck off the road: back on it. The thief is at (3, 4), the road runs along x = 20.
+  local moved
+  local stuck = thiefCar.new({ vehicle = function() return player end, objectById = function() return thiefObj end,
+    map = function() return { findClosestRoad = function() return 'r', 'a', 'b', 3 end,
+      getMap = function() return { nodes = { a = { pos = vec(20, 200, 0) }, b = { pos = vec(20, 0, 0) } } } end } end,
+    spawn = function() return { safeTeleport = function(_, pos, r) moved = { pos = pos, rot = r } end } end, enter = function() end,
+    point = vec, upright = function(d) return d end, emp = function() return nil end, bolidesRunning = function() return false end })
+  T.check(stuck:unstick(9), 'a car 17 m off the road is moved')
+  T.eq(moved.pos.x, 20, 'onto the road'); T.eq(moved.pos.y, 4, 'level with where it was'); T.eq(moved.rot.y, 1, 'facing away from the player')
+  thiefObj.getPosition = function() return vec(18, 4, 0) end
+  moved = nil
+  T.check(not stuck:unstick(9) and moved == nil, 'one already on the road is left to the AI')
+  thiefObj.getPosition = function() return vec(3, 4, 0) end
+  T.check(not road:unstick(9), 'nothing to move it with: no harm done')
+  thiefObj.getVelocity = function() return vec(3, 4, 0) end
+  T.eq(stuck:speed(9), 5, 'its speed')
   T.check(t:flee(9) and queued[1]:find('local tid = 1', 1, true), 'fleeing from the player')
   T.eq(t:distance(9), 5, 'distance')
   T.near(t:bearing(9), 36.87, 0.01, 'the arrow: ahead and to the right')

@@ -6,7 +6,7 @@
 --   lurking: drives in its lane a little slower than the player, so they catch up; if they hang back it slows down more
 --     (brake-check). If they turn off, go off road or drop back, it hunts them.
 --   hunting: the game's chase AI at the player's speed plus HUNT_EXTRA_KPH, never over HUNT_MAX_KPH.
---   Within STRIKE_METRES it strikes: its EMP cuts the player's engine and slams their brakes on for PLAYER_EMP_SECONDS, it takes
+--   Within STRIKE_METRES it strikes: its EMP cuts the player's engine for PLAYER_EMP_SECONDS and jams their brakes for PLAYER_BRAKE_SECONDS, it takes
 --     STOLEN and flees (the base thief's flee, fleeSupervisor.lua). Not struck within GIVE_UP_SECONDS, or GIVE_UP_METRES
 --     behind: it gives up and goes, and nothing is lost.
 --   chasing: the player's EMP (emp.lua) within its range stops it for good: STOLEN back plus TRUNK, and the car goes
@@ -32,10 +32,17 @@ M.STOLEN = 1000
 M.TRUNK = 20000
 M.STRIKE_METRES = emp.RANGE
 M.PLAYER_EMP_SECONDS = 10
+-- ...and jams their brakes on for this long, for a jolt.
+M.PLAYER_BRAKE_SECONDS = 0.5
 M.GIVE_UP_SECONDS = 240
 M.GIVE_UP_METRES = 500
 M.ESCAPE_METRES = 450
 M.CAUGHT_SECONDS = 30
+-- A robber's or thief's car that hardly moves (under STUCK_SPEED m/s) for STUCK_SECONDS, off the road, is put back on
+-- the nearest road (thiefCar.lua unstick), at most once every UNSTICK_EVERY_SECONDS.
+M.STUCK_SECONDS = 5
+M.STUCK_SPEED = 1.5
+M.UNSTICK_EVERY_SECONDS = 10
 -- Lurking: this much slower than the player, never under LURK_MIN_KPH; when they hang back more than HANG_BACK_METRES,
 -- BRAKE_CHECK_KPH slower instead.
 M.LURK_SLOWER_KPH = 15
@@ -145,6 +152,18 @@ function M.attach(c)
     if self.mp and self.mp.robbed then self.mp:robbed(who, what) end
   end
 
+  -- Watches a fleeing or driving robber's or thief's car (r: the robber or the theft) for getting stuck off the road.
+  function c:watchStuck(r, dt, who)
+    local car = self.thiefCar
+    if not r.carId or not car or not car.speed or not car.unstick then return end
+    local v = car:speed(r.carId)
+    if not v or v >= M.STUCK_SPEED then r.stillFor = 0 return end
+    r.stillFor = (r.stillFor or 0) + (dt or 0)
+    if r.stillFor < M.STUCK_SECONDS or self.clock < (r.unstickAt or 0) then return end
+    r.stillFor, r.unstickAt = 0, self.clock + M.UNSTICK_EVERY_SECONDS
+    if car:unstick(r.carId) then self.diag:event(who .. '_unstuck', '') end
+  end
+
   -- The robber is gone: its car taken away. why goes in the diagnostics.
   function c:dropRobber(why)
     local r = self.robber
@@ -251,11 +270,12 @@ function M.attach(c)
     if r.empEndAt and self.clock >= r.empEndAt then
       r.empEndAt = nil
       self.thiefCar:empPlayerEnd()
-    elseif r.empEndAt and self.clock >= (r.brakeAt or 0) then
-      -- The brakes stay slammed on while the EMP lasts (thiefCar.lua).
-      r.brakeAt = self.clock + 1
-      if self.thiefCar.empPlayerHold then self.thiefCar:empPlayerHold() end
+    elseif r.empEndAt and r.struckAt and not r.brakesOff and self.clock - r.struckAt >= M.PLAYER_BRAKE_SECONDS then
+      -- The brakes were jammed on for a jolt only (thiefCar.lua); the engine stays dead.
+      r.brakesOff = true
+      if self.thiefCar.empPlayerBrakeOff then self.thiefCar:empPlayerBrakeOff() end
     end
+    if r.phase == 'lurking' or r.phase == 'hunting' or r.phase == 'chasing' then self:watchStuck(r, dt, 'robber') end
     if r.phase == 'lurking' or r.phase == 'hunting' then
       if not d then self:dropRobber('gone') return end
       if d <= M.STRIKE_METRES then self:robberStrikes() return end
