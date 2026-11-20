@@ -140,6 +140,11 @@ function M.attach(c)
     return true
   end
 
+  -- Tells the server's live feed how a robbery of this player went (multiplayer.lua robbed), on a server only.
+  function c:robberyNews(who, what)
+    if self.mp and self.mp.robbed then self.mp:robbed(who, what) end
+  end
+
   -- The robber is gone: its car taken away. why goes in the diagnostics.
   function c:dropRobber(why)
     local r = self.robber
@@ -163,6 +168,7 @@ function M.attach(c)
     self:showFlash('delivered', 'ROBBER CAUGHT: +' .. dollars(paid), 'The EMP stopped them dead. You got your '
       .. dollars(r.amount or 0) .. ' back, and ' .. dollars(M.TRUNK) .. ' from their trunk.')
     self:autoSaveSoon('catching the robber')
+    self:robberyNews('robber', 'caught')
     self.diag:event('robber_caught', tostring(paid))
     return true
   end
@@ -187,6 +193,7 @@ function M.attach(c)
     self:showFlash('cancelled', 'ROBBED ON THE ROAD: -' .. dollars(M.STOLEN), text)
     self:toast('warning', 'Robbed on the road', text, 10)
     self:autoSaveSoon('the robbery')
+    self:robberyNews('robber', 'struck')
     self.diag:event('robber_struck', tostring(M.STOLEN))
   end
 
@@ -275,6 +282,7 @@ function M.attach(c)
       r.arrow = d and self.thiefCar.bearing and self.thiefCar:bearing(r.carId) or nil
       if not d or d > M.ESCAPE_METRES then
         self:dropRobber('escaped')
+        self:robberyNews('robber', 'escaped')
         self:showFlash('cancelled', 'THE ROBBER GOT AWAY', 'They got ' .. M.ESCAPE_METRES .. ' m clear of you and escaped with your '
           .. dollars(r.amount or 0) .. '.')
       end

@@ -84,6 +84,7 @@ function M.attach(c)
     self:toast('warning', 'Thief at your base', text, 15)
     self:autoSaveSoon('the theft')
     self.diag:event('thief_stole', tostring(M.STOLEN))
+    self:robberyNews('thief', 'struck')
     return true
   end
 
@@ -180,6 +181,8 @@ function M.attach(c)
       self:showFlash('delivered', 'THE THIEF DROPPED IT', 'They ran off on foot and left your ' .. dollars(t.amount) .. ' behind.')
     end
     self.diag:event('thief_over', tostring(outcome))
+    if outcome == 'lost' then self:robberyNews('thief', 'dropped')
+    elseif outcome == 'let' or outcome == 'late' or outcome == 'escaped' then self:robberyNews('thief', 'escaped') end
   end
 
   -- The EMP button (emp.lua: every press fires and starts the charge). Returns true when it stopped the thief.
@@ -200,6 +203,7 @@ function M.attach(c)
       .. dollars(t.amount) .. ' back, and ' .. dollars(M.BOUNTY) .. ' from their trunk.')
     if not self:awayFromJob() then self:autoSaveSoon('catching the thief') end
     self.diag:event('thief_caught', tostring(paid))
+    self:robberyNews('thief', 'caught')
     return true
   end
 
