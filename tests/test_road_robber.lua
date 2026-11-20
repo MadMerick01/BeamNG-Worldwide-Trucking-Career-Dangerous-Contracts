@@ -21,7 +21,7 @@ local function fakeCar()
   function f:headingGap() return self.gap end
   function f:empPlayer() self.playerHits = self.playerHits + 1; return true end
   function f:empPlayerEnd() self.playerBack = self.playerBack + 1; return true end
-  function f:empPlayerHold() self.holds = (self.holds or 0) + 1; return true end
+  function f:empPlayerBrakeOff() self.brakesOff = (self.brakesOff or 0) + 1; return true end
   function f:speed() return self.v end
   function f:unstick() self.unstuck = (self.unstuck or 0) + 1; return true end
   function f:flee(id) self.fled[#self.fled + 1] = id; return true end
@@ -122,7 +122,7 @@ do
   car.v = 0
   F.advance(c, robber.PLAYER_EMP_SECONDS + 0.2)
   T.eq(car.playerBack, 1, 'the engine comes back after 10 s')
-  T.check((car.holds or 0) >= 9, 'the brakes held on about once a second meanwhile')
+  T.eq(car.brakesOff, 1, 'the brakes let off once, after half a second')
   T.eq(car.unstuck, 1, 'its car sat still for 5 s: put back on the road, once (then a 10 s wait)')
   car.v = 12; F.advance(c, 0.2); car.v = 0; F.advance(c, 4)
   T.eq(car.unstuck, 1, 'moving again resets the count')
@@ -262,8 +262,7 @@ do
   T.check(thiefCar.huntCommand(5, 90):find("'chase'", 1, true), 'hunting: chase AI')
   T.check(thiefCar.huntCommand(5, 90):find('25', 1, true), '90 km/h is 25 m/s')
   T.check(thiefCar.PLAYER_EMP_START:find("'brake', 1", 1, true), 'the player\'s EMP slams the brakes on')
-  T.check(thiefCar.PLAYER_EMP_HOLD:find("'brake', 1", 1, true), 'and holds them')
-  T.check(thiefCar.PLAYER_EMP_END:find("'brake', 0", 1, true), 'and lets them off after')
+  T.check(thiefCar.PLAYER_EMP_BRAKE_OFF:find("'brake', 0", 1, true), 'and lets them off after')
   T.check(thiefCar.PLAYER_EMP_START:find('setIgnitionLevel, 0', 1, true), 'the engine cut')
   local function vec(x, y, z) return { x = x, y = y, z = z } end
   local veh = { pos = vec(0, 0, 10), dir = vec(0, 1, 0), active = {} }

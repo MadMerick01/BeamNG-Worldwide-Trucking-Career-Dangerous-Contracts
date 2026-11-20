@@ -6,7 +6,7 @@
 --   lurking: drives in its lane a little slower than the player, so they catch up; if they hang back it slows down more
 --     (brake-check). If they turn off, go off road or drop back, it hunts them.
 --   hunting: the game's chase AI at the player's speed plus HUNT_EXTRA_KPH, never over HUNT_MAX_KPH.
---   Within STRIKE_METRES it strikes: its EMP cuts the player's engine and slams their brakes on for PLAYER_EMP_SECONDS, it takes
+--   Within STRIKE_METRES it strikes: its EMP cuts the player's engine for PLAYER_EMP_SECONDS and jams their brakes for PLAYER_BRAKE_SECONDS, it takes
 --     STOLEN and flees (the base thief's flee, fleeSupervisor.lua). Not struck within GIVE_UP_SECONDS, or GIVE_UP_METRES
 --     behind: it gives up and goes, and nothing is lost.
 --   chasing: the player's EMP (emp.lua) within its range stops it for good: STOLEN back plus TRUNK, and the car goes
@@ -32,6 +32,8 @@ M.STOLEN = 1000
 M.TRUNK = 20000
 M.STRIKE_METRES = emp.RANGE
 M.PLAYER_EMP_SECONDS = 10
+-- ...and jams their brakes on for this long, for a jolt.
+M.PLAYER_BRAKE_SECONDS = 0.5
 M.GIVE_UP_SECONDS = 240
 M.GIVE_UP_METRES = 500
 M.ESCAPE_METRES = 450
@@ -268,10 +270,10 @@ function M.attach(c)
     if r.empEndAt and self.clock >= r.empEndAt then
       r.empEndAt = nil
       self.thiefCar:empPlayerEnd()
-    elseif r.empEndAt and self.clock >= (r.brakeAt or 0) then
-      -- The brakes stay slammed on while the EMP lasts (thiefCar.lua).
-      r.brakeAt = self.clock + 1
-      if self.thiefCar.empPlayerHold then self.thiefCar:empPlayerHold() end
+    elseif r.empEndAt and r.struckAt and not r.brakesOff and self.clock - r.struckAt >= M.PLAYER_BRAKE_SECONDS then
+      -- The brakes were jammed on for a jolt only (thiefCar.lua); the engine stays dead.
+      r.brakesOff = true
+      if self.thiefCar.empPlayerBrakeOff then self.thiefCar:empPlayerBrakeOff() end
     end
     if r.phase == 'lurking' or r.phase == 'hunting' or r.phase == 'chasing' then self:watchStuck(r, dt, 'robber') end
     if r.phase == 'lurking' or r.phase == 'hunting' then

@@ -101,7 +101,7 @@ end
 M.UNSTICK_ROAD_METRES = 8
 
 -- What the player's car runs when the road robber's EMP hits it: hazards on, throttle off, ignition off, and the brakes
--- slammed on (MadMerick's call: a truck at speed with a trailer can jackknife). PLAYER_EMP_HOLD keeps them on.
+-- jammed on for a jolt (MadMerick's call), let off again by PLAYER_EMP_BRAKE_OFF half a second later.
 M.PLAYER_EMP_START = [[
 local s = extensions and (extensions.earthFreightEmp or {}) or {}
 if extensions then extensions.earthFreightEmp = s end
@@ -112,14 +112,13 @@ if electrics and electrics.setIgnitionLevel then pcall(electrics.setIgnitionLeve
 elseif controller and controller.mainController and controller.mainController.setIgnitionLevel then pcall(controller.mainController.setIgnitionLevel, 0) end
 ]]
 
--- Sent every second while it lasts, so the player's own pedals can't take the brakes off.
-M.PLAYER_EMP_HOLD = [[
-if input and input.event then pcall(input.event, 'throttle', 0, 1); pcall(input.event, 'brake', 1, 1) end
+-- The jolt is over: the brakes let off (the engine stays dead until PLAYER_EMP_END).
+M.PLAYER_EMP_BRAKE_OFF = [[
+if input and input.event then pcall(input.event, 'brake', 0, 1) end
 ]]
 
--- And when it wears off: the ignition back as it was (on, if unknown), the brakes off, hazards back off.
+-- And when it wears off: the ignition back as it was (on, if unknown), hazards back off.
 M.PLAYER_EMP_END = [[
-if input and input.event then pcall(input.event, 'brake', 0, 1) end
 local s = extensions and extensions.earthFreightEmp or {}
 local level = s.ign
 if level == nil or level < 2 then level = 2 end
@@ -350,10 +349,10 @@ function M.new(env)
   end
 
   -- The player's engine comes back.
-  function t:empPlayerHold()
+  function t:empPlayerBrakeOff()
     local car = t.victim or player()
     if not car then return false end
-    return pcall(function() car:queueLuaCommand(M.PLAYER_EMP_HOLD) end) == true
+    return pcall(function() car:queueLuaCommand(M.PLAYER_EMP_BRAKE_OFF) end) == true
   end
 
   function t:empPlayerEnd()
