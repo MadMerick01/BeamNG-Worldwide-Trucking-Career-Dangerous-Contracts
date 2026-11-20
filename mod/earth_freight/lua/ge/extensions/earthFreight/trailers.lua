@@ -27,6 +27,8 @@ M.PARCEL_KG_PER_SLOT = 20
 M.CHECK_SECONDS = 1
 -- How long a trailer has to spawn after Buy or Bring out before it counts as failed.
 M.SPAWN_SECONDS = 5
+-- After the mod respawns the trailer, for this long a player the game put in it is put back in their car.
+M.RETURN_DRIVER_SECONDS = 10
 -- A haulier taking the trailer to the base, or bringing it out from there, away from the base: a
 -- flat fee plus a little per km between the player and the base (the same as Shipping).
 M.HAUL_FEE, M.HAUL_PER_KM = 100, 0.02
@@ -396,6 +398,7 @@ function M.attach(c)
       return
     end
     -- The respawn this asks for is checked again; the player goes back to their car and hitches.
+    out.returnDriverUntil = (self.clock or 0) + M.RETURN_DRIVER_SECONDS
     if self.ownedParts and self.garage.enter then self.garage:enter(self.ownedParts.id) end
     if self.garage.hitch then self.garage:hitch(out.id) end
     self.diag:event('trailer_parts_restored', tostring(out.id))
@@ -814,6 +817,7 @@ function M.attach(c)
       if t.damage <= 0 then t.damage = nil end
     end
     out.damage, out.loadVolumeAsked, out.loadVolumeRespawn = 0, litres, true
+    out.returnDriverUntil = (self.clock or 0) + M.RETURN_DRIVER_SECONDS
     if self.ownedParts and self.garage.enter then self.garage:enter(self.ownedParts.id) end
     if self.garage.hitch then self.garage:hitch(out.id) end
     self.diag:event('trailer_load_volume', string.format('%s %d L', setting.name, litres))
