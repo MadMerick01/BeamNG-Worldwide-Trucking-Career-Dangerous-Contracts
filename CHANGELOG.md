@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 253 · 20 Nov 2026
+
 - **Fleeing thieves and robbers are faster.** On a clear road they now drive at up to 130 km/h (was 90), and up to 85 km/h (was 62) with some traffic about. They still slow right down in heavy traffic. This makes the base thief and a fleeing road robber harder to catch.
 - **A road robber's EMP now slams your brakes on** as well as killing your engine, for the full 10 seconds. Watch out with a trailer at speed: a sudden stop can jackknife it. Your saves still work.
 
