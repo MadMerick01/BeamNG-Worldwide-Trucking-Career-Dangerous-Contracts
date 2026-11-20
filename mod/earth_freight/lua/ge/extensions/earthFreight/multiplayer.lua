@@ -567,15 +567,15 @@ function M.new(deps)
     pcall(io.write, M.PREFS, { findable = self.findableKept })
     return self.findableKept
   end
-  -- The admin robber: the admin starts ('start', to), is in place ('ready', car) or stops ('stop'); the player robbed
-  -- answers where the drop-in spot is, and tells how it went.
+  -- The admin robber: the admin starts ('start', to), is in place ('ready', car), fires his EMP ('emp') or stops
+  -- ('stop'); the player robbed answers where the drop-in spot is, and tells how it went (with how far a miss was).
   function s:adminRob(what, t)
     t = t or {}
     t['do'] = what
     return shipEvent('wwtcAdminRob', t)
   end
   function s:robSpot(t) return shipEvent('wwtcRobSpot', t) end
-  function s:robNews(what) return shipEvent('wwtcRobNews', { what = what }) end
+  function s:robNews(what, metres) return shipEvent('wwtcRobNews', { what = what, metres = metres }) end
   -- A base of operations: asks the server whether this town is free (one base a town, 10 km apart).
   function s:claimBase(t) return shipEvent('wwtcBaseClaim', t) end
   -- The land race: opens the corp's next base in this town, once its newest circle is full size.

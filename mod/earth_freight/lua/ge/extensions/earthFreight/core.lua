@@ -3395,12 +3395,13 @@ function M.setRobbersAllowed(allowed)
   if type(allowed) ~= 'boolean' then return false end
   return safely(function() return ensure():setRobbersAllowed(allowed) end)
 end
--- The admin robber (the server's admins only): Rob a player from the Route tab's list, and Stop.
+-- The admin robber (the server's admins only): Rob a player from the Route tab's list, his EMP, and Stop.
 function M.adminRob(id)
   if type(id) ~= 'number' or id < 0 or id ~= math.floor(id) then return false end
   return safely(function() return ensure():adminRob(id) end)
 end
 function M.adminStop() return safely(function() return ensure():adminStop() end) end
+function M.adminEmp() return safely(function() return ensure():adminEmp() end) end
 function M.maydayEdge(edge)
   if edge ~= 'n' and edge ~= 'e' and edge ~= 's' and edge ~= 'w' then return false end
   return safely(function() return ensure():maydayEdge(edge) end)

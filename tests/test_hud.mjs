@@ -1140,7 +1140,7 @@ test('Relocate to a player: a Join button for each player, sent by number only, 
   assert.deepEqual(a.commands.map(c => c.replace(/^if earthFreight_core then earthFreight_core\.| end$/g, '')),
     ['findPlayer(0)', 'setFindable(false)'])
 })
-test('Admin robber: the Route tab list sends Rob by number only, and Stop only while it is allowed', () => {
+test('Admin robber: the Route tab list sends Rob by number only, and his EMP and Stop only while they are allowed', () => {
   const a = app()
   const route = html.slice(html.indexOf('Road robbers'), html.indexOf(`ng-if="tab === 'town'"`))
   for (const part of ['Admin robber', 'adminRob(p)', 'ng-if="data.admin && !data.admin.drive"']) assert.ok(route.includes(part), part)
@@ -1152,10 +1152,15 @@ test('Admin robber: the Route tab list sends Rob by number only, and Stop only w
   a.scope.adminRob({ id: 4, allowed: false })
   a.scope.adminRob({ id: '1); evil(', allowed: true })
   a.scope.adminStop()
-  a.state({ state: 'READY', arrived: true, admin: { targets: [], drive: { stage: 'ready', name: 'Sam', stopAllowed: true } } })
+  a.scope.adminEmp()
+  a.state({ state: 'READY', arrived: true, admin: { targets: [], drive: { stage: 'ready', name: 'Sam', stopAllowed: true, emp: { ready: false, chargeLeft: 12, charged: 40 } } } })
+  a.scope.adminEmp()
   a.scope.adminStop()
+  a.state({ state: 'READY', arrived: true, admin: { targets: [], drive: { stage: 'ready', name: 'Sam', stopAllowed: true, emp: { ready: true, charged: 100 } } } })
+  a.scope.adminEmp()
+  assert.ok(html.includes('ng-click="adminEmp()"'), 'his own EMP button while robbing')
   assert.deepEqual(a.commands.map(c => c.replace(/^if earthFreight_core then earthFreight_core\.| end$/g, '')),
-    ['adminRob(3)', 'adminStop()'])
+    ['adminRob(3)', 'adminStop()', 'adminEmp()'])
 })
 test('Play online shows whether the server is up and how many are on it, from its stats', async () => {
   const asked = []
