@@ -10,6 +10,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - **ROB ME on the Route tab** sends a robber at you straight away, so anyone can try it. It doesn't change the 50% chance on your jobs.
 - **A "Robbers can rob me" tick box on the Route tab,** ticked by default. Untick it and neither road robbers nor the base thief will rob you. It's kept in your save, and your saves still work.
 - **The EMP now reaches 15 m (it was 5 m) and needs 20 seconds to charge after every press,** hit or miss. The EMP button fills up while it charges, then turns green with IN RANGE, or yellow with OUT OF RANGE and the distance. This is the same for the base thief, whose caught car now also disappears after 10 seconds instead of 20.
+- **The base thief's car now loads hidden while you wait at your base,** so it turns up without a stutter. It only appears once the ground ahead of you has loaded.
 - The robber's car loads hidden when you take the job, so you may notice a short stutter at the job board instead of on the road. On a server, each robber uses one of the server's car slots while you're on the job.
 
 ## Build 243 · 20 Nov 2026

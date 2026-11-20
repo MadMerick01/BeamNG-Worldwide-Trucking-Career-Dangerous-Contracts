@@ -313,4 +313,28 @@ do
   T.eq(t:distance(10), nil, 'no car, no distance')
 end
 
+-- The thief's car is loaded out of sight while the player waits at the base, and put on the road once the ground there
+-- has loaded; if it never does, it is spawned the old way.
+do
+  for _, ground in ipairs({ true, false }) do
+    local c, a, car = ready()
+    car.preloaded, car.placed, car.ground = 0, 0, ground
+    function car:preload() self.preloaded = self.preloaded + 1; return 77 end
+    function car:place(id) if not self.ground then return false, 'no_ground' end; self.placed = self.placed + 1; return true end
+    T.check(c:buyBase(F.copy(a.pose)), 'base bought')
+    T.check(c:startTheft(true), 'stolen'); T.check(c:thiefChase(), 'chase')
+    F.advance(c, 1)
+    T.eq(car.preloaded, 1, 'loaded while the player waits')
+    T.eq(#car.spawned, 0, 'not spawned')
+    F.advance(c, thief.SETTLE_SECONDS + thief.SPAWN_RETRY_SECONDS * (thief.SPAWN_TRIES + 1) + 1)
+    T.eq(c.thief.phase, 'chasing', 'the chase is on')
+    if ground then
+      T.eq(car.placed, 1, 'the loaded car put on the road'); T.eq(c.thief.carId, 77, 'it is the thief')
+      T.eq(#car.spawned, 0, 'no new spawn')
+    else
+      T.check(car.removed[77], 'no ground: the loaded car goes'); T.eq(car.spawned[1], 'moonhawk', 'spawned the old way')
+    end
+  end
+end
+
 T.done('thief')

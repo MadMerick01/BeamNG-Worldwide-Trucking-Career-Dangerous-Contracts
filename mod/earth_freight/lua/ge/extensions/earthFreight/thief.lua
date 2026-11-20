@@ -163,6 +163,7 @@ function M.attach(c)
     local t = self.thief
     if not t then return end
     if t.carId and self.thiefCar then self.thiefCar:remove(t.carId) end
+    if t.preloadId and self.thiefCar then self.thiefCar:remove(t.preloadId) end
     if self.booking and self.booking.thief then self.booking, self.bookingTeleportAt = nil, nil end
     self.thief = nil
     if t.returnTo then self.thiefReturn = t.returnTo end
@@ -229,9 +230,30 @@ function M.attach(c)
         and away ~= nil and away <= M.ARRIVED_METRES
       if not there then t.settleAt = nil return end
       t.settleAt = t.settleAt or self.clock
+      -- The thief's car is loaded out of sight now, while the player waits, so it turns up later without a stutter.
+      if not t.preloadTried and self.thiefCar and self.thiefCar.preload then
+        t.preloadTried = true
+        t.preloadId = self.thiefCar:preload(M.MODEL, M.CONFIG)
+        self.diag:event('thief_preloaded', tostring(t.preloadId))
+      end
       if self.clock - t.settleAt < M.SETTLE_SECONDS then return end
       if t.nextTry and self.clock < t.nextTry then return end
-      local id = self.thiefCar and self.thiefCar:spawn(M.MODEL, M.CONFIG, M.SPAWN_METRES)
+      local id
+      if t.preloadId then
+        -- Put on the road ahead once the ground there has loaded; if it never does, spawned the old way instead.
+        local ok, why = self.thiefCar:place(t.preloadId, M.SPAWN_METRES)
+        if ok then
+          id, t.preloadId = t.preloadId, nil
+        elseif why ~= 'gone' and (t.placeTries or 0) < M.SPAWN_TRIES then
+          t.placeTries = (t.placeTries or 0) + 1
+          t.nextTry = self.clock + M.SPAWN_RETRY_SECONDS
+          return
+        else
+          self.thiefCar:remove(t.preloadId)
+          t.preloadId = nil
+        end
+      end
+      id = id or (self.thiefCar and self.thiefCar:spawn(M.MODEL, M.CONFIG, M.SPAWN_METRES))
       if not id then
         t.tries = (t.tries or 0) + 1
         t.nextTry = self.clock + M.SPAWN_RETRY_SECONDS
