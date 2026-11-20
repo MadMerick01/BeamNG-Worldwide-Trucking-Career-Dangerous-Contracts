@@ -12,6 +12,7 @@
 -- distance doesn't count, it can't be delivered, the run can't be won, and nothing saves by itself.
 local pricing = require('earthFreight/pricing')
 local flights = require('earthFreight/flights')
+local emp = require('earthFreight/emp')
 local M = {}
 
 M.STOLEN = 1000
@@ -30,10 +31,10 @@ M.SPAWN_RETRY_SECONDS = 5
 M.SPAWN_TRIES = 3
 -- The chase: the thief gets away with the money this far from the player.
 M.ESCAPE_METRES = 450
--- The EMP works this close to the thief.
-M.EMP_METRES = 5
+-- The EMP works this close to the thief (emp.lua, shared with the road robber).
+M.EMP_METRES = emp.RANGE
 -- A caught thief's car stays this long before it is taken away.
-M.CAUGHT_SECONDS = 20
+M.CAUGHT_SECONDS = 10
 -- When thefts happen: one per session (each time the player loads in, on a map or a server), at a random moment in
 -- their first WINDOW_MINUTES of play. It needs a base, at least MIN_AWAY_METRES from it, STOLEN in the bank and the
 -- player not busy; if they can't be robbed at that moment, it happens as soon as they can.
@@ -60,9 +61,11 @@ function M.attach(c)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Not ready yet.' end
     if not self.property then return 'You need a base first.' end
     if self.thief then return 'A thief is already about.' end
+    if self.robber and self.robber.phase ~= 'loaded' then return 'A robber is already about.' end
     if self.thiefReturn then return 'Go back to your job first.' end
     if not self:canAfford(M.STOLEN) then return 'Less than ' .. dollars(M.STOLEN) .. ' in the bank.' end
     if forced then return nil end
+    if self.noRobbers then return 'You chose not to be robbed.' end
     if self.thiefReturn or self.hire or self.onFoot or self.maydayRun or self.booking or self.stranded then return 'Busy.' end
     local away = self:homeDistance()
     if not away or away < M.MIN_AWAY_METRES then return 'Too close to the base.' end
@@ -160,6 +163,7 @@ function M.attach(c)
     local t = self.thief
     if not t then return end
     if t.carId and self.thiefCar then self.thiefCar:remove(t.carId) end
+    if t.preloadId and self.thiefCar then self.thiefCar:remove(t.preloadId) end
     if self.booking and self.booking.thief then self.booking, self.bookingTeleportAt = nil, nil end
     self.thief = nil
     if t.returnTo then self.thiefReturn = t.returnTo end
@@ -178,16 +182,15 @@ function M.attach(c)
     self.diag:event('thief_over', tostring(outcome))
   end
 
-  -- EMP: within EMP_METRES of the thief, cuts their ignition and the player is paid. Returns true when it hit.
+  -- The EMP button (emp.lua: every press fires and starts the charge). Returns true when it stopped the thief.
   function c:empThief()
+    return self:fireEmp()
+  end
+
+  -- The EMP hit the thief within EMP_METRES (emp.lua): their ignition is cut for good and the player is paid.
+  function c:catchThief()
     local t = self.thief
     if not t or t.phase ~= 'chasing' or not self.thiefCar then return false end
-    local d = self.thiefCar:distance(t.carId)
-    if not d or d > M.EMP_METRES then
-      t.feedback = 'Too far for the EMP: get within ' .. M.EMP_METRES .. ' m.'
-        .. (d and (' The thief is ' .. math.floor(d + 0.5) .. ' m away.') or '')
-      return false
-    end
     self.thiefCar:emp(t.carId)
     local paid = t.amount + M.BOUNTY
     self:addMoney(paid)
@@ -198,16 +201,6 @@ function M.attach(c)
     if not self:awayFromJob() then self:autoSaveSoon('catching the thief') end
     self.diag:event('thief_caught', tostring(paid))
     return true
-  end
-
-  -- The Fire EMP hotkey (Options > Controls > Bindings, no key by default). Does nothing unless a chase is on; out of
-  -- range it says so in a pop-up too, since the HUD may be minimised.
-  function c:empHotkey()
-    local t = self.thief
-    if not t or t.phase ~= 'chasing' then return false end
-    if self:empThief() then return true end
-    self:toast('warning', 'EMP OUT OF RANGE', t.feedback or ('Get within ' .. M.EMP_METRES .. ' m of the thief.'), 4)
-    return false
   end
 
   -- Every tick.
@@ -237,9 +230,30 @@ function M.attach(c)
         and away ~= nil and away <= M.ARRIVED_METRES
       if not there then t.settleAt = nil return end
       t.settleAt = t.settleAt or self.clock
+      -- The thief's car is loaded out of sight now, while the player waits, so it turns up later without a stutter.
+      if not t.preloadTried and self.thiefCar and self.thiefCar.preload then
+        t.preloadTried = true
+        t.preloadId = self.thiefCar:preload(M.MODEL, M.CONFIG)
+        self.diag:event('thief_preloaded', tostring(t.preloadId))
+      end
       if self.clock - t.settleAt < M.SETTLE_SECONDS then return end
       if t.nextTry and self.clock < t.nextTry then return end
-      local id = self.thiefCar and self.thiefCar:spawn(M.MODEL, M.CONFIG, M.SPAWN_METRES)
+      local id
+      if t.preloadId then
+        -- Put on the road ahead once the ground there has loaded; if it never does, spawned the old way instead.
+        local ok, why = self.thiefCar:place(t.preloadId, M.SPAWN_METRES)
+        if ok then
+          id, t.preloadId = t.preloadId, nil
+        elseif why ~= 'gone' and (t.placeTries or 0) < M.SPAWN_TRIES then
+          t.placeTries = (t.placeTries or 0) + 1
+          t.nextTry = self.clock + M.SPAWN_RETRY_SECONDS
+          return
+        else
+          self.thiefCar:remove(t.preloadId)
+          t.preloadId = nil
+        end
+      end
+      id = id or (self.thiefCar and self.thiefCar:spawn(M.MODEL, M.CONFIG, M.SPAWN_METRES))
       if not id then
         t.tries = (t.tries or 0) + 1
         t.nextTry = self.clock + M.SPAWN_RETRY_SECONDS
@@ -351,6 +365,7 @@ function M.attach(c)
       distanceMetres = t.phase == 'chasing' and t.metres and math.floor(t.metres + 0.5) or nil,
       arrow = t.phase == 'chasing' and t.arrow and math.floor(t.arrow + 0.5) or nil,
       empMetres = M.EMP_METRES, empInRange = t.phase == 'chasing' and t.metres ~= nil and t.metres <= M.EMP_METRES,
+      emp = t.phase == 'chasing' and self:empView() or nil,
       escapeMetres = M.ESCAPE_METRES, feedback = t.feedback,
       held = t.returnTo and { job = t.returnTo.load, mayday = t.returnTo.mayday } or nil,
     }

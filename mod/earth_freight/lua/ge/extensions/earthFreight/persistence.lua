@@ -265,6 +265,8 @@ function M.validate(s)
   if s.rewardId ~= nil and not integer(s.rewardId, 0) then return nil, 'invalid_identity' end
   -- The extra car slot bought on the Garage tab (fleet.lua).
   if s.extraCarSlot ~= nil and s.extraCarSlot ~= true then return nil, 'invalid_home' end
+  -- Unticked "Robbers can rob me" (roadRobber.lua).
+  if s.noRobbers ~= nil and s.noRobbers ~= true then return nil, 'invalid_identity' end
   local cargo = nil
   if s.load ~= nil then
     cargo = load(s.load)
@@ -335,7 +337,7 @@ function M.validate(s)
       worth = s.vehicle.worth },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
     trailer = trailer, spareTrailers = spareTrailers, property = home, storedCars = stored, commissionId = s.commissionId, rewardId = s.rewardId,
-    corp = member, extraCarSlot = s.extraCarSlot,
+    corp = member, extraCarSlot = s.extraCarSlot, noRobbers = s.noRobbers,
   }
 end
 
@@ -405,7 +407,7 @@ function M.new(io, directory)
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
       trailer = candidate.trailer, spareTrailers = candidate.spareTrailers, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId, rewardId = candidate.rewardId,
-      corp = candidate.corp, extraCarSlot = candidate.extraCarSlot,
+      corp = candidate.corp, extraCarSlot = candidate.extraCarSlot, noRobbers = candidate.noRobbers,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end
