@@ -44,7 +44,7 @@ do
   T.check(compiles(thiefCar.fleeCommand(1)), 'flee command is valid Lua')
   local free = S.profileCommand('FreeFlow')
   T.check(free:find("ai.setSpeedMode, 'limit'", 1, true), 'caps the speed')
-  T.check(free:find('ai.setSpeed, 20.833', 1, true), '75 km/h in metres a second')
+  T.check(free:find('ai.setSpeed, 25.000', 1, true), '90 km/h in metres a second')
   T.check(free:find("ai.driveInLane, 'off'", 1, true), 'any lane in free flow')
   T.check(S.profileCommand('HeavyRisk'):find("ai.driveInLane, 'on'", 1, true), 'own lane in heavy traffic')
   T.check(S.profileCommand('EmergencyAvoid'):find('ai.setSpeed, 8.333', 1, true), '30 km/h in an emergency')
