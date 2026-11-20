@@ -145,6 +145,21 @@ function M.new(env)
     return ok and type(d) == 'number' and d == d and d or nil
   end
 
+  -- Which way the thief is from the way the player's car points, in degrees: 0 straight ahead, 90 to the right,
+  -- -90 to the left, 180 behind. nil when either car is gone.
+  function t:bearing(id)
+    local thief, car = object(id), player()
+    if not thief or not car then return nil end
+    local ok, deg = pcall(function()
+      local a, b, f = thief:getPosition(), car:getPosition(), car:getDirectionVector()
+      local dx, dy = a.x - b.x, a.y - b.y
+      if dx * dx + dy * dy < 1e-6 or f.x * f.x + f.y * f.y < 1e-6 then return nil end
+      -- Clockwise from ahead: the cross product is positive to the left.
+      return math.deg(math.atan2(-(f.x * dy - f.y * dx), f.x * dx + f.y * dy))
+    end)
+    return ok and type(deg) == 'number' and deg == deg and deg or nil
+  end
+
   -- The EMP hits the thief's car. Returns true once done.
   function t:emp(id)
     local thief, car = object(id), player()

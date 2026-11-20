@@ -1340,6 +1340,6 @@ test('Base thief: the card shows while a theft is on, and Chase and EMP send fix
   assert.deepEqual(a.commands, [fixed('thiefGoBack()')], 'Back to your job only when allowed')
   assert.ok(html.includes('ng-click="thiefGoBack()"'))
   for (const part of ['ng-click="getRobbed()"', 'Base thief (trial)']) assert.ok(html.includes(part), part)
-  for (const part of ['THIEF AT YOUR BASE', 'ng-click="thiefChase()"', 'ng-click="empThief()"', 'escape with the money'])
+  for (const part of ['arrowStyle(data.thief)', 'THIEF AT YOUR BASE', 'ng-click="thiefChase()"', 'ng-click="empThief()"', 'escape with the money'])
     assert.ok(html.includes(part), part)
 })
