@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 249 · 20 Nov 2026
+
 - **Taking a tanker job no longer swaps you out of your truck.** Filling a tanker trailer's load could put you in the driver's seat of the trailer instead of your truck, with a car bill for the tanker and a "Get my car back" button to press. You now stay in your truck. If you climb into your own trailer yourself, it is no longer billed as a car you are buying either. Your saves still work.
 
 ## Build 248 · 20 Nov 2026
