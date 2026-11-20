@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 238 · 20 Nov 2026
+
 - **An arrow now points you to the thief.** During a base thief chase, the card shows a red arrow next to the distance. Straight up is the way your car is facing, so turn until it points up and drive. Your saves still work.
 
 ## Build 237 · 20 Nov 2026
