@@ -306,7 +306,19 @@
       </label>
       <div ng-if="data.resumeDistanceMetres != null" style="margin-top:4px;">You are {{km(data.resumeDistanceMetres)}} km away.<span ng-if="data.resumeDistanceMetres < 5000"> Close by? You can drive there instead: the spot counts once you are within {{data.resumeRadiusMetres}} m of it.</span></div>
     </div>
-    <div ng-if="data.sightseeing.on" style="margin:8px 0 0;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
+    <div ng-if="data.admin.drive" style="margin:8px 0 0;padding:10px;border:2px solid #eb5757;border-radius:6px;">
+      <div style="display:flex;align-items:baseline;gap:8px;"><div style="flex:1;min-width:0;font-weight:bold;letter-spacing:1px;font-size:15px;color:#eb5757;">YOU ARE THE ROBBER</div><div ng-if="data.admin.drive.secondsLeft != null" title="Time left to strike" style="flex:none;font-weight:bold;font-size:15px;color:#f2c94c;">{{clock(data.admin.drive.secondsLeft)}}</div></div>
+      <div style="margin-top:2px;font-size:13px;">
+        <span ng-if="data.admin.drive.stage === 'asking' || data.admin.drive.stage === 'leaving' || data.admin.drive.stage === 'going'">Getting you onto the road ahead of <b>{{data.admin.drive.name}}</b>. The terrain takes a few seconds to load.</span>
+        <span ng-if="data.admin.drive.stage === 'ready' && !data.admin.drive.struck"><b>{{data.admin.drive.name}}</b> is coming up behind you in your lane. Let them catch up: within {{data.admin.drive.strikeMetres}} m your EMP hits them by itself and takes the money. They don't know it's you.</span>
+        <span ng-if="data.admin.drive.stage === 'ready' && data.admin.drive.struck">You robbed <b>{{data.admin.drive.name}}</b>. Get {{data.admin.drive.escapeMetres}} m clear before their EMP catches you, or they find out it was you.</span>
+        <span ng-if="data.admin.drive.stage === 'caught'"><b>{{data.admin.drive.name}}</b> caught you, and now they know it was you. Back to your car in a moment.</span>
+        <span ng-if="data.admin.drive.stage === 'back'">Taking you back to your car, with its job.</span>
+      </div>
+      <button type="button" ng-if="data.admin.drive.stopAllowed" ng-click="adminStop()" style="margin-top:8px;padding:5px 12px;border:1px solid #8fa39d;border-radius:4px;background:transparent;color:#c9d6d2;">Stop and go back to my car</button>
+      <div ng-if="data.admin.feedback" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.admin.feedback}}</div>
+    </div>
+    <div ng-if="data.sightseeing.on && !data.admin.drive" style="margin:8px 0 0;padding:10px;border:2px solid #a7e5c9;border-radius:6px;">
       <div style="font-weight:bold;letter-spacing:1px;font-size:15px;color:#a7e5c9;">SIGHTSEEING</div>
       <div style="margin-top:2px;font-size:13px;">Your game is saved. Teleport anywhere with the BeamNG.Earth map and look around with Street View. Nothing costs money while you are sightseeing.</div>
       <div ng-if="data.sightseeing.car.distanceMetres > 50" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Your truck is {{km(data.sightseeing.car.distanceMetres)}} km {{data.sightseeing.car.direction}}, waiting with your job.</div>
@@ -497,6 +509,16 @@
             Robbers can rob me
           </label>
           <div ng-if="data.robMe.feedback || data.robMe.problem" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.robMe.feedback || data.robMe.problem}}</div>
+        </div>
+        <div ng-if="data.admin && !data.admin.drive" style="margin:8px 0 0;padding:8px 10px;border:1px dashed #eb5757;border-radius:6px;font-size:13px;">
+          <b style="color:#eb5757;">Admin robber</b> <span style="color:#7d8b88;font-size:12px;">only the server's admins see this</span>
+          <div style="color:#c9d6d2;">Drive the robber yourself. You're dropped in 300 m ahead of the player in their lane, and taken back to your car afterwards. They only find out it was you if they catch you.</div>
+          <div ng-if="!data.admin.targets.length" style="margin-top:4px;color:#c9d6d2;">Nobody can be robbed right now: no one is on a job of 5 km or more with robbers allowed.</div>
+          <div ng-repeat="p in data.admin.targets track by p.id" style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <div style="flex:1;min-width:0;"><b>{{p.name}}</b> <span style="color:#c9d6d2;">{{p.town}}</span><div ng-if="p.doing" style="color:#7d8b88;font-size:12px;">{{p.doing}}</div></div>
+            <button type="button" ng-click="adminRob(p)" ng-disabled="!p.allowed" style="flex:none;padding:3px 12px;border:1px solid #eb5757;border-radius:4px;background:#eb5757;color:#0c1318;font-weight:bold;">Rob</button>
+          </div>
+          <div ng-if="data.admin.feedback || data.admin.problem" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.admin.feedback || data.admin.problem}}</div>
         </div>
       </div>
       <div ng-if="tab === 'town'">

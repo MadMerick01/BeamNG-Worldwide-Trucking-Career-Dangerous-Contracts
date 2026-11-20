@@ -36,6 +36,7 @@ local thief = require('earthFreight/thief')
 local thiefCar = require('earthFreight/thiefCar')
 local emp = require('earthFreight/emp')
 local roadRobber = require('earthFreight/roadRobber')
+local adminRobber = require('earthFreight/adminRobber')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -180,6 +181,7 @@ function M.new(deps)
   thief.attach(c)
   emp.attach(c)
   roadRobber.attach(c)
+  adminRobber.attach(c)
 
   function c:transition(nextState, reason)
     if self.state == nextState and self.reason == reason then return end
@@ -242,6 +244,7 @@ function M.new(deps)
       self.mp = nil
     elseif not self.mp then
       mp.listen(function(event, data) self:multiplayerEvent(event, data) end)
+      self.mpGame = mp
       self.mp = multiplayer.new({ send = mp.send, encode = mp.encode, decode = mp.decode, io = deps.io })
       self.mp:start(self.clock)
       self.diag:event('multiplayer', 'asking the server for the career')
@@ -395,6 +398,14 @@ function M.new(deps)
       self:baseClaimAnswered(self.mp.baseClaimed)
     elseif event == 'wwtcOutpostDone' then
       self:outpostAnswered(self.mp.outpostDone)
+    elseif event == 'wwtcAdminSpot' then
+      self:adminSpotAnswered(self.mp.adminSpot)
+    elseif event == 'wwtcAdminState' then
+      self:adminStateChanged(self.mp.adminState)
+    elseif event == 'wwtcRobAsk' then
+      self:answerRobAsk(self.mp.robAsk)
+    elseif event == 'wwtcRob' then
+      self:robNews(self.mp.rob)
     end
     if event == 'wwtcSaveNow' then self:saveForRestart() end
     if event == 'wwtcSaved' and self.mp.saveError then
@@ -476,11 +487,13 @@ function M.new(deps)
     local near = places.nearest(sample, 1)[1]
     if not near then return end
     local place, doing = near.place, self:doingText()
-    local key = place.id .. '|' .. doing
+    -- Whether an admin could rob this player now (adminRobber.lua): only the server's admins are shown it.
+    local robbable = self:adminRobProblem() == nil
+    local key = place.id .. '|' .. doing .. '|' .. tostring(robbable)
     if key == self.whereSent and self.clock - (self.whereAt or -math.huge) < M.WHERE_SECONDS then return end
     self.whereSent, self.whereAt = key, self.clock
     self.mp:where({ town = place.name, region = place.region, latitude = place.latitude, longitude = place.longitude,
-      doing = doing })
+      doing = doing, robbable = robbable or nil })
   end
 
   -- The two ends of a delivery for the server's commission (magnate.lua): the town centres only, never a spot.
@@ -592,6 +605,7 @@ function M.new(deps)
     -- A new session gets a base thief of its own (thief.lua). A road robber's car went with the level (roadRobber.lua).
     self.theftPlan = nil
     self.robber, self.robberJob, self.robberAtKm, self.empFiredAt = nil, nil, nil, nil
+    self.adminDrive, self.adminFeedback = nil, nil
     self:interrupt('earth_level_required')
     self.adapter:invalidate()
   end
@@ -2301,6 +2315,7 @@ function M.new(deps)
     self:watchMayday()
     self:watchThief(dt)
     self:watchRobber(dt)
+    self:watchAdminDrive()
     self:watchNametags()
     self:watchFind()
     self:watchCommission()
@@ -2822,6 +2837,7 @@ function M.new(deps)
       thief = self:thiefView() or self:robberView(),
       robbery = self:robberyView(),
       robMe = self:robMeView(),
+      admin = self:adminView(),
       away = self:awayView(),
       home = self:homeView(current),
       fleet = self:fleetView(),
@@ -3204,7 +3220,7 @@ end
 gameMultiplayer = function()
   local g = multiplayer.game()
   return {
-    inSession = g.inSession, send = g.send,
+    inSession = g.inSession, send = g.send, serverCarId = g.serverCarId, gameCarId = g.gameCarId,
     listen = function(handler) return g.listen(function(event, data) safely(function() handler(event, data) end) end) end,
     encode = function(t) return jsonEncode(t) end, decode = function(text) return jsonDecode(text) end,
   }
@@ -3379,6 +3395,12 @@ function M.setRobbersAllowed(allowed)
   if type(allowed) ~= 'boolean' then return false end
   return safely(function() return ensure():setRobbersAllowed(allowed) end)
 end
+-- The admin robber (the server's admins only): Rob a player from the Route tab's list, and Stop.
+function M.adminRob(id)
+  if type(id) ~= 'number' or id < 0 or id ~= math.floor(id) then return false end
+  return safely(function() return ensure():adminRob(id) end)
+end
+function M.adminStop() return safely(function() return ensure():adminStop() end) end
 function M.maydayEdge(edge)
   if edge ~= 'n' and edge ~= 'e' and edge ~= 's' and edge ~= 'w' then return false end
   return safely(function() return ensure():maydayEdge(edge) end)

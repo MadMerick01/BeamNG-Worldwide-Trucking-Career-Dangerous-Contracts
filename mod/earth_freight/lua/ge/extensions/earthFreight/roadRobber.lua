@@ -15,7 +15,8 @@
 -- The player can turn robbers off with the Route tab's "Robbers can rob me" tick box (saved as noRobbers), which the
 -- base thief obeys too. ROB ME on the Route tab starts one straight away for testing, ticked or not, and doesn't count
 -- as the job's robbery. Never on Mayday Rescue runs, heli flights or the heli's package jobs. Pure Lua: the car is
--- handled by c.thiefCar, which may be missing.
+-- handled by c.thiefCar, which may be missing. An admin on the server can drive a robber himself (adminRobber.lua):
+-- self.robber then has admin = true.
 local pricing = require('earthFreight/pricing')
 local places = require('earthFreight/places')
 local jobs = require('earthFreight/jobs')
@@ -143,7 +144,8 @@ function M.attach(c)
   function c:dropRobber(why)
     local r = self.robber
     if not r then return end
-    if r.carId and self.thiefCar then self.thiefCar:remove(r.carId) end
+    -- An admin robber's car is his own (adminRobber.lua): never taken away here.
+    if r.carId and self.thiefCar and not r.admin then self.thiefCar:remove(r.carId) end
     if r.empEndAt and self.thiefCar then self.thiefCar:empPlayerEnd() end
     self.robber = nil
     self.diag:event('robber_over', tostring(why))
@@ -153,7 +155,8 @@ function M.attach(c)
   function c:catchRobber()
     local r = self.robber
     if not r or r.phase ~= 'chasing' then return false end
-    self.thiefCar:emp(r.carId)
+    -- An admin's car is shut down by his own game, told through the server.
+    if r.admin then self.mp:robNews('caught') else self.thiefCar:emp(r.carId) end
     local paid = (r.amount or 0) + M.TRUNK
     self:addMoney(paid)
     r.phase, r.caughtAt = 'caught', self.clock
@@ -208,6 +211,7 @@ function M.attach(c)
     end
     local r = self.robber
     if not r then return end
+    if r.admin then return self:watchAdminRobber() end
     if r.phase == 'loaded' then
       if not r.go then
         if self.noRobbers or not self.robberAtKm or not load or load ~= self.robberJob or (load.drivenKm or 0) < self.robberAtKm then return end

@@ -174,7 +174,7 @@ function M.new(env)
         end
       end
     end
-    return env.point(x, y, z + 0.5), env.upright(env.point(fx, fy, 0))
+    return env.point(x, y, z + 0.5), env.upright(env.point(fx, fy, 0)), fx, fy
   end
 
   -- Spawns the car. Returns its id, or nil and why.
@@ -240,6 +240,44 @@ function M.new(env)
       else robber:setPositionRotation(pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, rot.w) end
     end)
     return placed == true, placed and nil or 'teleport_failed'
+  end
+
+  -- The admin robber (adminRobber.lua): where the road spot metres ahead of the player is, as metres east and north of
+  -- their car and the road's heading in degrees from north (Earth's world is east-north-up, +y north). Only where the
+  -- ground has loaded: nil and 'no_ground' when it hasn't yet.
+  function t:aheadOffset(metres)
+    local car = player()
+    if not car then return nil, 'gone' end
+    local ok, pos, _, fx, fy = pcall(spot, car, metres)
+    if not ok or not pos then return nil, 'no_spot' end
+    local gok, ground = pcall(env.groundBelow, pos)
+    if not gok or type(ground) ~= 'number' or math.abs(ground - pos.z) > 30 then return nil, 'no_ground' end
+    local rok, out = pcall(function()
+      local at = car:getPosition()
+      return { east = pos.x - at.x, north = pos.y - at.y, heading = (math.deg(math.atan2(fx, fy)) + 360) % 360 }
+    end)
+    if not rok or type(out) ~= 'table' then return nil, 'no_spot' end
+    return out
+  end
+
+  -- Turns the player's car to face heading (degrees from north) where it stands, on the ground. Returns true once done.
+  function t:face(heading)
+    local car = player()
+    if not car or type(heading) ~= 'number' or heading ~= heading then return false end
+    return pcall(function()
+      local at, r = car:getPosition(), math.rad(heading)
+      local pos, rot = env.point(at.x, at.y, at.z + 0.5), env.upright(env.point(math.sin(r), math.cos(r), 0))
+      local s = env.spawn()
+      if type(s) == 'table' and type(s.safeTeleport) == 'function' then s.safeTeleport(car, pos, rot)
+      else car:setPositionRotation(pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, rot.w) end
+    end) == true
+  end
+
+  -- The player's own car stops for good: the admin robber caught (the same as the EMP on a thief). True once done.
+  function t:shutDownPlayer()
+    local car = player()
+    if not car then return false end
+    return pcall(function() car:queueLuaCommand(M.EMP_COMMAND) end) == true
   end
 
   -- Lurking: the traffic AI in its lane, at no more than kph.

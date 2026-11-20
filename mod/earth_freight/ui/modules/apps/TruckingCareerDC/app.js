@@ -292,6 +292,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // The road robber: ROB ME and the "Robbers can rob me" tick box on the Route tab.
       scope.robMe = function () { if (scope.data && scope.data.robMe && scope.data.robMe.allowed) core('robMe()') }
       scope.setRobbersAllowed = function (on) { if (scope.data && scope.data.robMe) core('setRobbersAllowed(' + (on ? 'true' : 'false') + ')') }
+      // The admin robber (the server's admins only): Rob a player from the list, and Stop.
+      scope.adminRob = function (p) { if (p && p.allowed && typeof p.id === 'number') core('adminRob(' + Math.floor(p.id) + ')') }
+      scope.adminStop = function () { if (scope.data && scope.data.admin && scope.data.admin.drive && scope.data.admin.drive.stopAllowed) core('adminStop()') }
       // The EMP button: grey and filling while it charges, then green IN RANGE or yellow OUT OF RANGE with the distance.
       scope.empLabel = function (e) {
         if (!e) return 'EMP'

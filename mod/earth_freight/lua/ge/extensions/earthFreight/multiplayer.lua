@@ -58,6 +58,19 @@ function M.cleanPlayers(list)
   return out
 end
 
+-- The admin robber's list (wwtcAdmin), sent only to the server's admins: the players who can be robbed now, by id, name,
+-- town and what they're doing.
+function M.cleanTargets(list)
+  local out = {}
+  for _, p in ipairs(type(list) == 'table' and list or {}) do
+    if type(p) == 'table' and type(p.id) == 'number' and p.id >= 0 and p.id == math.floor(p.id) and #out < 64 then
+      out[#out + 1] = { id = p.id, name = M.cleanText(p.name, 32) or 'A trucker', town = M.cleanText(p.town, 40),
+        doing = M.cleanText(p.doing, 80) }
+    end
+  end
+  return out
+end
+
 -- A { latitude, longitude } from the server, checked, or nil.
 local function spotOf(t)
   local lat, lon = type(t) == 'table' and tonumber(t.latitude), type(t) == 'table' and tonumber(t.longitude)
@@ -428,6 +441,24 @@ function M.new(deps)
       if not d then return false end
       self.found = d
       return true
+    elseif event == 'wwtcAdmin' then
+      -- This player is one of the server's admins: who they can rob as the admin robber (adminRobber.lua).
+      local d = decode(data)
+      if not d then return false end
+      self.admin = { targets = M.cleanTargets(d.targets) }
+      return true
+    elseif event == 'wwtcAdminSpot' or event == 'wwtcAdminState' or event == 'wwtcRob' then
+      -- The admin robber: where to drop in and how it went (to the admin), or the robbery itself (to the player robbed).
+      local d = decode(data)
+      if not d then return false end
+      self[event == 'wwtcAdminSpot' and 'adminSpot' or event == 'wwtcAdminState' and 'adminState' or 'rob'] = d
+      return true
+    elseif event == 'wwtcRobAsk' then
+      -- An admin wants to rob this player: the game answers with the spot ahead of the car, or why not.
+      local d = decode(data)
+      if not d or type(d.ask) ~= 'number' then return false end
+      self.robAsk = { ask = d.ask }
+      return true
     elseif event == 'wwtcSaved' then
       local d = decode(data)
       if not d then return false end
@@ -536,6 +567,15 @@ function M.new(deps)
     pcall(io.write, M.PREFS, { findable = self.findableKept })
     return self.findableKept
   end
+  -- The admin robber: the admin starts ('start', to), is in place ('ready', car) or stops ('stop'); the player robbed
+  -- answers where the drop-in spot is, and tells how it went.
+  function s:adminRob(what, t)
+    t = t or {}
+    t['do'] = what
+    return shipEvent('wwtcAdminRob', t)
+  end
+  function s:robSpot(t) return shipEvent('wwtcRobSpot', t) end
+  function s:robNews(what) return shipEvent('wwtcRobNews', { what = what }) end
   -- A base of operations: asks the server whether this town is free (one base a town, 10 km apart).
   function s:claimBase(t) return shipEvent('wwtcBaseClaim', t) end
   -- The land race: opens the corp's next base in this town, once its newest circle is full size.
@@ -589,11 +629,30 @@ function M.game()
     if listening or type(rawget(_G, 'AddEventHandler')) ~= 'function' then return listening end
     for _, event in ipairs({ 'wwtcServer', 'wwtcCareer', 'wwtcSaved', 'wwtcMayday', 'wwtcMaydayWon', 'wwtcReward', 'wwtcSaveNow',
         'wwtcPlayers', 'wwtcLocate', 'wwtcFound', 'wwtcBases', 'wwtcBaseClaimed', 'wwtcCommission', 'wwtcRejoined',
-        'wwtcCorpDone', 'wwtcAway', 'wwtcOutpostDone', 'wwtcBoard' }) do
+        'wwtcCorpDone', 'wwtcAway', 'wwtcOutpostDone', 'wwtcBoard', 'wwtcAdmin', 'wwtcAdminSpot', 'wwtcAdminState', 'wwtcRobAsk',
+        'wwtcRob' }) do
       AddEventHandler(event, function(data) handler(event, data) end, 'earthFreight')
     end
     listening = true
     return true
+  end
+  -- BeamMP's name for a car in this game ('3-0': player 3's first car), and back: the admin robber's car is told to the
+  -- player robbed by that name, and their game finds it by it. nil when BeamMP can't say.
+  local function vehicles()
+    local v = rawget(_G, 'MPVehicleGE')
+    return type(v) == 'table' and v or nil
+  end
+  function g.serverCarId(gameId)
+    local v = vehicles()
+    if not v or type(v.getServerVehicleID) ~= 'function' then return nil end
+    local ok, id = pcall(v.getServerVehicleID, gameId)
+    return ok and type(id) == 'string' and id:match('^%d+%-%d+$') and id or nil
+  end
+  function g.gameCarId(serverId)
+    local v = vehicles()
+    if not v or type(v.getGameVehicleID) ~= 'function' or type(serverId) ~= 'string' then return nil end
+    local ok, id = pcall(v.getGameVehicleID, serverId)
+    return ok and type(id) == 'number' and id >= 0 and id or nil
   end
   return g
 end
