@@ -1155,6 +1155,35 @@ test('EMP charged: plays when the EMP button goes from charging to ready, for th
   fresh.state(chase({ ready: true }))
   assert.equal(played.length, 2, 'a rebuilt HUD that first sees a ready EMP stays quiet')
 })
+test('A new Mayday call, base theft or robber hit scrolls the HUD to the top once, then leaves the player to scroll', () => {
+  const page = { scrollTop: 400, scrolls: [], scrollTo(o) { this.scrolls.push(o); this.scrollTop = o.top }, parentElement: null }
+  const a = app(undefined, [page])
+  const call = { round: 3, open: true, name: 'Gobi Desert', reward: 80000, edges: [], secondsLeft: 3600 }
+  a.state({ state: 'READY', arrived: true })
+  a.state({ state: 'READY', arrived: true, mayday: call })
+  assert.equal(page.scrollTop, 0, 'a new Mayday call: back to the top')
+  assert.equal(page.scrolls[0].behavior, 'smooth', 'smoothly')
+  page.scrollTop = 400
+  a.state({ state: 'READY', arrived: true, mayday: call })
+  assert.equal(page.scrollTop, 400, 'the same call: the player can scroll down again')
+  a.state({ state: 'READY', arrived: true, mayday: call, thief: { phase: 'stolen', amount: 1000 } })
+  assert.equal(page.scrollTop, 0, 'a thief at the base: to the top')
+  page.scrollTop = 300
+  a.state({ state: 'READY', arrived: true, mayday: call, thief: { phase: 'stolen', amount: 1000 } })
+  assert.equal(page.scrollTop, 300, 'and only once')
+  a.state({ state: 'DRIVING', arrived: false, mayday: call })
+  a.state({ state: 'DRIVING', arrived: false, mayday: call, thief: { road: true, phase: 'chasing', amount: 1000 } })
+  assert.equal(page.scrollTop, 0, 'a road robber\'s hit: to the top')
+  assert.equal(a.scope.toTops(), 3)
+  const old = { scrollTop: 250 }
+  const b = app(undefined, [old])
+  b.state({ state: 'READY', arrived: true, mayday: call })
+  assert.equal(old.scrollTop, 0, 'without smooth scrolling it still jumps')
+  b.scope.setMinimised(true)
+  old.scrollTop = 250
+  b.state({ state: 'READY', arrived: true, mayday: { ...call, round: 4 } })
+  assert.equal(old.scrollTop, 250, 'minimised: the card shows by itself, nothing scrolls')
+})
 test('Mayday Rescue card: not for a won call, a run, or over the start page, and a minimised Mayday tab does not hide it', () => {
   const a = app()
   const call = { round: 3, open: true, name: 'Gobi Desert', reward: 80000, edges: [], secondsLeft: 3600 }
