@@ -36,6 +36,11 @@ M.GIVE_UP_SECONDS = 240
 M.GIVE_UP_METRES = 500
 M.ESCAPE_METRES = 450
 M.CAUGHT_SECONDS = 30
+-- A robber's or thief's car that hardly moves (under STUCK_SPEED m/s) for STUCK_SECONDS, off the road, is put back on
+-- the nearest road (thiefCar.lua unstick), at most once every UNSTICK_EVERY_SECONDS.
+M.STUCK_SECONDS = 5
+M.STUCK_SPEED = 1.5
+M.UNSTICK_EVERY_SECONDS = 10
 -- Lurking: this much slower than the player, never under LURK_MIN_KPH; when they hang back more than HANG_BACK_METRES,
 -- BRAKE_CHECK_KPH slower instead.
 M.LURK_SLOWER_KPH = 15
@@ -143,6 +148,18 @@ function M.attach(c)
   -- Tells the server's live feed how a robbery of this player went (multiplayer.lua robbed), on a server only.
   function c:robberyNews(who, what)
     if self.mp and self.mp.robbed then self.mp:robbed(who, what) end
+  end
+
+  -- Watches a fleeing or driving robber's or thief's car (r: the robber or the theft) for getting stuck off the road.
+  function c:watchStuck(r, dt, who)
+    local car = self.thiefCar
+    if not r.carId or not car or not car.speed or not car.unstick then return end
+    local v = car:speed(r.carId)
+    if not v or v >= M.STUCK_SPEED then r.stillFor = 0 return end
+    r.stillFor = (r.stillFor or 0) + (dt or 0)
+    if r.stillFor < M.STUCK_SECONDS or self.clock < (r.unstickAt or 0) then return end
+    r.stillFor, r.unstickAt = 0, self.clock + M.UNSTICK_EVERY_SECONDS
+    if car:unstick(r.carId) then self.diag:event(who .. '_unstuck', '') end
   end
 
   -- The robber is gone: its car taken away. why goes in the diagnostics.
@@ -256,6 +273,7 @@ function M.attach(c)
       r.brakeAt = self.clock + 1
       if self.thiefCar.empPlayerHold then self.thiefCar:empPlayerHold() end
     end
+    if r.phase == 'lurking' or r.phase == 'hunting' or r.phase == 'chasing' then self:watchStuck(r, dt, 'robber') end
     if r.phase == 'lurking' or r.phase == 'hunting' then
       if not d then self:dropRobber('gone') return end
       if d <= M.STRIKE_METRES then self:robberStrikes() return end

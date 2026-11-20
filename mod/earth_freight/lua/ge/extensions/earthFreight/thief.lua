@@ -272,6 +272,7 @@ function M.attach(c)
       return
     end
     if t.phase == 'chasing' then
+      self:watchStuck(t, dt, 'thief')
       local d = self.thiefCar and self.thiefCar:distance(t.carId)
       t.metres = d
       t.arrow = d and self.thiefCar.bearing and self.thiefCar:bearing(t.carId) or nil
