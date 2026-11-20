@@ -2838,6 +2838,7 @@ function M.new(deps)
       robbery = self:robberyView(),
       robMe = self:robMeView(),
       admin = self:adminView(),
+      empSound = self.empSounds or 0,
       away = self:awayView(),
       home = self:homeView(current),
       fleet = self:fleetView(),

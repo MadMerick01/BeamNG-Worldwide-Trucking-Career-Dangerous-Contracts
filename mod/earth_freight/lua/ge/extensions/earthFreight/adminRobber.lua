@@ -153,6 +153,7 @@ function M.attach(c)
       return false
     end
     a.empAt = self.clock
+    self:empSound()
     self.mp:adminRob('emp')
     self.adminFeedback = 'EMP fired...'
     self.diag:event('admin_emp', '')
@@ -383,6 +384,7 @@ function M.attach(c)
     self.thiefCar:empPlayer()
     -- The robber's EMP drains the player's too: it charges from empty before they can fire back (emp.lua).
     self.empFiredAt = self.clock
+    self:empSound()
     r.phase, r.amount, r.struckAt, r.empEndAt = 'chasing', M.STOLEN, self.clock, self.clock + roadRobber.PLAYER_EMP_SECONDS
     local text = 'A robber hit you with an EMP and took ' .. dollars(M.STOLEN) .. '. Your engine is back in '
       .. roadRobber.PLAYER_EMP_SECONDS .. ' s and your EMP is drained: it takes ' .. emp.CHARGE_SECONDS .. ' s to charge. Catch them with your EMP within ' .. emp.RANGE .. ' m to get it back, plus '

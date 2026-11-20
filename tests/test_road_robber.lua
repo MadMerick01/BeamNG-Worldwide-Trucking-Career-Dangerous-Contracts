@@ -100,11 +100,12 @@ do
   T.eq(c.robber.phase, 'hunting', 'turned off: hunting')
   T.eq(car.hunts[1], 95, 'at the player\'s speed plus 15')
   -- It strikes within 15 m.
-  local before = c.profile.progression.balance
+  local before, sounds = c.profile.progression.balance, c:view().empSound
   car.metres = 12
   F.advance(c, 0.2)
   T.eq(c.robber.phase, 'chasing', 'struck, fleeing')
   T.eq(c.profile.progression.balance, before - robber.STOLEN, '$1,000 taken')
+  T.eq(c:view().empSound, sounds + 1, 'the EMP sound plays once for the hit')
   T.eq(car.playerHits, 1, 'the player\'s engine is cut'); T.eq(car.fled[1], c.robber.carId, 'and it flees')
   T.eq(c.flash.title, 'ROBBED ON THE ROAD: -$1,000', 'told')
   local v = c:view().thief

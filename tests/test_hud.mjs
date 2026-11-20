@@ -1096,6 +1096,25 @@ test('Mayday Rescue card: shows for a new call even when minimised, plays the al
   assert.equal(a.scope.tab, 'mayday', 'on the Mayday Rescue tab')
   assert.equal(a.scope.maydayCard(), false, 'and the card goes')
 })
+test('EMP sound: plays once for each EMP the game counts, never for the count a fresh HUD first sees', () => {
+  const played = []
+  class Audio { constructor(src) { this.src = src } play() { played.push(this); return { catch() {} } } }
+  const a = app(undefined, undefined, { Audio })
+  a.state({ state: 'READY', arrived: true, empSound: 3 })
+  assert.equal(played.length, 0, 'the first count is old news')
+  a.state({ state: 'READY', arrived: true, empSound: 3 })
+  assert.equal(played.length, 0, 'no change: no sound')
+  a.state({ state: 'READY', arrived: true, empSound: 4 })
+  assert.equal(played.length, 1, 'one more EMP: the sound plays')
+  assert.equal(played[0].src, '/ui/modules/apps/TruckingCareerDC/emp.wav')
+  a.state({ state: 'DRIVING', arrived: false, empSound: 5 })
+  assert.equal(played.length, 2, 'and again while driving')
+  assert.equal(a.scope.empBangs(), 2)
+  const quiet = app()
+  quiet.state({ state: 'READY', arrived: true, empSound: 0 })
+  quiet.state({ state: 'READY', arrived: true, empSound: 1 })
+  assert.equal(quiet.scope.empBangs(), 1, 'without Audio it still counts, silently')
+})
 test('Mayday Rescue card: not for a won call, a run, or over the start page, and a minimised Mayday tab does not hide it', () => {
   const a = app()
   const call = { round: 3, open: true, name: 'Gobi Desert', reward: 80000, edges: [], secondsLeft: 3600 }

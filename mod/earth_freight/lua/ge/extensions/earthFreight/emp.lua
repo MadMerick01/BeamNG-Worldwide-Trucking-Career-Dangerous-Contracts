@@ -12,6 +12,9 @@ M.CHARGE_SECONDS = 20
 function M.attach(c)
   -- The controller keeps self.empFiredAt: the clock when the EMP last fired, or nil.
 
+  -- The EMP sound (the HUD's emp.wav): played once for each, when the player fires and when a robber's EMP hits them.
+  function c:empSound() self.empSounds = (self.empSounds or 0) + 1 end
+
   -- Seconds until the EMP is charged again, 0 when ready.
   function c:empChargeLeft()
     if not self.empFiredAt then return 0 end
@@ -42,6 +45,7 @@ function M.attach(c)
       return false
     end
     self.empFiredAt = self.clock
+    self:empSound()
     local d = target.metres
     if not target.stoppable then
       self.empFeedback = 'Nothing to hit yet. The EMP is charging.'

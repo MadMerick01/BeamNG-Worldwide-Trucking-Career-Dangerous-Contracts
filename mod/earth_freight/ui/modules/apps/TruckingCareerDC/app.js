@@ -54,6 +54,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   kept.maydaySeen = storedMayday()
   // MadMerick's alert, played once when a new call's card shows.
   var MAYDAY_SOUND = '/ui/modules/apps/TruckingCareerDC/mayday_alert.wav'
+  var EMP_SOUND = '/ui/modules/apps/TruckingCareerDC/emp.wav'
   // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
   // bill here and the box goes on the page itself, over the menu. It stays until the player closes
   // it, Lua says the bill was paid or undone, or the menu closes and the HUD is built again.
@@ -330,6 +331,18 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         } catch (e) { chime() }
       }
       scope.maydayAlerts = function () { return kept.maydayAlerts || 0 }
+      // The EMP sound: once each time Lua counts one more (the player fired, or a robber's EMP hit them).
+      var empBang = function () {
+        kept.empBangs = (kept.empBangs || 0) + 1
+        try {
+          if (typeof Audio === 'undefined') return
+          var sound = new Audio(EMP_SOUND)
+          sound.volume = 0.8
+          var played = sound.play()
+          if (played && played.catch) played.catch(function () {})
+        } catch (e) {}
+      }
+      scope.empBangs = function () { return kept.empBangs || 0 }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
@@ -343,6 +356,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         // The start page opens once on a new game or on loading a save, until the player is there.
         if (next.arrived || (previous.mode && previous.mode !== next.mode)) kept.introShown = false
         if (scope.atDestination(next) && !scope.atDestination(previous)) chime()
+        // Only a new one: never for the count a rebuilt HUD first sees.
+        if (previous && typeof previous.empSound === 'number' && next.empSound > previous.empSound) empBang()
         if (scope.maydayCard(next) && kept.maydayRung !== next.mayday.round) {
           kept.maydayRung = next.mayday.round
           maydayAlert()
