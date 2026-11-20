@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Fixed: a Mayday Rescue run no longer just disappears when its call ends.** Each call stays open for 2 hours (the Mayday Rescue tab shows when it moves on). If it moved on, or someone else got to the scene first, while you were still driving, your run was cleared without a word and the tab looked as if you had never started. Now a MAYDAY RUN OVER pop-up tells you which it was, and the Mayday Rescue tab says so too. Your saves still work.
+
 ## Build 242 · 20 Nov 2026
 
 - **Fixed: fuel and water in a tanker trailer no longer lose their weight partway through a job.** If the tanker respawned for any other reason while loaded, for example after you moved the **Load Volume** slider in Vehicle Config and pressed Apply, or after the game put its parts back as you bought them, the tank was left empty and the trailer drove light for the rest of the job. Now the mod fills it again with your load, so a loaded short 17,700 L or long 34,000 L tanker stays heavy until you deliver. While you carry a load the slider always follows it, so you can't set it by hand until the job is done. Your saves still work.

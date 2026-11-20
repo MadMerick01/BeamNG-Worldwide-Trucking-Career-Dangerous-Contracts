@@ -371,9 +371,10 @@ function M.new(deps)
       self:reload()
     end
     if event == 'wwtcMayday' then
+      local before = self.mayday
       self.mayday = mayday.clean(self.mp.mayday, self.clock)
-      -- A new call, or the old one won: a run from before is over.
-      if self.maydayRun and not self:maydayRunning() then self.maydayRun, self.maydayClaim = nil, nil end
+      -- A new call, or the old one won: a run from before is over. Say so, or the run just vanishes from the HUD.
+      if self.maydayRun and not self:maydayRunning() then self:maydayCallEnded(before) end
     elseif event == 'wwtcMaydayWon' then
       self:maydayAnswered(mayday.cleanAnswer(self.mp.maydayWon))
     elseif event == 'wwtcLocate' then
@@ -1105,6 +1106,27 @@ function M.new(deps)
     self.maydayFeedback = RUN_ENDED[why] or 'Your Mayday Rescue run is over.'
     if why == 'hop' or why == 'car' or why == 'rockets' then self:showFlash('cancelled', 'MAYDAY RUN OVER', self.maydayFeedback) end
     self.diag:event('mayday_run_ended', tostring(why))
+  end
+
+  -- The call this player was racing to ended under them: someone else got there first, or it moved on (nobody
+  -- reached the scene in time). before is the call as it was when the run started, if this game still has it.
+  function c:maydayCallEnded(before)
+    local run, call = self.maydayRun, self.mayday
+    self.maydayRun, self.maydayClaim = nil, nil
+    local place = before and before.round == run.round and before.spot and before.spot.name
+    local near = place and (' near ' .. place) or ''
+    local why
+    if call and call.round == run.round and call.state == 'won' then
+      self.maydayFeedback = (call.winner or 'Someone else') .. ' reached the scene' .. near
+        .. ' first, so your Mayday Rescue run is over. The next call goes out soon.'
+      why = 'beaten'
+    else
+      self.maydayFeedback = 'Nobody reached the scene' .. near .. ' in time, so that call moved on and your Mayday '
+        .. 'Rescue run is over. Check the Mayday Rescue tab for the new call.'
+      why = 'moved_on'
+    end
+    self:showFlash('cancelled', 'MAYDAY RUN OVER', self.maydayFeedback)
+    self.diag:event('mayday_run_ended', why)
   end
 
   -- An edge button: a free relocation to that edge (an empty car, as any relocation) and the teleport there, in one

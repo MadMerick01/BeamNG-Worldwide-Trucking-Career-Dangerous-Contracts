@@ -581,6 +581,19 @@ do
   T.check(c:towHere(), 'towed'); a.vehicle = { id = 1, model = 'pickup' }
   c:vehicleReset(1); c:tick(0.1); c:tick(0.1)
   T.check(c.maydayRun ~= nil, 'a tow of a few metres keeps a Mayday Rescue run going'); c.maydayRun = nil
+  -- A Mayday Rescue call that ends mid-run (it moved on, or someone else won) says so instead of vanishing.
+  local flashBefore = c.flash
+  c.maydayRun = { round = 65, edge = 'n', at = c.clock }
+  c.mayday = { round = 66, state = 'open', spot = { name = 'Cheaha Mountain' } }
+  c:maydayCallEnded({ round = 65, state = 'open', spot = { name = 'Elelim' } })
+  T.eq(c.maydayRun, nil, 'the run is over when the call moves on')
+  T.eq(c:view().flash.title, 'MAYDAY RUN OVER', 'told the run is over')
+  T.check(c:view().flash.text:find('Nobody reached the scene near Elelim in time', 1, true), 'told the call moved on')
+  c.maydayRun = { round = 66, edge = 's', at = c.clock }
+  c.mayday = { round = 66, state = 'won', winner = 'Psygo', spot = { name = 'Cheaha Mountain' } }
+  c:maydayCallEnded({ round = 66, state = 'open', spot = { name = 'Cheaha Mountain' } })
+  T.check(c:view().flash.text:find('Psygo reached the scene near Cheaha Mountain first', 1, true), 'told who won')
+  c.mayday, c.maydayFeedback, c.flash = nil, nil, flashBefore
   T.eq(g.tows, 1, 'brought over'); T.eq(c:view().balance, balance - 500, 'charged $500')
   T.check(c.load ~= nil, 'the job is kept'); T.eq(c.owedDamage, 8000, 'the damage is still owed')
   T.eq(c:view().flash.title, 'REPAIR STILL OWED', 'told so'); T.check(c:view().flash.text:find('Towing', 1, true), 'by the tow')
