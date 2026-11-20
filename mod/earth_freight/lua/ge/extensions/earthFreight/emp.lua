@@ -77,6 +77,13 @@ function M.attach(c)
   -- The Fire EMP hotkey (Options > Controls > Bindings, no key by default). Does nothing unless there is something to
   -- fire at; when it doesn't hit it says why in a pop-up too, since the HUD may be minimised.
   function c:empHotkey()
+    -- Driving the admin robber (adminRobber.lua): the key fires his EMP at the player.
+    local a = self.adminDrive
+    if a and a.stage == 'ready' and not a.struck then
+      if self:adminEmp() then return true end
+      self:toast('warning', 'EMP CHARGING', self.adminFeedback or '', 4)
+      return false
+    end
     if not self:empTarget() then return false end
     if self:fireEmp() then return true end
     local charging = self.empFeedback and self.empFeedback:find('^EMP charging') ~= nil

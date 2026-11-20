@@ -922,7 +922,7 @@ test('sightseeing: Go sightseeing sits under Street View, and sightseeing swaps 
   const street = html.indexOf('ng-click="openStreetView()"')
   const go = html.indexOf('ng-click="goSightseeing()"')
   assert.ok(street > 0 && go > street, 'Go sightseeing comes after the Street View button')
-  const panel = html.slice(html.indexOf('<div ng-if="data.sightseeing.on"'), html.indexOf('role="tablist"'))
+  const panel = html.slice(html.indexOf('<div ng-if="data.sightseeing.on && !data.admin.drive"'), html.indexOf('role="tablist"'))
   assert.ok(panel.includes('ng-click="returnToJob()"'), 'Return to your job in the sightseeing panel')
   assert.ok(html.includes('role="tablist" ng-if="!data.sightseeing.on"'), 'tabs hidden while sightseeing')
   assert.ok(html.includes('role="tabpanel" ng-if="!data.sightseeing.on"'), 'tab panels hidden while sightseeing')
@@ -1006,11 +1006,11 @@ test('Street View has its own tab with sightseeing, and the header only shows a 
   const panel = html.slice(html.indexOf(`ng-if="tab === 'streetview'"`), html.indexOf(`ng-if="tab === 'radio'"`))
   for (const part of ['openStreetView()', 'stopStreetView()', 'copyStreetView()', 'goSightseeing()', 'Turn on', 'Turn off', 'Open again'])
     assert.ok(panel.includes(part), part + ' on the Street View tab')
-  const header = html.slice(0, html.indexOf('<div ng-if="data.sightseeing.on"'))
+  const header = html.slice(0, html.indexOf('<div ng-if="data.sightseeing.on && !data.admin.drive"'))
   for (const part of ['openStreetView()', 'copyStreetView()', 'goSightseeing()']) assert.ok(!header.includes(part), part + ' not in the header')
   assert.ok(header.includes(`ng-if="data.streetView.on && !data.sightseeing.on"`) && header.includes(`setTab('streetview')`), 'marker opens the tab')
   // The tabs are hidden while sightseeing, so its panel keeps Street View to hand.
-  const seeing = html.slice(html.indexOf('<div ng-if="data.sightseeing.on"'), html.indexOf('role="tablist"'))
+  const seeing = html.slice(html.indexOf('<div ng-if="data.sightseeing.on && !data.admin.drive"'), html.indexOf('role="tablist"'))
   assert.ok(seeing.includes('openStreetView()') && seeing.includes('copyStreetView()'), 'Street View while sightseeing')
   a.scope.setTab('streetview'); assert.equal(a.scope.tab, 'streetview')
 })
@@ -1139,6 +1139,28 @@ test('Relocate to a player: a Join button for each player, sent by number only, 
   a.scope.setFindable(false)
   assert.deepEqual(a.commands.map(c => c.replace(/^if earthFreight_core then earthFreight_core\.| end$/g, '')),
     ['findPlayer(0)', 'setFindable(false)'])
+})
+test('Admin robber: the Route tab list sends Rob by number only, and his EMP and Stop only while they are allowed', () => {
+  const a = app()
+  const route = html.slice(html.indexOf('Road robbers'), html.indexOf(`ng-if="tab === 'town'"`))
+  for (const part of ['Admin robber', 'adminRob(p)', 'ng-if="data.admin && !data.admin.drive"']) assert.ok(route.includes(part), part)
+  assert.ok(html.includes('<div ng-if="data.admin.drive"') && html.includes('YOU ARE THE ROBBER'), 'his own panel while robbing')
+  const sam = { id: 3, name: 'Sam', allowed: true }
+  a.state({ state: 'READY', arrived: true, admin: { targets: [sam] } })
+  a.commands.length = 0
+  a.scope.adminRob(sam)
+  a.scope.adminRob({ id: 4, allowed: false })
+  a.scope.adminRob({ id: '1); evil(', allowed: true })
+  a.scope.adminStop()
+  a.scope.adminEmp()
+  a.state({ state: 'READY', arrived: true, admin: { targets: [], drive: { stage: 'ready', name: 'Sam', stopAllowed: true, emp: { ready: false, chargeLeft: 12, charged: 40 } } } })
+  a.scope.adminEmp()
+  a.scope.adminStop()
+  a.state({ state: 'READY', arrived: true, admin: { targets: [], drive: { stage: 'ready', name: 'Sam', stopAllowed: true, emp: { ready: true, charged: 100 } } } })
+  a.scope.adminEmp()
+  assert.ok(html.includes('ng-click="adminEmp()"'), 'his own EMP button while robbing')
+  assert.deepEqual(a.commands.map(c => c.replace(/^if earthFreight_core then earthFreight_core\.| end$/g, '')),
+    ['adminRob(3)', 'adminStop()', 'adminEmp()'])
 })
 test('Play online shows whether the server is up and how many are on it, from its stats', async () => {
   const asked = []

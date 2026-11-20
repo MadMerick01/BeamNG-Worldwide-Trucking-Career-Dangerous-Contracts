@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The road robber could now be MadMerick himself.** On MadMerick's server, an admin can take the robber's place in the same Moonhawk, dropped in 300 m ahead of you in your lane. He drives it himself and fires his EMP when he chooses, under the AI robber's rules: within 15 m it cuts your engine and takes $1,000, and your EMP within 15 m gets it back plus $20,000 from his trunk. You only find out it was him if you catch him. Only players on a delivery, fuel run or contract of 5 km or more, with "Robbers can rob me" ticked on the Route tab, can be picked. Untick it and nobody, AI or admin, will rob you. Your saves still work.
+
 ## Build 245 · 20 Nov 2026
 
 - **Player name tags are now always off** while this mod is installed, on servers and everywhere else. Cars on a server no longer show who is driving them. If you turn name tags on in Options, the mod turns them off again within a couple of seconds. To get them back, remove the mod. Your saves still work.

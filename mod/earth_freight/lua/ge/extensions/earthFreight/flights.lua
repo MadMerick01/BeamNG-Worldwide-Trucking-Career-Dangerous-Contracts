@@ -100,6 +100,8 @@ function M.attach(c)
   -- car first when it is far away.
   function c:returnToJob()
     if not self.hire or not self.hire.sightseeing then return false end
+    -- Robbing as the admin robber: Return calls it off.
+    if self.hire.admin and self.adminDrive then return self:adminStop() end
     return self:backToCar(false)
   end
 
@@ -275,6 +277,8 @@ function M.attach(c)
     if h.stage == 'spawning' then
       if model and (model ~= h.carModel or (h.respawned and model == h.model)) then
         h.stage, h.heliId, h.respawned = 'flying', vehicle.id, nil
+        -- The admin robber's car (adminRobber.lua) says its own.
+        if h.admin then return end
         if h.sightseeing then
           self:showFlash('delivered', 'SIGHTSEEING', 'Your game is saved. Go anywhere you like: use the BeamNG.Earth map to'
             .. ' teleport, and Street View to look around. Nothing here costs money. Press Return to your job when you are done.')
@@ -298,7 +302,11 @@ function M.attach(c)
     end
     if h.stage == 'swapping' then
       local back = model == h.carModel and (h.model ~= h.carModel or h.respawned)
-      if back and h.sightseeing then
+      if back and h.admin then
+        self.hire = nil
+        self:showFlash('delivered', 'BACK IN YOUR CAR', 'Your car is just as you left it, with your job, money and fuel.')
+        self.diag:event('admin_robber_returned', '')
+      elseif back and h.sightseeing then
         self.hire = nil
         self:showFlash('delivered', 'BACK TO WORK', 'Your car is just as you left it, with your job, money and fuel.')
         self.diag:event('sightseeing_returned', '')
