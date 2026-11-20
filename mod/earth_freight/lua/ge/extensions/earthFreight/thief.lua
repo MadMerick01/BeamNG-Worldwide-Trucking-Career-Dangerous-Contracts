@@ -3,8 +3,9 @@
 -- waits SETTLE_SECONDS for the world to load and the car to settle, then the thief's car turns up nearby and flees
 -- (thiefCar.lua drives it with the game's flee AI, or MadMerick's smartAI when it is installed). Within EMP_METRES the
 -- EMP button cuts the thief's ignition: the player gets the money back plus BOUNTY from the thief's trunk. The thief
--- gets away with the money once ESCAPE_METRES clear, and their car disappears. Single player only for now: nothing happens on a
--- server. Pure Lua: the car itself is handled by c.thiefCar (thiefCar.lua), which may be missing.
+-- gets away with the money once ESCAPE_METRES clear, and their car disappears. It works the same on a server: each
+-- player's own game runs their thief (BeamMP shows its car to everyone), and the money goes into the career the server
+-- keeps like any other. The thief's car needs a free car slot (the server's MaxCars). Pure Lua: the car itself is handled by c.thiefCar (thiefCar.lua), which may be missing.
 -- Chase holds whatever the player was doing: a delivery keeps its cargo and the distance driven, a Mayday Rescue run
 -- stays on, and a trailer goes to the base. Once the chase is over, Back to your job takes them (free) to the exact
 -- spot they left from, brings the trailer out behind them, and everything carries on. While they're away the job's
@@ -33,8 +34,7 @@ M.ESCAPE_METRES = 450
 M.EMP_METRES = 5
 -- A caught thief's car stays this long before it is taken away.
 M.CAUGHT_SECONDS = 20
--- When thefts happen: only with a base, at least MIN_AWAY_METRES from it, with STOLEN in the bank, not on a
--- server. On average one every MEAN_MINUTES of such play, and never within GAP_SECONDS of the last.
+-- When thefts happen: only with a base, at least MIN_AWAY_METRES from it, with STOLEN in the bank. On average one every MEAN_MINUTES of such play, and never within GAP_SECONDS of the last.
 M.MIN_AWAY_METRES = 5000
 M.MEAN_MINUTES = 45
 M.GAP_SECONDS = 30 * 60
@@ -53,12 +53,9 @@ function M.attach(c)
   --   self.thiefReturn: once the chase is over, where Back to your job goes: { latitude, longitude, load, mayday,
   --     trailer, feedback }. While the chase is on, it waits in self.thief.returnTo.
 
-  local function onServer(self) return self.mp ~= nil and self.mp.state == 'server' end
-
   -- Why a theft can't happen now (forced: the test command, which skips distance, chance and the gap), or nil.
   function c:theftProblem(forced)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Not ready yet.' end
-    if onServer(self) then return 'No thieves on a server yet.' end
     if not self.property then return 'You need a base first.' end
     if self.thief then return 'A thief is already about.' end
     if self.thiefReturn then return 'Go back to your job first.' end
@@ -241,9 +238,9 @@ function M.attach(c)
     end
   end
 
-  -- The Base tab's Get robbed button, which starts a theft whenever the rules allow (not on a server).
+  -- The Base tab's Get robbed button, which starts a theft whenever the rules allow.
   function c:robberyView()
-    if not self.profile or self.error or onServer(self) then return nil end
+    if not self.profile or self.error then return nil end
     local problem = self:theftProblem(true)
     if problem == 'Not ready yet.' then problem = 'Get in your car first.' end
     return { allowed = problem == nil, problem = problem, amount = M.STOLEN, bounty = M.BOUNTY }

@@ -39,10 +39,10 @@ do
   T.check(c:startTheft(true), 'pressed')
   T.eq(c:view().robbery.problem, 'A thief is already about.', 'one at a time')
   c.mp = { state = 'server' }
-  T.eq(c:robberyView(), nil, 'no button on a server'); c.mp = nil
+  T.check(c:robberyView() ~= nil, 'the button on a server too'); c.mp = nil
 end
 
--- Random thefts: only with a base, far from it, and never on a server.
+-- Random thefts: only with a base and far from it, on a server too.
 do
   local c, a = ready({ random = function() return 0 end })
   local base = F.copy(a.pose)
@@ -66,7 +66,7 @@ do
   T.eq(c.thief, nil, 'over')
   T.check(c:theftProblem(false) ~= nil, 'not straight away again')
   c.mp = { state = 'server' }
-  T.eq(c:theftProblem(true), 'No thieves on a server yet.', 'never on a server')
+  T.eq(c:theftProblem(true), nil, 'thieves on a server too'); c.mp = nil
 end
 
 -- The whole chase: Chase relocates to the base for free, the world settles, the thief turns up and flees, the EMP
