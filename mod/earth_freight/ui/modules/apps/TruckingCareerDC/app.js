@@ -358,6 +358,20 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         } catch (e) { chime() }
       }
       scope.maydayAlerts = function () { return kept.maydayAlerts || 0 }
+      // A new alert's card is at the top of the HUD, above the tabs: a player scrolled down a long tab would miss it, so
+      // the HUD goes back to the top once, as the alert rings. Then they can scroll down again. Not when minimised: the
+      // card shows by itself there.
+      var toTop = function () {
+        if (scope.hud && scope.hud.minimised) return
+        var page = element && element[0]
+        if (!page) return
+        kept.toTops = (kept.toTops || 0) + 1
+        try {
+          if (typeof page.scrollTo === 'function') page.scrollTo({ top: 0, behavior: 'smooth' })
+          else page.scrollTop = 0
+        } catch (e) { try { page.scrollTop = 0 } catch (e2) {} }
+      }
+      scope.toTops = function () { return kept.toTops || 0 }
       // The EMP sound: once each time Lua counts one more (the player fired, or a robber's EMP hit them).
       // Loaded as the HUD starts, so the first EMP plays straight away: a sound only fetched when it is needed missed it.
       // Each loaded as the HUD starts, so the first one plays straight away: a sound only fetched when it is needed missed it.
@@ -427,13 +441,14 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         if (scope.maydayCard(next) && kept.maydayRung !== next.mayday.round) {
           kept.maydayRung = next.mayday.round
           maydayAlert()
+          toTop()
         }
         // A thief at the player's base or a road robber's hit rings the Mayday alert too, once as it happens (not for one
         // a rebuilt HUD first sees).
         var stolen = function (d) {
           return !!(d && d.thief && ((d.thief.phase === 'stolen' && !d.thief.road) || (d.thief.road && d.thief.phase === 'chasing')))
         }
-        if (previous && previous.state && stolen(next) && !stolen(previous)) maydayAlert()
+        if (previous && previous.state && stolen(next) && !stolen(previous)) { maydayAlert(); toTop() }
         if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
           kept.introShown = true; scope.openIntro(next)
         }
