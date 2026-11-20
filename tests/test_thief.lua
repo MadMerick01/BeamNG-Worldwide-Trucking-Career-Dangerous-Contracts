@@ -62,6 +62,12 @@ do
   T.eq(c:view().thief.phase, 'stolen', 'the HUD shows it')
   T.eq(c:view().thief.secondsLeft, thief.CHASE_WINDOW_SECONDS, 'with a 10 minute countdown')
   T.eq(c.flash.title, 'THIEF AT YOUR BASE: -$1,000', 'and an alert')
+  -- Let them go: only before the chase; the money is gone and the card goes.
+  T.check(c:thiefLetGo(), 'let them go')
+  T.eq(c.thief, nil, 'the card goes'); T.eq(c.flash.title, 'YOU LET THEM GO', 'told')
+  T.eq(c.profile.progression.balance, before - thief.STOLEN, 'the money stays gone')
+  T.check(not c:thiefLetGo(), 'nothing to let go now')
+  c.thief = { phase = 'stolen', amount = thief.STOLEN, at = c.clock }
   -- Nobody gives chase: the money is gone.
   c:endTheft('late')
   T.eq(c.thief, nil, 'over')

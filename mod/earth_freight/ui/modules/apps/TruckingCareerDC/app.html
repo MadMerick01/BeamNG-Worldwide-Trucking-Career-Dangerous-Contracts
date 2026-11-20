@@ -40,6 +40,7 @@
     <div ng-if="data.thief.feedback" style="margin-top:3px;color:#f2c94c;">{{data.thief.feedback}}</div>
     <div ng-if="data.thief.phase === 'stolen' || data.thief.phase === 'chasing' || data.thief.phase === 'return'" style="margin-top:7px;display:flex;gap:8px;">
       <button type="button" ng-if="data.thief.phase === 'stolen'" ng-click="thiefChase()" ng-disabled="!data.thief.chaseAllowed" style="padding:4px 14px;border:1px solid #eb5757;border-radius:4px;background:#eb5757;color:#0c1318;font-weight:bold;">Chase</button>
+      <button type="button" ng-if="data.thief.phase === 'stolen'" ng-click="thiefLetGo()" title="Don't chase: the thief keeps the money" style="padding:4px 14px;border:1px solid #8fa39d;border-radius:4px;background:transparent;color:#c9d6d2;">Let them go</button>
       <button type="button" ng-if="data.thief.phase === 'return'" ng-click="thiefGoBack()" ng-disabled="!data.thief.returnAllowed || data.thief.travelling" style="padding:4px 14px;border:1px solid #6fcf97;border-radius:4px;background:#6fcf97;color:#0c1318;font-weight:bold;">Back to your job</button>
       <button type="button" ng-if="data.thief.phase === 'chasing'" ng-click="empThief()" ng-style="{opacity: data.thief.empInRange ? 1 : 0.6}" style="padding:4px 14px;border:1px solid #f2c94c;border-radius:4px;background:#f2c94c;color:#0c1318;font-weight:bold;">EMP</button>
     </div>
@@ -253,6 +254,7 @@
       <div ng-if="data.thief.feedback" style="margin-top:3px;color:#f2c94c;">{{data.thief.feedback}}</div>
       <div ng-if="data.thief.phase === 'stolen' || data.thief.phase === 'chasing' || data.thief.phase === 'return'" style="margin-top:7px;display:flex;gap:8px;">
         <button type="button" ng-if="data.thief.phase === 'stolen'" ng-click="thiefChase()" ng-disabled="!data.thief.chaseAllowed" style="padding:4px 14px;border:1px solid #eb5757;border-radius:4px;background:#eb5757;color:#0c1318;font-weight:bold;">Chase</button>
+        <button type="button" ng-if="data.thief.phase === 'stolen'" ng-click="thiefLetGo()" title="Don't chase: the thief keeps the money" style="padding:4px 14px;border:1px solid #8fa39d;border-radius:4px;background:transparent;color:#c9d6d2;">Let them go</button>
         <button type="button" ng-if="data.thief.phase === 'return'" ng-click="thiefGoBack()" ng-disabled="!data.thief.returnAllowed || data.thief.travelling" style="padding:4px 14px;border:1px solid #6fcf97;border-radius:4px;background:#6fcf97;color:#0c1318;font-weight:bold;">Back to your job</button>
         <button type="button" ng-if="data.thief.phase === 'chasing'" ng-click="empThief()" ng-style="{opacity: data.thief.empInRange ? 1 : 0.6}" style="padding:4px 14px;border:1px solid #f2c94c;border-radius:4px;background:#f2c94c;color:#0c1318;font-weight:bold;">EMP</button>
       </div>

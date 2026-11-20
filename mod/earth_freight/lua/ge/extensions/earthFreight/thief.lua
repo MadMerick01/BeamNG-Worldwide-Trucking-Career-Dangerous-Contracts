@@ -146,7 +146,16 @@ function M.attach(c)
     self.diag:event('thief_chase', 'at base')
   end
 
-  -- The theft is over. outcome: 'caught', 'escaped', 'late' (Chase never pressed) or 'lost' (no car to chase).
+  -- Let them go: the player doesn't want to chase. The money is gone and the card goes away. Returns true when done.
+  function c:thiefLetGo()
+    local t = self.thief
+    if not t or t.phase ~= 'stolen' then return false end
+    self:endTheft('let')
+    return true
+  end
+
+  -- The theft is over. outcome: 'caught', 'escaped', 'late' (Chase never pressed), 'let' (Let them go) or 'lost' (no
+  -- car to chase).
   function c:endTheft(outcome)
     local t = self.thief
     if not t then return end
@@ -154,7 +163,9 @@ function M.attach(c)
     if self.booking and self.booking.thief then self.booking, self.bookingTeleportAt = nil, nil end
     self.thief = nil
     if t.returnTo then self.thiefReturn = t.returnTo end
-    if outcome == 'late' then
+    if outcome == 'let' then
+      self:showFlash('cancelled', 'YOU LET THEM GO', 'The thief keeps your ' .. dollars(t.amount) .. '.')
+    elseif outcome == 'late' then
       self:showFlash('cancelled', 'THE THIEF GOT AWAY', 'Nobody went after them. Your ' .. dollars(t.amount) .. ' is gone.')
     elseif outcome == 'escaped' then
       self:showFlash('cancelled', 'THE THIEF GOT AWAY', 'They got ' .. M.ESCAPE_METRES .. ' m clear of you and escaped with your '

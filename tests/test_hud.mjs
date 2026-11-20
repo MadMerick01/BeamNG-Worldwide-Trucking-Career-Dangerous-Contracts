@@ -1320,11 +1320,14 @@ test('Base thief: the card shows while a theft is on, and Chase and EMP send fix
   a.commands.length = 0
   a.scope.thiefChase(); a.scope.empThief()
   assert.deepEqual(a.commands, [], 'nothing while Chase is not allowed and before the chase')
+  a.scope.thiefLetGo()
+  assert.deepEqual(a.commands, [fixed('thiefLetGo()')], 'Let them go, even when Chase is not allowed')
+  a.commands.length = 0
   a.state({ state: 'READY', arrived: true, thief: { phase: 'stolen', amount: 1000, bounty: 5000, secondsLeft: 500, chaseAllowed: true } })
   a.scope.thiefChase()
   a.state({ state: 'READY', arrived: true, thief: { phase: 'chasing', amount: 1000, bounty: 5000, distanceMetres: 40, empMetres: 5, escapeMetres: 450 } })
-  a.scope.empThief()
-  assert.deepEqual(a.commands, [fixed('thiefChase()'), fixed('empThief()')])
+  a.scope.empThief(); a.scope.thiefLetGo()
+  assert.deepEqual(a.commands, [fixed('thiefChase()'), fixed('empThief()')], 'no Let them go once the chase is on')
   a.commands.length = 0
   a.state({ state: 'READY', arrived: true, robbery: { allowed: false, problem: 'You need a base first.', amount: 1000, bounty: 5000 } })
   a.scope.getRobbed()
