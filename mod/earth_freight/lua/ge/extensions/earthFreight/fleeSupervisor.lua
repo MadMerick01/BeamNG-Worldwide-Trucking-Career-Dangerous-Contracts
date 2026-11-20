@@ -5,13 +5,13 @@
 -- 4.2 m either side of its line) for traffic: how many cars are queued in it, how close the nearest is and how fast
 -- the thief is closing on it. It adds how steep the road is and how hard the thief is turning, and from that picks
 -- one of four ways to drive, each with a top speed, an aggression and whether to keep to its lane:
---   FreeFlow 90 km/h (75 in Bolides), 0.28, any lane; ModerateRisk 62 km/h, 0.20, any lane;
+--   FreeFlow 130 km/h (75 in Bolides), 0.28, any lane; ModerateRisk 85 km/h, 0.20, any lane;
 --   HeavyRisk 45 km/h, 0.12, own lane; EmergencyAvoid 30 km/h, 0.05, own lane.
 -- Each way has an enter and a lower exit level, and is held at least 0.75 s, so it doesn't flicker between two.
 -- Stuck behind a queue of 3 or more for 2.5 s in HeavyRisk or worse, it plans its escape again (at most every 3 s).
 -- While a thief is out the game's traffic is halved, and it comes back when the last one is gone.
 --
--- Changes from the Bolides copy: the command sent to the car was not valid Lua there (it opened with "[[]"), so
+-- Changes from the Bolides copy: faster on a clear road (MadMerick found 90 km/h too easy to catch); the command sent to the car was not valid Lua there (it opened with "[[]"), so
 -- it never reached the car; the top speed now uses the AI's 'limit' speed mode and setSpeed, which exist (there is no
 -- ai.setMaxSpeedKph, and 'legal' mode would ignore the cap); the turn rate is measured over the time between looks,
 -- not one frame, which made every bend look eight times sharper; traffic alone can now reach every way of driving
@@ -37,8 +37,8 @@ M.CONFIG = {
 }
 
 M.PROFILES = {
-  FreeFlow = { maxSpeedKph = 90, aggression = 0.28, driveInLane = 'off' },
-  ModerateRisk = { maxSpeedKph = 62, aggression = 0.20, driveInLane = 'off' },
+  FreeFlow = { maxSpeedKph = 130, aggression = 0.28, driveInLane = 'off' },
+  ModerateRisk = { maxSpeedKph = 85, aggression = 0.20, driveInLane = 'off' },
   HeavyRisk = { maxSpeedKph = 45, aggression = 0.12, driveInLane = 'on' },
   EmergencyAvoid = { maxSpeedKph = 30, aggression = 0.05, driveInLane = 'on' },
 }

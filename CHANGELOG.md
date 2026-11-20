@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Fleeing thieves and robbers are faster.** On a clear road they now drive at up to 130 km/h (was 90), and up to 85 km/h (was 62) with some traffic about. They still slow right down in heavy traffic. This makes the base thief and a fleeing road robber harder to catch.
+
 - **A caught road robber now stays put for 30 seconds** (was 10) before their car disappears, and a road robber's EMP now kills your engine for 10 seconds (was 5). Your saves still work.
 - The admin robber can now rob anyone on a job of any length. Before, only jobs of 5 km or more were listed. The AI road robber still only goes after jobs of 5 km or more.
 - **Fixed: the first EMP of a session made no sound.** The EMP sound now loads as soon as the HUD starts, so you hear the very first one.
