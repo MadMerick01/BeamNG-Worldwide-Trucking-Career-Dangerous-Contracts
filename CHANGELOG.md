@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 247 · 20 Nov 2026
+
 - **A robber's EMP now drains yours.** When a road robber hits you, your EMP empties and takes the usual 20 seconds to charge before you can fire back, so you have to chase them for a while first. Your saves still work.
 - **EMPs now make a sound.** You hear a zap every time you fire your EMP, when a robber's EMP hits you, and when you fire it as the admin robber. Nothing to set up, and your saves still work.
 
