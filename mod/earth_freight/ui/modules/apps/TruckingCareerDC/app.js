@@ -362,6 +362,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           kept.maydayRung = next.mayday.round
           maydayAlert()
         }
+        // A thief at the player's base rings the Mayday alert too, once as the theft starts (not for one a rebuilt HUD
+        // first sees).
+        var stolen = function (d) { return !!(d && d.thief && d.thief.phase === 'stolen' && !d.thief.road) }
+        if (previous && previous.state && stolen(next) && !stolen(previous)) maydayAlert()
         if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
           kept.introShown = true; scope.openIntro(next)
         }

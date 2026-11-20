@@ -1351,6 +1351,25 @@ test('Fuel runs: the HUD looks for a depot that suits loading fuel', () => {
   assert.equal(list.map(b => b.name).join('|'), 'Ampol Terminal|Truck Stop', 'a fuel terminal first, then a truck stop, never a shop')
   assert.equal(list[0].kind, 'terminal')
 })
+test('Base thief: a new theft rings the Mayday alert once, but not for one a rebuilt HUD first sees', () => {
+  const played = []
+  class Audio { constructor(src) { this.src = src } play() { played.push(this); return { catch() {} } } }
+  const theft = { phase: 'stolen', amount: 1000, bounty: 5000, secondsLeft: 600, chaseAllowed: true }
+  let a = app(undefined, undefined, { Audio })
+  a.state({ state: 'READY', arrived: true })
+  a.state({ state: 'READY', arrived: true, thief: theft })
+  assert.equal(played.length, 1, 'the alert plays as the theft starts')
+  assert.equal(played[0].src, '/ui/modules/apps/TruckingCareerDC/mayday_alert.wav')
+  a.state({ state: 'READY', arrived: true, thief: { ...theft, secondsLeft: 590 } })
+  a.state({ state: 'READY', arrived: true, thief: { ...theft, phase: 'travelling' } })
+  assert.equal(played.length, 1, 'only once for a theft')
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'chasing', road: true, amount: 1000 } })
+  assert.equal(played.length, 1, 'not for the road robber')
+  a = app(undefined, undefined, { Audio })
+  a.state({ state: 'READY', arrived: true, thief: theft })
+  assert.equal(played.length, 1, 'a rebuilt HUD stays quiet')
+  assert.equal(a.scope.thiefCard(), true, 'but shows the card')
+})
 test('Base thief: the card shows while a theft is on, and Chase and EMP send fixed commands', () => {
   const a = app()
   a.state({ state: 'READY', arrived: true })

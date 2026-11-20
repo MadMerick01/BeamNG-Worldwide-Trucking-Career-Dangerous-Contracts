@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **A thief at your base now sounds the Mayday alert.** When a thief breaks into your base, you hear the same alarm as a new Mayday Rescue call, and the red THIEF AT YOUR BASE card pops up with Chase and Let them go, even with the HUD minimised. Your saves still work.
+
 ## Build 250 · 20 Nov 2026
 
 - **The base thief gives the world longer to load.** After you press Chase and land at your base, the thief now waits 30 seconds (was 20) before turning up, and starts 50 m from you (was 100 m), so the chase begins close. Your saves still work.
