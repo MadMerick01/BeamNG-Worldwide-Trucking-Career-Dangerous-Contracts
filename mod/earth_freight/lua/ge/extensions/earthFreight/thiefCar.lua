@@ -97,20 +97,26 @@ function M.speedCommand(kph)
   return string.format("if ai and ai.setSpeed then pcall(ai.setSpeed, %s) end", tostring(math.max(0, kph) / 3.6))
 end
 
--- What the player's car runs when the road robber's EMP hits it: hazards on, throttle off, ignition off. No brake lock,
--- so a truck at speed coasts instead of jackknifing.
+-- What the player's car runs when the road robber's EMP hits it: hazards on, throttle off, ignition off, and the brakes
+-- slammed on (MadMerick's call: a truck at speed with a trailer can jackknife). PLAYER_EMP_HOLD keeps them on.
 M.PLAYER_EMP_START = [[
 local s = extensions and (extensions.earthFreightEmp or {}) or {}
 if extensions then extensions.earthFreightEmp = s end
 if electrics and electrics.values then s.ign = electrics.values.ignitionLevel; s.warn = electrics.values.warn_signal end
 if electrics and electrics.toggle_warn_signal and electrics.values and not electrics.values.warn_signal then pcall(electrics.toggle_warn_signal) end
-if input and input.event then pcall(input.event, 'throttle', 0, 1) end
+if input and input.event then pcall(input.event, 'throttle', 0, 1); pcall(input.event, 'brake', 1, 1) end
 if electrics and electrics.setIgnitionLevel then pcall(electrics.setIgnitionLevel, 0)
 elseif controller and controller.mainController and controller.mainController.setIgnitionLevel then pcall(controller.mainController.setIgnitionLevel, 0) end
 ]]
 
--- And when it wears off: the ignition back as it was (on, if unknown), hazards back off.
+-- Sent every second while it lasts, so the player's own pedals can't take the brakes off.
+M.PLAYER_EMP_HOLD = [[
+if input and input.event then pcall(input.event, 'throttle', 0, 1); pcall(input.event, 'brake', 1, 1) end
+]]
+
+-- And when it wears off: the ignition back as it was (on, if unknown), the brakes off, hazards back off.
 M.PLAYER_EMP_END = [[
+if input and input.event then pcall(input.event, 'brake', 0, 1) end
 local s = extensions and extensions.earthFreightEmp or {}
 local level = s.ign
 if level == nil or level < 2 then level = 2 end
@@ -334,6 +340,12 @@ function M.new(env)
   end
 
   -- The player's engine comes back.
+  function t:empPlayerHold()
+    local car = t.victim or player()
+    if not car then return false end
+    return pcall(function() car:queueLuaCommand(M.PLAYER_EMP_HOLD) end) == true
+  end
+
   function t:empPlayerEnd()
     local car = t.victim or player()
     t.victim = nil
