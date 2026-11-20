@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Player name tags are now always off** while this mod is installed, on servers and everywhere else. Cars on a server no longer show who is driving them. If you turn name tags on in Options, the mod turns them off again within a couple of seconds. To get them back, remove the mod. Your saves still work.
+
 ## Build 244 · 20 Nov 2026
 
 - **New: road robbers (first test build).** On a delivery, fuel run or dangerous contract of 5 km or more, there's a 50% chance a robber in a Moonhawk ambushes you on the road. It turns up about 300 m ahead in your lane, going your way, and slows down so you catch up. Turn off or drop back and it comes after you. When it gets within 15 m its EMP cuts your engine for 5 seconds (your brakes don't lock, so you coast), it takes $1,000 and flees. Catch it with your own EMP within 15 m and you get the $1,000 back plus $20,000 from its trunk, and its car disappears 10 seconds later. If it gets 450 m clear, it keeps the money. If it never reaches you within 4 minutes, or falls 500 m behind, it gives up and you lose nothing. Your job carries on the whole time, and delivering doesn't end the chase. Mayday Rescue runs and heli jobs are never robbed.

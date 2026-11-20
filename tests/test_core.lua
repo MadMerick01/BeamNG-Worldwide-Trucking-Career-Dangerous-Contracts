@@ -2597,4 +2597,16 @@ do
   T.check(c.toasts[1].msg:find('BeamMP (edit layout)', 1, true) ~= nil, 'on a server: the BeamMP layout')
 end
 
+-- The game's name tags are kept off, and turned off again if the player turns them on.
+do
+  local on, calls = true, 0
+  local c = F.controller({ nametagsOff = function() calls = calls + 1; local was = on; on = false; return was end })
+  c:tick(0.1)
+  T.eq(on, false, 'name tags off straight away')
+  on = true
+  F.advance(c, 3)
+  T.eq(on, false, 'turned on in Options: off again within a few seconds')
+  T.check(calls <= 4, 'checked every 2 s, not every frame (' .. calls .. ')')
+end
+
 T.done('Earth Freight controller')
