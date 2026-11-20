@@ -3,6 +3,7 @@ local F = require('fixtures')
 local thief = require('earthFreight/thief')
 local thiefCar = require('earthFreight/thiefCar')
 local location = require('earthFreight/location')
+local emp = require('earthFreight/emp')
 
 -- A stand-in for the thief's car: where it is, as metres from the player, set by the test.
 local function fakeCar()
@@ -145,17 +146,21 @@ do
   T.eq(c:view().thief.distanceMetres, 60, 'how far away')
   car.arrow = -90.4; F.advance(c, 0.2)
   T.eq(c:view().thief.arrow, -90, 'the arrow points to the thief')
+  T.eq(thief.EMP_METRES, 15, 'the EMP reaches 15 m')
+  T.check(c:view().thief.emp.ready and not c:view().thief.emp.inRange, 'the button: charged, out of range')
   T.check(not c:empThief(), 'too far for the EMP')
-  T.check(c.thief.feedback:find('within 5 m', 1, true), 'says how close to get')
-  -- The Fire EMP hotkey: out of range it says so in a pop-up as well.
+  T.check(c.empFeedback:find('within 15 m', 1, true), 'says how close to get')
+  -- Every press charges: 20 s before it fires again.
+  T.check(not c:view().thief.emp.ready, 'charging after a miss')
+  T.eq(c:view().thief.emp.chargeLeft, 20, '20 s to charge')
+  -- The Fire EMP hotkey: while charging it says so in a pop-up as well.
   local toasts = {}
   c.trigger = function(name, data) if name == 'toastrMsg' then toasts[#toasts + 1] = data end end
-  T.check(not c:empHotkey(), 'hotkey: too far')
-  T.eq(toasts[1] and toasts[1].title, 'EMP OUT OF RANGE', 'a pop-up says so')
-  T.check(toasts[1].msg:find('within 5 m', 1, true), 'and how close to get')
   car.metres = 4
-  F.advance(c, 0.2)
-  T.check(c:view().thief.empInRange, 'in range')
+  T.check(not c:empHotkey(), 'hotkey: still charging')
+  T.eq(toasts[1] and toasts[1].title, 'EMP CHARGING', 'a pop-up says so')
+  F.advance(c, emp.CHARGE_SECONDS + 0.2)
+  T.check(c:view().thief.empInRange and c:view().thief.emp.inRange and c:view().thief.emp.ready, 'charged and in range')
   T.check(c:empHotkey(), 'the hotkey EMP hits')
   T.eq(car.hit[1], 42, 'on the thief')
   T.eq(c.profile.progression.balance, start + thief.BOUNTY, 'money back plus $5,000')

@@ -29,6 +29,20 @@ local function defaults()
       return ok and type(m) == 'table' and type(m.trigger) == 'function' and m or nil
     end,
     bolidesRunning = function() return extensions ~= nil and extensions.bolidesTheCut ~= nil end,
+    -- The height of the ground under a point, or nil where Earth hasn't loaded any yet.
+    groundBelow = function(pos)
+      if not be or type(be.getSurfaceHeightBelow) ~= 'function' then return pos.z end
+      local h = be:getSurfaceHeightBelow(vec3(pos.x, pos.y, pos.z + 50))
+      if type(h) ~= 'number' or h ~= h or h < -1e5 then return nil end
+      return h
+    end,
+    -- A random paint for the robber's car, or nil where the game can't make one.
+    paint = function(random)
+      local make = rawget(_G, 'createVehiclePaint')
+      if type(make) ~= 'function' then return nil end
+      return make({ x = random(), y = random(), z = random(), w = 1 }, { 0.2 + random() * 0.6, 1, 0.1 + random() * 0.4, 0.4 })
+    end,
+    random = math.random,
   }
 end
 
@@ -46,6 +60,65 @@ try(ai.setAvoidCars, 'on')
 try(ai.setRecoverOnCrash, true)
 ]], tid, M.SMART_PROFILE, tostring(M.AGGRESSION))
 end
+
+-- The road robber, lurking in the player's lane ahead of them: the game's traffic AI, keeping to its lane, no faster
+-- than kph.
+function M.lurkCommand(kph)
+  return string.format([[
+if not ai then return end
+local function try(f, ...) if type(f) == 'function' then pcall(f, ...) end end
+try(ai.setMode, 'traffic')
+try(ai.driveInLane, 'on')
+try(ai.setAvoidCars, 'on')
+try(ai.setAggression, 0.3)
+try(ai.setSpeedMode, 'limit')
+try(ai.setSpeed, %s)
+]], tostring(math.max(0, kph) / 3.6))
+end
+
+-- The road robber hunting the player's car (id tid), at no more than kph.
+function M.huntCommand(tid, kph)
+  return string.format([[
+local tid = %d
+if not ai then return end
+local function try(f, ...) if type(f) == 'function' then pcall(f, ...) end end
+try(ai.setMode, 'chase')
+try(ai.setTargetObjectID, tid)
+try(ai.setAggression, 0.6)
+try(ai.setAvoidCars, 'on')
+try(ai.setRecoverOnCrash, true)
+try(ai.setSpeedMode, 'limit')
+try(ai.setSpeed, %s)
+]], tid, tostring(math.max(0, kph) / 3.6))
+end
+
+-- A new top speed for the robber's AI.
+function M.speedCommand(kph)
+  return string.format("if ai and ai.setSpeed then pcall(ai.setSpeed, %s) end", tostring(math.max(0, kph) / 3.6))
+end
+
+-- What the player's car runs when the road robber's EMP hits it: hazards on, throttle off, ignition off. No brake lock,
+-- so a truck at speed coasts instead of jackknifing.
+M.PLAYER_EMP_START = [[
+local s = extensions and (extensions.earthFreightEmp or {}) or {}
+if extensions then extensions.earthFreightEmp = s end
+if electrics and electrics.values then s.ign = electrics.values.ignitionLevel; s.warn = electrics.values.warn_signal end
+if electrics and electrics.toggle_warn_signal and electrics.values and not electrics.values.warn_signal then pcall(electrics.toggle_warn_signal) end
+if input and input.event then pcall(input.event, 'throttle', 0, 1) end
+if electrics and electrics.setIgnitionLevel then pcall(electrics.setIgnitionLevel, 0)
+elseif controller and controller.mainController and controller.mainController.setIgnitionLevel then pcall(controller.mainController.setIgnitionLevel, 0) end
+]]
+
+-- And when it wears off: the ignition back as it was (on, if unknown), hazards back off.
+M.PLAYER_EMP_END = [[
+local s = extensions and extensions.earthFreightEmp or {}
+local level = s.ign
+if level == nil or level < 2 then level = 2 end
+if electrics and electrics.setIgnitionLevel then pcall(electrics.setIgnitionLevel, level)
+elseif controller and controller.mainController and controller.mainController.setIgnitionLevel then pcall(controller.mainController.setIgnitionLevel, level) end
+if electrics and electrics.toggle_warn_signal and electrics.values and electrics.values.warn_signal and not s.warn then pcall(electrics.toggle_warn_signal) end
+s.ign, s.warn = nil, nil
+]]
 
 -- What the thief's car runs when the EMP hits: AI off, ignition off, handbrake on.
 M.EMP_COMMAND = [[
@@ -124,6 +197,110 @@ function M.new(env)
     local nowOk, nowId = pcall(function() return now and now:getID() end)
     if nowOk and nowId == id then pcall(env.enter, car) end
     return id
+  end
+
+  -- Loads the road robber's car out of sight, switched off, so putting it on the road later doesn't stutter: 200 m
+  -- under the player, in a random paint. Returns its id, or nil and why.
+  function t:preload(model, config)
+    local car = player()
+    if not car then return nil, 'vehicle_required' end
+    local vehicles = env.vehicles()
+    if type(vehicles) ~= 'table' or type(vehicles.spawnNewVehicle) ~= 'function' then return nil, 'spawn_unavailable' end
+    local ok, id = pcall(function()
+      local at = car:getPosition()
+      local options = { config = config, pos = env.point(at.x, at.y, at.z - 200), rot = env.upright(env.point(0, 1, 0)),
+        autoEnterVehicle = false, cling = false }
+      local pok, paint = pcall(env.paint, env.random)
+      if pok and paint then options.paint, options.paint2, options.paint3 = paint, paint, paint end
+      local robber = vehicles.spawnNewVehicle(model, options)
+      if not robber then return nil end
+      pcall(function() robber:setActive(0) end)
+      return robber:getID()
+    end)
+    if not ok or id == nil then return nil, 'spawn_failed' end
+    local now = player()
+    local nowOk, nowId = pcall(function() return now and now:getID() end)
+    if nowOk and nowId == id then pcall(env.enter, car) end
+    return id
+  end
+
+  -- Puts the preloaded car on the road metres ahead of the player, in their lane and facing their way, and switches it
+  -- on. Only where the ground has loaded: returns false and 'no_ground' when it hasn't yet, to be tried again.
+  function t:place(id, metres)
+    local robber, car = object(id), player()
+    if not robber or not car then return false, 'gone' end
+    local ok, pos, rot = pcall(spot, car, metres)
+    if not ok or not pos then return false, 'no_spot' end
+    local gok, ground = pcall(env.groundBelow, pos)
+    if not gok or type(ground) ~= 'number' or math.abs(ground - pos.z) > 30 then return false, 'no_ground' end
+    local placed = pcall(function()
+      robber:setActive(1)
+      local s = env.spawn()
+      if type(s) == 'table' and type(s.safeTeleport) == 'function' then s.safeTeleport(robber, pos, rot)
+      else robber:setPositionRotation(pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, rot.w) end
+    end)
+    return placed == true, placed and nil or 'teleport_failed'
+  end
+
+  -- Lurking: the traffic AI in its lane, at no more than kph.
+  function t:lurk(id, kph)
+    local robber = object(id)
+    if not robber then return false end
+    return pcall(function() robber:queueLuaCommand(M.lurkCommand(kph)) end) == true
+  end
+
+  -- Hunting the player's car at no more than kph.
+  function t:hunt(id, kph)
+    local robber, car = object(id), player()
+    if not robber or not car then return false end
+    local ok, tid = pcall(function() return car:getID() end)
+    if not ok or type(tid) ~= 'number' then return false end
+    return pcall(function() robber:queueLuaCommand(M.huntCommand(tid, kph)) end) == true
+  end
+
+  -- A new top speed while lurking or hunting.
+  function t:setSpeed(id, kph)
+    local robber = object(id)
+    if not robber then return false end
+    return pcall(function() robber:queueLuaCommand(M.speedCommand(kph)) end) == true
+  end
+
+  -- How fast the player's car goes, in km/h, or nil.
+  function t:playerKph()
+    local car = player()
+    if not car then return nil end
+    local ok, v = pcall(function() local u = car:getVelocity(); return math.sqrt(u.x * u.x + u.y * u.y + u.z * u.z) * 3.6 end)
+    return ok and type(v) == 'number' and v == v and v or nil
+  end
+
+  -- How far apart the two cars point, in degrees from 0 (the same way) to 180 (opposite ways), or nil.
+  function t:headingGap(id)
+    local robber, car = object(id), player()
+    if not robber or not car then return nil end
+    local ok, deg = pcall(function()
+      local a, b = robber:getDirectionVector(), car:getDirectionVector()
+      local la, lb = math.sqrt(a.x * a.x + a.y * a.y), math.sqrt(b.x * b.x + b.y * b.y)
+      if la < 1e-3 or lb < 1e-3 then return nil end
+      local cos = math.max(-1, math.min(1, (a.x * b.x + a.y * b.y) / (la * lb)))
+      return math.deg(math.acos(cos))
+    end)
+    return ok and type(deg) == 'number' and deg == deg and deg or nil
+  end
+
+  -- The road robber's EMP hits the player's car: the engine dies until empPlayerEnd. Returns true once done.
+  function t:empPlayer()
+    local car = player()
+    if not car then return false end
+    t.victim = car
+    return pcall(function() car:queueLuaCommand(M.PLAYER_EMP_START) end) == true
+  end
+
+  -- The player's engine comes back.
+  function t:empPlayerEnd()
+    local car = t.victim or player()
+    t.victim = nil
+    if not car then return false end
+    return pcall(function() car:queueLuaCommand(M.PLAYER_EMP_END) end) == true
   end
 
   -- Sets the car fleeing from the player's car. Returns true once asked.

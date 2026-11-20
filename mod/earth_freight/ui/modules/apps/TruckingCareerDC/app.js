@@ -289,6 +289,25 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.thiefGoBack = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'return' && scope.data.thief.returnAllowed) core('thiefGoBack()') }
       scope.thiefLetGo = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'stolen') core('thiefLetGo()') }
       scope.empThief = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'chasing') core('empThief()') }
+      // The road robber: ROB ME and the "Robbers can rob me" tick box on the Route tab.
+      scope.robMe = function () { if (scope.data && scope.data.robMe && scope.data.robMe.allowed) core('robMe()') }
+      scope.setRobbersAllowed = function (on) { if (scope.data && scope.data.robMe) core('setRobbersAllowed(' + (on ? 'true' : 'false') + ')') }
+      // The EMP button: grey and filling while it charges, then green IN RANGE or yellow OUT OF RANGE with the distance.
+      scope.empLabel = function (e) {
+        if (!e) return 'EMP'
+        if (!e.ready) return 'EMP charging ' + e.chargeLeft + ' s'
+        if (e.inRange) return 'EMP \u00b7 IN RANGE'
+        return 'EMP \u00b7 OUT OF RANGE' + (e.metres != null ? ' \u00b7 ' + e.metres + ' m' : '')
+      }
+      scope.empStyle = function (e) {
+        if (!e) return { background: '#f2c94c', border: '1px solid #f2c94c' }
+        if (!e.ready) {
+          var p = Math.max(0, Math.min(100, e.charged || 0))
+          return { background: 'linear-gradient(90deg, #8fa39d ' + p + '%, #3a4744 ' + p + '%)', border: '1px solid #8fa39d', opacity: 0.9 }
+        }
+        if (e.inRange) return { background: '#6fcf97', border: '1px solid #6fcf97' }
+        return { background: '#f2c94c', border: '1px solid #f2c94c' }
+      }
       scope.closeMaydayCard = function () { if (scope.data) seeMayday(scope.data.mayday) }
       scope.openMaydayCard = function () {
         if (!scope.data || !scope.data.mayday) return

@@ -34,6 +34,8 @@ local magnate = require('earthFreight/magnate')
 local fuelruns = require('earthFreight/fuelruns')
 local thief = require('earthFreight/thief')
 local thiefCar = require('earthFreight/thiefCar')
+local emp = require('earthFreight/emp')
+local roadRobber = require('earthFreight/roadRobber')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -172,6 +174,8 @@ function M.new(deps)
   fleet.attach(c)
   fuelruns.attach(c)
   thief.attach(c)
+  emp.attach(c)
+  roadRobber.attach(c)
 
   function c:transition(nextState, reason)
     if self.state == nextState and self.reason == reason then return end
@@ -256,6 +260,8 @@ function M.new(deps)
     self.storedCars = self.profile and copy(self.profile.storedCars) or {}
     self.carCards, self.fleetFeedback = nil, nil
     self.extraCarSlot = self.profile and self.profile.extraCarSlot or nil
+    -- Unticked "Robbers can rob me" on the Route tab (roadRobber.lua).
+    self.noRobbers = self.profile and self.profile.noRobbers or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
     self.corp = self.profile and copy(self.profile.corp) or nil
     self.homeFeedback, self.homeCard, self.corpSeen, self.leaveArmed, self.corpAskedAt = nil, nil, nil, nil, nil
@@ -579,8 +585,9 @@ function M.new(deps)
     self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
-    -- A new session gets a base thief of its own (thief.lua).
+    -- A new session gets a base thief of its own (thief.lua). A road robber's car went with the level (roadRobber.lua).
     self.theftPlan = nil
+    self.robber, self.robberJob, self.robberAtKm, self.empFiredAt = nil, nil, nil, nil
     self:interrupt('earth_level_required')
     self.adapter:invalidate()
   end
@@ -2281,6 +2288,7 @@ function M.new(deps)
     self:hintHud(sample, dt)
     self:watchMayday()
     self:watchThief(dt)
+    self:watchRobber(dt)
     self:watchFind()
     self:watchCommission()
     self:watchReward()
@@ -2798,8 +2806,9 @@ function M.new(deps)
       heli = self:heliView(current), beacon = self:beaconView(current),
       shipping = self:shippingView(current),
       mayday = self:maydayView(current),
-      thief = self:thiefView(),
+      thief = self:thiefView() or self:robberView(),
       robbery = self:robberyView(),
+      robMe = self:robMeView(),
       away = self:awayView(),
       home = self:homeView(current),
       fleet = self:fleetView(),
@@ -2912,6 +2921,7 @@ function M.new(deps)
         worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
+      noRobbers = self.noRobbers or nil,
       trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
@@ -3341,6 +3351,12 @@ function M.thiefLetGo() return safely(function() return ensure():thiefLetGo() en
 function M.thiefGoBack() return safely(function() return ensure():thiefGoBack() end) end
 function M.thiefTest() return safely(function() return ensure():startTheft(true) end) end
 function M.getRobbed() return safely(function() return ensure():startTheft(true) end) end
+-- The road robber: the Route tab's ROB ME button, and its "Robbers can rob me" tick box (true or false).
+function M.robMe() return safely(function() return ensure():robMe() end) end
+function M.setRobbersAllowed(allowed)
+  if type(allowed) ~= 'boolean' then return false end
+  return safely(function() return ensure():setRobbersAllowed(allowed) end)
+end
 function M.maydayEdge(edge)
   if edge ~= 'n' and edge ~= 'e' and edge ~= 's' and edge ~= 'w' then return false end
   return safely(function() return ensure():maydayEdge(edge) end)
