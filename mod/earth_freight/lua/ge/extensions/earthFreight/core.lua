@@ -3312,6 +3312,7 @@ function M.bookOffer() return safely(function() return ensure():bookOffer() end)
 -- straight away: the Base tab's Get robbed button, or earthFreight_core.thiefTest() in the console (it needs a base).
 function M.thiefChase() return safely(function() return ensure():thiefChase() end) end
 function M.empThief() return safely(function() return ensure():empThief() end) end
+function M.empHotkey() return safely(function() return ensure():empHotkey() end) end
 function M.thiefGoBack() return safely(function() return ensure():thiefGoBack() end) end
 function M.thiefTest() return safely(function() return ensure():startTheft(true) end) end
 function M.getRobbed() return safely(function() return ensure():startTheft(true) end) end

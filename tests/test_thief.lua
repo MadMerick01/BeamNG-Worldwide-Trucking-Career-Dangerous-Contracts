@@ -106,10 +106,16 @@ do
   T.eq(c:view().thief.arrow, -90, 'the arrow points to the thief')
   T.check(not c:empThief(), 'too far for the EMP')
   T.check(c.thief.feedback:find('within 5 m', 1, true), 'says how close to get')
+  -- The Fire EMP hotkey: out of range it says so in a pop-up as well.
+  local toasts = {}
+  c.trigger = function(name, data) if name == 'toastrMsg' then toasts[#toasts + 1] = data end end
+  T.check(not c:empHotkey(), 'hotkey: too far')
+  T.eq(toasts[1] and toasts[1].title, 'EMP OUT OF RANGE', 'a pop-up says so')
+  T.check(toasts[1].msg:find('within 5 m', 1, true), 'and how close to get')
   car.metres = 4
   F.advance(c, 0.2)
   T.check(c:view().thief.empInRange, 'in range')
-  T.check(c:empThief(), 'EMP hits')
+  T.check(c:empHotkey(), 'the hotkey EMP hits')
   T.eq(car.hit[1], 42, 'on the thief')
   T.eq(c.profile.progression.balance, start + thief.BOUNTY, 'money back plus $5,000')
   T.eq(c.thief.phase, 'caught', 'caught')
@@ -198,6 +204,26 @@ do
   T.eq(c.stranded, nil, 'not stranded')
   F.drive(c, a, location.destination(a.pose, 0, 300))
   T.check(c.load.drivenKm > driven, 'driving counts again')
+end
+
+-- The Fire EMP hotkey does nothing when no chase is on.
+do
+  local c, a, car = ready()
+  local toasts = {}
+  c.trigger = function(name, data) if name == 'toastrMsg' then toasts[#toasts + 1] = data end end
+  T.check(not c:empHotkey(), 'no thief: nothing')
+  T.eq(#toasts, 0, 'and no pop-up'); T.eq(#car.hit, 0, 'no EMP')
+end
+
+-- The Fire EMP action: in the game's Controls list, with no key, calling the hotkey.
+do
+  local json = require('json')
+  local f = assert(io.open((arg[0]:match('^(.*)[/\\]') or '.') .. '/../mod/earth_freight/lua/ge/extensions/core/input/actions/earthFreight.json'))
+  local actions = json.decode(f:read('*a')); f:close()
+  local fire = actions.earthFreightFireEmp
+  T.eq(fire.title, 'Fire EMP', 'named Fire EMP'); T.eq(fire.ctx, 'tlua', 'runs in the game engine')
+  T.check(fire.onDown:find('earthFreight_core.empHotkey()', 1, true), 'calls the hotkey')
+  T.eq(fire.cat, 'gameplay', 'under Gameplay')
 end
 
 -- The game side: the flee and EMP commands, and the car put down ahead of the player.

@@ -43,6 +43,7 @@
       <button type="button" ng-if="data.thief.phase === 'return'" ng-click="thiefGoBack()" ng-disabled="!data.thief.returnAllowed || data.thief.travelling" style="padding:4px 14px;border:1px solid #6fcf97;border-radius:4px;background:#6fcf97;color:#0c1318;font-weight:bold;">Back to your job</button>
       <button type="button" ng-if="data.thief.phase === 'chasing'" ng-click="empThief()" ng-style="{opacity: data.thief.empInRange ? 1 : 0.6}" style="padding:4px 14px;border:1px solid #f2c94c;border-radius:4px;background:#f2c94c;color:#0c1318;font-weight:bold;">EMP</button>
     </div>
+    <div ng-if="data.thief.phase === 'chasing'" class="ef-thief-tip" style="margin-top:4px;color:#8fa39d;font-size:12px;">Tip: set a key for Fire EMP in Options &gt; Controls &gt; Bindings.</div>
   </div>
   <div ng-if="hud.minimised && !intro.open && maydayCard(data)" role="alert" class="ef-mayday" style="max-width:440px;margin-top:6px;pointer-events:auto;">
     <div style="display:flex;align-items:center;gap:8px;">
@@ -255,6 +256,7 @@
         <button type="button" ng-if="data.thief.phase === 'return'" ng-click="thiefGoBack()" ng-disabled="!data.thief.returnAllowed || data.thief.travelling" style="padding:4px 14px;border:1px solid #6fcf97;border-radius:4px;background:#6fcf97;color:#0c1318;font-weight:bold;">Back to your job</button>
         <button type="button" ng-if="data.thief.phase === 'chasing'" ng-click="empThief()" ng-style="{opacity: data.thief.empInRange ? 1 : 0.6}" style="padding:4px 14px;border:1px solid #f2c94c;border-radius:4px;background:#f2c94c;color:#0c1318;font-weight:bold;">EMP</button>
       </div>
+      <div ng-if="data.thief.phase === 'chasing'" class="ef-thief-tip" style="margin-top:4px;color:#8fa39d;font-size:12px;">Tip: set a key for Fire EMP in Options &gt; Controls &gt; Bindings.</div>
     </div>
     <div ng-if="maydayCard(data)" role="alert" class="ef-mayday" style="margin:8px 0;">
       <div style="display:flex;align-items:center;gap:8px;">

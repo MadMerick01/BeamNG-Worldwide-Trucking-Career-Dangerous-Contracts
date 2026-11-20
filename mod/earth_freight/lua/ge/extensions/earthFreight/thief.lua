@@ -189,6 +189,16 @@ function M.attach(c)
     return true
   end
 
+  -- The Fire EMP hotkey (Options > Controls > Bindings, no key by default). Does nothing unless a chase is on; out of
+  -- range it says so in a pop-up too, since the HUD may be minimised.
+  function c:empHotkey()
+    local t = self.thief
+    if not t or t.phase ~= 'chasing' then return false end
+    if self:empThief() then return true end
+    self:toast('warning', 'EMP OUT OF RANGE', t.feedback or ('Get within ' .. M.EMP_METRES .. ' m of the thief.'), 4)
+    return false
+  end
+
   -- Every tick.
   function c:watchThief(dt)
     if self.thiefCar and self.thiefCar.update then self.thiefCar:update(dt) end
