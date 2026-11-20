@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The base thief now drives around traffic instead of through it.** It watches the road ahead, and when it comes up on slow or queued cars it backs off in steps, from 75 km/h on an open road down to 30 km/h right behind a jam, and keeps to its own lane. If it stays stuck in a queue it works out a new way out. Road traffic is halved during a chase and comes back once it's over. On an open road the thief tops out at 75 km/h, so it is easier to catch than before. Your saves still work.
+
 ## Build 238 · 20 Nov 2026
 
 - **An arrow now points you to the thief.** During a base thief chase, the card shows a red arrow next to the distance. Straight up is the way your car is facing, so turn until it points up and drive. Your saves still work.
