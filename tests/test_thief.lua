@@ -164,7 +164,9 @@ do
   T.eq(toasts[1] and toasts[1].title, 'EMP CHARGING', 'a pop-up says so')
   F.advance(c, emp.CHARGE_SECONDS + 0.2)
   T.check(c:view().thief.empInRange and c:view().thief.emp.inRange and c:view().thief.emp.ready, 'charged and in range')
+  local cash = c:view().cashSound
   T.check(c:empHotkey(), 'the hotkey EMP hits')
+  T.eq(c:view().cashSound, cash + 1, 'the money back plays the cha-ching')
   T.eq(car.hit[1], 42, 'on the thief')
   T.eq(c:view().empSound, sounds + 2, 'and the EMP sound for the hit')
   T.eq(c.profile.progression.balance, start + thief.BOUNTY, 'money back plus $5,000')

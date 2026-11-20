@@ -55,6 +55,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   // MadMerick's alert, played once when a new call's card shows.
   var MAYDAY_SOUND = '/ui/modules/apps/TruckingCareerDC/mayday_alert.wav'
   var EMP_SOUND = '/ui/modules/apps/TruckingCareerDC/emp.wav'
+  // MadMerick's small alerts: cha-ching for money in, and the EMP reaching full charge.
+  var CASH_SOUND = '/ui/modules/apps/TruckingCareerDC/cha_ching.wav'
+  var EMP_CHARGED_SOUND = '/ui/modules/apps/TruckingCareerDC/emp_charged.wav'
   // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
   // bill here and the box goes on the page itself, over the menu. It stays until the player closes
   // it, Lua says the bill was paid or undone, or the menu closes and the HUD is built again.
@@ -357,22 +360,22 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.maydayAlerts = function () { return kept.maydayAlerts || 0 }
       // The EMP sound: once each time Lua counts one more (the player fired, or a robber's EMP hit them).
       // Loaded as the HUD starts, so the first EMP plays straight away: a sound only fetched when it is needed missed it.
-      var empAudio = null
-      var loadEmpSound = function () {
-        if (empAudio || typeof Audio === 'undefined') return empAudio
+      // Each loaded as the HUD starts, so the first one plays straight away: a sound only fetched when it is needed missed it.
+      var preloaded = {}
+      var loadSound = function (path, volume) {
+        if (preloaded[path] || typeof Audio === 'undefined') return preloaded[path] || null
         try {
-          empAudio = new Audio(EMP_SOUND)
-          empAudio.preload = 'auto'
-          empAudio.volume = 0.8
-          if (typeof empAudio.load === 'function') empAudio.load()
-        } catch (e) { empAudio = null }
-        return empAudio
+          var sound = new Audio(path)
+          sound.preload = 'auto'
+          sound.volume = volume
+          if (typeof sound.load === 'function') sound.load()
+          preloaded[path] = sound
+        } catch (e) { return null }
+        return preloaded[path]
       }
-      loadEmpSound()
-      var empBang = function () {
-        kept.empBangs = (kept.empBangs || 0) + 1
+      var playSound = function (path, volume) {
         try {
-          var sound = loadEmpSound()
+          var sound = loadSound(path, volume)
           if (!sound) return
           // From the start again, even if the last one is still playing.
           try { sound.currentTime = 0 } catch (e) {}
@@ -380,6 +383,29 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           if (played && played.catch) played.catch(function () {})
         } catch (e) {}
       }
+      loadSound(EMP_SOUND, 0.8)
+      loadSound(CASH_SOUND, 0.6)
+      loadSound(EMP_CHARGED_SOUND, 0.6)
+      var empBang = function () {
+        kept.empBangs = (kept.empBangs || 0) + 1
+        playSound(EMP_SOUND, 0.8)
+      }
+      // Cha-ching: once each time Lua counts money earned or won back.
+      var cashIn = function () {
+        kept.cashIns = (kept.cashIns || 0) + 1
+        playSound(CASH_SOUND, 0.6)
+      }
+      scope.cashIns = function () { return kept.cashIns || 0 }
+      // The EMP button going from charging to ready, on the chase card or the admin robber's card.
+      var empReady = function (d) {
+        var e = d && ((d.thief && d.thief.emp) || (d.admin && d.admin.drive && d.admin.drive.emp))
+        return e ? (e.ready ? 'ready' : 'charging') : null
+      }
+      var empCharged = function () {
+        kept.empCharges = (kept.empCharges || 0) + 1
+        playSound(EMP_CHARGED_SOUND, 0.6)
+      }
+      scope.empCharges = function () { return kept.empCharges || 0 }
       scope.empBangs = function () { return kept.empBangs || 0 }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
       var autoOpen = [
@@ -396,6 +422,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         if (scope.atDestination(next) && !scope.atDestination(previous)) chime()
         // Only a new one: never for the count a rebuilt HUD first sees.
         if (previous && typeof previous.empSound === 'number' && next.empSound > previous.empSound) empBang()
+        if (previous && typeof previous.cashSound === 'number' && next.cashSound > previous.cashSound) cashIn()
+        if (empReady(previous) === 'charging' && empReady(next) === 'ready') empCharged()
         if (scope.maydayCard(next) && kept.maydayRung !== next.mayday.round) {
           kept.maydayRung = next.mayday.round
           maydayAlert()

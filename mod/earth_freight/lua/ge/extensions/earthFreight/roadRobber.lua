@@ -209,6 +209,7 @@ function M.attach(c)
     if r.admin then self.mp:robNews('caught') else self.thiefCar:emp(r.carId) end
     local paid = (r.amount or 0) + M.TRUNK
     self:addMoney(paid)
+    self:cashSound()
     r.phase, r.caughtAt = 'caught', self.clock
     self:showFlash('delivered', 'ROBBER CAUGHT: +' .. dollars(paid), 'The EMP stopped them dead. You got your '
       .. dollars(r.amount or 0) .. ' back, and ' .. dollars(M.TRUNK) .. ' from their trunk.')

@@ -643,6 +643,7 @@ function M.attach(c)
       return false
     end
     self:addMoney(price)
+    self:cashSound()
     self.trailer, self.sellArmed = table.remove(self.spareTrailers or {}, 1), false
     self.trailerFeedback = 'Sold your ' .. t.name .. ' for ' .. dollars(price) .. '.'
     self:autoSaveSoon('selling your trailer')
@@ -666,6 +667,7 @@ function M.attach(c)
       return false
     end
     self:addMoney(price)
+    self:cashSound()
     table.remove(self.spareTrailers, index)
     self.spareSellArmed = nil
     self.trailerFeedback = 'Sold your ' .. t.name .. ' for ' .. dollars(price) .. '.'

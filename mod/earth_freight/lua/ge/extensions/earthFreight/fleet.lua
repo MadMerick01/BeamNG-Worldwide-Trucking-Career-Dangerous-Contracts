@@ -233,7 +233,7 @@ function M.attach(c)
     end
     local pay = M.sale(card.value, card.repair)
     table.remove(self.storedCars, index)
-    if pay > 0 then self:addMoney(pay) end
+    if pay > 0 then self:addMoney(pay); self:cashSound() end
     self.fleetFeedback = 'Sold your ' .. tostring(card.name) .. ' for ' .. dollars(pay) .. '.'
     self.diag:event('parked_car_sold', tostring(card.name) .. ':' .. tostring(pay))
     self:autoSaveSoon('selling a car')

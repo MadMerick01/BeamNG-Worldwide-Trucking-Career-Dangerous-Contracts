@@ -1100,7 +1100,7 @@ test('EMP sound: plays once for each EMP the game counts, never for the count a 
   const played = [], made = []
   class Audio { constructor(src) { this.src = src; this.loaded = 0; made.push(this) } load() { this.loaded++ } play() { played.push(this); return { catch() {} } } }
   const a = app(undefined, undefined, { Audio })
-  assert.equal(made.length, 1, 'the EMP sound is loaded as the HUD starts')
+  assert.equal(made.filter(x => x.src.endsWith('/emp.wav')).length, 1, 'the EMP sound is loaded as the HUD starts')
   a.state({ state: 'READY', arrived: true, empSound: 3 })
   assert.equal(played.length, 0, 'the first count is old news')
   a.state({ state: 'READY', arrived: true, empSound: 3 })
@@ -1109,7 +1109,7 @@ test('EMP sound: plays once for each EMP the game counts, never for the count a 
   assert.equal(played.length, 1, 'one more EMP: the sound plays')
   assert.equal(played[0].src, '/ui/modules/apps/TruckingCareerDC/emp.wav')
   assert.equal(made.filter(x => x.src.endsWith('emp.wav')).length, 1, 'loaded once, as the HUD starts')
-  assert.equal(made[0].loaded, 1, 'and fetched ahead, so the first one plays')
+  assert.ok(made.every(x => x.loaded === 1), 'every sound fetched ahead, so the first one plays')
   a.state({ state: 'DRIVING', arrived: false, empSound: 5 })
   assert.equal(played.length, 2, 'and again while driving')
   assert.equal(a.scope.empBangs(), 2)
@@ -1117,6 +1117,43 @@ test('EMP sound: plays once for each EMP the game counts, never for the count a 
   quiet.state({ state: 'READY', arrived: true, empSound: 0 })
   quiet.state({ state: 'READY', arrived: true, empSound: 1 })
   assert.equal(quiet.scope.empBangs(), 1, 'without Audio it still counts, silently')
+})
+test('Cha-ching: plays once for each time the game counts money in, never for the count a fresh HUD first sees', () => {
+  const played = [], made = []
+  class Audio { constructor(src) { this.src = src; this.loaded = 0; made.push(this) } load() { this.loaded++ } play() { played.push(this); return { catch() {} } } }
+  const a = app(undefined, undefined, { Audio })
+  assert.equal(made.filter(x => x.src.endsWith('/cha_ching.wav')).length, 1, 'loaded as the HUD starts')
+  a.state({ state: 'READY', arrived: true, cashSound: 2 })
+  assert.equal(played.length, 0, 'the first count is old news')
+  a.state({ state: 'READY', arrived: true, cashSound: 2 })
+  assert.equal(played.length, 0, 'no change: no sound')
+  a.state({ state: 'READY', arrived: true, cashSound: 3 })
+  assert.equal(played.length, 1, 'money in: cha-ching')
+  assert.equal(played[0].src, '/ui/modules/apps/TruckingCareerDC/cha_ching.wav')
+  assert.equal(a.scope.cashIns(), 1)
+  assert.equal(made.filter(x => x.src.endsWith('/cha_ching.wav')).length, 1, 'the same sound reused')
+})
+test('EMP charged: plays when the EMP button goes from charging to ready, for the player and the admin robber', () => {
+  const played = []
+  class Audio { constructor(src) { this.src = src } load() {} play() { played.push(this.src); return { catch() {} } } }
+  const a = app(undefined, undefined, { Audio })
+  const chase = emp => ({ state: 'DRIVING', arrived: false, thief: { phase: 'chasing', emp } })
+  a.state(chase({ ready: true }))
+  assert.equal(played.length, 0, 'a chase that starts ready: nothing to announce')
+  a.state(chase({ ready: false, chargeLeft: 20 }))
+  a.state(chase({ ready: false, chargeLeft: 1 }))
+  assert.equal(played.length, 0, 'still charging: quiet')
+  a.state(chase({ ready: true }))
+  assert.deepEqual(played, ['/ui/modules/apps/TruckingCareerDC/emp_charged.wav'], 'full charge: the sound plays once')
+  a.state(chase({ ready: true }))
+  assert.equal(played.length, 1, 'stays ready: no repeat')
+  a.state({ state: 'DRIVING', arrived: false, admin: { drive: { emp: { ready: false, chargeLeft: 3 } } } })
+  a.state({ state: 'DRIVING', arrived: false, admin: { drive: { emp: { ready: true } } } })
+  assert.equal(played.length, 2, 'the admin robber hears it too')
+  assert.equal(a.scope.empCharges(), 2)
+  const fresh = app(undefined, undefined, { Audio })
+  fresh.state(chase({ ready: true }))
+  assert.equal(played.length, 2, 'a rebuilt HUD that first sees a ready EMP stays quiet')
 })
 test('Mayday Rescue card: not for a won call, a run, or over the start page, and a minimised Mayday tab does not hide it', () => {
   const a = app()

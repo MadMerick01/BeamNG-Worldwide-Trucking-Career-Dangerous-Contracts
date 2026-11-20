@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Money coming in now plays a cha-ching:** when you're paid for a delivery, catch a robber or thief, get a Mayday Rescue reward or your share of the tolls, or sell a car or trailer. Refunded fees stay quiet.
+- **Your EMP now beeps when it's fully charged,** so you know you can fire again without looking at the button. It works on the chase card and on the admin robber's EMP. Saves still work as before.
+
 ## Build 255 · 20 Nov 2026
 
 - **The robber and thief cards now show the money in big letters:** "-$1,000 TAKEN" in red while a robbery is on, "+$21,000 WON BACK" in green when you catch them, or "-$1,000 GONE" when they get away. The card stays up after a catch, and for 20 seconds after a robber gets away, so you always see how it ended.
