@@ -181,7 +181,7 @@ do
   T.eq(c.mp.last('wwtcRobbed').what, 'escaped', 'the live feed: he got away')
 end
 
--- Who can't be robbed: robbers unticked, too little money, a short job; asked anyway, the game says no.
+-- Who can't be robbed: robbers unticked, too little money, no job (a short one is fine); asked anyway, the game says no.
 do
   local c, a, car, s = target()
   c:setRobbersAllowed(false)
@@ -197,6 +197,9 @@ do
   car.ground = false
   c:answerRobAsk({ ask = 2 })
   T.eq(s.last('wwtcRobSpot').why, 'no_ground', 'no loaded road ahead yet')
+  c.load.to = c.load.from
+  T.check(not c:robbableJob(c.load), 'a short job: too short for the AI robber')
+  T.eq(c:adminRobProblem(), nil, 'but the admin can rob it')
   c.load = nil
   T.eq(c:adminRobProblem(), 'off', 'not on a job')
 end

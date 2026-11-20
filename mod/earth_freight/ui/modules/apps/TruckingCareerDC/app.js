@@ -332,12 +332,26 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       scope.maydayAlerts = function () { return kept.maydayAlerts || 0 }
       // The EMP sound: once each time Lua counts one more (the player fired, or a robber's EMP hit them).
+      // Loaded as the HUD starts, so the first EMP plays straight away: a sound only fetched when it is needed missed it.
+      var empAudio = null
+      var loadEmpSound = function () {
+        if (empAudio || typeof Audio === 'undefined') return empAudio
+        try {
+          empAudio = new Audio(EMP_SOUND)
+          empAudio.preload = 'auto'
+          empAudio.volume = 0.8
+          if (typeof empAudio.load === 'function') empAudio.load()
+        } catch (e) { empAudio = null }
+        return empAudio
+      }
+      loadEmpSound()
       var empBang = function () {
         kept.empBangs = (kept.empBangs || 0) + 1
         try {
-          if (typeof Audio === 'undefined') return
-          var sound = new Audio(EMP_SOUND)
-          sound.volume = 0.8
+          var sound = loadEmpSound()
+          if (!sound) return
+          // From the start again, even if the last one is still playing.
+          try { sound.currentTime = 0 } catch (e) {}
           var played = sound.play()
           if (played && played.catch) played.catch(function () {})
         } catch (e) {}

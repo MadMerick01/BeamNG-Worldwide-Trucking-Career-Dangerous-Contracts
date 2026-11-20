@@ -1097,9 +1097,10 @@ test('Mayday Rescue card: shows for a new call even when minimised, plays the al
   assert.equal(a.scope.maydayCard(), false, 'and the card goes')
 })
 test('EMP sound: plays once for each EMP the game counts, never for the count a fresh HUD first sees', () => {
-  const played = []
-  class Audio { constructor(src) { this.src = src } play() { played.push(this); return { catch() {} } } }
+  const played = [], made = []
+  class Audio { constructor(src) { this.src = src; this.loaded = 0; made.push(this) } load() { this.loaded++ } play() { played.push(this); return { catch() {} } } }
   const a = app(undefined, undefined, { Audio })
+  assert.equal(made.length, 1, 'the EMP sound is loaded as the HUD starts')
   a.state({ state: 'READY', arrived: true, empSound: 3 })
   assert.equal(played.length, 0, 'the first count is old news')
   a.state({ state: 'READY', arrived: true, empSound: 3 })
@@ -1107,6 +1108,8 @@ test('EMP sound: plays once for each EMP the game counts, never for the count a 
   a.state({ state: 'READY', arrived: true, empSound: 4 })
   assert.equal(played.length, 1, 'one more EMP: the sound plays')
   assert.equal(played[0].src, '/ui/modules/apps/TruckingCareerDC/emp.wav')
+  assert.equal(made.filter(x => x.src.endsWith('emp.wav')).length, 1, 'loaded once, as the HUD starts')
+  assert.equal(made[0].loaded, 1, 'and fetched ahead, so the first one plays')
   a.state({ state: 'DRIVING', arrived: false, empSound: 5 })
   assert.equal(played.length, 2, 'and again while driving')
   assert.equal(a.scope.empBangs(), 2)
