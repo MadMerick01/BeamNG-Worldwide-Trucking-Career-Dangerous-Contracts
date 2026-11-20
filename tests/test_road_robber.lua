@@ -110,6 +110,8 @@ do
   local v = c:view().thief
   T.check(v and v.road and v.phase == 'chasing', 'the chase card, for the robber')
   T.eq(v.bounty, 20000, '$20,000 in the trunk')
+  T.eq(v.emp.ready, false, 'its EMP drained the player\'s: it charges from empty')
+  T.check(not c:fireEmp(), 'so they can\'t hit back straight away')
   F.advance(c, robber.PLAYER_EMP_SECONDS + 0.2)
   T.eq(car.playerBack, 1, 'the engine comes back after 5 s')
   -- Delivering doesn't end the chase.

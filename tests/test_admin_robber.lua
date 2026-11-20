@@ -118,6 +118,7 @@ do
   T.eq(c.robber.phase, 'chasing', 'within 15 m his EMP strikes')
   T.eq(c.profile.progression.balance, before - admin.STOLEN, '$1,000 taken'); T.eq(car.playerHits, 1, 'the engine cut')
   T.eq(s.last('wwtcRobNews').what, 'struck', 'the server is told')
+  T.check(not c:fireEmp(), 'his hit drained the player\'s EMP'); T.eq(c:view().thief.emp.ready, false, 'it charges from empty')
   T.eq(c:view().thief.road, true, 'the chase card'); T.eq(c:view().thief.distanceMetres, 10, 'with how far')
   F.advance(c, emp.CHARGE_SECONDS + 0.2)
   T.eq(car.playerBack, 1, 'the engine back after 5 s')

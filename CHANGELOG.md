@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **A robber's EMP now drains yours.** When a road robber hits you, your EMP empties and takes the usual 20 seconds to charge before you can fire back, so you have to chase them for a while first. Your saves still work.
+
 ## Build 246 · 20 Nov 2026
 
 - **The road robber could now be MadMerick himself.** On MadMerick's server, an admin can take the robber's place in the same Moonhawk, dropped in 300 m ahead of you in your lane. He drives it himself and fires his EMP when he chooses, under the AI robber's rules: within 15 m it cuts your engine and takes $1,000, and your EMP within 15 m gets it back plus $20,000 from his trunk. You only find out it was him if you catch him. Only players on a delivery, fuel run or contract of 5 km or more, with "Robbers can rob me" ticked on the Route tab, can be picked. Untick it and nobody, AI or admin, will rob you. Your saves still work.
