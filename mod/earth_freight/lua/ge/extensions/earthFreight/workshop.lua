@@ -1200,6 +1200,17 @@ function M.attach(c)
       self.carFeedback = 'That car did not turn up. Try again in a moment.'
     end
     local vehicleId = self.lastSample and self.lastSample.valid and self.lastSample.vehicle and self.lastSample.vehicle.id
+    -- The player in their own trailer is not buying a car. When the mod has just respawned it (to fill its Load
+    -- Volume or put its parts back), the game may have put them in it: they go back to their car.
+    local out = self.trailerOut
+    if vehicleId ~= nil and out and vehicleId == out.id then
+      if out.returnDriverUntil and self.clock <= out.returnDriverUntil and self.ownedParts and self.garage.enter
+        and self.ownedParts.id ~= out.id and self.garage:enter(self.ownedParts.id) then
+        out.returnDriverUntil = nil
+        self.diag:event('back_from_trailer', tostring(out.id))
+      end
+      return
+    end
     local expected = self.pendingCar and self.pendingCar.id or (self.ownedParts and self.ownedParts.id)
     if vehicleId ~= nil and expected ~= nil and vehicleId ~= expected then self.partsCheckDue = true end
     if not self.ownedParts then self.partsCheckDue = true end
