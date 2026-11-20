@@ -2834,7 +2834,7 @@ function M.new(deps)
       heli = self:heliView(current), beacon = self:beaconView(current),
       shipping = self:shippingView(current),
       mayday = self:maydayView(current),
-      thief = self:thiefView() or self:robberView(),
+      thief = self:thiefView() or self:robberView() or self:robberyResultView(),
       robbery = self:robberyView(),
       robMe = self:robMeView(),
       admin = self:adminView(),

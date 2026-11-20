@@ -357,14 +357,19 @@ function M.attach(c)
     local r = self.thiefReturn
     if r and (not t or t.phase == 'caught') then
       local problem = self:thiefReturnProblem()
+      -- How the chase ended, with the money, so the card says it big.
+      local outcome, paid = self:robberyOutcome(false)
+      if not outcome and t and t.phase == 'caught' then outcome, paid = 'caught', t.amount + M.BOUNTY end
       return { phase = 'return', job = r.load, mayday = r.mayday, trailer = r.trailer, returnAllowed = problem == nil,
-        problem = problem, travelling = self.booking ~= nil and self.booking.thiefReturn == true or nil, feedback = r.feedback }
+        problem = problem, travelling = self.booking ~= nil and self.booking.thiefReturn == true or nil, feedback = r.feedback,
+        outcome = outcome, amount = M.STOLEN, paid = paid }
     end
     if not t then return nil end
     local settleLeft = t.phase == 'settling' and t.settleAt and math.max(0, M.SETTLE_SECONDS - (self.clock - t.settleAt)) or nil
     local problem = t.phase == 'stolen' and self:thiefChaseProblem() or nil
     return {
       phase = t.phase, amount = t.amount, bounty = M.BOUNTY, secondsLeft = self:theftSecondsLeft(),
+      paid = t.phase == 'caught' and t.amount + M.BOUNTY or nil,
       chaseAllowed = t.phase == 'stolen' and problem == nil, problem = problem,
       settleLeft = settleLeft,
       distanceMetres = t.phase == 'chasing' and t.metres and math.floor(t.metres + 0.5) or nil,

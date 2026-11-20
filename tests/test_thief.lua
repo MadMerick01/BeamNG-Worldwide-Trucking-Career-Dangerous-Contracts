@@ -168,9 +168,12 @@ do
   T.eq(car.hit[1], 42, 'on the thief')
   T.eq(c:view().empSound, sounds + 2, 'and the EMP sound for the hit')
   T.eq(c.profile.progression.balance, start + thief.BOUNTY, 'money back plus $5,000')
-  T.eq(c.thief.phase, 'caught', 'caught')
+  T.eq(c.thief.phase, 'caught', 'caught'); T.eq(c:view().thief.paid, 6000, 'the card says what came back')
   F.advance(c, thief.CAUGHT_SECONDS + 1)
   T.eq(c.thief, nil, 'over'); T.check(car.removed[42], 'the car is taken away')
+  local v = c:view().thief
+  T.eq(v and v.phase, 'return', 'the way back'); T.eq(v.outcome, 'caught', 'says how it went')
+  T.eq(v.paid, 6000, 'with the money')
 end
 
 -- The thief gets away 450 m clear: their car disappears and the player is told.

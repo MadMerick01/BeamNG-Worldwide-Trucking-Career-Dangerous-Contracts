@@ -43,6 +43,8 @@ M.CAUGHT_SECONDS = 30
 M.STUCK_SECONDS = 5
 M.STUCK_SPEED = 1.5
 M.UNSTICK_EVERY_SECONDS = 10
+-- After a robbery ends, its card shows how it went (and the money) for this long.
+M.RESULT_SECONDS = 20
 -- Lurking: this much slower than the player, never under LURK_MIN_KPH; when they hang back more than HANG_BACK_METRES,
 -- BRAKE_CHECK_KPH slower instead.
 M.LURK_SLOWER_KPH = 15
@@ -147,9 +149,33 @@ function M.attach(c)
     return true
   end
 
-  -- Tells the server's live feed how a robbery of this player went (multiplayer.lua robbed), on a server only.
+  -- How a robbery of this player went: kept a while for the HUD's card (robberyResultView), and told to the server's
+  -- live feed (multiplayer.lua robbed) on a server.
   function c:robberyNews(who, what)
+    if what ~= 'struck' then self.robberyResult = { road = who == 'robber' or nil, outcome = what, at = self.clock } end
     if self.mp and self.mp.robbed then self.mp:robbed(who, what) end
+  end
+
+  -- The money in a robbery's outcome, for the HUD: what was taken, and what catching them paid.
+  local function robberyMoney(road)
+    if road then return M.STOLEN, M.STOLEN + M.TRUNK end
+    return thief.STOLEN, thief.STOLEN + thief.BOUNTY
+  end
+
+  -- The card's last word once a robbery is over and its car gone: who, how it ended and the money, for RESULT_SECONDS.
+  function c:robberyResultView()
+    local r = self.robberyResult
+    if not r or self.clock - r.at > M.RESULT_SECONDS then return nil end
+    local taken, paid = robberyMoney(r.road)
+    return { road = r.road, phase = 'over', outcome = r.outcome, amount = taken,
+      paid = (r.outcome == 'caught' and paid) or (r.outcome == 'dropped' and taken) or nil }
+  end
+  -- For the thief's Back to your job card: how it ended, while that card waits.
+  function c:robberyOutcome(road)
+    local r = self.robberyResult
+    if not r or (r.road or false) ~= (road or false) then return nil end
+    local taken, paid = robberyMoney(r.road)
+    return r.outcome, (r.outcome == 'caught' and paid) or (r.outcome == 'dropped' and taken) or nil
   end
 
   -- Watches a fleeing or driving robber's or thief's car (r: the robber or the theft) for getting stuck off the road.
@@ -340,6 +366,7 @@ function M.attach(c)
     if not r or (r.phase ~= 'chasing' and r.phase ~= 'caught') then return nil end
     return {
       road = true, phase = r.phase, amount = r.amount, bounty = M.TRUNK,
+      paid = r.phase == 'caught' and (r.amount or 0) + M.TRUNK or nil,
       distanceMetres = r.phase == 'chasing' and r.metres and math.floor(r.metres + 0.5) or nil,
       arrow = r.phase == 'chasing' and r.arrow and math.floor(r.arrow + 0.5) or nil,
       empMetres = emp.RANGE, empInRange = r.phase == 'chasing' and r.metres ~= nil and r.metres <= emp.RANGE,

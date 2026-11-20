@@ -145,6 +145,8 @@ do
   car.metres = 460; c:tick(0.1)
   T.eq(c.robber, nil, 'escaped'); T.eq(s.last('wwtcRobNews').what, 'escaped', 'the server is told')
   T.eq(s.last('wwtcRobbed').what, 'escaped', 'and the live feed')
+  T.eq(c:view().thief.phase, 'over', 'the card says the robber got away'); T.eq(c:view().thief.outcome, 'escaped', 'escaped')
+  T.eq(c:view().thief.amount, 1000, 'with how much'); T.eq(c:view().thief.road, true, 'a road robber')
   T.eq(c.profile.progression.balance, before - admin.STOLEN, 'the money is gone')
   T.eq(c:view().flash.title, 'THE ROBBER GOT AWAY', 'told so')
 end
