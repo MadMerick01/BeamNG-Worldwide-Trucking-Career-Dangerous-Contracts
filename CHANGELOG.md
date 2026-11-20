@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 245 · 20 Nov 2026
+
 - **Player name tags are now always off** while this mod is installed, on servers and everywhere else. Cars on a server no longer show who is driving them. If you turn name tags on in Options, the mod turns them off again within a couple of seconds. To get them back, remove the mod. Your saves still work.
 
 ## Build 244 · 20 Nov 2026
