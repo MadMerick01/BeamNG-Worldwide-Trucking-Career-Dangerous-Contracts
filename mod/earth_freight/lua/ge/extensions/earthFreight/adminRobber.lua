@@ -43,7 +43,7 @@ local dollars = pricing.dollars
 -- Why the server's answer said no, for the admin.
 local WHY = {
   gone = 'is not on the server any more.', off = 'cannot be robbed right now.', busy = 'is already being robbed.',
-  no_ground = 'has no road with loaded ground behind them. Try again in a moment.', away = 'is not driving right now.',
+  no_ground = 'has no clear road with loaded ground behind them yet. Try again in a moment.', away = 'is not driving right now.',
 }
 
 function M.attach(c)
@@ -317,7 +317,7 @@ function M.attach(c)
     if not why then
       local reason
       ahead, reason = self.thiefCar:aheadOffset(M.BEHIND_METRES, true)
-      if not ahead then why = reason == 'no_ground' and 'no_ground' or 'away' end
+      if not ahead then why = (reason == 'no_ground' or reason == 'unsafe') and 'no_ground' or 'away' end
     end
     if why then
       self.mp:robSpot({ ask = ask.ask, ok = false, why = why })

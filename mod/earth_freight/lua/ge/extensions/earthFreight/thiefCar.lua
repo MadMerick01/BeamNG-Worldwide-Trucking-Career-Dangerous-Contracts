@@ -92,6 +92,13 @@ M.TRAIL_STEP_METRES = 10
 M.TRAIL_POINTS = 16
 M.TRAIL_JUMP_METRES = 60
 M.TRAIL_ROAD_METRES = 10
+-- A U-turn: the way the player drives turns more than TRAIL_TURN_DEGREES between two steps. The trail behind them is
+-- then the road ahead of them, so it starts again from there.
+M.TRAIL_TURN_DEGREES = 120
+-- The spot behind is only used when it is at least SAFE_METRES from the player in a straight line, behind them (more
+-- than 90 degrees off where their car points), and facing within 90 degrees of their way. Otherwise the robber waits
+-- (a hairpin, a U-turn, a road that snapped too close) and is tried again.
+M.SAFE_METRES = 70
 
 -- Overtaking the stopped player after the strike: the traffic AI, free to use the whole road and steering round cars,
 -- at no more than kph. Then it flees (fleeCommand).
@@ -216,7 +223,17 @@ function M.new(env)
       local d = math.sqrt((at.x - last.x) ^ 2 + (at.y - last.y) ^ 2)
       if d < M.TRAIL_STEP_METRES then return end
       -- Teleported (or a gap in the notes): the old trail isn't the road behind them any more.
-      if d > M.TRAIL_JUMP_METRES then trail = {} end
+      if d > M.TRAIL_JUMP_METRES then
+        trail = {}
+      elseif trail[2] then
+        -- Turned round: the old trail is the road ahead of them now. Kept from the turn on.
+        local ax, ay, bx, by = last.x - trail[2].x, last.y - trail[2].y, at.x - last.x, at.y - last.y
+        local la = math.sqrt(ax * ax + ay * ay)
+        if la > 1e-3 then
+          local cos = (ax * bx + ay * by) / (la * d)
+          if cos < math.cos(math.rad(M.TRAIL_TURN_DEGREES)) then trail = { last } end
+        end
+      end
     end
     table.insert(trail, 1, { x = at.x, y = at.y, z = at.z })
     trail[M.TRAIL_POINTS + 1] = nil
@@ -263,6 +280,14 @@ function M.new(env)
       local rx, ry, rz, rfx, rfy = nearestRoad(x, y, z, x - fx * 10, y - fy * 10)
       if rx then x, y, z, fx, fy = rx, ry, rz, rfx, rfy end
     end
+    -- Never too close, in front, or facing them (see SAFE_METRES): nil and 'unsafe', to be tried again.
+    local dir = car:getDirectionVector()
+    local hx, hy = dir.x, dir.y
+    local hl = math.sqrt(hx * hx + hy * hy)
+    local ox, oy = x - at.x, y - at.y
+    local away = math.sqrt(ox * ox + oy * oy)
+    if away < M.SAFE_METRES then return nil, 'unsafe' end
+    if hl > 1e-3 and ((ox * hx + oy * hy) / (away * hl) > 0 or (fx * hx + fy * hy) / hl < 0) then return nil, 'unsafe' end
     return env.point(x, y, z + 0.5), env.upright(env.point(fx, fy, 0)), fx, fy
   end
 
@@ -319,7 +344,7 @@ function M.new(env)
     local robber, car = object(id), player()
     if not robber or not car then return false, 'gone' end
     local ok, pos, rot = pcall(behind and spotBehind or spot, car, metres)
-    if not ok or not pos then return false, 'no_spot' end
+    if not ok or not pos then return false, (ok and rot == 'unsafe') and 'unsafe' or 'no_spot' end
     local gok, ground = pcall(env.groundBelow, pos)
     if not gok or type(ground) ~= 'number' or math.abs(ground - pos.z) > 30 then return false, 'no_ground' end
     local placed = pcall(function()
@@ -337,8 +362,8 @@ function M.new(env)
   function t:aheadOffset(metres, behind)
     local car = player()
     if not car then return nil, 'gone' end
-    local ok, pos, _, fx, fy = pcall(behind and spotBehind or spot, car, metres)
-    if not ok or not pos then return nil, 'no_spot' end
+    local ok, pos, why, fx, fy = pcall(behind and spotBehind or spot, car, metres)
+    if not ok or not pos then return nil, (ok and why == 'unsafe') and 'unsafe' or 'no_spot' end
     local gok, ground = pcall(env.groundBelow, pos)
     if not gok or type(ground) ~= 'number' or math.abs(ground - pos.z) > 30 then return nil, 'no_ground' end
     local rok, out = pcall(function()

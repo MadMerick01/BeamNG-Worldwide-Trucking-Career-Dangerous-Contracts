@@ -32,7 +32,7 @@ M.MIN_JOB_METRES = 5000
 M.EDGE_METRES = 2000
 M.BEHIND_METRES = 100
 M.STOLEN = 1000
-M.TRUNK = 20000
+M.TRUNK = 5000
 M.STRIKE_METRES = emp.RANGE
 M.PLAYER_EMP_SECONDS = 10
 -- ...and jams their brakes on for this long, for a jolt.
@@ -280,7 +280,7 @@ function M.attach(c)
         r.tries = (r.tries or 0) + 1
         r.nextTry = self.clock + M.RETRY_SECONDS
         if why == 'gone' or (r.forced and r.tries >= M.ROB_ME_TRIES) then
-          if r.forced then self.robberFeedback = 'No road with loaded ground behind you. Try ROB ME again on a road.' end
+          if r.forced then self.robberFeedback = 'No clear road behind you. Drive on along a road and try ROB ME again.' end
           self:dropRobber(why)
         end
         return

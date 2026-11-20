@@ -126,7 +126,7 @@ do
   F.advance(c, emp.CHARGE_SECONDS + 0.2)
   T.eq(car.playerBack, 1, 'the engine back after 10 s')
   T.check(c:fireEmp(), 'the EMP within range catches them'); T.eq(c:view().empSound, sounds0 + 3, 'and the sound for the player\'s own EMP')
-  T.eq(c.profile.progression.balance, before + admin.TRUNK, 'the $1,000 back plus $20,000')
+  T.eq(c.profile.progression.balance, before + admin.TRUNK, 'the $1,000 back plus $5,000')
   T.eq(s.last('wwtcRobbed').what, 'caught', 'the live feed is told he was caught')
   T.eq(#car.hit, 0, 'the admin\'s car is not touched here: his own game shuts it down')
   T.eq(s.last('wwtcRobNews').what, 'caught', 'the server is told')

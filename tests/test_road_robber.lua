@@ -126,7 +126,7 @@ do
   T.eq(c.flash.title, 'ROBBED ON THE ROAD: -$1,000', 'told')
   local v = c:view().thief
   T.check(v and v.road and v.phase == 'chasing', 'the chase card, for the robber')
-  T.eq(v.bounty, 20000, '$20,000 in the trunk')
+  T.eq(v.bounty, 5000, '$5,000 in the trunk')
   T.eq(v.emp.ready, false, 'its EMP drained the player\'s: it charges from empty')
   T.check(not c:fireEmp(), 'so they can\'t hit back straight away')
   T.eq(table.concat(news, ', '), 'robber struck', 'the live feed is told it struck')
@@ -149,8 +149,8 @@ do
   T.check(c:view().thief.emp.inRange, 'in range')
   T.check(c:empHotkey(), 'the EMP hits')
   T.eq(car.hit[1], c.robber.carId, 'on the robber')
-  T.eq(c.profile.progression.balance, before + robber.TRUNK, 'money back plus $20,000')
-  T.eq(c.flash.title, 'ROBBER CAUGHT: +$21,000', 'told')
+  T.eq(c.profile.progression.balance, before + robber.TRUNK, 'money back plus $5,000')
+  T.eq(c.flash.title, 'ROBBER CAUGHT: +$6,000', 'told')
   T.eq(table.concat(news, ', '), 'robber struck, robber caught', 'and that it was caught')
   local carId = c.robber.carId
   F.advance(c, robber.CAUGHT_SECONDS + 0.5)
@@ -322,6 +322,27 @@ do
   -- A teleport: the old trail is no road behind them, so it starts again.
   veh.pos = vec(5000, 5000, 10); t2:noteTrail()
   T.eq(t2:trailLength(), 1, 'trail started again after a jump')
+  -- A U-turn: driving north, then back south. The old trail is the road ahead now: started again from the turn.
+  t2:clearTrail()
+  for y = 0, 150, 10 do veh.pos = vec(0, y, 10); t2:noteTrail() end
+  T.eq(t2:trailLength(), 16, 'a long trail north')
+  for y = 140, 110, -10 do veh.pos = vec(0, y, 10); t2:noteTrail() end
+  T.eq(t2:trailLength(), 5, 'turned round: only from the turn on')
+  veh.dir = vec(0, -1, 0)
+  T.check(t2:place(9, 100, true), 'placed')
+  T.check(placedAt.pos.y > veh.pos.y + 69, 'behind them the new way, never on the road ahead')
+  T.near(placedAt.rot.y, -1, 1e-6, 'facing their new way, not head-on')
+  -- Never too close: a hairpin, where 100 m back along the road is 20 m away across the bend.
+  t2:clearTrail(); veh.dir = vec(0, 1, 0)
+  for y = 0, 40, 10 do veh.pos = vec(0, y, 10); t2:noteTrail() end
+  for x = 5, 20, 5 do veh.pos = vec(x, 40, 10); t2:noteTrail() end
+  for y = 30, -10, -10 do veh.pos = vec(20, y, 10); t2:noteTrail() end
+  veh.dir = vec(0, -1, 0)
+  local placed = placedAt
+  local ok, why = t2:place(9, 100, true)
+  T.check(not ok and why == 'unsafe', 'too close across the bend: not placed, tried again later')
+  T.eq(placedAt, placed, 'nothing moved')
+  veh.dir = vec(0, 1, 0)
 end
 
 T.done('road robber')
