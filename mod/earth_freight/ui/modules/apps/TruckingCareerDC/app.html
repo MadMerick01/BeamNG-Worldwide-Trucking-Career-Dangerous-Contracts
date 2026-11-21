@@ -538,13 +538,9 @@
         <p role="status" ng-if="data.tradeFeedback" style="margin:6px 0;">{{data.tradeFeedback}}</p>
         <div ng-if="data.robMe" style="margin:8px 0 0;padding:8px 10px;border:1px solid #eb5757;border-radius:6px;font-size:13px;">
           <div style="display:flex;align-items:center;gap:8px;">
-            <div style="flex:1;min-width:0;"><b style="color:#eb5757;">Road robbers</b> <button type="button" class="ef-q" ng-click="help('robbers')" title="How this works" aria-label="How this works">?</button><div style="color:#c9d6d2;">On a job of 5 km or more, a robber may EMP you and take ${{data.robMe.amount | number:0}}.</div></div>
+            <div style="flex:1;min-width:0;"><b style="color:#eb5757;">Road robbers</b> <button type="button" class="ef-q" ng-click="help('robbers')" title="How this works" aria-label="How this works">?</button><div style="color:#c9d6d2;">On a job of 5 km or more, a robber may EMP you and take some of your money. Catch them with yours to get it back, plus a bonus from their trunk.</div></div>
             <button type="button" ng-click="robMe()" ng-disabled="!data.robMe.allowed" title="Test it: a robber turns up on the road behind you straight away" style="flex:none;padding:4px 14px;border:1px solid #eb5757;border-radius:4px;background:#eb5757;color:#0c1318;font-weight:bold;">ROB ME</button>
           </div>
-          <label style="display:flex;align-items:center;gap:6px;margin-top:6px;color:#c9d6d2;">
-            <input type="checkbox" ng-checked="data.robMe.robbersAllowed" ng-click="setRobbersAllowed(!data.robMe.robbersAllowed)" aria-label="Robbers can rob me" />
-            Robbers can rob me
-          </label>
           <div ng-if="data.robMe.feedback || data.robMe.problem" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.robMe.feedback || data.robMe.problem}}</div>
         </div>
         <div ng-if="data.admin && !data.admin.drive" style="margin:8px 0 0;padding:8px 10px;border:1px dashed #eb5757;border-radius:6px;font-size:13px;">
@@ -977,7 +973,7 @@
         <div ng-if="!data.home" style="color:#c9d6d2;">Base opens once you are in your car at your start or last save.</div>
         <div ng-if="data.robbery" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;font-size:13px;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="flex:1;min-width:0;"><b style="color:#eb5757;">Base thief (trial)</b> <button type="button" class="ef-q" ng-click="help('robbers')" title="How this works" aria-label="How this works">?</button><div style="color:#c9d6d2;">A thief takes ${{data.robbery.amount | number:0}} from your base. Chase them down and EMP them to get it back, plus ${{data.robbery.bounty | number:0}}.</div></div>
+            <div style="flex:1;min-width:0;"><b style="color:#eb5757;">Base thief (trial)</b> <button type="button" class="ef-q" ng-click="help('robbers')" title="How this works" aria-label="How this works">?</button><div style="color:#c9d6d2;">A thief may break into your base and take some of your money. Chase them down and EMP them to get it back, plus a bonus from their trunk.</div></div>
             <button type="button" ng-click="getRobbed()" ng-disabled="!data.robbery.allowed" style="flex:none;padding:4px 14px;border:1px solid #eb5757;border-radius:4px;background:#eb5757;color:#0c1318;font-weight:bold;">Get robbed</button>
           </div>
           <div ng-if="data.robbery.problem" style="margin-top:4px;color:#c9d6d2;">{{data.robbery.problem}}</div>

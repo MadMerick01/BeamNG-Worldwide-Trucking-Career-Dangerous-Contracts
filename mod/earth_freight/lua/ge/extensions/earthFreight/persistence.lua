@@ -265,7 +265,7 @@ function M.validate(s)
   if s.rewardId ~= nil and not integer(s.rewardId, 0) then return nil, 'invalid_identity' end
   -- The extra car slot bought on the Garage tab (fleet.lua).
   if s.extraCarSlot ~= nil and s.extraCarSlot ~= true then return nil, 'invalid_home' end
-  -- Unticked "Robbers can rob me" (roadRobber.lua).
+  -- The old "Robbers can rob me" opt-out: still read so an old save loads, but no longer used or saved.
   if s.noRobbers ~= nil and s.noRobbers ~= true then return nil, 'invalid_identity' end
   local cargo = nil
   if s.load ~= nil then

@@ -2614,7 +2614,8 @@ do
   local c = F.controller()
   c:tick(0.1)
   local rules = c:view().rules
-  T.eq(rules.robberTake, '$1,000', 'what a road robber takes')
+  T.eq(rules.robberMinKm, 5, 'how long a job robbers come for')
+  T.eq(rules.robberTake, nil, 'what robbers take is never on the help page')
   T.eq(rules.basePrice, '$250,000', 'what a base costs')
   T.eq(rules.driveFee, '$250', 'what Drive costs')
   T.eq(rules.empSeconds, 20, 'EMP charge time')

@@ -59,16 +59,19 @@ do
   local before = c.profile.progression.balance
   c:watchThief(1)
   T.check(c.thief ~= nil, 'a thief strikes')
-  T.eq(c.profile.progression.balance, before - thief.STOLEN, '$1,000 taken')
+  local took = thief.take(before)
+  T.eq(took, math.max(1000, math.min(10000, math.floor(before * 0.03 / 10 + 0.5) * 10)), '3% of the bank, $1,000 to $10,000')
+  T.eq(c.profile.progression.balance, before - took, 'taken')
+  T.eq(c.thief.bounty, thief.bounty(took), 'a real theft has a trunk bonus of half again')
   T.eq(c:view().thief.phase, 'stolen', 'the HUD shows it')
   T.eq(c:view().thief.secondsLeft, thief.CHASE_WINDOW_SECONDS, 'with a 10 minute countdown')
-  T.eq(c.flash.title, 'THIEF AT YOUR BASE: -$1,000', 'and an alert')
+  T.eq(c.flash.title, 'THIEF AT YOUR BASE: -' .. require('earthFreight/pricing').dollars(took), 'and an alert')
   -- Let them go: only before the chase; the money is gone and the card goes.
   T.check(c:thiefLetGo(), 'let them go')
   T.eq(c.thief, nil, 'the card goes'); T.eq(c.flash.title, 'YOU LET THEM GO', 'told')
-  T.eq(c.profile.progression.balance, before - thief.STOLEN, 'the money stays gone')
+  T.eq(c.profile.progression.balance, before - took, 'the money stays gone')
   T.check(not c:thiefLetGo(), 'nothing to let go now')
-  c.thief = { phase = 'stolen', amount = thief.STOLEN, at = c.clock }
+  c.thief = { phase = 'stolen', amount = took, at = c.clock }
   -- Nobody gives chase: the money is gone.
   c:endTheft('late')
   T.eq(c.thief, nil, 'over')
@@ -122,12 +125,13 @@ do
   F.advance(c, 1)
   c.stranded = nil
   local start = c.profile.progression.balance
-  T.check(c:startTheft(true), 'the test command')
+  local took = thief.take(start)
+  T.check(c:startTheft(false), 'a real theft')
   T.check(c:view().thief.chaseAllowed, 'Chase offered')
   T.check(c:thiefChase(), 'Chase pressed')
   T.eq(c.booking.fee, 0, 'the relocation is free')
   T.eq(#a.teleports, 1, 'teleported'); T.eq(c.thief.phase, 'travelling', 'on the way')
-  T.eq(c.profile.progression.balance, start - thief.STOLEN, 'nothing charged for the trip')
+  T.eq(c.profile.progression.balance, start - took, 'nothing charged for the trip')
   -- Earth drops the car in 3 km off first while the terrain loads: no countdown yet.
   a.pose = location.destination(base, 0, 3000)
   F.advance(c, 30)
@@ -169,13 +173,14 @@ do
   T.eq(c:view().cashSound, cash + 1, 'the money back plays the cha-ching')
   T.eq(car.hit[1], 42, 'on the thief')
   T.eq(c:view().empSound, sounds + 2, 'and the EMP sound for the hit')
-  T.eq(c.profile.progression.balance, start + thief.BOUNTY, 'money back plus $5,000')
-  T.eq(c.thief.phase, 'caught', 'caught'); T.eq(c:view().thief.paid, 6000, 'the card says what came back')
+  T.eq(c.profile.progression.balance, start + thief.bounty(took), 'money back plus half again')
+  T.eq(c.thief.phase, 'caught', 'caught'); T.eq(c:view().thief.paid, took + thief.bounty(took), 'the card says what came back')
   F.advance(c, thief.CAUGHT_SECONDS + 1)
   T.eq(c.thief, nil, 'over'); T.check(car.removed[42], 'the car is taken away')
   local v = c:view().thief
   T.eq(v and v.phase, 'return', 'the way back'); T.eq(v.outcome, 'caught', 'says how it went')
-  T.eq(v.paid, 6000, 'with the money')
+  T.eq(v.paid, took + thief.bounty(took), 'with the money')
+  T.eq(v.amount, took, 'and what was taken')
 end
 
 -- The thief gets away 450 m clear: their car disappears and the player is told.

@@ -4,7 +4,7 @@
 // - A line starting with # starts a section:  # id | Title   (add  | online  for a section that is only for online play).
 //   Keep the ids as they are: the small ? buttons on the HUD open the section with that id.
 // - Every other line is one point in that section. Keep each one short.
-// - Words in {braces} are filled in by the game with its real numbers, such as {robberTake}, so they
+// - Words in {braces} are filled in by the game with its real numbers, such as {basePrice}, so they
 //   stay right when a price changes. The list of names is in rulesView in core.lua.
 // - Lines starting with // are notes like these and are not shown.
 // - The Getting started points are also the steps on the start page.
@@ -81,10 +81,11 @@ Online, other truckers pay a {toll} toll when they deliver in your turf, and you
 Online, others can ask to join your base as your corp. Members get the turf bonus and pay no toll there, and the tolls are shared.
 
 # robbers | Robbers and the EMP
-On a job of {robberMinKm} km or more, a road robber may hit you with an EMP and take {robberTake}.
-Chase them: get within {empRange} m and fire your own EMP to get it back, plus {robberTrunk} from their trunk. If they get too far ahead, they escape.
+On a job of {robberMinKm} km or more, a road robber may hit you with an EMP and take some of your money. The bigger the job, the more they take.
+Chase them: get within {empRange} m and fire your own EMP to get it back, plus a bonus from their trunk. If they get too far ahead, they escape.
+Every trucker can be robbed, and a delivery is only ever robbed once.
 Your EMP takes {empSeconds} seconds to charge again after each shot.
-A base thief can take {thiefTake} from your base. Chase takes you there for free. Catch them for your money back plus {thiefBounty}.
+A base thief can take some of your money from your base. Chase takes you there for free. Catch them for your money back plus a bonus from their trunk.
 On a chase, your job waits where you left it, with its cargo.
 
 # mayday | Mayday Rescue | online

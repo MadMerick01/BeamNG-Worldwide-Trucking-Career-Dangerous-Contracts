@@ -103,10 +103,12 @@ do
   T.eq(c.robber.phase, 'hunting', 'still coming')
   -- It strikes within 15 m.
   local before, sounds = c.profile.progression.balance, c:view().empSound
+  local cut = robber.take(c.load.pay, before)
+  T.eq(cut, math.max(500, math.min(15000, math.floor(c.load.pay * 0.2 / 10 + 0.5) * 10)), '20% of the job\'s pay, $500 to $15,000')
   car.metres = 12
   F.advance(c, 0.2)
   T.eq(c.robber.phase, 'chasing', 'struck, fleeing')
-  T.eq(c.profile.progression.balance, before - robber.STOLEN, '$1,000 taken')
+  T.eq(c.profile.progression.balance, before - cut, 'its cut taken')
   T.eq(c:view().empSound, sounds + 1, 'the EMP sound plays once for the hit')
   T.eq(car.playerHits, 1, 'the player\'s engine is cut')
   T.eq(car.passes[1], robber.PASS_START_KPH, 'it eases off first, so it doesn\'t run into them')
@@ -123,10 +125,10 @@ do
   F.advance(c, 0.2)
   T.eq(car.fled[1], c.robber.carId, 'ahead and clear: it flees'); T.eq(c.robber.passing, nil, 'done overtaking')
   car.metres = 12
-  T.eq(c.flash.title, 'ROBBED ON THE ROAD: -$1,000', 'told')
+  T.eq(c.flash.title, 'ROBBED ON THE ROAD: -' .. require('earthFreight/pricing').dollars(cut), 'told')
   local v = c:view().thief
   T.check(v and v.road and v.phase == 'chasing', 'the chase card, for the robber')
-  T.eq(v.bounty, 5000, '$5,000 in the trunk')
+  T.eq(v.bounty, robber.trunk(cut), 'half as much again in the trunk')
   T.eq(v.emp.ready, false, 'its EMP drained the player\'s: it charges from empty')
   T.check(not c:fireEmp(), 'so they can\'t hit back straight away')
   T.eq(table.concat(news, ', '), 'robber struck', 'the live feed is told it struck')
@@ -149,8 +151,8 @@ do
   T.check(c:view().thief.emp.inRange, 'in range')
   T.check(c:empHotkey(), 'the EMP hits')
   T.eq(car.hit[1], c.robber.carId, 'on the robber')
-  T.eq(c.profile.progression.balance, before + robber.TRUNK, 'money back plus $5,000')
-  T.eq(c.flash.title, 'ROBBER CAUGHT: +$6,000', 'told')
+  T.eq(c.profile.progression.balance, before + robber.trunk(cut), 'money back plus the trunk')
+  T.eq(c.flash.title, 'ROBBER CAUGHT: +' .. require('earthFreight/pricing').dollars(cut + robber.trunk(cut)), 'told')
   T.eq(table.concat(news, ', '), 'robber struck, robber caught', 'and that it was caught')
   local carId = c.robber.carId
   F.advance(c, robber.CAUGHT_SECONDS + 0.5)
@@ -185,33 +187,15 @@ do
   T.eq(c.robber, nil, 'gave up 500 m behind')
 end
 
--- ROB ME: any time, ticked or not; it doesn't touch the job's own robbery. The tick box keeps robbers off jobs and the
--- base thief, and is saved.
+-- ROB ME: any time, one at a time. There's no opting out of robbers any more (MadMerick): no tick box.
 do
   local c, a, car = ready(0.99)
-  T.check(c:view().robMe.robbersAllowed, 'ticked by default')
-  T.check(c:setRobbersAllowed(false), 'unticked')
-  T.check(not c:view().robMe.robbersAllowed, 'shown unticked')
-  T.eq(c:robberProblem(false), 'You chose not to be robbed.', 'no road robber')
-  c.random = function() return 0 end
-  local id = F.offer(c, townBetween(c, 20, 60), 'food')
-  T.check(c:takeJob(id), 'job taken'); c:tick(0.1)
-  T.eq(c.robberAtKm, nil, 'no robbery planned'); T.eq(car.loaded, 0, 'nothing loaded')
-  T.check(c:view().robMe.allowed, 'ROB ME still allowed')
-  T.check(c:robMe(), 'ROB ME works unticked'); F.advance(c, 0.5)
+  T.eq(c:view().robMe.robbersAllowed, nil, 'no tick box')
+  T.eq(c.setRobbersAllowed, nil, 'and no way to turn robbers off')
+  T.check(c:view().robMe.allowed, 'ROB ME allowed')
+  T.check(c:robMe(), 'ROB ME'); F.advance(c, 0.5)
   T.eq(c.robber.phase, 'hunting', 'a robber on the road')
   T.check(not c:robMe(), 'one at a time')
-end
-
--- Unticked, the base thief stays away too.
-do
-  local c, a = ready()
-  T.check(c:setRobbersAllowed(false), 'unticked')
-  T.check(c:buyBase(F.copy(a.pose)), 'a base')
-  a.pose = location.destination(a.pose, 90, thief.MIN_AWAY_METRES + 1000); F.advance(c, 1); c.stranded = nil
-  T.eq(c:theftProblem(false), 'You chose not to be robbed.', 'no base thief either')
-  T.check(c:setRobbersAllowed(true), 'ticked again')
-  T.check(c:theftProblem(false) ~= 'You chose not to be robbed.', 'thieves are back')
 end
 
 -- ROB ME before a robbed job's moment: the job still gets its own robber later.
@@ -229,7 +213,7 @@ do
   T.eq(car.loaded, 2, 'a second car')
 end
 
--- Short jobs and the heli's packages are never robbed; nor anything without $1,000.
+-- Short jobs and the heli's packages are never robbed; nor anything without $500.
 do
   local c, a, car = ready(0)
   T.check(not c:robbableJob({ from = 'x', to = 'y' }), 'unknown places: no')
@@ -240,30 +224,25 @@ do
     T.check(c:takeJob(id), 'short job'); c:tick(0.1)
     T.eq(c.robberAtKm, nil, 'under 5 km: not robbed')
   end
-  c.profile.progression.balance = 500
-  T.eq(c:robberProblem(true), 'Less than $1,000 in the bank.', 'nothing to take')
+  c.profile.progression.balance = 400
+  T.eq(c:robberProblem(true), 'Less than $500 in the bank.', 'nothing to take')
 end
 
--- The tick box is kept through a save and a reload.
-do
-  local c, io = F.controller({ random = function() return 0.99 end })
-  c.thiefCar = fakeCar()
-  c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  T.check(c:setRobbersAllowed(false), 'unticked')
-  T.check(c:manualSave(), 'saved')
-  local r = F.controller({ io = io })
-  r.thiefCar = fakeCar()
-  r:tick(0.1); r:tick(0.6)
-  T.eq(r.noRobbers, true, 'still unticked after a reload')
-end
-
--- The saved tick box.
+-- An old save with the tick box unticked still loads, and robbers come all the same; the setting isn't saved again.
 do
   local s = F.save(1)
   s.noRobbers = true
-  T.check(persistence.validate(s), 'noRobbers saves')
-  s.noRobbers = 'yes'
-  T.check(not persistence.validate(s), 'only true')
+  T.check(persistence.validate(s), 'an old save with noRobbers still loads')
+  local c, io = F.controller({ random = function() return 0.1 end })
+  c.thiefCar = fakeCar()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.noRobbers = true
+  c.profile.progression.balance = 2000000
+  T.eq(c:robberProblem(false), nil, 'robbers come anyway')
+  T.check(c:manualSave(), 'saved')
+  local wrote = false
+  for _, data in pairs(io.files) do if type(data) == 'table' and data.noRobbers ~= nil then wrote = true end end
+  T.check(not wrote, 'not written again')
 end
 
 -- The game side: the commands, and the car put down only where the ground has loaded.

@@ -2,6 +2,7 @@ local T = dofile((arg[0]:match('^(.*)[/\\]') or '.') .. '/testlib.lua')
 local F = require('fixtures')
 local MPC = require('earthFreight/multiplayer')
 local admin = require('earthFreight/adminRobber')
+local robber = require('earthFreight/roadRobber')
 local emp = require('earthFreight/emp')
 local flights = require('earthFreight/flights')
 local location = require('earthFreight/location')
@@ -118,7 +119,9 @@ do
   car.metres = 10
   c:robNews({ state = 'emp' })
   T.eq(c.robber.phase, 'chasing', 'within 15 m his EMP strikes')
-  T.eq(c.profile.progression.balance, before - admin.STOLEN, '$1,000 taken'); T.eq(car.playerHits, 1, 'the engine cut')
+  local cut = robber.take(c.load.pay, before)
+  T.eq(c.profile.progression.balance, before - cut, 'the road robber\'s cut of the job taken'); T.eq(car.playerHits, 1, 'the engine cut')
+  T.eq(s.last('wwtcRobbed').amount, cut, 'the live feed is told how much')
   T.eq(s.last('wwtcRobNews').what, 'struck', 'the server is told'); T.eq(c:view().empSound, sounds0 + 2, 'the EMP sound for the hit')
   T.eq(s.last('wwtcRobbed').who, 'robber', 'the live feed: a road robber, never who'); T.eq(s.last('wwtcRobbed').what, 'struck', 'struck')
   T.check(not c:fireEmp(), 'his hit drained the player\'s EMP'); T.eq(c:view().thief.emp.ready, false, 'it charges from empty')
@@ -126,7 +129,8 @@ do
   F.advance(c, emp.CHARGE_SECONDS + 0.2)
   T.eq(car.playerBack, 1, 'the engine back after 10 s')
   T.check(c:fireEmp(), 'the EMP within range catches them'); T.eq(c:view().empSound, sounds0 + 3, 'and the sound for the player\'s own EMP')
-  T.eq(c.profile.progression.balance, before + admin.TRUNK, 'the $1,000 back plus $5,000')
+  T.eq(c.profile.progression.balance, before + robber.trunk(cut), 'the money back plus half again from the trunk')
+  T.eq(s.last('wwtcRobbed').paid, cut + robber.trunk(cut), 'the live feed is told what came back')
   T.eq(s.last('wwtcRobbed').what, 'caught', 'the live feed is told he was caught')
   T.eq(#car.hit, 0, 'the admin\'s car is not touched here: his own game shuts it down')
   T.eq(s.last('wwtcRobNews').what, 'caught', 'the server is told')
@@ -146,8 +150,9 @@ do
   T.eq(c.robber, nil, 'escaped'); T.eq(s.last('wwtcRobNews').what, 'escaped', 'the server is told')
   T.eq(s.last('wwtcRobbed').what, 'escaped', 'and the live feed')
   T.eq(c:view().thief.phase, 'over', 'the card says the robber got away'); T.eq(c:view().thief.outcome, 'escaped', 'escaped')
-  T.eq(c:view().thief.amount, 1000, 'with how much'); T.eq(c:view().thief.road, true, 'a road robber')
-  T.eq(c.profile.progression.balance, before - admin.STOLEN, 'the money is gone')
+  local cut = robber.take(c.load.pay, before)
+  T.eq(c:view().thief.amount, cut, 'with how much'); T.eq(c:view().thief.road, true, 'a road robber')
+  T.eq(c.profile.progression.balance, before - cut, 'the money is gone')
   T.eq(c:view().flash.title, 'THE ROBBER GOT AWAY', 'told so')
 end
 
@@ -183,18 +188,15 @@ do
   T.eq(c.mp.last('wwtcRobbed').what, 'escaped', 'the live feed: he got away')
 end
 
--- Who can't be robbed: robbers unticked, too little money, no job (a short one is fine); asked anyway, the game says no.
+-- Who can't be robbed: too little money, no job (a short one is fine); asked anyway, the game says no.
 do
   local c, a, car, s = target()
-  c:setRobbersAllowed(false)
-  T.eq(c:adminRobProblem(), 'off', 'robbers unticked')
+  c.profile.progression.balance = 400
+  T.eq(c:adminRobProblem(), 'off', 'less than $500')
   c:answerRobAsk({ ask = 1 })
   T.eq(s.last('wwtcRobSpot').ok, false, 'asked anyway, no'); T.eq(s.last('wwtcRobSpot').why, 'off', 'and why')
   c:robNews({ state = 'go', car = '2-0' })
   T.eq(c.robber, nil, 'a go is refused too'); T.eq(s.last('wwtcRobNews').what, 'gone', 'and the server told')
-  c:setRobbersAllowed(true)
-  c.profile.progression.balance = 500
-  T.eq(c:adminRobProblem(), 'off', 'less than $1,000')
   c.profile.progression.balance = 100000
   car.ground = false
   c:answerRobAsk({ ask = 2 })
@@ -206,7 +208,8 @@ do
   T.eq(c:adminRobProblem(), 'off', 'not on a job')
 end
 
--- An AI robber waiting for this job goes while the admin robs, and comes back after.
+-- One robbery a delivery: an AI robber waiting for this job stands down for good once the admin comes, and a job the
+-- admin robbed can't be robbed by him again.
 do
   local c, a, car = target()
   c:loadRobber(false)
@@ -216,7 +219,29 @@ do
   T.check(c.robber.admin, 'the admin takes its place')
   c:robNews({ state = 'off' })
   F.advance(c, 11)
-  T.check(c.robber and not c.robber.admin and c.robber.phase == 'loaded', 'the job\'s own robber is loaded again')
+  T.eq(c.robber, nil, 'the job\'s AI robber does not come back'); T.eq(c.robberAtKm, nil, 'this job is done with robbers')
+  T.eq(c:adminRobProblem(), nil, 'he stopped before striking: he can still try this job')
+  c:robNews({ state = 'go', car = '2-0' })
+  car.metres = 5; c:robNews({ state = 'emp' })
+  T.eq(c.robber.phase, 'chasing', 'struck')
+  car.metres = 460; c:tick(0.1)
+  T.eq(c.robber, nil, 'got away')
+  T.eq(c:adminRobProblem(), 'off', 'robbed once: not this delivery again')
+end
+
+-- The AI robber's hit counts as the delivery's robbery for the admin too.
+do
+  local c, a, car = target()
+  c.thiefCar = car
+  c:loadRobber(false)
+  c.robber.go = true
+  F.advance(c, 0.5)
+  car.metres = 10; F.advance(c, 0.2)
+  T.eq(c.robber and c.robber.phase, 'chasing', 'the AI robber struck')
+  T.eq(c.robbedLoad, c.load, 'this delivery has been robbed')
+  car.metres = 460; F.advance(c, 0.2)
+  T.eq(c.robber, nil, 'it got away')
+  T.eq(c:adminRobProblem(), 'off', 'the admin can\'t rob it again')
 end
 
 -- ===== The admin's side ==============================================================================================
