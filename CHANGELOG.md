@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 261 · 21 Nov 2026
+
 - **Every job board now has a long haul in place of the dangerous contract.** It's a load of parts or bricks to a town 20 to 60 km away, marked LONG HAUL on the Town tab, and it pays more than the shorter runs. The other jobs and the off-road drop are the same as before.
 - Dangerous contracts are switched off for now while they get more work, so they no longer show on the job boards, the help page or the start page. If you were already on one, you can still finish it. Your saves still work, and the roads you've driven are kept for when contracts come back.
 
