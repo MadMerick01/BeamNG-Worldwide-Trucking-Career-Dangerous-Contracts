@@ -6,11 +6,21 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
-- **Road robbers now take 20% of the job you're on,** at least $500 and at most $15,000, instead of a flat $1,000. A big load is a big prize, so a heavy, slow rig has the most to lose. Catch the robber with your EMP and you get it all back plus half as much again from their trunk (a $10,000 robbery pays $15,000 when caught).
-- Robbers come less often: a 1 in 4 chance on a job of 5 km or more, down from 1 in 2. A delivery can only be robbed once, whether by the AI robber or a server admin.
-- **The base thief now takes 3% of your bank,** at least $1,000 and at most $10,000, and catching them pays it back plus half as much again.
+- **Robbers and thieves now take more from a bigger job or a fuller bank,** instead of a flat $1,000, so a heavy, slow rig carrying a valuable load has the most to lose. Catch them with your EMP and you get it all back, plus a bigger trunk bonus than before. The pop-up and the chase card show exactly how much was taken and won back.
+- Road robbers come less often, and a delivery can only be robbed once, whether by the AI robber or a server admin.
 - The ROB ME and Get robbed test buttons still work, but catching those robbers pays no trunk bonus.
 - On a server, the live feed now shows the real amounts taken and won back. Saves still work.
+
+## Build 258 · 21 Nov 2026
+
+- **New help page: press the ? at the top of the HUD** to open a big How to play window in the middle of the screen. It explains every part of the game in short sections: jobs and pay, fuel runs, your cars and trailers, repairs and towing, relocating, the heli, dangerous contracts, bases and turf, robbers and the EMP, Mayday Rescue, playing online, Street View and the radio. Its prices are always the game's real ones.
+- The ? glows gold until you open the help page for the first time. Close it with its ✕ or by clicking outside it.
+- The top of the help page has the **live server page** and the **Discord** invite, each with a Copy button to paste into your web browser, and an Open or Join button.
+- Sections that only work online, like Mayday Rescue and the land race, are marked "Online only" when you play single player.
+- **The HUD is shorter.** Long explanations on the Route, Town, Garage, Relocate, Heli, Base, Street View and Radio tabs are now one short line with a small **?** that opens the help page at the right section. Every button and feature is still there.
+- **Fuel runs are back on the Town tab,** under the job board, with their Teleport to the depot, GPS and Load buttons.
+- The start page has a new **Read the full guide** button under How to play.
+- Nothing to delete or reinstall, and your saves still work.
 
 ## Build 257 · 20 Nov 2026
 

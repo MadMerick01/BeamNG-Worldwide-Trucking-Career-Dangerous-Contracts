@@ -311,8 +311,8 @@ function M.attach(c)
     if not self.profile or self.error then return nil end
     local problem = self:theftProblem(true)
     if problem == 'Not ready yet.' then problem = 'Get in your car first.' end
-    return { allowed = problem == nil, problem = problem, sharePercent = math.floor(M.SHARE * 100 + 0.5),
-      minTake = M.MIN_TAKE, maxTake = M.MAX_TAKE, bountyPercent = math.floor(M.BOUNTY_SHARE * 100 + 0.5) }
+    -- What a thief takes is never shown here (MadMerick): only the amount, once it happens.
+    return { allowed = problem == nil, problem = problem }
   end
 
   -- Whether the player left a job, run or spot to chase a thief and hasn't gone back yet.

@@ -173,8 +173,7 @@ function M.attach(c)
     if state == 'struck' then
       a.struck = true
       self.adminFeedback = nil
-      self:showFlash('cancelled', 'YOU ROBBED ' .. a.name:upper(), 'Your EMP hit them and took '
-        .. math.floor(roadRobber.SHARE * 100 + 0.5) .. '% of their job\'s pay. Get ' .. M.ESCAPE_METRES .. ' m clear before they catch you with theirs.')
+      self:showFlash('cancelled', 'YOU ROBBED ' .. a.name:upper(), 'Your EMP hit them and took their money. Get ' .. M.ESCAPE_METRES .. ' m clear before they catch you with theirs.')
     elseif state == 'caught' then
       a.stage, a.caughtAt = 'caught', self.clock
       if self.thiefCar then self.thiefCar:shutDownPlayer() end

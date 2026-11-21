@@ -391,9 +391,8 @@ function M.attach(c)
     if not self.profile or self.error then return nil end
     local problem = self:robberProblem(true)
     if self.robber and self.robber.phase == 'loaded' and self.robber.go then problem = 'A robber is coming. Keep driving.' end
-    return { allowed = problem == nil, problem = problem, robbersAllowed = not self.noRobbers,
-      sharePercent = math.floor(M.SHARE * 100 + 0.5), minTake = M.MIN_TAKE, maxTake = M.MAX_TAKE,
-      trunkPercent = math.floor(M.TRUNK_SHARE * 100 + 0.5), feedback = self.robberFeedback }
+    -- What a robber takes is never shown here (MadMerick): only the amount, once it happens.
+    return { allowed = problem == nil, problem = problem, robbersAllowed = not self.noRobbers, feedback = self.robberFeedback }
   end
 
   -- The chase card, in the base thief's shape (thief.lua's thiefView) with road = true, or nil.
