@@ -1,8 +1,8 @@
--- Base thief (trial): while the player is out on the road, a thief breaks into their base and steals STOLEN dollars.
+-- Base thief (trial): while the player is out on the road, a thief breaks into their base and steals its take (M.take: SHARE of the bank).
 -- The HUD shows the alert and a CHASE_WINDOW_SECONDS countdown. Chase relocates the player to their base for free,
 -- waits SETTLE_SECONDS for the world to load and the car to settle, then the thief's car turns up nearby and flees
 -- (thiefCar.lua drives it with the game's flee AI, or MadMerick's smartAI when it is installed). Within EMP_METRES the
--- EMP button cuts the thief's ignition: the player gets the money back plus BOUNTY from the thief's trunk. The thief
+-- EMP button cuts the thief's ignition: the player gets the money back plus BOUNTY_SHARE of it from the thief's trunk. The thief
 -- gets away with the money once ESCAPE_METRES clear, and their car disappears. It works the same on a server: each
 -- player's own game runs their thief (BeamMP shows its car to everyone), and the money goes into the career the server
 -- keeps like any other. The thief's car needs a free car slot (the server's MaxCars). Pure Lua: the car itself is handled by c.thiefCar (thiefCar.lua), which may be missing.
@@ -15,8 +15,15 @@ local flights = require('earthFreight/flights')
 local emp = require('earthFreight/emp')
 local M = {}
 
-M.STOLEN = 1000
-M.BOUNTY = 5000
+local function round10(n) return math.floor(n / 10 + 0.5) * 10 end
+
+-- What the thief takes (MadMerick, 21 Nov): SHARE of the bank, at least MIN_TAKE (or what's there) and at most
+-- MAX_TAKE. Catching them pays it back plus BOUNTY_SHARE of it again from their trunk; not for a theft the Get robbed
+-- button started, which is a test.
+M.SHARE = 0.03
+M.MIN_TAKE = 1000
+M.MAX_TAKE = 10000
+M.BOUNTY_SHARE = 0.5
 -- How long the player has to press Chase after the theft.
 M.CHASE_WINDOW_SECONDS = 600
 -- After landing at the base, how long the world gets to load and the car to settle before the thief turns up. The
@@ -35,8 +42,15 @@ M.ESCAPE_METRES = 450
 M.EMP_METRES = emp.RANGE
 -- A caught thief's car stays this long before it is taken away.
 M.CAUGHT_SECONDS = 10
+-- The thief's take from a bank of balance, and the trunk bonus for catching them with that much.
+function M.take(balance)
+  balance = math.floor(tonumber(balance) or 0)
+  return math.min(balance, round10(math.max(M.MIN_TAKE, math.min(M.MAX_TAKE, balance * M.SHARE))))
+end
+function M.bounty(amount) return round10((amount or 0) * M.BOUNTY_SHARE) end
+
 -- When thefts happen: one per session (each time the player loads in, on a map or a server), at a random moment in
--- their first WINDOW_MINUTES of play. It needs a base, at least MIN_AWAY_METRES from it, STOLEN in the bank and the
+-- their first WINDOW_MINUTES of play. It needs a base, at least MIN_AWAY_METRES from it, MIN_TAKE in the bank and the
 -- player not busy; if they can't be robbed at that moment, it happens as soon as they can.
 M.MIN_AWAY_METRES = 5000
 M.WINDOW_MINUTES = 45
@@ -63,7 +77,7 @@ function M.attach(c)
     if self.thief then return 'A thief is already about.' end
     if self.robber and self.robber.phase ~= 'loaded' then return 'A robber is already about.' end
     if self.thiefReturn then return 'Go back to your job first.' end
-    if not self:canAfford(M.STOLEN) then return 'Less than ' .. dollars(M.STOLEN) .. ' in the bank.' end
+    if not self:canAfford(M.MIN_TAKE) then return 'Less than ' .. dollars(M.MIN_TAKE) .. ' in the bank.' end
     if forced then return nil end
     if self.noRobbers then return 'You chose not to be robbed.' end
     if self.thiefReturn or self.hire or self.onFoot or self.maydayRun or self.booking or self.stranded then return 'Busy.' end
@@ -75,16 +89,18 @@ function M.attach(c)
   -- A thief takes the money now. Returns true when it did.
   function c:startTheft(forced)
     if self:theftProblem(forced) then return false end
-    if not self:spend(M.STOLEN, 'thief') then return false end
-    self.thief = { phase = 'stolen', amount = M.STOLEN, at = self.clock }
-    local text = 'A thief broke into your base and took ' .. dollars(M.STOLEN) .. '. Press Chase within '
-      .. math.floor(M.CHASE_WINDOW_SECONDS / 60) .. ' minutes to go after them. Catch them with the EMP and you get it back, plus '
-      .. dollars(M.BOUNTY) .. ' from their trunk.'
-    self:showFlash('cancelled', 'THIEF AT YOUR BASE: -' .. dollars(M.STOLEN), text)
+    local amount = M.take(self.profile.progression.balance)
+    if amount <= 0 or not self:spend(amount, 'thief') then return false end
+    local bounty = (not forced) and M.bounty(amount) or 0
+    self.thief = { phase = 'stolen', amount = amount, bounty = bounty, at = self.clock }
+    local text = 'A thief broke into your base and took ' .. dollars(amount) .. '. Press Chase within '
+      .. math.floor(M.CHASE_WINDOW_SECONDS / 60) .. ' minutes to go after them. Catch them with the EMP and you get it back'
+      .. (bounty > 0 and (', plus ' .. dollars(bounty) .. ' from their trunk.') or '.')
+    self:showFlash('cancelled', 'THIEF AT YOUR BASE: -' .. dollars(amount), text)
     self:toast('warning', 'Thief at your base', text, 15)
     self:autoSaveSoon('the theft')
-    self.diag:event('thief_stole', tostring(M.STOLEN))
-    self:robberyNews('thief', 'struck')
+    self.diag:event('thief_stole', tostring(amount))
+    self:robberyNews('thief', 'struck', amount)
     return true
   end
 
@@ -182,8 +198,8 @@ function M.attach(c)
       self:showFlash('delivered', 'THE THIEF DROPPED IT', 'They ran off on foot and left your ' .. dollars(t.amount) .. ' behind.')
     end
     self.diag:event('thief_over', tostring(outcome))
-    if outcome == 'lost' then self:robberyNews('thief', 'dropped')
-    elseif outcome == 'let' or outcome == 'late' or outcome == 'escaped' then self:robberyNews('thief', 'escaped') end
+    if outcome == 'lost' then self:robberyNews('thief', 'dropped', t.amount)
+    elseif outcome == 'let' or outcome == 'late' or outcome == 'escaped' then self:robberyNews('thief', 'escaped', t.amount) end
   end
 
   -- The EMP button (emp.lua: every press fires and starts the charge). Returns true when it stopped the thief.
@@ -196,16 +212,18 @@ function M.attach(c)
     local t = self.thief
     if not t or t.phase ~= 'chasing' or not self.thiefCar then return false end
     self.thiefCar:emp(t.carId)
-    local paid = t.amount + M.BOUNTY
+    local bounty = t.bounty or 0
+    local paid = t.amount + bounty
     self:addMoney(paid)
     self:cashSound()
     t.phase, t.caughtAt, t.feedback = 'caught', self.clock, nil
     if t.returnTo then self.thiefReturn, t.returnTo = t.returnTo, nil end
     self:showFlash('delivered', 'THIEF CAUGHT: +' .. dollars(paid), 'The EMP stopped them dead. You got your '
-      .. dollars(t.amount) .. ' back, and ' .. dollars(M.BOUNTY) .. ' from their trunk.')
+      .. dollars(t.amount) .. ' back' .. (bounty > 0 and (', and ' .. dollars(bounty) .. ' from their trunk.')
+      or '. Get robbed is a test, so there is no trunk bonus.'))
     if not self:awayFromJob() then self:autoSaveSoon('catching the thief') end
     self.diag:event('thief_caught', tostring(paid))
-    self:robberyNews('thief', 'caught')
+    self:robberyNews('thief', 'caught', t.amount, paid)
     return true
   end
 
@@ -293,7 +311,8 @@ function M.attach(c)
     if not self.profile or self.error then return nil end
     local problem = self:theftProblem(true)
     if problem == 'Not ready yet.' then problem = 'Get in your car first.' end
-    return { allowed = problem == nil, problem = problem, amount = M.STOLEN, bounty = M.BOUNTY }
+    return { allowed = problem == nil, problem = problem, sharePercent = math.floor(M.SHARE * 100 + 0.5),
+      minTake = M.MIN_TAKE, maxTake = M.MAX_TAKE, bountyPercent = math.floor(M.BOUNTY_SHARE * 100 + 0.5) }
   end
 
   -- Whether the player left a job, run or spot to chase a thief and hasn't gone back yet.
@@ -361,17 +380,18 @@ function M.attach(c)
       local problem = self:thiefReturnProblem()
       -- How the chase ended, with the money, so the card says it big.
       local outcome, paid = self:robberyOutcome(false)
-      if not outcome and t and t.phase == 'caught' then outcome, paid = 'caught', t.amount + M.BOUNTY end
+      local taken = self.robberyResult and not self.robberyResult.road and self.robberyResult.amount or (t and t.amount)
+      if not outcome and t and t.phase == 'caught' then outcome, paid = 'caught', t.amount + (t.bounty or 0) end
       return { phase = 'return', job = r.load, mayday = r.mayday, trailer = r.trailer, returnAllowed = problem == nil,
         problem = problem, travelling = self.booking ~= nil and self.booking.thiefReturn == true or nil, feedback = r.feedback,
-        outcome = outcome, amount = M.STOLEN, paid = paid }
+        outcome = outcome, amount = taken, paid = paid }
     end
     if not t then return nil end
     local settleLeft = t.phase == 'settling' and t.settleAt and math.max(0, M.SETTLE_SECONDS - (self.clock - t.settleAt)) or nil
     local problem = t.phase == 'stolen' and self:thiefChaseProblem() or nil
     return {
-      phase = t.phase, amount = t.amount, bounty = M.BOUNTY, secondsLeft = self:theftSecondsLeft(),
-      paid = t.phase == 'caught' and t.amount + M.BOUNTY or nil,
+      phase = t.phase, amount = t.amount, bounty = t.bounty or 0, secondsLeft = self:theftSecondsLeft(),
+      paid = t.phase == 'caught' and t.amount + (t.bounty or 0) or nil,
       chaseAllowed = t.phase == 'stolen' and problem == nil, problem = problem,
       settleLeft = settleLeft,
       distanceMetres = t.phase == 'chasing' and t.metres and math.floor(t.metres + 0.5) or nil,

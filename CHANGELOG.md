@@ -6,6 +6,12 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Road robbers now take 20% of the job you're on,** at least $500 and at most $15,000, instead of a flat $1,000. A big load is a big prize, so a heavy, slow rig has the most to lose. Catch the robber with your EMP and you get it all back plus half as much again from their trunk (a $10,000 robbery pays $15,000 when caught).
+- Robbers come less often: a 1 in 4 chance on a job of 5 km or more, down from 1 in 2. A delivery can only be robbed once, whether by the AI robber or a server admin.
+- **The base thief now takes 3% of your bank,** at least $1,000 and at most $10,000, and catching them pays it back plus half as much again.
+- The ROB ME and Get robbed test buttons still work, but catching those robbers pays no trunk bonus.
+- On a server, the live feed now shows the real amounts taken and won back. Saves still work.
+
 ## Build 257 · 20 Nov 2026
 
 - **The HUD now jumps back to the top when a new Mayday call, a thief at your base or a road robber's hit comes in,** so you see the alert card even if you were scrolled down a long tab. It happens once per alert, and you can scroll back down straight away. Saves still work.

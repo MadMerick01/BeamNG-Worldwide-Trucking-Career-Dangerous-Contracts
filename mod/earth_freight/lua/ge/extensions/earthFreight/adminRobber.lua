@@ -11,10 +11,10 @@
 -- The robbed player's side: their game runs the robbery, as it does the AI robber, with the admin's car in place of
 -- the robber's. The admin drives the whole time and fires his EMP himself (his HUD button or the Fire EMP key, with the
 -- same 20-second charge as everyone's): the player's game checks it reached, within STRIKE_METRES it strikes (engine
--- out, STOLEN taken), and tells him how far off a miss was. The player's EMP catches it (STOLEN
--- back plus TRUNK), ESCAPE_METRES clear it gets away, and not struck within STRIKE_SECONDS it gives up. The admin's name
--- is only shown when he's caught. The STOLEN money just disappears: the admin gets nothing. It doesn't use up the job's
--- 50% roll for the AI robber. Pure Lua: BeamMP's car names come from c.mpGame, which may be missing.
+-- out, the road robber's cut of the job's pay taken), and tells him how far off a miss was. The player's EMP catches it
+-- (the cut back plus the trunk bonus), ESCAPE_METRES clear it gets away, and not struck within STRIKE_SECONDS it gives
+-- up. The admin's name is only shown when he's caught. The money just disappears: the admin gets nothing. One robbery a
+-- delivery: a job already robbed can't be robbed by him, and once he's on a job its AI robber stands down. Pure Lua: BeamMP's car names come from c.mpGame, which may be missing.
 local location = require('earthFreight/location')
 local roadRobber = require('earthFreight/roadRobber')
 local pricing = require('earthFreight/pricing')
@@ -23,8 +23,6 @@ local M = {}
 
 M.BEHIND_METRES = roadRobber.BEHIND_METRES
 M.STRIKE_METRES = roadRobber.STRIKE_METRES
-M.STOLEN = roadRobber.STOLEN
-M.TRUNK = roadRobber.TRUNK
 M.ESCAPE_METRES = roadRobber.ESCAPE_METRES
 M.CAUGHT_SECONDS = roadRobber.CAUGHT_SECONDS
 -- The admin has this long from being in place to strike; there's no distance limit.
@@ -175,16 +173,16 @@ function M.attach(c)
     if state == 'struck' then
       a.struck = true
       self.adminFeedback = nil
-      self:showFlash('cancelled', 'YOU ROBBED ' .. a.name:upper(), 'Your EMP hit them and took ' .. dollars(M.STOLEN)
-        .. '. Get ' .. M.ESCAPE_METRES .. ' m clear before they catch you with theirs.')
+      self:showFlash('cancelled', 'YOU ROBBED ' .. a.name:upper(), 'Your EMP hit them and took '
+        .. math.floor(roadRobber.SHARE * 100 + 0.5) .. '% of their job\'s pay. Get ' .. M.ESCAPE_METRES .. ' m clear before they catch you with theirs.')
     elseif state == 'caught' then
       a.stage, a.caughtAt = 'caught', self.clock
       if self.thiefCar then self.thiefCar:shutDownPlayer() end
       self:showFlash('cancelled', a.name:upper() .. ' CAUGHT YOU', 'Their EMP stopped you dead, and they know it was you.'
         .. ' Back to your car in ' .. M.CAUGHT_SECONDS .. ' s.')
     elseif state == 'escaped' then
-      self:showFlash('delivered', 'YOU GOT AWAY', 'You got clear of ' .. a.name .. ' with the ' .. dollars(M.STOLEN)
-        .. '. They never knew it was you. Back to your car.')
+      self:showFlash('delivered', 'YOU GOT AWAY', 'You got clear of ' .. a.name .. ' with their money.'
+        .. ' They never knew it was you. Back to your car.')
       self:adminGoBack(nil)
     elseif state == 'gave_up' then
       self:adminGoBack('Time ran out before you hit ' .. a.name .. '. Back to your car.')
@@ -301,6 +299,8 @@ function M.attach(c)
   function c:adminRobProblem()
     if not self.mp or self.mp.state ~= 'server' then return 'off' end
     if self.robber and self.robber.admin then return 'busy' end
+    -- One robbery a delivery: not a job a robber already came for (roadRobber.lua).
+    if self.load and self.robbedLoad == self.load then return 'off' end
     if self:robberProblem(false) then return 'off' end
     -- Any job, however short: the admin picks each target himself (the AI robber keeps its 5 km minimum).
     if not self.load or self.load.beacon then return 'off' end
@@ -341,8 +341,9 @@ function M.attach(c)
         self.mp:robNews('gone')
         return
       end
-      -- An AI robber waiting for its moment goes for now; the job's own is loaded again afterwards (roadRobber.lua).
+      -- One robbery a delivery: an AI robber waiting for this job's moment stands down for good.
       if r and r.phase == 'loaded' then self:dropRobber('admin robber') end
+      self.robberAtKm = nil
       self.robber = { admin = true, phase = 'lurking', serverCar = d.car, placedAt = self.clock }
       self.diag:event('admin_robber_on', d.car)
     elseif d.state == 'off' then
@@ -350,7 +351,7 @@ function M.attach(c)
       local struck = r.phase == 'chasing'
       self:dropRobber('admin off')
       if struck then
-        self:robberyNews('robber', 'escaped')
+        self:robberyNews('robber', 'escaped', r.amount)
         self:showFlash('cancelled', 'THE ROBBER GOT AWAY', 'They vanished with your ' .. dollars(r.amount or 0) .. '.')
       end
     elseif d.state == 'emp' then
@@ -363,8 +364,9 @@ function M.attach(c)
     elseif d.state == 'caught' then
       local name = type(d.name) == 'string' and d.name:gsub('%c', ''):sub(1, 32) or nil
       if not name or name == '' then return end
+      local got = self.robberyResult or {}
       self:showFlash('delivered', 'YOU CAUGHT ' .. name:upper() .. '!', 'The robber was ' .. name .. ' all along. You got your '
-        .. dollars(M.STOLEN) .. ' back, and ' .. dollars(M.TRUNK) .. ' from their trunk.')
+        .. dollars(got.amount or 0) .. ' back, and ' .. dollars(math.max(0, (got.paid or 0) - (got.amount or 0))) .. ' from their trunk.')
       self:toast('info', 'You caught ' .. name .. '!', 'The robber was ' .. name .. ' all along.', 10)
     end
   end
@@ -375,10 +377,11 @@ function M.attach(c)
     return r.carId
   end
 
-  -- The admin's EMP reached: the engine dies for a few seconds, STOLEN is taken, and the chase is on.
+  -- The admin's EMP reached: the engine dies for a few seconds, the robber's cut is taken, and the chase is on.
   function c:adminStrikes()
     local r = self.robber
-    if not self:spend(M.STOLEN, 'robber') then
+    local amount = self:robberTake()
+    if amount <= 0 or not self:spend(amount, 'robber') then
       self.mp:robNews('gave_up')
       self:dropRobber('nothing to take')
       return
@@ -387,16 +390,19 @@ function M.attach(c)
     -- The robber's EMP drains the player's too: it charges from empty before they can fire back (emp.lua).
     self.empFiredAt = self.clock
     self:empSound()
-    r.phase, r.amount, r.struckAt, r.empEndAt = 'chasing', M.STOLEN, self.clock, self.clock + roadRobber.PLAYER_EMP_SECONDS
-    local text = 'A robber hit you with an EMP and took ' .. dollars(M.STOLEN) .. '. Your engine is back in '
+    r.phase, r.amount, r.struckAt, r.empEndAt = 'chasing', amount, self.clock, self.clock + roadRobber.PLAYER_EMP_SECONDS
+    r.trunk = roadRobber.trunk(amount)
+    -- One robbery a delivery: this job can't be robbed again.
+    self.robbedLoad = self.load
+    local text = 'A robber hit you with an EMP and took ' .. dollars(amount) .. '. Your engine is back in '
       .. roadRobber.PLAYER_EMP_SECONDS .. ' s and your EMP is drained: it takes ' .. emp.CHARGE_SECONDS .. ' s to charge. Catch them with your EMP within ' .. emp.RANGE .. ' m to get it back, plus '
-      .. dollars(M.TRUNK) .. ' from their trunk.'
-    self:showFlash('cancelled', 'ROBBED ON THE ROAD: -' .. dollars(M.STOLEN), text)
+      .. dollars(r.trunk) .. ' from their trunk.'
+    self:showFlash('cancelled', 'ROBBED ON THE ROAD: -' .. dollars(amount), text)
     self:toast('warning', 'Robbed on the road', text, 10)
     self:autoSaveSoon('the robbery')
     self.mp:robNews('struck')
-    self:robberyNews('robber', 'struck')
-    self.diag:event('admin_robber_struck', '')
+    self:robberyNews('robber', 'struck', amount)
+    self.diag:event('admin_robber_struck', tostring(amount))
   end
 
   -- Every tick while an admin robs this player (from watchRobber).
@@ -427,7 +433,7 @@ function M.attach(c)
       if not d or d > M.ESCAPE_METRES then
         self.mp:robNews('escaped')
         self:dropRobber('admin escaped')
-        self:robberyNews('robber', 'escaped')
+        self:robberyNews('robber', 'escaped', r.amount)
         self:showFlash('cancelled', 'THE ROBBER GOT AWAY', 'They got ' .. M.ESCAPE_METRES .. ' m clear of you and escaped with your '
           .. dollars(r.amount or 0) .. '.')
       end

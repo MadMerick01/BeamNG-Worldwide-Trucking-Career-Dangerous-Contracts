@@ -7,12 +7,13 @@
 --   hunting: the game's chase AI at the player's speed plus HUNT_FAR_EXTRA_KPH to catch up, easing to plus
 --     HUNT_EXTRA_KPH within CLOSE_METRES, never over HUNT_MAX_KPH.
 --   Within STRIKE_METRES it strikes: its EMP cuts the player's engine for PLAYER_EMP_SECONDS and jams their brakes for
---     PLAYER_BRAKE_SECONDS, and it takes STOLEN. Not struck within GIVE_UP_SECONDS, or GIVE_UP_METRES behind: it gives
+--     PLAYER_BRAKE_SECONDS, and it takes its cut (M.take: SHARE of the job's pay, MIN_TAKE to MAX_TAKE). Not struck within GIVE_UP_SECONDS, or GIVE_UP_METRES behind: it gives
 --     up and goes, and nothing is lost.
 --   chasing: first it overtakes (passing): it eases off to PASS_START_KPH for PASS_HOLD_SECONDS so it doesn't run into
 --     the braking player, then goes round them at up to PASS_KPH. Once it is ahead of them and PASS_CLEAR_METRES clear
 --     (or after PASS_MAX_SECONDS) it flees (the base thief's flee, fleeSupervisor.lua). The player's EMP (emp.lua)
---     within its range stops it for good: STOLEN back plus TRUNK, and the car goes after CAUGHT_SECONDS.
+--     within its range stops it for good: the cut back plus TRUNK_SHARE of it again from the trunk (none on ROB ME,
+--     a test), and the car goes after CAUGHT_SECONDS.
 --     ESCAPE_METRES clear, it gets away with the money. The job carries on throughout, and delivering or abandoning it
 --     doesn't end the chase.
 -- The player can turn robbers off with the Route tab's "Robbers can rob me" tick box (saved as noRobbers), which the
@@ -27,12 +28,16 @@ local thief = require('earthFreight/thief')
 local emp = require('earthFreight/emp')
 local M = {}
 
-M.CHANCE = 0.5
+M.CHANCE = 0.25
 M.MIN_JOB_METRES = 5000
 M.EDGE_METRES = 2000
 M.BEHIND_METRES = 100
-M.STOLEN = 1000
-M.TRUNK = 5000
+-- The robber's cut (MadMerick, 21 Nov): SHARE of the job's pay, at least MIN_TAKE and at most MAX_TAKE, never more
+-- than the bank; so a big load is a big prize. Catching it pays the cut back plus TRUNK_SHARE of it from the trunk.
+M.SHARE = 0.2
+M.MIN_TAKE = 500
+M.MAX_TAKE = 15000
+M.TRUNK_SHARE = 0.5
 M.STRIKE_METRES = emp.RANGE
 M.PLAYER_EMP_SECONDS = 10
 -- ...and jams their brakes on for this long, for a jolt.
@@ -75,6 +80,17 @@ function M.huntKph(playerKph, metres)
   return math.min(M.HUNT_MAX_KPH, math.max(0, playerKph or 0) + extra)
 end
 
+local function round10(n) return math.floor(n / 10 + 0.5) * 10 end
+
+-- The robber's cut of a job paying pay, with balance in the bank (0 when there's nothing to take).
+function M.take(pay, balance)
+  local cut = round10(math.max(M.MIN_TAKE, math.min(M.MAX_TAKE, (tonumber(pay) or 0) * M.SHARE)))
+  return math.max(0, math.min(cut, math.floor(tonumber(balance) or 0)))
+end
+
+-- What the trunk pays on top when the robber with this cut is caught.
+function M.trunk(amount) return round10((amount or 0) * M.TRUNK_SHARE) end
+
 -- How long the job's road is in metres, or nil.
 local function jobMetres(load)
   local from, to = places.get(load.from), places.get(load.to)
@@ -89,9 +105,10 @@ function M.attach(c)
   --     empEndAt, caughtAt, nextTry, tries, speedAt, passing, fastAt }. phase: 'loaded' (out of sight, waiting for its
   --     moment), 'hunting', 'chasing' (struck: overtaking while passing, then fleeing), 'caught'. The admin robber
   --     (adminRobber.lua) uses 'lurking' until he strikes.
-  --   self.robberJob: the load the 50% roll was made for, and self.robberAtKm: the job's driven km at which it strikes
+  --   self.robberJob: the load the CHANCE roll was made for, and self.robberAtKm: the job's driven km at which it strikes
   --     (nil when this job isn't robbed).
   --   self.noRobbers: true when the player unticked "Robbers can rob me".
+  --   self.robbedLoad: the load a robber (this game's or the admin's) has already robbed: one robbery a delivery.
 
   -- Why a robber can't be put on the road now, or nil.
   function c:robberProblem(forced)
@@ -101,7 +118,7 @@ function M.attach(c)
     if self.hire then return 'Not while flying.' end
     if self.thief or self:awayFromJob() then return 'A thief is already about.' end
     if self.robber and self.robber.phase ~= 'loaded' then return 'A robber is already about.' end
-    if not self:canAfford(M.STOLEN) then return 'Less than ' .. dollars(M.STOLEN) .. ' in the bank.' end
+    if not self:canAfford(M.MIN_TAKE) then return 'Less than ' .. dollars(M.MIN_TAKE) .. ' in the bank.' end
     if forced then return nil end
     if self.noRobbers then return 'You chose not to be robbed.' end
     if self.maydayRun or self.booking or self.stranded then return 'Busy.' end
@@ -147,31 +164,33 @@ function M.attach(c)
 
   -- How a robbery of this player went: kept a while for the HUD's card (robberyResultView), and told to the server's
   -- live feed (multiplayer.lua robbed) on a server.
-  function c:robberyNews(who, what)
-    if what ~= 'struck' then self.robberyResult = { road = who == 'robber' or nil, outcome = what, at = self.clock } end
-    if self.mp and self.mp.robbed then self.mp:robbed(who, what) end
+  -- taken: what the robber or thief took; paid: what catching them paid (the money back plus the trunk).
+  function c:robberyNews(who, what, taken, paid)
+    if what ~= 'struck' then
+      self.robberyResult = { road = who == 'robber' or nil, outcome = what, at = self.clock, amount = taken, paid = paid }
+    end
+    if self.mp and self.mp.robbed then self.mp:robbed(who, what, taken, paid) end
   end
 
-  -- The money in a robbery's outcome, for the HUD: what was taken, and what catching them paid.
-  local function robberyMoney(road)
-    if road then return M.STOLEN, M.STOLEN + M.TRUNK end
-    return thief.STOLEN, thief.STOLEN + thief.BOUNTY
+  -- The money in a robbery's outcome, for the HUD: what was taken, and what the player got back.
+  local function robberyMoney(r)
+    local got = (r.outcome == 'caught' and r.paid) or (r.outcome == 'dropped' and r.amount) or nil
+    return r.amount, got
   end
 
   -- The card's last word once a robbery is over and its car gone: who, how it ended and the money, for RESULT_SECONDS.
   function c:robberyResultView()
     local r = self.robberyResult
     if not r or self.clock - r.at > M.RESULT_SECONDS then return nil end
-    local taken, paid = robberyMoney(r.road)
-    return { road = r.road, phase = 'over', outcome = r.outcome, amount = taken,
-      paid = (r.outcome == 'caught' and paid) or (r.outcome == 'dropped' and taken) or nil }
+    local taken, got = robberyMoney(r)
+    return { road = r.road, phase = 'over', outcome = r.outcome, amount = taken, paid = got }
   end
   -- For the thief's Back to your job card: how it ended, while that card waits.
   function c:robberyOutcome(road)
     local r = self.robberyResult
     if not r or (r.road or false) ~= (road or false) then return nil end
-    local taken, paid = robberyMoney(r.road)
-    return r.outcome, (r.outcome == 'caught' and paid) or (r.outcome == 'dropped' and taken) or nil
+    local _, got = robberyMoney(r)
+    return r.outcome, got
   end
 
   -- Watches a fleeing or driving robber's or thief's car (r: the robber or the theft) for getting stuck off the road.
@@ -203,22 +222,31 @@ function M.attach(c)
     if not r or r.phase ~= 'chasing' then return false end
     -- An admin's car is shut down by his own game, told through the server.
     if r.admin then self.mp:robNews('caught') else self.thiefCar:emp(r.carId) end
-    local paid = (r.amount or 0) + M.TRUNK
+    local trunk = r.trunk or 0
+    local paid = (r.amount or 0) + trunk
     self:addMoney(paid)
     self:cashSound()
     r.phase, r.caughtAt = 'caught', self.clock
     self:showFlash('delivered', 'ROBBER CAUGHT: +' .. dollars(paid), 'The EMP stopped them dead. You got your '
-      .. dollars(r.amount or 0) .. ' back, and ' .. dollars(M.TRUNK) .. ' from their trunk.')
+      .. dollars(r.amount or 0) .. ' back' .. (trunk > 0 and (', and ' .. dollars(trunk) .. ' from their trunk.')
+      or '. ROB ME is a test, so there is no trunk bonus.'))
     self:autoSaveSoon('catching the robber')
-    self:robberyNews('robber', 'caught')
+    self:robberyNews('robber', 'caught', r.amount, paid)
     self.diag:event('robber_caught', tostring(paid))
     return true
   end
 
-  -- The robber's EMP hits the player: STOLEN taken, the engine dead for a few seconds, and it flees.
+  -- The robber's cut of the job the player is on now (MIN_TAKE without a job: ROB ME).
+  function c:robberTake()
+    local balance = self.profile and self.profile.progression.balance or 0
+    return M.take(self.load and self.load.pay or 0, balance)
+  end
+
+  -- The robber's EMP hits the player: its cut taken, the engine dead for a few seconds, and it flees.
   function c:robberStrikes()
     local r = self.robber
-    if not self:spend(M.STOLEN, 'robber') then
+    local amount = self:robberTake()
+    if amount <= 0 or not self:spend(amount, 'robber') then
       -- Spent it since: nothing to take, so it just goes.
       self:dropRobber('nothing to take')
       return
@@ -230,27 +258,30 @@ function M.attach(c)
     -- It came from behind: it eases off, then overtakes before it flees (see the top).
     if self.thiefCar.pass then self.thiefCar:pass(r.carId, M.PASS_START_KPH) else self.thiefCar:flee(r.carId) end
     r.passing = self.thiefCar.pass ~= nil or nil
-    r.phase, r.amount, r.struckAt, r.empEndAt = 'chasing', M.STOLEN, self.clock, self.clock + M.PLAYER_EMP_SECONDS
-    local text = 'A robber hit you with an EMP and took ' .. dollars(M.STOLEN) .. '. Your engine is back in '
-      .. M.PLAYER_EMP_SECONDS .. ' s and your EMP is drained: it takes ' .. emp.CHARGE_SECONDS .. ' s to charge. Catch them with your EMP within ' .. emp.RANGE .. ' m to get it back, plus '
-      .. dollars(M.TRUNK) .. ' from their trunk.'
-    self:showFlash('cancelled', 'ROBBED ON THE ROAD: -' .. dollars(M.STOLEN), text)
+    r.phase, r.amount, r.struckAt, r.empEndAt = 'chasing', amount, self.clock, self.clock + M.PLAYER_EMP_SECONDS
+    r.trunk = (not r.forced) and M.trunk(amount) or 0
+    -- One robbery a delivery: the admin robber can't rob this job now either (adminRobber.lua).
+    if not r.forced then self.robbedLoad = self.load end
+    local text = 'A robber hit you with an EMP and took ' .. dollars(amount) .. '. Your engine is back in '
+      .. M.PLAYER_EMP_SECONDS .. ' s and your EMP is drained: it takes ' .. emp.CHARGE_SECONDS .. ' s to charge. Catch them with your EMP within ' .. emp.RANGE .. ' m to get it back'
+      .. (r.trunk > 0 and (', plus ' .. dollars(r.trunk) .. ' from their trunk.') or '.')
+    self:showFlash('cancelled', 'ROBBED ON THE ROAD: -' .. dollars(amount), text)
     self:toast('warning', 'Robbed on the road', text, 10)
     self:autoSaveSoon('the robbery')
-    self:robberyNews('robber', 'struck')
-    self.diag:event('robber_struck', tostring(M.STOLEN))
+    self:robberyNews('robber', 'struck', amount)
+    self.diag:event('robber_struck', tostring(amount))
   end
 
   -- Every tick.
   function c:watchRobber(dt)
     if not self.thiefCar or not self.profile or self.error then return end
     local load = self.load
-    -- A new job: the 50% roll, once. A robbed job gets its robber loaded now, at the job board.
+    -- A new job: the CHANCE roll, once (not when the admin robber already robbed it: one robbery a delivery). A robbed job gets its robber loaded now, at the job board.
     if load ~= self.robberJob then
       self.robberJob, self.robberAtKm = load, nil
       if self.robber and self.robber.phase == 'loaded' and not self.robber.forced then self:dropRobber('job ended') end
       local robbable, metres = self:robbableJob(load)
-      if robbable and not self.noRobbers and not self.robber and self.random() < M.CHANCE then
+      if robbable and not self.noRobbers and not self.robber and self.robbedLoad ~= load and self.random() < M.CHANCE then
         local span = metres - 2 * M.EDGE_METRES
         self.robberAtKm = (M.EDGE_METRES + self.random() * math.max(0, span)) / 1000
         self.diag:event('robber_planned', string.format('%.1f km', self.robberAtKm))
@@ -336,7 +367,7 @@ function M.attach(c)
       r.arrow = d and self.thiefCar.bearing and self.thiefCar:bearing(r.carId) or nil
       if not d or d > M.ESCAPE_METRES then
         self:dropRobber('escaped')
-        self:robberyNews('robber', 'escaped')
+        self:robberyNews('robber', 'escaped', r.amount)
         self:showFlash('cancelled', 'THE ROBBER GOT AWAY', 'They got ' .. M.ESCAPE_METRES .. ' m clear of you and escaped with your '
           .. dollars(r.amount or 0) .. '.')
       end
@@ -360,8 +391,9 @@ function M.attach(c)
     if not self.profile or self.error then return nil end
     local problem = self:robberProblem(true)
     if self.robber and self.robber.phase == 'loaded' and self.robber.go then problem = 'A robber is coming. Keep driving.' end
-    return { allowed = problem == nil, problem = problem, robbersAllowed = not self.noRobbers, amount = M.STOLEN,
-      trunk = M.TRUNK, feedback = self.robberFeedback }
+    return { allowed = problem == nil, problem = problem, robbersAllowed = not self.noRobbers,
+      sharePercent = math.floor(M.SHARE * 100 + 0.5), minTake = M.MIN_TAKE, maxTake = M.MAX_TAKE,
+      trunkPercent = math.floor(M.TRUNK_SHARE * 100 + 0.5), feedback = self.robberFeedback }
   end
 
   -- The chase card, in the base thief's shape (thief.lua's thiefView) with road = true, or nil.
@@ -369,8 +401,8 @@ function M.attach(c)
     local r = self.robber
     if not r or (r.phase ~= 'chasing' and r.phase ~= 'caught') then return nil end
     return {
-      road = true, phase = r.phase, amount = r.amount, bounty = M.TRUNK,
-      paid = r.phase == 'caught' and (r.amount or 0) + M.TRUNK or nil,
+      road = true, phase = r.phase, amount = r.amount, bounty = r.trunk or 0,
+      paid = r.phase == 'caught' and (r.amount or 0) + (r.trunk or 0) or nil,
       distanceMetres = r.phase == 'chasing' and r.metres and math.floor(r.metres + 0.5) or nil,
       arrow = r.phase == 'chasing' and r.arrow and math.floor(r.arrow + 0.5) or nil,
       empMetres = emp.RANGE, empInRange = r.phase == 'chasing' and r.metres ~= nil and r.metres <= emp.RANGE,

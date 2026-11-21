@@ -103,10 +103,12 @@ do
   T.eq(c.robber.phase, 'hunting', 'still coming')
   -- It strikes within 15 m.
   local before, sounds = c.profile.progression.balance, c:view().empSound
+  local cut = robber.take(c.load.pay, before)
+  T.eq(cut, math.max(500, math.min(15000, math.floor(c.load.pay * 0.2 / 10 + 0.5) * 10)), '20% of the job\'s pay, $500 to $15,000')
   car.metres = 12
   F.advance(c, 0.2)
   T.eq(c.robber.phase, 'chasing', 'struck, fleeing')
-  T.eq(c.profile.progression.balance, before - robber.STOLEN, '$1,000 taken')
+  T.eq(c.profile.progression.balance, before - cut, 'its cut taken')
   T.eq(c:view().empSound, sounds + 1, 'the EMP sound plays once for the hit')
   T.eq(car.playerHits, 1, 'the player\'s engine is cut')
   T.eq(car.passes[1], robber.PASS_START_KPH, 'it eases off first, so it doesn\'t run into them')
@@ -123,10 +125,10 @@ do
   F.advance(c, 0.2)
   T.eq(car.fled[1], c.robber.carId, 'ahead and clear: it flees'); T.eq(c.robber.passing, nil, 'done overtaking')
   car.metres = 12
-  T.eq(c.flash.title, 'ROBBED ON THE ROAD: -$1,000', 'told')
+  T.eq(c.flash.title, 'ROBBED ON THE ROAD: -' .. require('earthFreight/pricing').dollars(cut), 'told')
   local v = c:view().thief
   T.check(v and v.road and v.phase == 'chasing', 'the chase card, for the robber')
-  T.eq(v.bounty, 5000, '$5,000 in the trunk')
+  T.eq(v.bounty, robber.trunk(cut), 'half as much again in the trunk')
   T.eq(v.emp.ready, false, 'its EMP drained the player\'s: it charges from empty')
   T.check(not c:fireEmp(), 'so they can\'t hit back straight away')
   T.eq(table.concat(news, ', '), 'robber struck', 'the live feed is told it struck')
@@ -149,8 +151,8 @@ do
   T.check(c:view().thief.emp.inRange, 'in range')
   T.check(c:empHotkey(), 'the EMP hits')
   T.eq(car.hit[1], c.robber.carId, 'on the robber')
-  T.eq(c.profile.progression.balance, before + robber.TRUNK, 'money back plus $5,000')
-  T.eq(c.flash.title, 'ROBBER CAUGHT: +$6,000', 'told')
+  T.eq(c.profile.progression.balance, before + robber.trunk(cut), 'money back plus the trunk')
+  T.eq(c.flash.title, 'ROBBER CAUGHT: +' .. require('earthFreight/pricing').dollars(cut + robber.trunk(cut)), 'told')
   T.eq(table.concat(news, ', '), 'robber struck, robber caught', 'and that it was caught')
   local carId = c.robber.carId
   F.advance(c, robber.CAUGHT_SECONDS + 0.5)
@@ -229,7 +231,7 @@ do
   T.eq(car.loaded, 2, 'a second car')
 end
 
--- Short jobs and the heli's packages are never robbed; nor anything without $1,000.
+-- Short jobs and the heli's packages are never robbed; nor anything without $500.
 do
   local c, a, car = ready(0)
   T.check(not c:robbableJob({ from = 'x', to = 'y' }), 'unknown places: no')
@@ -240,8 +242,8 @@ do
     T.check(c:takeJob(id), 'short job'); c:tick(0.1)
     T.eq(c.robberAtKm, nil, 'under 5 km: not robbed')
   end
-  c.profile.progression.balance = 500
-  T.eq(c:robberProblem(true), 'Less than $1,000 in the bank.', 'nothing to take')
+  c.profile.progression.balance = 400
+  T.eq(c:robberProblem(true), 'Less than $500 in the bank.', 'nothing to take')
 end
 
 -- The tick box is kept through a save and a reload.

@@ -577,8 +577,12 @@ function M.new(deps)
   function s:robSpot(t) return shipEvent('wwtcRobSpot', t) end
   function s:robNews(what, metres) return shipEvent('wwtcRobNews', { what = what, metres = metres }) end
   -- The live feed: a robbery of this player. who 'robber' (AI or admin alike) or 'thief'; what 'struck', then 'caught',
-  -- 'escaped' or 'dropped'. The server words it and uses its own amounts.
-  function s:robbed(who, what) return shipEvent('wwtcRobbed', { who = who, what = what }) end
+  -- 'escaped' or 'dropped'. taken: what was taken; paid: what catching them paid back. The server words it, and only
+  -- trusts the amounts within the game's own limits.
+  function s:robbed(who, what, taken, paid)
+    return shipEvent('wwtcRobbed', { who = who, what = what, amount = type(taken) == 'number' and math.floor(taken) or nil,
+      paid = type(paid) == 'number' and math.floor(paid) or nil })
+  end
   -- A base of operations: asks the server whether this town is free (one base a town, 10 km apart).
   function s:claimBase(t) return shipEvent('wwtcBaseClaim', t) end
   -- The land race: opens the corp's next base in this town, once its newest circle is full size.
