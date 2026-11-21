@@ -83,7 +83,7 @@ Online, others can ask to join your base as your corp. Members get the turf bonu
 # robbers | Robbers and the EMP
 On a job of {robberMinKm} km or more, a road robber may hit you with an EMP and take some of your money. The bigger the job, the more they take.
 Chase them: get within {empRange} m and fire your own EMP to get it back, plus a bonus from their trunk. If they get too far ahead, they escape.
-A delivery is only ever robbed once.
+Every trucker can be robbed, and a delivery is only ever robbed once.
 Your EMP takes {empSeconds} seconds to charge again after each shot.
 A base thief can take some of your money from your base. Chase takes you there for free. Catch them for your money back plus a bonus from their trunk.
 On a chase, your job waits where you left it, with its cargo.

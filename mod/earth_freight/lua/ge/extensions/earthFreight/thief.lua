@@ -79,7 +79,6 @@ function M.attach(c)
     if self.thiefReturn then return 'Go back to your job first.' end
     if not self:canAfford(M.MIN_TAKE) then return 'Less than ' .. dollars(M.MIN_TAKE) .. ' in the bank.' end
     if forced then return nil end
-    if self.noRobbers then return 'You chose not to be robbed.' end
     if self.thiefReturn or self.hire or self.onFoot or self.maydayRun or self.booking or self.stranded then return 'Busy.' end
     local away = self:homeDistance()
     if not away or away < M.MIN_AWAY_METRES then return 'Too close to the base.' end

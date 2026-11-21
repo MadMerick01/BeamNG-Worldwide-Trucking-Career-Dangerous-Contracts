@@ -1,6 +1,6 @@
 -- The admin robber: on MadMerick's server, an admin (listed in the server's own settings, never in this mod) can drive
 -- the road robber himself, under its rules. The server tells only an admin's game who can be robbed now: players on a
--- job the road robber could rob (roadRobber.lua), with "Robbers can rob me" ticked. Everyone else's game never shows it.
+-- job the road robber could rob (roadRobber.lua), (everyone can be robbed). Everyone else's game never shows it.
 --
 -- The admin's side: Rob asks the server, which asks that player's game for the road spot BEHIND_METRES behind their
 -- car, on the road they just drove (roadRobber.lua). The admin's car is swapped for the robber's Moonhawk where it stands, the same way the sightseeing car is

@@ -268,8 +268,6 @@ function M.new(deps)
     self.storedCars = self.profile and copy(self.profile.storedCars) or {}
     self.carCards, self.fleetFeedback = nil, nil
     self.extraCarSlot = self.profile and self.profile.extraCarSlot or nil
-    -- Unticked "Robbers can rob me" on the Route tab (roadRobber.lua).
-    self.noRobbers = self.profile and self.profile.noRobbers or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
     self.corp = self.profile and copy(self.profile.corp) or nil
     self.homeFeedback, self.homeCard, self.corpSeen, self.leaveArmed, self.corpAskedAt = nil, nil, nil, nil, nil
@@ -2984,7 +2982,6 @@ function M.new(deps)
         worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
-      noRobbers = self.noRobbers or nil,
       trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
@@ -3423,12 +3420,8 @@ function M.thiefLetGo() return safely(function() return ensure():thiefLetGo() en
 function M.thiefGoBack() return safely(function() return ensure():thiefGoBack() end) end
 function M.thiefTest() return safely(function() return ensure():startTheft(true) end) end
 function M.getRobbed() return safely(function() return ensure():startTheft(true) end) end
--- The road robber: the Route tab's ROB ME button, and its "Robbers can rob me" tick box (true or false).
+-- The road robber: the Route tab's ROB ME button.
 function M.robMe() return safely(function() return ensure():robMe() end) end
-function M.setRobbersAllowed(allowed)
-  if type(allowed) ~= 'boolean' then return false end
-  return safely(function() return ensure():setRobbersAllowed(allowed) end)
-end
 -- The admin robber (the server's admins only): Rob a player from the Route tab's list, his EMP, and Stop.
 function M.adminRob(id)
   if type(id) ~= 'number' or id < 0 or id ~= math.floor(id) then return false end

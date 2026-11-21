@@ -323,9 +323,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.thiefGoBack = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'return' && scope.data.thief.returnAllowed) core('thiefGoBack()') }
       scope.thiefLetGo = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'stolen') core('thiefLetGo()') }
       scope.empThief = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'chasing') core('empThief()') }
-      // The road robber: ROB ME and the "Robbers can rob me" tick box on the Route tab.
+      // The road robber: ROB ME on the Route tab.
       scope.robMe = function () { if (scope.data && scope.data.robMe && scope.data.robMe.allowed) core('robMe()') }
-      scope.setRobbersAllowed = function (on) { if (scope.data && scope.data.robMe) core('setRobbersAllowed(' + (on ? 'true' : 'false') + ')') }
       // The admin robber (the server's admins only): Rob a player from the list, and Stop.
       scope.adminRob = function (p) { if (p && p.allowed && typeof p.id === 'number') core('adminRob(' + Math.floor(p.id) + ')') }
       scope.adminEmp = function () { var d = scope.data && scope.data.admin && scope.data.admin.drive; if (d && d.emp && d.emp.ready) core('adminEmp()') }

@@ -188,18 +188,15 @@ do
   T.eq(c.mp.last('wwtcRobbed').what, 'escaped', 'the live feed: he got away')
 end
 
--- Who can't be robbed: robbers unticked, too little money, no job (a short one is fine); asked anyway, the game says no.
+-- Who can't be robbed: too little money, no job (a short one is fine); asked anyway, the game says no.
 do
   local c, a, car, s = target()
-  c:setRobbersAllowed(false)
-  T.eq(c:adminRobProblem(), 'off', 'robbers unticked')
+  c.profile.progression.balance = 400
+  T.eq(c:adminRobProblem(), 'off', 'less than $500')
   c:answerRobAsk({ ask = 1 })
   T.eq(s.last('wwtcRobSpot').ok, false, 'asked anyway, no'); T.eq(s.last('wwtcRobSpot').why, 'off', 'and why')
   c:robNews({ state = 'go', car = '2-0' })
   T.eq(c.robber, nil, 'a go is refused too'); T.eq(s.last('wwtcRobNews').what, 'gone', 'and the server told')
-  c:setRobbersAllowed(true)
-  c.profile.progression.balance = 400
-  T.eq(c:adminRobProblem(), 'off', 'less than $500')
   c.profile.progression.balance = 100000
   car.ground = false
   c:answerRobAsk({ ask = 2 })

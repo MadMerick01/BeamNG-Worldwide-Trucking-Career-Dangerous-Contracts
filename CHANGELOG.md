@@ -8,6 +8,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **Robbers and thieves now take more from a bigger job or a fuller bank,** instead of a flat $1,000, so a heavy, slow rig carrying a valuable load has the most to lose. Catch them with your EMP and you get it all back, plus a bigger trunk bonus than before. The pop-up and the chase card show exactly how much was taken and won back.
 - Road robbers come less often, and a delivery can only be robbed once, whether by the AI robber or a server admin.
+- **Everyone can be robbed now.** The "Robbers can rob me" tick box on the Route tab is gone, in single player and online, so nobody gets an edge by switching robbers off. If you had it unticked, your save still loads and robbers simply come for you too.
 - The ROB ME and Get robbed test buttons still work, but catching those robbers pays no trunk bonus.
 - On a server, the live feed now shows the real amounts taken and won back. Saves still work.
 
