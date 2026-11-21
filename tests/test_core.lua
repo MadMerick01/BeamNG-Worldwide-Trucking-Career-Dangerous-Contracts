@@ -2609,4 +2609,16 @@ do
   T.check(calls <= 4, 'checked every 2 s, not every frame (' .. calls .. ')')
 end
 
+-- The help page's numbers come from the game's own rules, so its text matches the prices in play.
+do
+  local c = F.controller()
+  c:tick(0.1)
+  local rules = c:view().rules
+  T.eq(rules.robberTake, '$1,000', 'what a road robber takes')
+  T.eq(rules.basePrice, '$250,000', 'what a base costs')
+  T.eq(rules.driveFee, '$250', 'what Drive costs')
+  T.eq(rules.empSeconds, 20, 'EMP charge time')
+  T.eq(rules.online, false, 'single player is not online')
+end
+
 T.done('Earth Freight controller')

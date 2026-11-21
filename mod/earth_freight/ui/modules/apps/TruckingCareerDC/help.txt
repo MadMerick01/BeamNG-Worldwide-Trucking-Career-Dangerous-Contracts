@@ -1,0 +1,105 @@
+// The HUD's help page: press ? at the top of the HUD. This file is all of its text.
+//
+// How to edit it:
+// - A line starting with # starts a section:  # id | Title   (add  | online  for a section that is only for online play).
+//   Keep the ids as they are: the small ? buttons on the HUD open the section with that id.
+// - Every other line is one point in that section. Keep each one short.
+// - Words in {braces} are filled in by the game with its real numbers, such as {robberTake}, so they
+//   stay right when a price changes. The list of names is in rulesView in core.lua.
+// - Lines starting with // are notes like these and are not shown.
+// - The Getting started points are also the steps on the start page.
+
+# start | Getting started
+Choose where you start: open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.
+Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.
+Then fit cargo boxes: the starter car only has its boot, which takes 2 slots. In Buy parts, put Cargo Load boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.
+Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.
+Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.
+The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.
+
+# jobs | Jobs and pay
+Stop in any town to see its jobs on the Town tab. Each job shows where it goes, how far and what it pays.
+Green pay is better than usual, red is worse. A shortage pays double, and a jackpot pays even more.
+Short jobs are up to 8 km, medium 8 to 13 km and long 13 to 300 km. Pick one with the buttons next to Jobs.
+Too big for your car? Use the Load slider on a job to take part of it, for part of the pay.
+Rough roads and steep ground pay more. The number next to the town's name shows how much, such as ×2.7.
+Tap a job to see its details and press GPS to see the route before you take it.
+
+# route | On the road
+The GPS is set when you take a job. If it goes missing, copy the drop-off coordinates on the Route tab into the BeamNG.Earth map.
+Nearby on the Route tab lists the closest towns. Their dots show what each one pays well for, and GPS takes you there.
+Some jobs have no road at the end: follow the arrow on the Route tab and stop close to the spot.
+Abandoning a job costs {abandonFee}. Teleporting without a booking cancels your job for the same fee.
+
+# fuel | Fuel runs and tankers
+Fuel runs are long hauls of fuel, {fuelRunMinKm} to {fuelRunMaxKm} km, from a depot in a quiet regional town out to a country petrol station. The further you go, the more they pay.
+You'll find them on the Town tab. Teleport takes you to the depot for free.
+They need a tank. Fit a Cargo Load fluid tank with Buy parts, or tow a tanker trailer. A tank also lets you take water jobs.
+
+# car | Your car, parts and cargo
+Buy parts, Buy new car and Second hand all work the same way: change what you like, then the bill shows on the Garage tab. Nothing is paid until you press Pay, and you can undo it.
+Your cargo space is counted in slots and kg. More Cargo Load boxes carry bigger loads, and bigger loads pay more.
+Second hand cars look worn but drive like new, and cost less.
+
+# cars | Your cars and trailers
+You start with {startSlots} car slots. A base or a corp gives you {baseSlots}, and then you can buy a {boughtSlots}th for {slotPrice}.
+Drive brings a parked car to you anywhere for {driveFee} and parks the one you are in. Each car keeps its own parts, fuel and damage.
+Sell pays {sellShare} of a car's worth, less any repair.
+A trailer adds cargo space. Each load is shared between your car and the trailer. You need the right hitch on your car: fit one with Buy parts.
+Back up slowly to a trailer and it hitches itself. It only adds space once it is hitched.
+Trailers come with their boxes or tanks fitted. For more room, buy a bigger trailer. You can own as many trailers as you have car slots.
+
+# repair | Repairs, towing, insurance and fuel
+Press Get repair quote on the Garage tab, then Repair to pay and fix it. Repairs at your base are {baseRepairOff} off.
+Stuck? Press Get out, walk to a clear, flat spot within {towRange} m of your car and press Tow car here. You keep your job. Towing doesn't fix damage.
+After a serious crash you can claim insurance: your car is fixed and put back on the road, but the job is lost. A claim costs at least {insuranceMin}, and more the richer you are.
+If you're short, what you owe comes out of your next deliveries, {debtShare} of each, and buying is off until it's paid.
+Fuel is cheapest at a petrol station: drive slowly up to a pump. Refuelling anywhere else costs {townFuelTimes} times the pump price.
+
+# relocate | Relocate
+Move your empty car anywhere in the world. Pick a region, find a town or paste coordinates, pay, then press Teleport.
+Your car goes with you; cargo can't. Teleporting without a booking cancels your job for {abandonFee}, and pay stops until you go back.
+Now and then a town in a tough region offers to pay your relocation back if you come and deliver there.
+
+# heli | Heli and beacons
+Hire a Bell 407 for {heliFee} to fly anywhere and scout towns and their jobs. The hire lasts until you go back to your car.
+Your car waits where you left it, with its job, fuel and damage. A heli crash costs {heliCrash} and ends the hire.
+Fly high for a while and you may pick up a "Don't ask questions" beacon worth {beaconPay}. There's no GPS: follow the arrow and stop at the spot.
+A crash loses the beacon's package, and an insurance claim then costs at least {beaconInsurance}.
+The helicopter is a free mod from the BeamNG forum. The Heli tab says which one and where to get it.
+
+# contracts | Dangerous contracts
+Some job boards offer a dangerous contract on a famous road, such as Death Road in Bolivia. It pays several times a normal job.
+You pay {contractFee} to be relocated to the start. Then drive the section with your load and stop at the finish.
+A crash ends the contract.
+
+# base | Bases, corps and turf
+Buy a base where you are parked for {basePrice}. Around its town grows a circle: your turf.
+Jobs that start or end in your turf pay you more. Your circle grows as you get richer, and never shrinks.
+Your base keeps a trailer for you, and repairs there are {baseRepairOff} off.
+Online, other truckers pay a {toll} toll when they deliver in your turf, and you pay one in theirs. The job board shows it first.
+Online, others can ask to join your base as your corp. Members get the turf bonus and pay no toll there, and the tolls are shared.
+
+# robbers | Robbers and the EMP
+On a job of {robberMinKm} km or more, a road robber may hit you with an EMP and take {robberTake}.
+Chase them: get within {empRange} m and fire your own EMP to get it back, plus {robberTrunk} from their trunk. If they get too far ahead, they escape.
+Your EMP takes {empSeconds} seconds to charge again after each shot.
+A base thief can take {thiefTake} from your base. Chase takes you there for free. Catch them for your money back plus {thiefBounty}.
+On a chase, your job waits where you left it, with its cargo.
+
+# mayday | Mayday Rescue | online
+Now and then a Mayday call goes out somewhere on Earth. The first trucker to reach the scene wins the reward.
+Pick an edge of the circle to start from, free, with an empty car. There's no GPS: head off road and follow the arrow.
+Any teleport, the heli or changing cars ends your run, but you can start again from any edge.
+
+# online | Playing online and the land race | online
+Online, everyone trucks on the same Earth. Your single player career stays on this PC.
+Bases grow into turf, and the first corp to cover enough of Earth's land wins the season. Then everyone starts again.
+The season leaderboard ranks everyone by what they're worth.
+Follow the race on the live server page, on your phone or a second screen. Its address is at the top of this page.
+
+# extras | Street View, sightseeing and radio
+Street View and the radio open in your web browser and follow your truck. Play BeamNG in Borderless or Windowed mode to switch with Alt+Tab.
+Street View's own settings, like pop out, zoom and how often it updates, are on its page in the browser.
+The radio finds live stations around you and can switch to a nearby one as you drive. Play, Stop, Next station and the volume are on its page. Stations come from Radio Browser, a free list of internet radio, and use about 60 MB of internet an hour.
+Go sightseeing saves your game and swaps your truck for a free car, so you can teleport anywhere and look around. Return to your job brings it all back.

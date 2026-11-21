@@ -6,6 +6,15 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **New help page: press the ? at the top of the HUD** to open a big How to play window in the middle of the screen. It explains every part of the game in short sections: jobs and pay, fuel runs, your cars and trailers, repairs and towing, relocating, the heli, dangerous contracts, bases and turf, robbers and the EMP, Mayday Rescue, playing online, Street View and the radio. Its prices are always the game's real ones.
+- The ? glows gold until you open the help page for the first time. Close it with its ✕ or by clicking outside it.
+- The top of the help page has the **live server page** and the **Discord** invite, each with a Copy button to paste into your web browser, and an Open or Join button.
+- Sections that only work online, like Mayday Rescue and the land race, are marked "Online only" when you play single player.
+- **The HUD is shorter.** Long explanations on the Route, Town, Garage, Relocate, Heli, Base, Street View and Radio tabs are now one short line with a small **?** that opens the help page at the right section. Every button and feature is still there.
+- **Fuel runs are back on the Town tab,** under the job board, with their Teleport to the depot, GPS and Load buttons.
+- The start page has a new **Read the full guide** button under How to play.
+- Nothing to delete or reinstall, and your saves still work.
+
 ## Build 257 · 20 Nov 2026
 
 - **The HUD now jumps back to the top when a new Mayday call, a thief at your base or a road robber's hit comes in,** so you see the alert card even if you were scrolled down a long tab. It happens once per alert, and you can scroll back down straight away. Saves still work.
