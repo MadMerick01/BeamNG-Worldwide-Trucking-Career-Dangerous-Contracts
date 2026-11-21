@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 258 · 21 Nov 2026
+
 - **New help page: press the ? at the top of the HUD** to open a big How to play window in the middle of the screen. It explains every part of the game in short sections: jobs and pay, fuel runs, your cars and trailers, repairs and towing, relocating, the heli, dangerous contracts, bases and turf, robbers and the EMP, Mayday Rescue, playing online, Street View and the radio. Its prices are always the game's real ones.
 - The ? glows gold until you open the help page for the first time. Close it with its ✕ or by clicking outside it.
 - The top of the help page has the **live server page** and the **Discord** invite, each with a Copy button to paste into your web browser, and an Open or Join button.
