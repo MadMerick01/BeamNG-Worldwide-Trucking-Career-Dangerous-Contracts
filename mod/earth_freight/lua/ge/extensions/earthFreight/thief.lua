@@ -49,11 +49,14 @@ function M.take(balance)
 end
 function M.bounty(amount) return round10((amount or 0) * M.BOUNTY_SHARE) end
 
--- When thefts happen: one per session (each time the player loads in, on a map or a server), at a random moment in
--- their first WINDOW_MINUTES of play. It needs a base, at least MIN_AWAY_METRES from it, MIN_TAKE in the bank and the
--- player not busy; if they can't be robbed at that moment, it happens as soon as they can.
+-- When thefts happen (MadMerick, 21 Nov): one an hour of play, at a random moment in each hour. Play is counted only
+-- while the career is ready and the game isn't paused, and the count is kept in the save (thiefClock), so quitting
+-- and coming back neither dodges a theft nor brings a fresh one. A theft needs a base, at least MIN_AWAY_METRES from
+-- it, MIN_TAKE in the bank and the player not busy; if they can't be robbed when it's due, it happens as soon as they
+-- can. An hour that ends without its theft drops it (they never stack), and two thefts are at least GAP_MINUTES apart.
 M.MIN_AWAY_METRES = 5000
-M.WINDOW_MINUTES = 45
+M.HOUR_SECONDS = 3600
+M.GAP_MINUTES = 20
 -- The thief's car: for now the same Moonhawk as the sightseeing car, until MadMerick supplies the real one.
 M.MODEL = flights.SIGHTSEEING.model
 M.CONFIG = flights.SIGHTSEEING.config
@@ -65,12 +68,13 @@ function M.attach(c)
   --   self.thief: the theft going on, or nil: { phase, amount, at, settleAt, carId, chaseAt, caughtAt, tries,
   --     nextTry, metres, feedback }. phase: 'stolen' (Chase not pressed yet), 'travelling' (relocating to the base),
   --     'settling' (at the base, waiting for the world), 'chasing', 'caught'.
-  --   self.theftPlan: this session's theft: { at (the clock when it is due), done }. nil until the career is ready;
-  --     endMission (leaving the map or server) clears it, so the next session gets one of its own.
+  --   self.thiefClock: the hourly thefts, kept in the save: { played (seconds of play counted), hour (the hour of
+  --     play it is in, from 0), due (the played seconds when this hour's theft is due; nil once it has happened),
+  --     last (the played seconds at the last theft, or nil) }.
   --   self.thiefReturn: once the chase is over, where Back to your job goes: { latitude, longitude, load, mayday,
   --     trailer, feedback }. While the chase is on, it waits in self.thief.returnTo.
 
-  -- Why a theft can't happen now (forced: the Get robbed button, which skips the distance and the session's plan), or nil.
+  -- Why a theft can't happen now (forced: the Get robbed button, which skips the distance and the hourly plan), or nil.
   function c:theftProblem(forced)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Not ready yet.' end
     if not self.property then return 'You need a base first.' end
@@ -226,19 +230,38 @@ function M.attach(c)
     return true
   end
 
+  -- Counts play towards the hourly thefts: only while the career is ready and the game isn't paused. Each new hour of
+  -- play picks its theft's moment, and drops the last hour's if it never came.
+  function c:countThiefClock(dt)
+    local ready = self.profile and not self.error and self.state == 'READY' and self.arrived and not self.paused()
+    if not ready then return end
+    local k = self.thiefClock or { played = 0 }
+    self.thiefClock = k
+    k.played = k.played + math.max(0, tonumber(dt) or 0)
+    local hour = math.floor(k.played / M.HOUR_SECONDS)
+    if k.hour ~= hour then
+      k.hour, k.due = hour, (hour + self.random()) * M.HOUR_SECONDS
+    end
+  end
+
+  -- The hourly count for the save, in whole seconds.
+  function c:savedThiefClock()
+    local k = self.thiefClock
+    if not k or type(k.played) ~= 'number' then return nil end
+    local function whole(n) return n and math.floor(n) or nil end
+    return { played = whole(k.played), hour = whole(k.hour), due = whole(k.due), last = whole(k.last) }
+  end
+
   -- Every tick.
   function c:watchThief(dt)
     if self.thiefCar and self.thiefCar.update then self.thiefCar:update(dt) end
     local t = self.thief
+    self:countThiefClock(dt)
     if not t then
-      -- This session's theft: its moment is picked once the career is ready, somewhere in the first WINDOW_MINUTES.
-      local ready = self.profile and not self.error and self.state == 'READY' and self.arrived
-      if not self.theftPlan and ready then
-        self.theftPlan = { at = self.clock + self.random() * M.WINDOW_MINUTES * 60, done = false }
-      end
-      local plan = self.theftPlan
-      if plan and not plan.done and self.clock >= plan.at and not self:theftProblem(false) and self:startTheft(false) then
-        plan.done = true
+      local k = self.thiefClock
+      if k and k.due and k.played >= k.due and (not k.last or k.played - k.last >= M.GAP_MINUTES * 60)
+          and not self:theftProblem(false) and self:startTheft(false) then
+        k.due, k.last = nil, k.played
       end
       return
     end

@@ -85,7 +85,7 @@ On a job of {robberMinKm} km or more, a road robber may hit you with an EMP and 
 Chase them: get within {empRange} m and fire your own EMP to get it back, plus a bonus from their trunk. If they get too far ahead, they escape.
 Every trucker can be robbed, and a delivery is only ever robbed once.
 Your EMP takes {empSeconds} seconds to charge again after each shot.
-A base thief can take some of your money from your base. Chase takes you there for free. Catch them for your money back plus a bonus from their trunk.
+A base thief can strike about once every {thiefMinutes} minutes of play, when you're at least {thiefAwayKm} km from your base, and take some of your money. Chase takes you there for free. Catch them for your money back plus a bonus from their trunk.
 On a chase, your job waits where you left it, with its cargo.
 
 # mayday | Mayday Rescue | online

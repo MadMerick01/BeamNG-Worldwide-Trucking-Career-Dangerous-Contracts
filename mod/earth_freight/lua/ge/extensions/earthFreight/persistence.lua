@@ -267,6 +267,16 @@ function M.validate(s)
   if s.extraCarSlot ~= nil and s.extraCarSlot ~= true then return nil, 'invalid_home' end
   -- The old "Robbers can rob me" opt-out: still read so an old save loads, but no longer used or saved.
   if s.noRobbers ~= nil and s.noRobbers ~= true then return nil, 'invalid_identity' end
+  -- The play counted towards the hourly base thief (thief.lua): whole seconds.
+  local thiefClock = nil
+  if s.thiefClock ~= nil then
+    local k = s.thiefClock
+    if type(k) ~= 'table' or not integer(k.played, 0) or (k.hour ~= nil and not integer(k.hour, 0))
+        or (k.due ~= nil and not integer(k.due, 0)) or (k.last ~= nil and not integer(k.last, 0)) then
+      return nil, 'invalid_identity'
+    end
+    thiefClock = { played = k.played, hour = k.hour, due = k.due, last = k.last }
+  end
   local cargo = nil
   if s.load ~= nil then
     cargo = load(s.load)
@@ -337,7 +347,7 @@ function M.validate(s)
       worth = s.vehicle.worth },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
     trailer = trailer, spareTrailers = spareTrailers, property = home, storedCars = stored, commissionId = s.commissionId, rewardId = s.rewardId,
-    corp = member, extraCarSlot = s.extraCarSlot, noRobbers = s.noRobbers,
+    corp = member, extraCarSlot = s.extraCarSlot, noRobbers = s.noRobbers, thiefClock = thiefClock,
   }
 end
 
@@ -408,6 +418,7 @@ function M.new(io, directory)
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
       trailer = candidate.trailer, spareTrailers = candidate.spareTrailers, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId, rewardId = candidate.rewardId,
       corp = candidate.corp, extraCarSlot = candidate.extraCarSlot, noRobbers = candidate.noRobbers,
+      thiefClock = candidate.thiefClock,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end
