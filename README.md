@@ -22,7 +22,8 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 - **Trailers.** Buy one of 16 trailers, from a small box trailer to a 34,000 L tanker, with cargo boxes or fluid tanks fitted. Hitch it for extra cargo space. You can own as many trailers as you have car slots: 2, 3 with a base, 4 with the bought slot. Your base keeps them for free; without one, a depot keeps them for a fee.
 - **Real businesses.** Many town jobs end at a real shop, yard or warehouse in that town, found on OpenStreetMap. Pull up within 25 m of it to deliver; with Street View open you see the real place.
 - **Off-road drops.** No GPS route: follow the arrow on the Route tab to a spot off the road.
-- **Dangerous highly paid contracts.** Death Road, Carhuaz, Anta, Marcará, Zoji La, Ravin de Piquet, Sani Pass and Grimsel, for up to **8x the pay**. They stay in rotation after you deliver them, so you can drive your favourites again.
+- **Long hauls.** Every job board has a long haul of parts or bricks to a town 20 to 60 km away, for bigger pay.
+- **Dangerous contracts** (Death Road, Zoji La, Sani Pass and more) are off for now while they get more work. They'll be back.
 - **Dynamic economy.** Towns want different goods, repeat runs pay less, shortages pay double.
 - **Steep, remote and notorious roads** pay up to 3x. Regions are graded for difficulty.
 - **Buy a home.** For $250,000, make any spot on Earth yours. It stores a second car you can swap into there, and repairs at home are half price.

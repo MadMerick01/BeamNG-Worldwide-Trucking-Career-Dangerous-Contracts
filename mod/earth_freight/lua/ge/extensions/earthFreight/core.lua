@@ -2406,7 +2406,7 @@ function M.new(deps)
         fluid = good.kind == 'fluid' or nil, unitLitres = good.litres, litres = good.litres and q.units * good.litres or nil,
         shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road - (q.baseBonus or 0) > 1.005 and q.road - (q.baseBonus or 0) or nil,
         -- What the player's base adds, as a percentage of the pay without it.
-        basePercent = q.baseBonus and math.floor(q.baseBonus / (q.road - q.baseBonus) * 100 + 0.5) or nil, outside = job.outside,
+        basePercent = q.baseBonus and math.floor(q.baseBonus / (q.road - q.baseBonus) * 100 + 0.5) or nil, outside = job.outside, long = job.long,
         tollTo = q.toll and q.toll.owner or nil, tollPercent = q.toll and math.floor(magnate.TOLL * 100 + 0.5) or nil,
         allowed = allowed and q.units > 0 and (not section or self:canAfford(contracts.FEE)) }
     end
@@ -2774,7 +2774,7 @@ function M.new(deps)
       car = car,
       career = self.profile and {
         jobsDone = self.profile.progression.jobsDone or 0,
-        contractsDone = #(self.profile.progression.contractsDone or {}), contractsTotal = #contracts.LIST,
+        contractsDone = #(self.profile.progression.contractsDone or {}), contractsTotal = #contracts.LIST, contractsOn = jobs.CONTRACTS or nil,
       } or nil,
       balance = self.profile and self.profile.progression.balance or STARTING_MONEY,
       totalDistanceKm = self.profile and self.profile.progression.totalDistanceKm or 0,
@@ -2880,7 +2880,7 @@ function M.new(deps)
       startSlots = fleet.START_SLOTS, baseSlots = fleet.BASE_SLOTS, boughtSlots = fleet.BOUGHT_SLOTS,
       slotPrice = dollars(fleet.SLOT_PRICE), driveFee = dollars(fleet.SWAP_FEE), sellShare = percent(pricing.CAR_TRADE_IN_SHARE),
       towRange = workshop.TOW_RANGE, insuranceMin = dollars(workshop.INSURANCE_FEE), debtShare = percent(workshop.DEBT_SHARE),
-      abandonFee = dollars(jobs.ABANDON_FEE),
+      abandonFee = dollars(jobs.ABANDON_FEE), longHaulMinKm = jobs.LONG_HAUL[1], longHaulMaxKm = jobs.LONG_HAUL[2],
       heliFee = dollars(heli.HIRE_FEE), heliCrash = dollars(heli.CRASH_FEE),
       beaconPay = dollars(beacons.PAY), beaconInsurance = dollars(beacons.INSURANCE_FEE),
       contractFee = dollars(contracts.FEE),
