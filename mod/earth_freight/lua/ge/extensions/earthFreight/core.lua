@@ -37,6 +37,7 @@ local thiefCar = require('earthFreight/thiefCar')
 local emp = require('earthFreight/emp')
 local roadRobber = require('earthFreight/roadRobber')
 local adminRobber = require('earthFreight/adminRobber')
+local heli = require('earthFreight/heli')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -2845,6 +2846,7 @@ function M.new(deps)
       thief = self:thiefView() or self:robberView() or self:robberyResultView(),
       robbery = self:robberyView(),
       robMe = self:robMeView(),
+      rules = self:rulesView(),
       admin = self:adminView(),
       empSound = self.empSounds or 0,
       cashSound = self.cashSounds or 0,
@@ -2862,6 +2864,29 @@ function M.new(deps)
         tyreCost = math.floor(self.punctureDamage / PUNCTURE_DAMAGE + 0.5)
           * math.floor(PUNCTURE_DAMAGE * pricing.repairRate(self:carValueOf(self.ownedParts and self.ownedParts.id)) + 0.5),
       } or nil,
+    }
+  end
+
+  -- The game's own numbers for the HUD's help page, so its text always matches the prices and rules in play,
+  -- and whether this game is online (some help sections are for online play only).
+  function c:rulesView()
+    local percent = function(share) return math.floor(share * 100 + 0.5) .. '%' end
+    return {
+      online = self.mp ~= nil and self.mp.state == 'server',
+      robberTake = dollars(roadRobber.STOLEN), robberTrunk = dollars(roadRobber.TRUNK),
+      robberMinKm = math.floor(roadRobber.MIN_JOB_METRES / 1000 + 0.5),
+      thiefTake = dollars(thief.STOLEN), thiefBounty = dollars(thief.BOUNTY),
+      empRange = emp.RANGE, empSeconds = emp.CHARGE_SECONDS,
+      basePrice = dollars(home.PRICE), baseRepairOff = percent(home.REPAIR_SHARE),
+      startSlots = fleet.START_SLOTS, baseSlots = fleet.BASE_SLOTS, boughtSlots = fleet.BOUGHT_SLOTS,
+      slotPrice = dollars(fleet.SLOT_PRICE), driveFee = dollars(fleet.SWAP_FEE), sellShare = percent(pricing.CAR_TRADE_IN_SHARE),
+      towRange = workshop.TOW_RANGE, insuranceMin = dollars(workshop.INSURANCE_FEE), debtShare = percent(workshop.DEBT_SHARE),
+      abandonFee = dollars(jobs.ABANDON_FEE),
+      heliFee = dollars(heli.HIRE_FEE), heliCrash = dollars(heli.CRASH_FEE),
+      beaconPay = dollars(beacons.PAY), beaconInsurance = dollars(beacons.INSURANCE_FEE),
+      contractFee = dollars(contracts.FEE),
+      fuelRunMinKm = fuelruns.MIN_KM, fuelRunMaxKm = fuelruns.MAX_KM, townFuelTimes = fuel.TOWN_PRICE_TIMES,
+      toll = percent(magnate.TOLL),
     }
   end
 

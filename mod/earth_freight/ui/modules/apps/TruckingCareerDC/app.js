@@ -21,6 +21,12 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     server: 'https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/',
     discord: 'https://discord.gg/eYJCfXNGbP'
   }
+  // The help page's text, in help.txt next to this file, read once and kept for the rest of the game.
+  var HELP_URL = '/ui/modules/apps/TruckingCareerDC/help.txt'
+  // Whether the player has opened the help page yet: until then its ? button glows. Kept in the browser's storage.
+  var HELP_SEEN = 'earthFreight.helpSeen'
+  kept.help = { sections: [], status: 'none', at: null, seen: false }
+  try { kept.help.seen = window.localStorage.getItem(HELP_SEEN) === '1' } catch (e) {}
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
   // The Town tab's Distance filter, kept the same way: any, short, medium or long.
@@ -454,6 +460,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         }
         // A bill, an insurance offer or being stranded needs the HUD, so the start page makes way.
         if (scope.intro.open && urgent(next) && !urgent(previous)) scope.closeIntro()
+        if (kept.help.at && urgent(next) && !urgent(previous)) scope.closeHelp()
         for (var i = 0; i < autoOpen.length; i++) {
           if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) {
             scope.setTab(autoOpen[i][0])
@@ -474,8 +481,13 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.intro = kept.intro
       var startPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-start') : null
       if (startPage && typeof document !== 'undefined' && document.body) document.body.appendChild(startPage)
+      // The help page is moved onto the page body the same way, so it can fill the middle of the screen.
+      var helpPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-help') : null
+      if (helpPage && typeof document !== 'undefined' && document.body) document.body.appendChild(helpPage)
       fit()
       scope.openIntro = function (d) {
+        if (scope.closeHelp) scope.closeHelp()
+        if (loadHelp) loadHelp()
         scope.intro.name = ((d || scope.data || {}).playerName) || ''
         scope.intro.open = true
         fit()
@@ -516,14 +528,100 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.returning = function (d) { return !!d && d.mode === 'resume' && !d.arrived && !!d.resume }
       // A new game that has not reached the start town yet: nothing to show or start over.
       scope.firstLaunch = function (d) { return !!d && d.mode === 'start' && !d.arrived }
-      scope.introSteps = [
-        'open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
+      // The start page's How to play steps are the help page's Getting started points, from help.txt. These are
+      // only shown if help.txt can't be read; edit help.txt, not these.
+      var FALLBACK_STEPS = [
+        'Choose where you start: open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
         'Then fit cargo boxes: the starter car only has its boot, which takes 2 slots. In Buy parts, put Cargo Load boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.',
         'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
         'The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.'
       ]
+      scope.introSteps = FALLBACK_STEPS
+      // The help page: a big window in the middle of the screen with every part of the game explained, opened
+      // with the ? at the top of the HUD or a small ? beside something, which opens it at that section. It closes
+      // with its own X or a click outside it, never with Esc, which is the game's own menu key.
+      scope.helpState = kept.help
+      // help.txt: a line starting with # starts a section (# id | Title, or # id | Title | online), // lines
+      // are notes, and every other line is one point.
+      scope.readHelp = function (text) {
+        var sections = []
+        String(text || '').split(/\r?\n/).forEach(function (raw) {
+          var line = raw.trim()
+          if (!line || line.indexOf('//') === 0) return
+          if (line.charAt(0) === '#') {
+            var parts = line.slice(1).split('|').map(function (p) { return p.trim() })
+            if (parts[0] && parts[1]) sections.push({ id: parts[0], title: parts[1], online: parts[2] === 'online', lines: [] })
+            return
+          }
+          if (sections.length) sections[sections.length - 1].lines.push(line)
+        })
+        return sections
+      }
+      var useHelp = function (sections) {
+        kept.help.sections = sections
+        kept.help.status = sections.length ? 'ready' : 'failed'
+        var start = sections.filter(function (s) { return s.id === 'start' })[0]
+        scope.introSteps = start && start.lines.length ? start.lines : FALLBACK_STEPS
+        var at = kept.help.at
+        if (at && !sections.some(function (s) { return s.id === at })) kept.help.at = sections.length ? sections[0].id : 'start'
+      }
+      var loadHelp = function () {
+        if (kept.help.status === 'ready' || kept.help.status === 'loading') return
+        if (typeof fetch !== 'function') { kept.help.status = 'failed'; return }
+        kept.help.status = 'loading'
+        var failed = function () { scope.$evalAsync(function () { kept.help.status = 'failed' }) }
+        try {
+          fetch(HELP_URL, { cache: 'no-store' })
+            .then(function (r) { if (!r || !r.ok || typeof r.text !== 'function') throw new Error('no help'); return r.text() })
+            .then(function (text) { scope.$evalAsync(function () { useHelp(scope.readHelp(text)) }) }, failed)
+        } catch (e) { failed() }
+      }
+      // Read when the start page or the help page first opens.
+      if (kept.help.status === 'ready') useHelp(kept.help.sections)
+      // A point's {names} filled in with the game's own numbers (rules, from rulesView in core.lua).
+      scope.helpLine = function (line) {
+        var rules = (scope.data && scope.data.rules) || {}
+        return String(line).replace(/\{(\w+)\}/g, function (all, name) {
+          var v = rules[name]
+          return typeof v === 'string' || typeof v === 'number' ? String(v) : '...'
+        })
+      }
+      scope.helpOpen = function () { return !!kept.help.at }
+      scope.help = function (id) {
+        var sections = kept.help.sections
+        var known = sections.some(function (s) { return s.id === id })
+        // Before help.txt is read the section asked for is kept, and checked once it is.
+        kept.help.at = known || !sections.length ? (id || 'start') : sections[0].id
+        kept.help.copied = null
+        if (kept.help.status === 'failed') kept.help.status = 'none'
+        loadHelp()
+        if (!kept.help.seen) {
+          kept.help.seen = true
+          try { window.localStorage.setItem(HELP_SEEN, '1') } catch (e) {}
+        }
+      }
+      scope.closeHelp = function () { kept.help.at = null; kept.help.copied = null }
+      // A click on the dark space around the window closes it; clicks inside the window don't.
+      scope.helpBackdrop = function (event) { if (event && event.target === event.currentTarget) scope.closeHelp() }
+      scope.helpNext = function () {
+        var sections = kept.help.sections
+        for (var i = 0; i < sections.length - 1; i++) if (sections[i].id === kept.help.at) { kept.help.at = sections[i + 1].id; return }
+      }
+      // The live server page and the Discord at the top of the help page: copied for the player to paste into their
+      // browser, or opened in it where the game can.
+      scope.helpLinks = LINKS
+      scope.copyHelpLink = function (which) {
+        var url = LINKS[which]
+        if (!url) return
+        call('setClipboard("' + url + '")')
+        kept.help.copied = which
+      }
+      scope.openHelpLink = function (which) {
+        scope.openLink(which)
+        kept.help.copied = which
+      }
       // While a text box has focus the game's keys are off, so typing does not drive the car.
       var typingNow = false
       scope.typing = function (on) {
@@ -1129,6 +1227,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         disposed = true
         fitBox(false)
         if (startPage && startPage.parentNode) startPage.parentNode.removeChild(startPage)
+        if (helpPage && helpPage.parentNode) helpPage.parentNode.removeChild(helpPage)
         scope.typing(false)
         clearInterval(heartbeat)
         mount(false)

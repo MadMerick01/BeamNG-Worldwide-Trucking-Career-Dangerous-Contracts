@@ -6,6 +6,7 @@ import test from 'node:test'
 const APP = '../mod/earth_freight/ui/modules/apps/TruckingCareerDC/'
 const source = readFileSync(new URL(APP + 'app.js', import.meta.url), 'utf8')
 const html = readFileSync(new URL(APP + 'app.html', import.meta.url), 'utf8')
+const help = readFileSync(new URL(APP + 'help.txt', import.meta.url), 'utf8')
 const fixed = body => 'if earthFreight_core then earthFreight_core.' + body + ' end'
 // Just enough of a page for the parts bill box: elements with text, style, children and a click.
 function page() {
@@ -1259,12 +1260,12 @@ test('Play online shows whether the server is up and how many are on it, from it
   assert.equal(a.scope.server.status, 'checking')
   a.scope.openIntro()
   await new Promise(r => setImmediate(r))
-  assert.deepEqual(asked, ['https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json'])
+  assert.deepEqual(asked.filter(u => !u.endsWith('/help.txt')), ['https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json'])
   assert.equal(a.scope.server.status, 'online')
   assert.equal(a.scope.server.players, 2); assert.equal(a.scope.server.max, 20); assert.equal(a.scope.server.season, 1)
   assert.equal(a.scope.server.name, 'WW Trucking Career | MadMerick')
   a.scope.toggleOnline()
-  assert.equal(asked.length, 1, 'asked at most once a minute')
+  assert.equal(asked.filter(u => !u.endsWith('/help.txt')).length, 1, 'asked at most once a minute')
   const read = a.scope.readServer
   assert.equal(read({ updated: '2026-11-10T18:20:00Z', server: { online: true } }, now).status, 'offline', 'stats older than 15 minutes')
   assert.equal(read({ updated: '2026-11-10T18:49:00Z', server: { online: true }, sample: true }, now).status, 'offline', 'the sample is not the server')
@@ -1324,7 +1325,8 @@ test('Radio tab: opens the radio page in the browser, shows what it plays, and c
   a.scope.copyRadio()
   assert.equal(a.commands.length, count, 'only the radio address')
   const panel = html.slice(html.indexOf(`ng-if="tab === 'radio'"`), html.indexOf(`ng-if="tab === 'heli'"`))
-  for (const part of ['openRadio()', 'copyRadio()', 'data.radio.playing', 'Open radio', 'Radio Browser']) assert.ok(panel.includes(part), part)
+  for (const part of ['openRadio()', 'copyRadio()', 'data.radio.playing', 'Open radio', "help('extras')"]) assert.ok(panel.includes(part), part)
+  assert.ok(help.includes('Radio Browser'), 'the help page says where the stations come from')
 })
 
 // The HUD gets a fresh copy of the state up to four times a second. A list of rows without track by
@@ -1375,7 +1377,7 @@ test('Land Race and Leaderboard tab: copies the live page address, shows the rac
   assert.equal(a.scope.raceSummary({ race: {} }), 'nobody holds land yet')
   assert.equal(a.scope.landWidth(25, 50), '50%'); assert.equal(a.scope.landWidth(0, 50), '1%')
 })
-test('Fuel runs: the Route tab card loads a run and sets the GPS to the depot only when Lua allows it', () => {
+test('Fuel runs: the Town tab card loads a run and sets the GPS to the depot only when Lua allows it', () => {
   assert.match(html, /ng-click="takeFuelRun\(r\)"/)
   assert.match(html, /ng-click="gpsToDepot\(\)"/)
   assert.match(html, /ng-repeat="r in data\.fuelRuns\.runs track by r\.id"/)
@@ -1503,4 +1505,95 @@ test('Base thief: the card shows while a theft is on, and Chase and EMP send fix
   for (const part of ['ng-click="getRobbed()"', 'Base thief (trial)']) assert.ok(html.includes(part), part)
   for (const part of ['arrowStyle(data.thief)', 'thiefTitle(data.thief)', 'ng-click="thiefChase()"', 'ng-click="empThief()"', 'escape with the money'])
     assert.ok(html.includes(part), part)
+})
+
+// The help page: one big window with every part of the game, its text in help.txt.
+const helpApp = (storage) => app(storage || null, null, { fetch: url => Promise.resolve({ ok: true, text: () => Promise.resolve(help) }), Promise })
+const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(r => setImmediate(r)) }
+test('Help page: help.txt is read into sections, and every small ? opens a section that exists', async () => {
+  const a = helpApp()
+  const sections = a.scope.readHelp(help)
+  const ids = sections.map(s => s.id)
+  for (const id of ['start', 'jobs', 'fuel', 'robbers', 'mayday', 'base']) assert.ok(ids.includes(id), id + ' section')
+  assert.equal(new Set(ids).size, ids.length, 'no two sections share an id')
+  assert.ok(sections.every(s => s.title && s.lines.length), 'every section has a title and points')
+  assert.ok(sections.every(s => s.lines.every(l => !l.startsWith('//'))), 'notes are not shown')
+  assert.deepEqual([...sections.filter(s => s.online).map(s => s.id)], ['mayday', 'online'], 'online-only sections are marked')
+  const used = [...html.matchAll(/help\('(\w+)'\)/g)].map(m => m[1])
+  assert.ok(used.length >= 10, 'small ? buttons across the HUD')
+  for (const id of used) assert.ok(ids.includes(id), "help('" + id + "') has a section")
+  assert.deepEqual(JSON.parse(JSON.stringify(a.scope.readHelp('# a | A\none\n// note\n\n# bad\ntwo\n# b | B | online\nthree'))),
+    [{ id: 'a', title: 'A', online: false, lines: ['one', 'two'] }, { id: 'b', title: 'B', online: true, lines: ['three'] }])
+})
+test('Help page: the start page steps are its Getting started points, with the built-in copy matching help.txt', async () => {
+  const a = helpApp()
+  const fallback = a.scope.introSteps.slice()
+  a.scope.help('start')
+  await settle()
+  const start = a.scope.readHelp(help).find(s => s.id === 'start')
+  assert.deepEqual([...a.scope.introSteps], [...start.lines], 'the start page reads help.txt')
+  assert.deepEqual([...fallback], [...start.lines], 'the copy used when help.txt cannot be read is the same')
+  assert.ok(html.includes(`ng-click="help('start')"`) && html.includes('Read the full guide'), 'the start page links to the full guide')
+})
+test('Help page: {names} are filled in with the game\'s own numbers', () => {
+  const a = helpApp()
+  a.state({ state: 'READY', rules: { robberTake: '$1,000', empRange: 15 } })
+  assert.equal(a.scope.helpLine('Take {robberTake} within {empRange} m'), 'Take $1,000 within 15 m')
+  assert.equal(a.scope.helpLine('Unknown {nope}'), 'Unknown ...')
+  const names = new Set([...help.split('\n').filter(l => !l.startsWith('//')).join('\n').matchAll(/\{(\w+)\}/g)].map(m => m[1]))
+  const core = readFileSync(new URL('../mod/earth_freight/lua/ge/extensions/earthFreight/core.lua', import.meta.url), 'utf8')
+  const rules = core.slice(core.indexOf('function c:rulesView()'), core.indexOf('function c:serverSaveWarning()'))
+  for (const name of names) assert.match(rules, new RegExp('\\b' + name + ' = '), name + ' is sent by the game')
+})
+test('Help page: opens from ?, its ? glows until the first time, and closes with X or a click outside, not Esc', async () => {
+  const store = {}
+  const storage = { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = String(v) } }
+  const a = helpApp(storage)
+  assert.equal(a.scope.helpState.seen, false, 'glows on a new game')
+  assert.ok(html.includes(`ng-class="{'ef-help-new': !helpState.seen}"`), 'the glow is on the ? at the top of the HUD')
+  a.scope.help()
+  await settle()
+  assert.equal(a.scope.helpOpen(), true)
+  assert.equal(a.scope.helpState.at, 'start', 'the ? at the top opens Getting started')
+  assert.equal(store['earthFreight.helpSeen'], '1', 'remembered')
+  a.scope.help('robbers'); assert.equal(a.scope.helpState.at, 'robbers')
+  a.scope.helpNext(); assert.equal(a.scope.helpState.at, 'mayday')
+  a.scope.help('not-a-section'); assert.equal(a.scope.helpState.at, 'start', 'an unknown section opens the first one')
+  const inside = {}, outside = {}
+  a.scope.helpBackdrop({ target: inside, currentTarget: outside }); assert.equal(a.scope.helpOpen(), true, 'a click in the window keeps it')
+  a.scope.helpBackdrop({ target: outside, currentTarget: outside }); assert.equal(a.scope.helpOpen(), false, 'a click outside closes it')
+  a.scope.help('jobs'); a.scope.closeHelp(); assert.equal(a.scope.helpOpen(), false, 'X closes it')
+  assert.ok(!/keydown|Escape|keyCode/.test(source), 'Esc is left to the game')
+  const b = helpApp(storage)
+  assert.equal(b.scope.helpState.seen, true, 'no glow after the first time, after a restart too')
+})
+test('Help page: the live page and the Discord are copied or opened, and only those two addresses', () => {
+  const a = helpApp()
+  a.scope.copyHelpLink('server')
+  assert.equal(a.commands.at(-1), 'setClipboard("https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/")')
+  assert.equal(a.scope.helpState.copied, 'server')
+  a.scope.copyHelpLink('discord')
+  assert.equal(a.commands.at(-1), 'setClipboard("https://discord.gg/eYJCfXNGbP")')
+  a.scope.openHelpLink('discord')
+  assert.match(a.commands.at(-1), /openWebBrowser\("https:\/\/discord\.gg\/eYJCfXNGbP"\)/)
+  const count = a.commands.length
+  a.scope.copyHelpLink('elsewhere'); assert.equal(a.commands.length, count, 'nothing else')
+  const page = html.slice(html.indexOf('class="ef-help"'), html.indexOf('<div ng-if="!hud.minimised && !intro.open">'))
+  for (const part of ["copyHelpLink('server')", "openHelpLink('server')", "copyHelpLink('discord')", "openHelpLink('discord')", 'closeHelp()', 'helpBackdrop($event)', 'Online only'])
+    assert.ok(page.includes(part), part)
+})
+test('Help page: cannot be read, says so and tries again next time', async () => {
+  let ok = false
+  const a = app(null, null, { fetch: () => Promise.resolve(ok ? { ok: true, text: () => Promise.resolve(help) } : { ok: false }), Promise })
+  a.scope.help('fuel'); await settle()
+  assert.equal(a.scope.helpState.status, 'failed')
+  assert.ok(a.scope.introSteps.length === 6, 'the start page keeps its steps')
+  ok = true; a.scope.help('fuel'); await settle()
+  assert.equal(a.scope.helpState.status, 'ready'); assert.equal(a.scope.helpState.at, 'fuel')
+})
+test('Fuel runs sit on the Town tab, not the Route tab', () => {
+  const route = html.slice(html.indexOf("tab === 'route'"), html.indexOf("tab === 'town'"))
+  const town = html.slice(html.indexOf("tab === 'town'"), html.indexOf("tab === 'garage'"))
+  assert.ok(!route.includes('data.fuelRuns'), 'not on Route')
+  for (const part of ['ng-click="teleportToDepot()"', 'ng-click="gpsToDepot()"', 'ng-click="takeFuelRun(r)"', 'ng-click="gpsToRun(r)"']) assert.ok(town.includes(part), part + ' on Town')
 })
