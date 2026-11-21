@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Every job board now has a long haul in place of the dangerous contract.** It's a load of parts or bricks to a town 20 to 60 km away, marked LONG HAUL on the Town tab, and it pays more than the shorter runs. The other jobs and the off-road drop are the same as before.
+- Dangerous contracts are switched off for now while they get more work, so they no longer show on the job boards, the help page or the start page. If you were already on one, you can still finish it. Your saves still work, and the roads you've driven are kept for when contracts come back.
+
 ## Build 260 · 21 Nov 2026
 
 - **The base thief now strikes about once every hour you play,** at a random moment in each hour, instead of once each time you load in. Only time spent playing counts, not time paused, and the count is kept in your save, so quitting and coming back doesn't skip a theft or bring an extra one. A theft that can't happen in its hour (you're near your base or short of money) is dropped, so thieves never pile up, and two thefts are always at least 20 minutes apart. Your saves still work.

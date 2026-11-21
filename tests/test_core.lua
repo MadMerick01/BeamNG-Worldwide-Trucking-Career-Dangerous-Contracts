@@ -181,16 +181,19 @@ do
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
   T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 3000 * places.ROAD_FACTOR, 'distances are road estimates')
   T.eq(#v.nearby[1].dots, 4, 'a dot per good: parts, bricks, water and fuel')
-  T.eq(#v.town.jobs, 5, 'the board lists parts, bricks, a fluid, the off-road drop and a dangerous contract')
+  T.eq(#v.town.jobs, 5, 'the board lists parts, bricks, a fluid, a long haul and the off-road drop')
   T.eq(v.town.jobs[1].goodId, 'parts', 'parts first'); T.eq(v.town.jobs[2].goodId, 'bricks', 'then bricks')
-  T.eq(v.town.jobs[3].goodId, jobs.fluid(penrith).id, 'then the town fluid'); T.check(v.town.jobs[4].drop, 'then the drop')
-  T.check(v.town.jobs[5].contract ~= nil, 'then the dangerous contract')
+  T.eq(v.town.jobs[3].goodId, jobs.fluid(penrith).id, 'then the town fluid')
+  T.check(v.town.jobs[4].long and v.town.jobs[4].distanceMetres > 20000, 'then a long haul past 20 km')
+  T.check(v.town.jobs[5].drop, 'then the drop')
+  for _, j in ipairs(v.town.jobs) do T.eq(j.contract, nil, 'no dangerous contract: they are off for now') end
+  T.eq(v.career.contractsOn, nil, 'and the start page leaves out the Dangerous count')
   T.check(v.town.jobs[3].fluid and v.town.jobs[3].units == 0 and not v.town.jobs[3].allowed, 'a fluid needs a tank')
   for _, j in ipairs(v.town.jobs) do
     -- A brick (127.5 kg) just fits one box M (130 kg).
     if j.goodId == 'bricks' then T.check(j.units == 1 and j.allowed, j.id .. ' fits one box M')
     elseif not j.fluid then T.check(j.pay > 0 and j.allowed, j.id .. ' pays and can be taken') end
-    T.check(j.distanceMetres <= 20000 + 1e-6, j.id .. ' within 20 km')
+    if not j.long then T.check(j.distanceMetres <= 20000 + 1e-6, j.id .. ' within 20 km') end
   end
   T.check(v.bestJob ~= nil and v.bestJob.from == 'Penrith', 'the best job is suggested')
   -- The Distance filter: the board is built for it, and a job taken comes from that board.
@@ -372,6 +375,11 @@ do
   end
   T.eq(v.gpsFeedback, 'The GPS is set to St Clair.', 'and says so')
   -- A dangerous contract's GPS goes to the start of its road; an off-road drop has none.
+  -- Contracts are off for now, so one is put on the board here.
+  local cj = jobs.contractJob(penrith, 0)
+  local board = c.board
+  c.board = function(self, place) local list = board(self, place); list[#list + 1] = F.copy(cj); return list end
+  v = c:view()
   local contract
   for _, j in ipairs(v.town.jobs) do if j.contract then contract = j end end
   T.check(contract ~= nil and contract.contract.id ~= nil, 'the board names the contract')
@@ -1482,10 +1490,7 @@ do
   T.eq(c.profile.progression.contractsDone[1], section.id, 'the road is counted')
   c.board = nil
   local again = false
-  for seed = 0, 20 do
-    local last = jobs.board(penrith, seed, {}, 0)
-    again = again or last[#last].contract == section.id
-  end
+  for seed = 0, 20 do again = again or jobs.contractJob(penrith, seed).contract == section.id end
   T.check(again, 'the delivered road comes round on the board again')
   T.check(c:manualSave(), 'saved'); T.eq(io.files[B].progression.contractsDone[1], section.id, 'kept in the save')
   local r2 = F.controller({ io = io })
@@ -1549,7 +1554,9 @@ end
 
 -- With every road delivered, every board still carries a dangerous contract, and every road
 -- still comes round; an old save listing delivered roads loads and keeps them all in rotation.
+-- Contracts are off for now: switched on here, they work as before.
 do
+  jobs.CONTRACTS = true
   local done = {}
   for _, sec in ipairs(contracts.LIST) do done[#done + 1] = sec.id end
   local seen = {}
@@ -1568,6 +1575,7 @@ do
   T.check(b[#b].contract ~= nil, 'and its boards still carry a dangerous contract')
   r:newGame(); T.check(r:newGame(), 'a new game')
   T.eq(r.profile.progression.contractsDone, nil, 'starts with no roads done')
+  jobs.CONTRACTS = false
 end
 
 -- Carhuaz runs between the points MadMerick checked in game, about 1.7 km apart as the crow flies.

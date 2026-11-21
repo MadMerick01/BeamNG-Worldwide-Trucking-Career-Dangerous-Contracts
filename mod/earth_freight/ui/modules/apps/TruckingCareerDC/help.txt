@@ -21,6 +21,7 @@ The game saves itself when you stop after a delivery, a purchase, a repair or a 
 Stop in any town to see its jobs on the Town tab. Each job shows where it goes, how far and what it pays.
 Green pay is better than usual, red is worse. A shortage pays double, and a jackpot pays even more.
 Short jobs are up to 8 km, medium 8 to 13 km and long 13 to 300 km. Pick one with the buttons next to Jobs.
+Every board also has a long haul of parts or bricks to a town {longHaulMinKm} to {longHaulMaxKm} km away, for bigger pay.
 Too big for your car? Use the Load slider on a job to take part of it, for part of the pay.
 Rough roads and steep ground pay more. The number next to the town's name shows how much, such as ×2.7.
 Tap a job to see its details and press GPS to see the route before you take it.
@@ -68,10 +69,11 @@ Fly high for a while and you may pick up a "Don't ask questions" beacon worth {b
 A crash loses the beacon's package, and an insurance claim then costs at least {beaconInsurance}.
 The helicopter is a free mod from the BeamNG forum. The Heli tab says which one and where to get it.
 
-# contracts | Dangerous contracts
-Some job boards offer a dangerous contract on a famous road, such as Death Road in Bolivia. It pays several times a normal job.
-You pay {contractFee} to be relocated to the start. Then drive the section with your load and stop at the finish.
-A crash ends the contract.
+// Dangerous contracts are switched off for now (CONTRACTS in jobs.lua). Take the // off these lines when they come back.
+// # contracts | Dangerous contracts
+// Some job boards offer a dangerous contract on a famous road, such as Death Road in Bolivia. It pays several times a normal job.
+// You pay {contractFee} to be relocated to the start. Then drive the section with your load and stop at the finish.
+// A crash ends the contract.
 
 # base | Bases, corps and turf
 Buy a base where you are parked for {basePrice}. Around its town grows a circle: your turf.
