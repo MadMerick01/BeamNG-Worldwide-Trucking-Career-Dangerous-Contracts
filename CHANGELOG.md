@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The base thief now strikes about once every hour you play,** at a random moment in each hour, instead of once each time you load in. Only time spent playing counts, not time paused, and the count is kept in your save, so quitting and coming back doesn't skip a theft or bring an extra one. A theft that can't happen in its hour (you're near your base or short of money) is dropped, so thieves never pile up, and two thefts are always at least 20 minutes apart. Your saves still work.
+- Road robbers come a little more often on jobs of 5 km or more.
+
 ## Build 259 · 21 Nov 2026
 
 - **Robbers and thieves now take more from a bigger job or a fuller bank,** instead of a flat $1,000, so a heavy, slow rig carrying a valuable load has the most to lose. Catch them with your EMP and you get it all back, plus a bigger trunk bonus than before. The pop-up and the chase card show exactly how much was taken and won back.

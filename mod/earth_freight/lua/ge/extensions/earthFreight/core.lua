@@ -268,6 +268,8 @@ function M.new(deps)
     self.storedCars = self.profile and copy(self.profile.storedCars) or {}
     self.carCards, self.fleetFeedback = nil, nil
     self.extraCarSlot = self.profile and self.profile.extraCarSlot or nil
+    -- The play counted towards the hourly base thief (thief.lua).
+    self.thiefClock = self.profile and copy(self.profile.thiefClock) or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
     self.corp = self.profile and copy(self.profile.corp) or nil
     self.homeFeedback, self.homeCard, self.corpSeen, self.leaveArmed, self.corpAskedAt = nil, nil, nil, nil, nil
@@ -602,8 +604,7 @@ function M.new(deps)
     self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
-    -- A new session gets a base thief of its own (thief.lua). A road robber's car went with the level (roadRobber.lua).
-    self.theftPlan = nil
+    -- A road robber's car went with the level (roadRobber.lua). The hourly base thief's count is in the save (thief.lua).
     self.robber, self.robberJob, self.robberAtKm, self.empFiredAt = nil, nil, nil, nil
     self.adminDrive, self.adminFeedback = nil, nil
     self:interrupt('earth_level_required')
@@ -2873,6 +2874,7 @@ function M.new(deps)
       online = self.mp ~= nil and self.mp.state == 'server',
       -- What robbers and thieves take is kept off the help page on purpose (MadMerick): the alerts show the amount.
       robberMinKm = math.floor(roadRobber.MIN_JOB_METRES / 1000 + 0.5),
+      thiefMinutes = math.floor(thief.HOUR_SECONDS / 60 + 0.5), thiefAwayKm = math.floor(thief.MIN_AWAY_METRES / 1000 + 0.5),
       empRange = emp.RANGE, empSeconds = emp.CHARGE_SECONDS,
       basePrice = dollars(home.PRICE), baseRepairOff = percent(home.REPAIR_SHARE),
       startSlots = fleet.START_SLOTS, baseSlots = fleet.BASE_SLOTS, boughtSlots = fleet.BOUGHT_SLOTS,
@@ -2982,6 +2984,7 @@ function M.new(deps)
         worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
+      thiefClock = self:savedThiefClock(),
       trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,

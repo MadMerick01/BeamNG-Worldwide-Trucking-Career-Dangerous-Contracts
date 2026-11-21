@@ -1982,6 +1982,11 @@ do
   save.extraCarSlot = true; T.check(P.validate(save), 'a bought slot loads')
   save.extraCarSlot = 'yes'; T.eq(select(2, P.validate(save)), 'invalid_home', 'a bought slot is true or nothing')
   save.extraCarSlot = nil
+  save.thiefClock = { played = 4000, hour = 1, due = 5400, last = 1800 }
+  T.eq(P.validate(save).thiefClock.due, 5400, 'the base thief count loads')
+  save.thiefClock = { played = 4000.5 }; T.eq(select(2, P.validate(save)), 'invalid_identity', 'whole seconds only')
+  save.thiefClock = { hour = 1 }; T.eq(select(2, P.validate(save)), 'invalid_identity', 'played is needed')
+  save.thiefClock = nil
   save.storedCars[5] = { config = { model = 'sport' } }
   T.eq(select(2, P.validate(save)), 'invalid_home', 'no more than four')
   save.storedCars, save.property.paid = nil, -1

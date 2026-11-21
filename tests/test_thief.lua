@@ -75,44 +75,79 @@ do
   -- Nobody gives chase: the money is gone.
   c:endTheft('late')
   T.eq(c.thief, nil, 'over')
-  -- One a session: no more, however long they play.
-  c.clock = c.clock + 5 * 3600
-  c:watchThief(1)
-  T.eq(c.thief, nil, 'only one a session')
-  T.check(c.theftPlan.done, 'this session has had its theft')
+  -- One an hour: no more in this hour, however long they wait in it.
+  c:watchThief(1000)
+  T.eq(c.thief, nil, 'only one in the hour')
+  T.eq(c.thiefClock.due, nil, 'this hour has had its theft')
   c.mp = { state = 'server' }
   T.eq(c:theftProblem(true), nil, 'thieves on a server too'); c.mp = nil
-  -- Leaving the map or server ends the session; the next one gets its own.
+  -- Leaving the map or server doesn't reset the count: the next session carries on.
   c:endMission()
-  T.eq(c.theftPlan, nil, 'a new session, a new theft to come')
+  T.check(c.thiefClock and c.thiefClock.due == nil, 'no fresh theft for rejoining')
 end
 
--- The session's theft comes at a random moment in the first 45 minutes, or as soon as it can after that.
+-- Each hour of play gets one theft at a random moment in it; a blocked one waits, an hour that ends drops it, and
+-- two are at least GAP_MINUTES apart.
 do
   local c, a = ready({ random = function() return 0.5 end })
   local base = F.copy(a.pose)
   T.check(c:buyBase(base), 'base bought')
-  a.pose = location.destination(base, 90, thief.MIN_AWAY_METRES + 1000)
+  local far = location.destination(base, 90, thief.MIN_AWAY_METRES + 1000)
+  a.pose = far
   c.lastSample = c.adapter:sample()
   c.stranded, c.booking = nil, nil
   c:watchThief(0.1)
-  local due = c.theftPlan.at
-  T.near(due - c.clock, thief.WINDOW_MINUTES * 60 / 2, 5, 'due halfway through the first 45 minutes')
-  c.clock = due - 1; c:watchThief(0.1)
+  local k = c.thiefClock
+  T.eq(k.hour, 0, 'the first hour')
+  T.near(k.due, thief.HOUR_SECONDS / 2, 1, 'due halfway through it')
+  c:watchThief(k.due - k.played - 1)
   T.eq(c.thief, nil, 'not before then')
   -- At the base when it's due: it waits.
   a.pose = F.copy(base); c.lastSample = c.adapter:sample()
-  c.clock = due + 1; c:watchThief(0.1)
+  c:watchThief(2)
   T.eq(c.thief, nil, 'not while at the base')
-  a.pose = location.destination(base, 90, thief.MIN_AWAY_METRES + 1000); c.lastSample = c.adapter:sample()
-  c.clock = due + 600; c.stranded, c.booking = nil, nil; c:watchThief(0.1)
+  -- Paused: the count stands still.
+  local played = k.played
+  c.paused = function() return true end
+  c:watchThief(600)
+  T.eq(k.played, played, 'paused time is not counted')
+  c.paused = function() return false end
+  a.pose = far; c.lastSample = c.adapter:sample()
+  c.stranded, c.booking = nil, nil
+  c:watchThief(600)
   T.check(c.thief ~= nil, 'then as soon as they can be robbed')
-  -- Get robbed doesn't use up the session's theft.
-  local d = ready({ random = function() return 0.99 end })
-  T.check(d:buyBase(F.copy(a.pose)), 'base bought')
-  d:watchThief(0.1)
-  T.check(d:startTheft(true), 'Get robbed')
-  T.check(not d.theftPlan.done, 'the session still has its own theft to come')
+  T.eq(k.last, k.played, 'noted')
+  c.thief = nil
+  -- The next hour's theft, halfway through hour 2 (40 minutes later), is far enough apart.
+  c:watchThief(thief.HOUR_SECONDS - k.played + 1)
+  T.eq(k.hour, 1, 'the second hour'); T.near(k.due, thief.HOUR_SECONDS * 1.5, 1, 'its own moment')
+  T.eq(c.thief, nil, 'not yet')
+  -- Saved and loaded as whole seconds.
+  local saved = c:savedThiefClock()
+  T.eq(saved.played, math.floor(k.played), 'whole seconds'); T.eq(saved.hour, 1, 'the hour kept')
+  -- At the base all through hour 2: that theft is dropped, not stacked onto hour 3.
+  a.pose = F.copy(base); c.lastSample = c.adapter:sample()
+  c:watchThief(thief.HOUR_SECONDS)
+  T.eq(c.thief, nil, 'never while at the base')
+  T.eq(k.hour, 2, 'the third hour'); T.near(k.due, thief.HOUR_SECONDS * 2.5, 1, 'one new theft, not two')
+  -- Too soon after the last: a theft due early in an hour waits for the gap.
+  local d, b2 = ready({ random = function() return 0 end })
+  local home = F.copy(b2.pose)
+  T.check(d:buyBase(home), 'base bought')
+  b2.pose = location.destination(home, 90, thief.MIN_AWAY_METRES + 1000); d.lastSample = d.adapter:sample()
+  d.stranded, d.booking = nil, nil
+  d:watchThief(thief.HOUR_SECONDS - 60)
+  T.check(d.thief ~= nil, 'hour 1 theft'); d.thief = nil
+  d:watchThief(61)
+  T.eq(d.thiefClock.hour, 1, 'hour 2 has begun'); T.eq(d.thief, nil, 'but not 1 minute after the last')
+  d:watchThief(thief.GAP_MINUTES * 60)
+  T.check(d.thief ~= nil, 'once the gap has passed')
+  -- Get robbed doesn't use up the hour's theft.
+  local e, b3 = ready({ random = function() return 0.99 end })
+  T.check(e:buyBase(F.copy(b3.pose)), 'base bought')
+  e:watchThief(0.1)
+  T.check(e:startTheft(true), 'Get robbed')
+  T.check(e.thiefClock.due ~= nil, 'the hour still has its own theft to come')
 end
 
 -- The whole chase: Chase relocates to the base for free, the world settles, the thief turns up and flees, the EMP

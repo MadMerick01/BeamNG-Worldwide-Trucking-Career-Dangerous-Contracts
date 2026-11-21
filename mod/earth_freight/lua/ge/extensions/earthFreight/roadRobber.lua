@@ -28,7 +28,7 @@ local thief = require('earthFreight/thief')
 local emp = require('earthFreight/emp')
 local M = {}
 
-M.CHANCE = 0.25
+M.CHANCE = 0.35
 M.MIN_JOB_METRES = 5000
 M.EDGE_METRES = 2000
 M.BEHIND_METRES = 100
