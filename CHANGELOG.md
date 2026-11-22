@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 267 · 22 Nov 2026
+
 - **Town buildings no longer float on top of the depot.** BeamNG.Earth sometimes loads a building after the depot is already up, and it was setting that building down on the shed's roof. The shed, desk and computer are now scenery you can walk and drive through, so late buildings land on the ground. The depot then sees the building and moves to a clear spot as soon as you're not standing at it.
 - **The depot shed's walls are no longer bright orange.** The mod now loads the shed's metal textures itself. Your saves still work.
 
