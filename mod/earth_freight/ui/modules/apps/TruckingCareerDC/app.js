@@ -8,7 +8,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     // The multiplayer server's status for Play online: 'checking', 'online', 'offline' or 'unknown' (not reachable).
     server: { status: 'checking', at: null },
     // Towns already looked up for a real business this game, so each is only asked once.
-    businessAsked: {}
+    businessAsked: {},
+    // The depot computer's window: open from Use computer until the player walks away or takes a job.
+    pc: { open: false }
   }
   // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
   var STORE = 'earthFreight.hudMinimised'
@@ -462,6 +464,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         // A bill, an insurance offer or being stranded needs the HUD, so the start page makes way.
         if (scope.intro.open && urgent(next) && !urgent(previous)) scope.closeIntro()
         if (kept.help.at && urgent(next) && !urgent(previous)) scope.closeHelp()
+        // The computer's window closes once the player walks away from it, or has taken a job.
+        if (kept.pc.open && (!next.computer || !next.computer.near || (next.load && !previous.load) || urgent(next))) kept.pc.open = false
         for (var i = 0; i < autoOpen.length; i++) {
           if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) {
             scope.setTab(autoOpen[i][0])
@@ -485,6 +489,25 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // The help page is moved onto the page body the same way, so it can fill the middle of the screen.
       var helpPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-help') : null
       if (helpPage && typeof document !== 'undefined' && document.body) document.body.appendChild(helpPage)
+      // The depot computer: its Use computer button low in the middle of the screen, and its window, a big
+      // one in the middle like the start page, are moved onto the page body the same way.
+      var pcPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-pc') : null
+      if (pcPage && typeof document !== 'undefined' && document.body) document.body.appendChild(pcPage)
+      scope.pc = kept.pc
+      scope.useComputer = function () {
+        var c = scope.data && scope.data.computer
+        if (c && c.near) kept.pc.open = true
+      }
+      scope.closeComputer = function () { kept.pc.open = false }
+      // The town's jobs and the fuel runs this computer offers.
+      scope.pcTown = function () {
+        var d = scope.data || {}, c = d.computer
+        return !!(c && c.near && c.town && d.town && d.town.id === c.town)
+      }
+      scope.pcFuel = function () {
+        var d = scope.data || {}, c = d.computer
+        return !!(c && c.near && c.fuel && d.fuelRuns && d.fuelRuns.hub && d.fuelRuns.hub.id === c.fuel && !d.load)
+      }
       fit()
       scope.openIntro = function (d) {
         if (scope.closeHelp) scope.closeHelp()
@@ -535,7 +558,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         'Choose where you start: open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
         'Then fit cargo boxes: the starter car only has its boot, which takes 2 slots. In Buy parts, put Cargo Load boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.',
-        'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
+        'Drive to a town\'s depot, a tin shed with a computer on a desk in front. Park close to the computer, get out, walk up to it and press Use computer. Pick a job and press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
         'The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.'
       ]
@@ -1229,6 +1252,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         fitBox(false)
         if (startPage && startPage.parentNode) startPage.parentNode.removeChild(startPage)
         if (helpPage && helpPage.parentNode) helpPage.parentNode.removeChild(helpPage)
+        if (pcPage && pcPage.parentNode) pcPage.parentNode.removeChild(pcPage)
         scope.typing(false)
         clearInterval(heartbeat)
         mount(false)

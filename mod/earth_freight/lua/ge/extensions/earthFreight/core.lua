@@ -38,6 +38,8 @@ local emp = require('earthFreight/emp')
 local roadRobber = require('earthFreight/roadRobber')
 local adminRobber = require('earthFreight/adminRobber')
 local heli = require('earthFreight/heli')
+local depots = require('earthFreight/depots')
+local depotWorld = require('earthFreight/depotWorld')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -160,6 +162,9 @@ function M.new(deps)
     aircraft = deps.aircraft,
     -- The base thief's car (thiefCar.lua); without it a thief can't be chased.
     thiefCar = deps.thiefCar,
+    -- Puts the depots' sheds and computers down in the world (depotWorld.lua); without it there are
+    -- no depots, and jobs are taken on the HUD.
+    depotWorld = deps.depotWorld,
     odometer = odometer.new(),
     -- Sends game UI events, such as the pop-ups that show over the game's own menus.
     trigger = deps.trigger,
@@ -183,6 +188,7 @@ function M.new(deps)
   emp.attach(c)
   roadRobber.attach(c)
   adminRobber.attach(c)
+  depots.attach(c)
 
   function c:transition(nextState, reason)
     if self.state == nextState and self.reason == reason then return end
@@ -609,6 +615,8 @@ function M.new(deps)
     -- A road robber's car went with the level (roadRobber.lua). The hourly base thief's count is in the save (thief.lua).
     self.robber, self.robberJob, self.robberAtKm, self.empFiredAt = nil, nil, nil, nil
     self.adminDrive, self.adminFeedback = nil, nil
+    -- The depots went with the level; their spots are kept, by where they are on Earth.
+    self.depotsBuilt, self.depotSearch = nil, nil
     self:interrupt('earth_level_required')
     self.adapter:invalidate()
   end
@@ -1567,6 +1575,19 @@ function M.new(deps)
     return nil
   end
 
+  -- Why taking a job at this place is not possible now, or nil when it is. With depots, jobs are
+  -- taken on foot at the town's depot computer, the truck parked close by (depots.lua); without
+  -- them, in the car, stopped in town.
+  function c:takeProblem(place)
+    if not self:depotsOn() then return self:tradeProblem(place) end
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Jobs are unavailable right now.' end
+    if self.hire then return self:awayText() end
+    if not place then return 'Drive into a town to find a job.' end
+    if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+    return self:computerProblem(place.id, nil)
+  end
+
   -- The job board of a place: its jobs, seeded by how many jobs the player has done, in the band
   -- picked on the Distance filter.
   function c:board(place)
@@ -1604,7 +1625,7 @@ function M.new(deps)
   function c:takeJob(jobId, share)
     share = share or 100
     local place = self:here()
-    local problem = self:tradeProblem(place)
+    local problem = self:takeProblem(place)
     if not problem and self.load then problem = 'You already have a job. Deliver it or abandon it first.' end
     if not problem and self.rockets then problem = rockets.TAKE_PROBLEM end
     local job
@@ -2307,7 +2328,10 @@ function M.new(deps)
     local dt = location.finite(dtReal) and math.max(0, dtReal) or 0
     self.clock = self.clock + dt
     -- On foot, in the game's walking mode, the car waits where it was left.
+    local wasOnFoot = self.onFoot
     self.onFoot = self.garage ~= nil and self.garage.onFoot ~= nil and self.garage:onFoot() or false
+    -- A job taken at a depot's computer, on foot, puts its weight on the truck once back in it.
+    if wasOnFoot and not self.onFoot and self.load then self:applyWeight() end
     if self.garage and self.garage.keepParked then
       if not self.onFoot then self.garage:releaseParked()
       elseif self.ownedParts then self.garage:keepParked(self.ownedParts.id) end
@@ -2344,6 +2368,7 @@ function M.new(deps)
     self:afterRespawn()
     self:watchFuel()
     self:watchStations()
+    self:watchDepots()
     self:watchInsurance()
     self:watchTow()
     self:watchTimedSave()
@@ -2588,6 +2613,7 @@ function M.new(deps)
     local town
     if place then
       local problem = self:tradeProblem(place)
+      local takeProblem = self:takeProblem(place)
       local kind = jobs.character(place)
       local delivery
       if self.load and not self.load.drop and self.load.to == place.id then
@@ -2598,7 +2624,9 @@ function M.new(deps)
       town = {
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
         region = place.region, boost = jobs.roadBonusFor(places.boost(place)), character = characterText[kind],
-        jobs = self:boardView(place, problem == nil and not self.load), distance = self.jobDistance or 'any',
+        jobs = self:boardView(place, takeProblem == nil and not self.load), distance = self.jobDistance or 'any',
+        -- With depots, why the jobs can't be taken here (on the Town tab: at the depot computer).
+        takeProblem = self:depotsOn() and takeProblem or nil,
         delivery = delivery,
         refuel = refuel and { litres = refuel.litres, cost = refuel.cost, full = refuel.full } or nil,
         refuelAllowed = self:refuelProblem() == nil and self.fuelTank ~= nil and refuel ~= nil and not refuel.full and refuel.litres > 0
@@ -2815,6 +2843,7 @@ function M.new(deps)
       insuranceDebt = self:insuranceOwed() > 0 and { owed = self:insuranceOwed(), payAllowed = self:payInsuranceAllowed(),
         sharePercent = math.floor(workshop.DEBT_SHARE * 100 + 0.5) } or nil,
       onFoot = self.onFoot == true,
+      computer = self:computerView(),
       -- Why Buy parts, Buy new car and Buy second hand are off, or nil when they are on.
       garageLocked = self.onFoot and 'Get back in your car to change parts or cars.' or self:towDebtProblem(),
       partsChange = self.pendingParts and {
@@ -2888,6 +2917,7 @@ function M.new(deps)
       contractFee = dollars(contracts.FEE),
       fuelRunMinKm = fuelruns.MIN_KM, fuelRunMaxKm = fuelruns.MAX_KM, townFuelTimes = fuel.TOWN_PRICE_TIMES,
       toll = percent(magnate.TOLL),
+      depotTruckMetres = depots.TRUCK_METRES,
     }
   end
 
@@ -3231,7 +3261,7 @@ end
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
-      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(),
+      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(), depotWorld = depotWorld.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
       streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(), nametagsOff = gameNametagsOff,
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })

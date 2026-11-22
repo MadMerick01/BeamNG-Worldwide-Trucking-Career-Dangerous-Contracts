@@ -6,6 +6,12 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Every town now has a depot, and jobs are taken at its computer.** The depot is a tin shed with an office desk and computer in front of it, set back from a road near the middle of town. Park your truck within 30 m of the computer, get out and walk up to the desk. A Use computer button shows, and it opens a big computer screen with the town's jobs, the off-road drop and, at a fuel depot, the fuel runs. Your truck must still be within 30 m when you take a job, and the load goes on as you get back in.
+- The Town tab still lists the jobs and their pay, and says how far away the depot is, but its Take job buttons only work at the computer. Fuel depots have a computer too, and fuel runs are loaded there.
+- Deliveries haven't changed. Drive to the drop-off and press Deliver on the HUD as before.
+- The depot is checked for clear, flat ground so it doesn't sit inside a building, a tree or a road. Where a town has no clear spot, the depot is just the desk and computer by the road. Online, every player's game puts down its own depot in the same place, and nothing extra goes through the server.
+- Your saves still work.
+
 ## Build 262 · 22 Nov 2026
 
 - **In single player you can now switch robbers off.** Untick Robbers and thieves on the Route tab (under ROB ME) and no road robber will ambush your deliveries and no thief will break into your base. Nothing is taken from your pay for it, and you can tick it again any time. Your choice is kept in your save. Online, the tick box isn't there and every trucker can still be robbed. ROB ME and Get robbed still work for testing. Your saves still work.
