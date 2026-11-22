@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **An arrow now points you to the depot.** In town, the Town tab shows an arrow that turns as you drive, with how far the depot is and which way. Press GPS next to it for a route straight to the depot. With the HUD minimised, the strip shows the distance and direction to the depot while you have no job. Your saves still work.
+
 ## Build 264 · 22 Nov 2026
 
 - **The depot's tin shed now has its metal walls.** Parts of it showed in bright orange because two of its textures only load on some of the game's own maps. The mod now brings them along, so the shed looks right on every map. Your saves still work.

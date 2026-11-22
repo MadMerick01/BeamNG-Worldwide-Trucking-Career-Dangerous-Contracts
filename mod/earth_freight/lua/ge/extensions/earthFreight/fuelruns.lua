@@ -417,6 +417,7 @@ function M.attach(c)
     local ok, why = self.adapter:setDestination(spot, name)
     self.diag:event('gps', ok and ('fuel_depot:' .. hub.id) or tostring(why), ok and 'I' or 'W')
     self.gpsTown, self.gpsContract, self.gpsDepot = nil, nil, ok and hub.id or nil
+    self.gpsTownDepot = nil
     self.gpsFeedback = ok and ('The GPS is set to ' .. name .. '.')
       or ('Could not set the GPS. Paste ' .. string.format('%.5f, %.5f', spot.latitude, spot.longitude) .. ' into the BeamNG.Earth map instead.')
     return ok == true
@@ -452,6 +453,7 @@ function M.attach(c)
     if not ok then ok, why = self.adapter:setDestination(stop, stopName) end
     self.diag:event('gps', ok and ('fuel_run:' .. job.id .. (both and ':route' or '')) or tostring(why), ok and 'I' or 'W')
     self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = nil, nil, nil, ok and job.id or nil
+    self.gpsTownDepot = nil
     self.gpsFeedback = ok and (both and ('The GPS shows the whole run: ' .. startName .. ', then ' .. stopName .. '.')
       or ('The GPS is set to ' .. stopName .. '.')) or 'Could not set the GPS.'
     return ok == true

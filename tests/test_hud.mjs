@@ -1623,3 +1623,21 @@ test('Depot computer: Use computer shows at the desk, opens the computer, and it
   const b = app(null, element)
   assert.equal(b.document.body.children.some(c => c.tag === 'pc'), true, 'the computer is moved onto the page, to fill the middle of the screen')
 })
+
+test('Depot arrow: the Town tab points to the depot with a GPS button, and the minimised strip shows how far', () => {
+  assert.match(html, /ng-style="arrowStyle\(data\.computer\.depot\)"/)
+  assert.match(html, /ng-click="gpsToTownDepot\(\)"/)
+  assert.match(html, /depotStrip\(data\)/)
+  const a = app()
+  const depot = { name: 'Penrith', distanceMetres: 180, direction: 'north-east', letters: 'NE', arrow: 45, gpsAllowed: false }
+  a.state({ state: 'READY', town: { id: 'gn1', jobs: [] }, computer: { truckMetres: 30, depot } })
+  assert.equal(a.scope.depotStrip(a.scope.data).letters, 'NE', 'the strip shows the depot')
+  let count = a.commands.length
+  a.scope.gpsToTownDepot()
+  assert.equal(a.commands.length, count, 'no GPS unless Lua allows it')
+  a.state({ state: 'READY', town: { id: 'gn1', jobs: [] }, computer: { truckMetres: 30, depot: { ...depot, gpsAllowed: true } } })
+  a.scope.gpsToTownDepot()
+  assert.equal(a.commands.at(-1), fixed('gpsToTownDepot()'))
+  a.state({ state: 'READY', town: { id: 'gn1', jobs: [] }, load: { to: 'Blaxland' }, computer: { truckMetres: 30, depot } })
+  assert.equal(a.scope.depotStrip(a.scope.data), null, 'not while on a job')
+})
