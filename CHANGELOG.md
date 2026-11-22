@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 272 · 22 Nov 2026
+
 - **You now keep your camera after buying parts or teleporting.** Leaving the parts menu, teleporting with BeamNG.Earth or the HUD's Teleport buttons, and coming back to your car from the helicopter or sightseeing could leave you on the free camera, or on the car's default view. You're now put back on the camera you last used in that car, such as the driver's seat or chase view. This works when you open the parts menu with Ctrl+W too, not only with Buy parts. If you switched to the free camera yourself before, you stay on it. Your saves still work.
 
 ## Build 271 · 22 Nov 2026
