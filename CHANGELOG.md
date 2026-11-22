@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **In single player you can now switch robbers off.** Untick Robbers and thieves on the Route tab (under ROB ME) and no road robber will ambush your deliveries and no thief will break into your base. Nothing is taken from your pay for it, and you can tick it again any time. Your choice is kept in your save. Online, the tick box isn't there and every trucker can still be robbed. ROB ME and Get robbed still work for testing. Your saves still work.
+
 ## Build 261 · 21 Nov 2026
 
 - **Every job board now has a long haul in place of the dangerous contract.** It's a load of parts or bricks to a town 20 to 60 km away, marked LONG HAUL on the Town tab, and it pays more than the shorter runs. The other jobs and the off-road drop are the same as before.

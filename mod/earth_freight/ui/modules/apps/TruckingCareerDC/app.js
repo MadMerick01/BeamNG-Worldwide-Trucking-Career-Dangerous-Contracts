@@ -325,6 +325,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.empThief = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'chasing') core('empThief()') }
       // The road robber: ROB ME on the Route tab.
       scope.robMe = function () { if (scope.data && scope.data.robMe && scope.data.robMe.allowed) core('robMe()') }
+      // Its "Robbers and thieves" switch, offered in single player only.
+      scope.setRobbersOn = function (on) { if (scope.data && scope.data.robMe && scope.data.robMe.canSwitch) core('setRobbersOn(' + (on ? 'true' : 'false') + ')') }
       // The admin robber (the server's admins only): Rob a player from the list, and Stop.
       scope.adminRob = function (p) { if (p && p.allowed && typeof p.id === 'number') core('adminRob(' + Math.floor(p.id) + ')') }
       scope.adminEmp = function () { var d = scope.data && scope.data.admin && scope.data.admin.drive; if (d && d.emp && d.emp.ready) core('adminEmp()') }

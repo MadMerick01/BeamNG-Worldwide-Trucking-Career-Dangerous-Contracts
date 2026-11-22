@@ -83,6 +83,7 @@ function M.attach(c)
     if self.thiefReturn then return 'Go back to your job first.' end
     if not self:canAfford(M.MIN_TAKE) then return 'Less than ' .. dollars(M.MIN_TAKE) .. ' in the bank.' end
     if forced then return nil end
+    if self:robbersOff() then return 'Robbers are switched off.' end
     if self.thiefReturn or self.hire or self.onFoot or self.maydayRun or self.booking or self.stranded then return 'Busy.' end
     local away = self:homeDistance()
     if not away or away < M.MIN_AWAY_METRES then return 'Too close to the base.' end
@@ -259,6 +260,8 @@ function M.attach(c)
     self:countThiefClock(dt)
     if not t then
       local k = self.thiefClock
+      -- Robbers switched off (single player): the hour's theft is dropped, so switching back on doesn't bring it.
+      if k and k.due and k.played >= k.due and self:robbersOff() then k.due = nil end
       if k and k.due and k.played >= k.due and (not k.last or k.played - k.last >= M.GAP_MINUTES * 60)
           and not self:theftProblem(false) and self:startTheft(false) then
         k.due, k.last = nil, k.played

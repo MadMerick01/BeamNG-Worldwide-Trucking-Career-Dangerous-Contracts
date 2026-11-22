@@ -85,7 +85,8 @@ Online, others can ask to join your base as your corp. Members get the turf bonu
 # robbers | Robbers and the EMP
 On a job of {robberMinKm} km or more, a road robber may hit you with an EMP and take some of your money. The bigger the job, the more they take.
 Chase them: get within {empRange} m and fire your own EMP to get it back, plus a bonus from their trunk. If they get too far ahead, they escape.
-Every trucker can be robbed, and a delivery is only ever robbed once.
+A delivery is only ever robbed once.
+In single player you can switch robbers and base thieves off with the Robbers and thieves tick box on the Route tab. It costs nothing and you can switch them back on any time. Online, every trucker can be robbed.
 Your EMP takes {empSeconds} seconds to charge again after each shot.
 A base thief can strike about once every {thiefMinutes} minutes of play, when you're at least {thiefAwayKm} km from your base, and take some of your money. Chase takes you there for free. Catch them for your money back plus a bonus from their trunk.
 On a chase, your job waits where you left it, with its cargo.

@@ -16,8 +16,10 @@
 --     a test), and the car goes after CAUGHT_SECONDS.
 --     ESCAPE_METRES clear, it gets away with the money. The job carries on throughout, and delivering or abandoning it
 --     doesn't end the chase.
--- Every player can be robbed (MadMerick, 21 Nov: the old "Robbers can rob me" opt-out was too big an advantage; an old
--- save's noRobbers is ignored). ROB ME on the Route tab starts one straight away for testing, and doesn't count as the
+-- Online, every player can be robbed (MadMerick, 21 Nov: the old "Robbers can rob me" opt-out was too big an
+-- advantage; an old save's noRobbers is ignored). In single player only (MadMerick, 22 Nov), the Route tab's "Robbers
+-- and thieves" switch turns off road robbers and the base thief, saved as robbersOff, with no cost to the player. On a
+-- BeamMP server the switch isn't shown and a saved robbersOff is ignored (robbersOff below). ROB ME on the Route tab starts one straight away for testing, and doesn't count as the
 -- job's robbery. Never on Mayday Rescue runs, heli flights or the heli's package jobs. Pure Lua: the car is
 -- handled by c.thiefCar, which may be missing. An admin on the server can drive a robber himself (adminRobber.lua):
 -- self.robber then has admin = true.
@@ -108,6 +110,12 @@ function M.attach(c)
   --   self.robberJob: the load the CHANCE roll was made for, and self.robberAtKm: the job's driven km at which it strikes
   --     (nil when this job isn't robbed).
   --   self.robbedLoad: the load a robber (this game's or the admin's) has already robbed: one robbery a delivery.
+  --   self.robbersOffSaved: true when the player switched robbers off (single player only: see robbersOff).
+
+  -- Whether robbers and thieves are switched off: only in single player, never on a BeamMP server.
+  function c:robbersOff()
+    return self.robbersOffSaved == true and self.mp == nil
+  end
 
   -- Why a robber can't be put on the road now, or nil.
   function c:robberProblem(forced)
@@ -119,6 +127,7 @@ function M.attach(c)
     if self.robber and self.robber.phase ~= 'loaded' then return 'A robber is already about.' end
     if not self:canAfford(M.MIN_TAKE) then return 'Less than ' .. dollars(M.MIN_TAKE) .. ' in the bank.' end
     if forced then return nil end
+    if self:robbersOff() then return 'Robbers are switched off.' end
     if self.maydayRun or self.booking or self.stranded then return 'Busy.' end
     return nil
   end
@@ -279,7 +288,7 @@ function M.attach(c)
       self.robberJob, self.robberAtKm = load, nil
       if self.robber and self.robber.phase == 'loaded' and not self.robber.forced then self:dropRobber('job ended') end
       local robbable, metres = self:robbableJob(load)
-      if robbable and not self.robber and self.robbedLoad ~= load and self.random() < M.CHANCE then
+      if robbable and not self:robbersOff() and not self.robber and self.robbedLoad ~= load and self.random() < M.CHANCE then
         local span = metres - 2 * M.EDGE_METRES
         self.robberAtKm = (M.EDGE_METRES + self.random() * math.max(0, span)) / 1000
         self.diag:event('robber_planned', string.format('%.1f km', self.robberAtKm))
@@ -287,7 +296,7 @@ function M.attach(c)
       end
     end
     -- This job's robber not loaded (the game refused, or ROB ME used it): loaded again while its moment is ahead.
-    if not self.robber and self.robberAtKm and load and (load.drivenKm or 0) < self.robberAtKm
+    if not self.robber and self.robberAtKm and load and (load.drivenKm or 0) < self.robberAtKm and not self:robbersOff()
       and self.clock >= (self.robberLoadAt or 0) then
       self.robberLoadAt = self.clock + M.RETRY_SECONDS * 5
       self:loadRobber(false)
@@ -299,7 +308,7 @@ function M.attach(c)
     if r.admin then return self:watchAdminRobber() end
     if r.phase == 'loaded' then
       if not r.go then
-        if not self.robberAtKm or not load or load ~= self.robberJob or (load.drivenKm or 0) < self.robberAtKm then return end
+        if self:robbersOff() or not self.robberAtKm or not load or load ~= self.robberJob or (load.drivenKm or 0) < self.robberAtKm then return end
         r.go = true
       end
       if r.nextTry and self.clock < r.nextTry then return end
@@ -374,13 +383,27 @@ function M.attach(c)
     if r.phase == 'caught' and self.clock - r.caughtAt > M.CAUGHT_SECONDS then self:dropRobber('caught') end
   end
 
-  -- The Route tab's ROB ME button.
+  -- The Route tab's "Robbers and thieves" switch (single player only): on (true) or off (false). Saved with the career.
+  function c:setRobbersOn(on)
+    if not self.profile or self.error or self.mp then return false end
+    self.robbersOffSaved = (on == false) or nil
+    -- A robber waiting for its moment goes; one already on the road, or a theft under way, carries on.
+    if self.robbersOffSaved and self.robber and self.robber.phase == 'loaded' and not self.robber.forced then
+      self:dropRobber('switched off')
+    end
+    if self.robbersOffSaved then self.robberAtKm = nil end
+    self:autoSaveSoon('your robber setting')
+    return true
+  end
+
+  -- The Route tab's ROB ME button, and the switch (only offered in single player).
   function c:robMeView()
     if not self.profile or self.error then return nil end
     local problem = self:robberProblem(true)
     if self.robber and self.robber.phase == 'loaded' and self.robber.go then problem = 'A robber is coming. Keep driving.' end
     -- What a robber takes is never shown here (MadMerick): only the amount, once it happens.
-    return { allowed = problem == nil, problem = problem, feedback = self.robberFeedback }
+    return { allowed = problem == nil, problem = problem, feedback = self.robberFeedback,
+      canSwitch = self.mp == nil or nil, robbersOn = not self:robbersOff() }
   end
 
   -- The chase card, in the base thief's shape (thief.lua's thiefView) with road = true, or nil.

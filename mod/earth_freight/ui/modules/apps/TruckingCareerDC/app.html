@@ -541,6 +541,10 @@
             <div style="flex:1;min-width:0;"><b style="color:#eb5757;">Road robbers</b> <button type="button" class="ef-q" ng-click="help('robbers')" title="How this works" aria-label="How this works">?</button><div style="color:#c9d6d2;">On a job of 5 km or more, a robber may EMP you and take some of your money. Catch them with yours to get it back, plus a bonus from their trunk.</div></div>
             <button type="button" ng-click="robMe()" ng-disabled="!data.robMe.allowed" title="Test it: a robber turns up on the road behind you straight away" style="flex:none;padding:4px 14px;border:1px solid #eb5757;border-radius:4px;background:#eb5757;color:#0c1318;font-weight:bold;">ROB ME</button>
           </div>
+          <label ng-if="data.robMe.canSwitch" style="display:flex;align-items:center;gap:6px;margin-top:6px;color:#c9d6d2;" title="Single player only: online, everyone can be robbed">
+            <input type="checkbox" ng-checked="data.robMe.robbersOn" ng-click="setRobbersOn(!data.robMe.robbersOn)" aria-label="Robbers and thieves" />
+            Robbers and thieves (single player only)
+          </label>
           <div ng-if="data.robMe.feedback || data.robMe.problem" role="status" style="margin-top:4px;color:#c9d6d2;">{{data.robMe.feedback || data.robMe.problem}}</div>
         </div>
         <div ng-if="data.admin && !data.admin.drive" style="margin:8px 0 0;padding:8px 10px;border:1px dashed #eb5757;border-radius:6px;font-size:13px;">
