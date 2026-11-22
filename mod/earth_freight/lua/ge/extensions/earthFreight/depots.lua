@@ -39,10 +39,11 @@ M.CHECK_SECONDS, M.TRIES_PER_CHECK, M.WAIT_SECONDS = 0.5, 2, 2
 -- SETTLE_SECONDS after the player comes near, and a spot that is clear is checked again
 -- SETTLE_SECONDS later before the depot goes down there.
 M.SETTLE_SECONDS = 4
--- Once a depot is down, the ground round its shed is checked again every RECHECK_SECONDS while the
--- player is more than MOVE_METRES from its computer (out of sight), for a building that loaded
--- late. If one is there, the depot moves to the next clear spot, at most MAX_MOVES times a visit.
-M.RECHECK_SECONDS, M.MOVE_METRES, M.MAX_MOVES = 5, 150, 3
+-- Once a depot is down, its ground is checked again every RECHECK_SECONDS for a building that loaded
+-- late (the depot's pieces are not solid, so a late building stands on the ground through the shed,
+-- never on its roof, and the checks see it). If one is there, the depot moves to the next clear spot,
+-- at most MAX_MOVES times a visit, and never while the player is within MOVE_METRES of its computer.
+M.RECHECK_SECONDS, M.MOVE_METRES, M.MAX_MOVES = 5, 30, 3
 
 -- Where the pieces go, in metres. u runs along the road, v away from it; the desk's corner is at
 -- 0, 0. The desk and computer face the road, so the player stands on the road side of the desk and
@@ -167,11 +168,17 @@ function M.check(world, cx, cy, cz, try)
   return spot
 end
 
--- Whether the ground just outside a depot that is down is still clear: true, false when something
--- (a building that loaded late) now stands there, or 'wait' when the ground is not loaded.
+-- Whether a depot that is down still stands on clear ground: true, false when something (a building
+-- that loaded late) now stands in or round it, or 'wait' when the ground is not loaded. The depot's
+-- own pieces are not solid, so the checks see through them.
 function M.stillClear(world, spot, cz)
   local all = { spot.roadZ or spot.shedZ }
-  for _, p in ipairs(M.outside()) do
+  local points = M.outside()
+  for _, u in ipairs(M.SHED_U) do
+    for _, v in ipairs(M.SHED_V) do points[#points + 1] = { u = u, v = v } end
+    for _, v in ipairs(M.FRONT_V) do points[#points + 1] = { u = u, v = v } end
+  end
+  for _, p in ipairs(points) do
     local x, y = M.at(spot, p.u, p.v)
     local h = world:ground(x, y, cz)
     if h == nil then return 'wait' end
@@ -365,7 +372,7 @@ function M.attach(c)
     for key in pairs(self.depotMoves) do
       if not self.depotsBuilt[key] and not wanted[key] then self.depotMoves[key] = nil end
     end
-    -- A building that loaded after the depot went down: out of sight, the depot moves.
+    -- A building that loaded after the depot went down: the depot moves, unless the player is at it.
     for key, built in pairs(self.depotsBuilt) do
       local spot = built.spot
       local away = math.sqrt((f.x - built.pc.x) ^ 2 + (f.y - built.pc.y) ^ 2)

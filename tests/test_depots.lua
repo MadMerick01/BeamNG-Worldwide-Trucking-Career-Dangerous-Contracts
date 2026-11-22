@@ -149,7 +149,7 @@ do
   T.check(math.abs(built2.spot.x - first.x) + math.abs(built2.spot.y - first.y) > 1, 'somewhere else')
 end
 
--- A house that loads after the depot is down: it moves while the player is out of sight, never while near.
+-- A house that loads after the depot is down: it moves, but not while the player is at it.
 do
   local w = F.depotWorld()
   local c = F.controller({ depotWorld = w })
@@ -164,13 +164,26 @@ do
   T.eq(c.depotsBuilt[key], built, 'near it, the depot stays put')
   w.me = { x = built.pc.x + depots.MOVE_METRES + 50, y = built.pc.y, z = 0 }
   for _ = 1, 12 do c:tick(0.6) end
-  T.check(c.depotsBuilt[key] ~= built, 'out of sight, it is taken away')
+  T.check(c.depotsBuilt[key] ~= built, 'once they walk off, it is taken away')
   for _ = 1, 40 do c:tick(0.6) end
   local moved = c.depotsBuilt[key]
   T.check(moved ~= nil, 'and put down again')
   T.check(math.abs(moved.spot.x - spot.x) + math.abs(moved.spot.y - spot.y) > 1, 'at another spot')
   T.eq(c.depotMoves[key], 1, 'once')
   T.eq(w:count(), 4, 'with nothing left behind')
+end
+
+-- The depot's pieces aren't solid, so a late building stands on the ground inside the shed, and the
+-- check sees it there too.
+do
+  local w = F.depotWorld()
+  local spot = depots.check(w, 0, 0, 0, { metres = 40, bearing = 0 })
+  T.eq(depots.stillClear(w, spot, 0), true, 'clear ground is still clear')
+  local x, y = depots.at(spot, -1, 6.4)
+  w.boxes = { { x - 2, y - 2, x + 2, y + 2, 8 } }
+  T.eq(depots.stillClear(w, spot, 0), false, 'a building inside the shed is found')
+  w.unloaded = true
+  T.eq(depots.stillClear(w, spot, 0), 'wait', 'unloaded ground: no answer yet')
 end
 
 -- No clear ground anywhere: just the desk and computer, at the flattest try.
@@ -208,6 +221,34 @@ do
   local hub = places.at(F.PENRITH)
   local problem = c:fuelRunProblem(location.copy(F.PENRITH), hub, nil)
   T.check(problem and problem:find('computer'), 'a fuel run is loaded at the computer: ' .. tostring(problem))
+end
+
+-- The game side: pieces are put down not solid, and the shed's tin materials are loaded once first.
+do
+  local depotWorld = require('earthFreight/depotWorld')
+  local fields, loads, objects = {}, 0, {}
+  local env = {
+    create = function()
+      local o = { id = #objects + 1 }
+      function o:setField(k, _, v) fields[#objects .. k] = v; self[k] = v end
+      function o:setPosition() end
+      function o:setPosRot() end
+      function o:registerObject() end
+      function o:getID() return self.id end
+      objects[#objects + 1] = o
+      return o
+    end,
+    point = function(x, y, z) return { x = x, y = y, z = z } end,
+    upright = function() return { x = 0, y = 0, z = 0, w = 1 } end,
+    group = function() return nil end,
+    materials = function() loads = loads + 1 end,
+  }
+  local w = depotWorld.new(env)
+  T.check(w:place('shed', 0, 0, 0, 1, 0) ~= nil, 'the shed is put down')
+  T.check(w:place('desk', 0, 0, 0, 1, 0) ~= nil, 'and the desk')
+  T.eq(objects[1].collisionType, 'None', 'the shed is not solid')
+  T.eq(objects[2].collisionType, 'None', 'nor the desk')
+  T.eq(loads, 1, 'the tin materials are loaded once, before the first piece')
 end
 
 T.done('depots')
