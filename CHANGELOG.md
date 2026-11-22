@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 271 · 22 Nov 2026
+
 - **You can buy parts in the middle of a fuel run again.** With fuel in a tanker, every parts bill said "Your job would not fit with these parts", even for a turbo or new wheels, because the game forgot how big the tanker's tank was each time the parts menu changed the truck. Now only changes that really take away room for your load, such as removing the cargo tank or a cargo box the load is in, are blocked until you deliver. Your saves still work.
 
 ## Build 270 · 22 Nov 2026
