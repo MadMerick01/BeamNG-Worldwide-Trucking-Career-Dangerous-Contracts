@@ -333,6 +333,17 @@ function M.attach(c)
     if self.rockets then return rockets.TAKE_PROBLEM end
     if not hub then return 'There is no fuel depot within ' .. M.HUB_REACH_KM .. ' km.' end
     if self.hire then return self:awayText() end
+    -- With depots, a run is loaded on foot at the fuel depot's computer, the truck parked close by.
+    if self.depotsOn and self:depotsOn() then
+      if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+      if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+      local at = self:computerHere()
+      if not (at and at.fuel == hub.id) and not self:depotFor(nil, hub.id) then
+        return depot and ('Drive to ' .. depot.name .. ' in ' .. hub.name .. ' and use the computer at its depot to load.')
+          or ('Drive into ' .. hub.name .. ' and use the computer at its depot to load.')
+      end
+      return self:computerProblem(nil, hub.id)
+    end
     if self.onFoot then return ON_FOOT end
     if not self:atFuelDepot(current, hub, depot) then
       return depot and ('Drive to ' .. depot.name .. ' in ' .. hub.name .. ' and stop within ' .. M.DEPOT_RADIUS .. ' m to load.')

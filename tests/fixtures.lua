@@ -261,12 +261,56 @@ function F.controller(options)
   local c = Core.new({ io = io, adapter = adapter, garage = garage, paused = options.paused, random = options.random,
     punctures = options.punctures, cargo = cargo, fuel = fuel, aircraft = options.aircraft,
     streetView = options.streetView, openUrl = options.openUrl, multiplayer = options.multiplayer,
-    nametagsOff = options.nametagsOff,
+    nametagsOff = options.nametagsOff, depotWorld = options.depotWorld,
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
   -- Damage set in a test is a crash, not the car settling after a spawn: no settle time unless asked for.
   c.settleOff = not options.settle
   return c, io, adapter, garage, cargo, fuel, logs
+end
+-- Stand-in for the depots' game side (depotWorld.lua): flat ground at height 0 everywhere, one
+-- straight road along y = 0, the player at me and cars by id. A test can add boxes (x0, y0, x1, y1,
+-- height: a building), mark the ground not loaded yet (unloaded), or make placing fail.
+function F.depotWorld()
+  local w = { me = { x = 0, y = 0, z = 0 }, cars = {}, objects = {}, boxes = {}, made = 0, roadRadius = 3 }
+  function w:available() return true end
+  -- With follow set to the adapter, the player moves in the world as the adapter's pose moves on
+  -- Earth (east-north-up from origin), and me is where they stand from there.
+  function w:where(id)
+    if id == nil and self.follow then
+      local location = require('earthFreight/location')
+      local d = location.distance(self.origin, self.follow.pose) or 0
+      local b = math.rad(location.bearing(self.origin, self.follow.pose) or 0)
+      return { x = math.sin(b) * d + self.me.x, y = math.cos(b) * d + self.me.y, z = self.me.z }
+    end
+    if id == nil then return F.copy(self.me) end
+    return self.cars[id] and F.copy(self.cars[id]) or nil
+  end
+  function w:ground(x, y)
+    if self.unloaded then return nil end
+    for _, b in ipairs(self.boxes) do
+      if x >= b[1] and x <= b[3] and y >= b[2] and y <= b[4] then return b[5] end
+    end
+    return 0
+  end
+  function w:road(x, y)
+    if self.noRoads then return nil end
+    return { x = x, y = 0, z = 0, dx = 1, dy = 0, radius = self.roadRadius, metres = math.abs(y) }
+  end
+  function w:place(shape, x, y, z, fx, fy)
+    if self.placeFails then return nil end
+    self.made = self.made + 1
+    self.objects[self.made] = { shape = shape, x = x, y = y, z = z, fx = fx, fy = fy }
+    return self.made
+  end
+  function w:forward(id) local o = self.objects[id]; return o and { x = o.fx, y = o.fy } or nil end
+  function w:remove(id) self.objects[id] = nil; return true end
+  function w:count()
+    local n = 0
+    for _ in pairs(self.objects) do n = n + 1 end
+    return n
+  end
+  return w
 end
 -- Puts a job on every board, first: a good from wherever the board is to the place given. Returns its id.
 function F.offer(c, to, good)
