@@ -10,6 +10,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - Measured roads are remembered, so the next time that town shows up on a board, it already shows the real distance and price.
 - A job taken without pressing GPS first is measured as soon as the GPS plans its route. If the road is longer than the estimate, your pay goes up and a message tells you by how much.
 - Pay only ever goes up: a job never pays less than the board showed, even if the road turns out shorter. If BeamNG.Earth can't plan a road (its app is offline, auto-GPS is off, or the route is far longer than any sensible road), the job keeps its board price. Off-road drops and fuel runs are paid as before. Your saves still work.
+
 ## Build 268 · 22 Nov 2026
 
 - **You can chase a base thief in one of your parked cars.** When a thief hits your base, the card now has a Chase in button for each parked car as well as Chase. It's free, even on a job. Your truck is parked in that car's slot with your job in it, and the chase car takes you to your base. When you press Back to your job, your truck is swapped back in at the spot you left and your trailer comes out behind it. The chase car goes back to its slot with any damage it picked up, and a crash in it never loses your job.
