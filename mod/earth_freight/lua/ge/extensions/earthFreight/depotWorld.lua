@@ -30,6 +30,16 @@ local function defaults()
     upright = function(x, y) return quatFromDir(vec3(x, y, 0), vec3(0, 0, 1)) end,
     create = function(kind) return createObject(kind) end,
     group = function() return scenetree and scenetree.MissionGroup end,
+    -- The shed's two tin materials, which only some of the game's levels define (BeamNG.Earth does
+    -- not): loaded from the mod's own file unless the level already has them.
+    materials = function()
+      local load = rawget(_G, 'loadJsonMaterialsFile')
+      if type(load) ~= 'function' then return false end
+      local find = scenetree and scenetree.findObject
+      if find and find('ind_tin_01') and find('ind_tin_02') then return true end
+      load(M.MATERIALS)
+      return true
+    end,
     -- Whether this game can put objects down and look at the ground at all.
     available = function()
       return type(rawget(_G, 'createObject')) == 'function' and type(rawget(_G, 'castRayStatic')) == 'function'
@@ -37,6 +47,8 @@ local function defaults()
     end,
   }
 end
+
+M.MATERIALS = '/art/shapes/earth_freight_depot/main.materials.json'
 
 -- Rays look for the ground from RAY_FROM metres above the player, down to RAY_DOWN metres.
 M.RAY_FROM, M.RAY_DOWN = 300, 900
@@ -107,13 +119,23 @@ function M.new(environment)
 
   -- Puts down one of SHAPES at x, y, z, its forward along fx, fy. Returns its id, or nil.
   local made = 0
+  local materialsLoaded = false
   function w:place(shape, x, y, z, fx, fy)
     local path = M.SHAPES[shape]
     if not path then return nil end
+    if not materialsLoaded and env.materials then
+      materialsLoaded = true
+      pcall(env.materials)
+    end
     local ok, id = pcall(function()
       local o = env.create('TSStatic')
       if not o then return nil end
       o:setField('shapeName', 0, path)
+      -- Not solid: BeamNG.Earth puts each building down on whatever solid thing is under it, so a
+      -- building that loads after the depot would otherwise be put on the shed's roof. Not solid, it
+      -- stands on the ground, and the depot's checks (which only see solid things) find it and move.
+      o:setField('collisionType', 0, 'None')
+      o:setField('decalType', 0, 'None')
       o:setPosition(env.point(x, y, z))
       o.canSave = false
       made = made + 1
