@@ -565,6 +565,17 @@ function M.new(deps)
     self:toast('info', M.HUD_HINT_TITLE, self:hudHintText(layout), 30)
     self.diag:event('hud_hint', tostring(self.hudHints))
   end
+  -- Online: tells the server whether the HUD is on screen (off once it has been missing for HUD_HINT_SECONDS), each
+  -- time that changes, so the server's chat reminders go only to players without it.
+  function c:reportHud()
+    if not self.mp or self.mp.state ~= 'server' or not self.mp.hud then return end
+    local on
+    if self.hudSeen then on = true
+    elseif (self.hudMissingFor or 0) >= M.HUD_HINT_SECONDS then on = false
+    else return end
+    if self.hudSent == on then return end
+    if self.mp:hud(on) then self.hudSent = on end
+  end
 
   -- For the server page: the town the player is in or nearest (its centre, never the player's own position), and what
   -- they're doing, told to the server every WHERE_SECONDS and whenever either changes.
@@ -701,7 +712,7 @@ function M.new(deps)
 
   function c:endMission()
     self.whereSent, self.whereAt = nil, nil
-    self.hudSeen, self.hudHints, self.hudMissingFor, self.hudAsking = nil, nil, nil, nil
+    self.hudSeen, self.hudHints, self.hudMissingFor, self.hudAsking, self.hudSent = nil, nil, nil, nil, nil
     self.mayday, self.maydayRun, self.maydayClaim, self.maydayFeedback = nil, nil, nil, nil
     self.finding = nil
     self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
@@ -2453,6 +2464,7 @@ function M.new(deps)
     self:observe(sample, dt)
     self:spawnFirstCar(sample, dt)
     self:hintHud(sample, dt)
+    self:reportHud()
     self:watchMayday()
     self:watchThief(dt)
     self:watchRobber(dt)

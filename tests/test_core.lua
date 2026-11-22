@@ -2747,6 +2747,26 @@ do
   T.check(c.dialogs[1].text:find('<script>', 1, true) == nil, 'markup taken out')
 end
 
+-- Online, the server is told whether the HUD is on screen, each time that changes, for its chat reminders.
+do
+  local sent = {}
+  local mp = { inSession = function() return true end, listen = function() return true end,
+    send = function(event, text) if event == 'wwtcHud' then sent[#sent + 1] = text:find('"on":true', 1, true) ~= nil end end,
+    encode = function(t) return '{"on":' .. tostring(t.on) .. '}' end, decode = function() return {} end }
+  local c = F.controller({ multiplayer = mp })
+  c.mp.state = 'server'; c:reload()
+  F.advance(c, Core.HUD_HINT_SECONDS - 1)
+  T.eq(#sent, 0, 'nothing while the HUD may still be coming')
+  F.advance(c, 2)
+  T.eq(sent[1], false, 'missing: off')
+  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 2)
+  T.eq(#sent, 1, 'said once')
+  c:mount(true); c:tick(0.1)
+  T.eq(sent[2], true, 'on screen: on'); T.eq(#sent, 2, 'once')
+  c.mp.state = 'local'; c.hudSent = nil; c:tick(0.1)
+  T.eq(#sent, 2, 'nothing to a server without the plugin')
+end
+
 -- The game's name tags are kept off, and turned off again if the player turns them on.
 do
   local on, calls = true, 0

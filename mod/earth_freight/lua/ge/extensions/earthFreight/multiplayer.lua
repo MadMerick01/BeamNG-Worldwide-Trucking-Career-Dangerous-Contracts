@@ -548,6 +548,8 @@ function M.new(deps)
   function s:maydayPos(round, metres) return shipEvent('wwtcMaydayPos', { round = round, metres = metres }) end
   -- The server page: where the player is (a town, never exact coordinates) and what they're doing, and each delivery.
   function s:where(t) return shipEvent('wwtcWhere', t) end
+  -- Whether the trucking HUD is on screen: the server reminds a player without it how to add it, in chat, to them only.
+  function s:hud(on) return shipEvent('wwtcHud', { on = on == true }) end
   function s:delivered(t) return shipEvent('wwtcDelivered', t) end
   -- Relocate to a player: asks where player id is, and answers the same question about this player.
   function s:find(id) return shipEvent('wwtcFind', { to = id }) end
