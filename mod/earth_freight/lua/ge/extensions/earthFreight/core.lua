@@ -178,6 +178,8 @@ function M.new(deps)
     streetView = deps.streetView, openUrl = deps.openUrl,
     -- Turns the game's multiplayer name tags off; returns true when they were on (see watchNametags).
     nametagsOff = deps.nametagsOff,
+    -- The name of the HUD layout the game has up now, or nil.
+    layout = deps.layout,
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
@@ -451,17 +453,29 @@ function M.new(deps)
   -- open, which is no reason to nag).
   M.HUD_HINT_SECONDS, M.HUD_HINT_REPEAT_SECONDS, M.HUD_HINT_TIMES = 20, 180, 3
   M.HUD_HINT_TITLE = 'Turn on the trucking HUD'
-  -- Each layout has its own apps. Playing alone, BeamNG.Earth's level uses its ".Earth" layout; on a BeamMP server,
-  -- BeamNG.Earth 1.10.1 and later usually leave BeamMP's own "BeamMP" layout up, so a HUD added in single player is
-  -- missing there until it's added to that layout too.
+  -- Each layout has its own apps. Playing alone, BeamNG.Earth's level usually uses its ".Earth" layout; on a BeamMP
+  -- server, BeamNG.Earth 1.10.1 and later usually leave BeamMP's own "BeamMP" layout up, so a HUD added in single
+  -- player is missing there until it's added to that layout too. Which layout is up isn't always the usual one (a
+  -- player who has BeamMP installed can have its layout up playing alone), so the pop-up names the one the game has
+  -- up now when it can tell.
   local function hudHint(layout, extra)
     return 'Worldwide Trucking needs its HUD on screen. Press Esc, go to System > HUD Apps > ' .. layout .. ' (edit layout), '
       .. 'press + Add app, pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom of the list, press '
       .. '+ Add to layout, move it where you like and press Save.' .. (extra or '')
   end
-  M.HUD_HINT_TEXT = hudHint('.Earth')
+  M.HUD_HINT_OTHER = ' Each layout has its own apps, so a HUD added to another layout does not show on this one.'
+  M.HUD_HINT_STOPS = ' This reminder stops as soon as the HUD is on screen.'
+  M.HUD_HINT_TEXT = hudHint('.Earth', M.HUD_HINT_STOPS)
   M.HUD_HINT_TEXT_SERVER = hudHint('BeamMP', ' Added it in single player already? The server uses the BeamMP layout, '
-    .. 'so it needs adding there too.')
+    .. 'so it needs adding there too.' .. M.HUD_HINT_STOPS)
+  function c:hudHintText()
+    local ok, layout = pcall(function() return self.layout and self.layout() end)
+    if ok and type(layout) == 'string' then
+      layout = layout:gsub('[%c"]', ''):match('^%s*(.-)%s*$')
+      if layout ~= '' and #layout <= 40 then return hudHint(layout, M.HUD_HINT_OTHER .. M.HUD_HINT_STOPS) end
+    end
+    return self.mp and M.HUD_HINT_TEXT_SERVER or M.HUD_HINT_TEXT
+  end
   function c:hintHud(sample, dt)
     local earth = type(sample) == 'table' and (sample.valid or sample.reason == 'vehicle_required')
     if self.hudSeen or not earth or (self.hudHints or 0) >= M.HUD_HINT_TIMES then return end
@@ -469,7 +483,7 @@ function M.new(deps)
     local due = M.HUD_HINT_SECONDS + (self.hudHints or 0) * M.HUD_HINT_REPEAT_SECONDS
     if self.hudMissingFor < due then return end
     self.hudHints = (self.hudHints or 0) + 1
-    self:toast('info', M.HUD_HINT_TITLE, self.mp and M.HUD_HINT_TEXT_SERVER or M.HUD_HINT_TEXT, 30)
+    self:toast('info', M.HUD_HINT_TITLE, self:hudHintText(), 30)
     self.diag:event('hud_hint', tostring(self.hudHints))
   end
 
@@ -2931,7 +2945,7 @@ function M.new(deps)
       contractFee = dollars(contracts.FEE),
       fuelRunMinKm = fuelruns.MIN_KM, fuelRunMaxKm = fuelruns.MAX_KM, townFuelTimes = fuel.TOWN_PRICE_TIMES,
       toll = percent(magnate.TOLL),
-      depotTruckMetres = depots.TRUCK_METRES,
+      depotTruckMetres = depots.TRUCK_METRES, depotFarKm = depots.FAR_METRES / 1000,
     }
   end
 
@@ -3263,6 +3277,12 @@ end
 -- and notes in the log which way worked. False when none did.
 -- The game's multiplayer name tags (the mpNametagsEnabled setting): always off with this mod, so no car on a server
 -- shows who drives it, not even a robber driven by a person. Returns true when they were on and were turned off.
+-- The HUD layout the game has up now (core_gamestate's appLayout), or nil.
+local function gameLayout()
+  local gs = rawget(_G, 'core_gamestate')
+  local state = type(gs) == 'table' and gs.state
+  return type(state) == 'table' and type(state.appLayout) == 'string' and state.appLayout or nil
+end
 local function gameNametagsOff()
   if not settings or type(settings.getValue) ~= 'function' or type(settings.setValue) ~= 'function' then return false end
   if settings.getValue('mpNametagsEnabled') == false then return false end
@@ -3282,7 +3302,7 @@ local function ensure()
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
       punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(), depotWorld = depotWorld.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
-      streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(), nametagsOff = gameNametagsOff,
+      streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(), nametagsOff = gameNametagsOff, layout = gameLayout,
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
   return active
@@ -3560,6 +3580,8 @@ function M.openRadio() return safely(function() return ensure():openRadio() end)
 function M.onExtensionUnloaded()
   -- The web server lets go of its port, so the next load can open it again.
   if active and active.streetView then pcall(function() active.streetView:stop() end) end
+  -- The depots go too: a reload of the mod (or a new version of it) puts its own down.
+  if active and active.removeDepots then pcall(function() active:removeDepots() end) end
   active = nil
 end -- no implicit save on shutdown
 

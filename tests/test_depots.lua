@@ -294,4 +294,65 @@ do
   T.eq(loads, 1, 'the tin materials are loaded once, before the first piece')
 end
 
+-- Pieces left behind by an earlier load of the mod (a reload, or an older version) are taken away
+-- when the mod starts and every little while after, and the depots built now are kept.
+do
+  local w = F.depotWorld()
+  local old = { w:leftover('shed'), w:leftover('desk') }
+  local c, _, a = F.controller({ depotWorld = w })
+  w.follow, w.origin = a, F.copy(F.PENRITH)
+  c.now = function() return 50000 end
+  w.cars[1] = { x = 0, y = 0, z = 0 }
+  c:tick(0.6)
+  T.eq(w.objects[old[1]], nil, 'a shed left behind is taken away at the start')
+  T.eq(w.objects[old[2]], nil, 'and its desk')
+  for _ = 1, 40 do c:tick(0.6) end
+  T.eq(w:count(), 4, 'the depot of this town is put down')
+  local another = w:leftover('shed')
+  for _ = 1, math.ceil(depots.SWEEP_SECONDS / 0.6) + 1 do c:tick(0.6) end
+  T.eq(w.objects[another], nil, 'one that turns up later goes too')
+  T.eq(w:count(), 4, 'and the depot built now stays')
+  c:removeDepots()
+  T.eq(w:count(), 0, 'a reload of the mod takes its depots away')
+end
+
+-- The game side finds the pieces by name, put down by this load or any earlier one.
+do
+  local depotWorld = require('earthFreight/depotWorld')
+  local objects, names = {}, {}
+  local env = {
+    create = function()
+      local o = { id = #objects + 1 }
+      function o:setField() end
+      function o:setPosition() end
+      function o:setPosRot() end
+      function o:registerObject(name) names[self.id] = name end
+      function o:getID() return self.id end
+      function o:delete() objects[self.id] = nil end
+      objects[#objects + 1] = o
+      return o
+    end,
+    objectById = function(id) return objects[id] end,
+    point = function(x, y, z) return { x = x, y = y, z = z } end,
+    upright = function() return { x = 0, y = 0, z = 0, w = 1 } end,
+    group = function() return nil end,
+    named = function(prefix)
+      local ids = {}
+      for id, name in pairs(names) do
+        if objects[id] and name:sub(1, #prefix) == prefix then ids[#ids + 1] = id end
+      end
+      table.sort(ids)
+      return ids
+    end,
+  }
+  local w = depotWorld.new(env)
+  local kept = w:place('shed', 0, 0, 0, 1, 0)
+  local lost = w:place('desk', 0, 0, 0, 1, 0)
+  T.check(names[kept]:sub(1, #depotWorld.PREFIX) == depotWorld.PREFIX, 'named so it can be found again')
+  T.check(names[kept] ~= names[lost], 'every piece has its own name')
+  T.eq(w:sweep({ [kept] = true }), 1, 'one piece not kept is taken away')
+  T.check(objects[kept] ~= nil and objects[lost] == nil, 'the kept one stays')
+  T.eq(depotWorld.new({ named = function() error('no scenetree') end }):sweep({}), 0, 'a game without the call takes nothing')
+end
+
 T.done('depots')

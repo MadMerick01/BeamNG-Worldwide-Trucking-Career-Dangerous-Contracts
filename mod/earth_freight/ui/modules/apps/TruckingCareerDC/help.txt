@@ -37,6 +37,7 @@ Depots go in a real open car park near the middle of town where OpenStreetMap sh
 If there's no clear ground for a shed, the depot is just the desk and computer, at street level by the road.
 The depot appears a few seconds after you reach a town, once its buildings have loaded. If a building loads late where the depot stands, the depot moves to a clear spot as soon as you're not standing at it.
 The shed, desk and computer are scenery only: you can walk and drive through them.
+A depot is taken down once you're about {depotFarKm} km away, and put back when you return. A depot left over from an earlier version of the mod is cleared away on its own.
 
 # route | On the road
 The GPS is set when you take a job. If it goes missing, copy the drop-off coordinates on the Route tab into the BeamNG.Earth map.
