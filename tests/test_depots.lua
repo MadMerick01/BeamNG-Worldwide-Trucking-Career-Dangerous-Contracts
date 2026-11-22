@@ -36,7 +36,7 @@ do
   g.fitted.box = 'pickup_cargo_load_box_m'
   c.now = function() return 50000 end
   w.cars[1] = { x = 0, y = 0, z = 0 }
-  for _ = 1, 20 do c:tick(0.6) end
+  for _ = 1, 40 do c:tick(0.6) end
   T.eq(w:count(), 4, 'the shed, desk, computer and its screen are put down')
   local shapes = {}
   for _, o in pairs(w.objects) do shapes[o.shape] = o end
@@ -69,9 +69,9 @@ do
   -- Out and walking up to it, the truck parked 10 m from the computer.
   g.walking = true
   w.cars[1] = { x = pc.x, y = pc.y - 10, z = 0 }
-  w.me = { x = pc.x + 4, y = pc.y, z = 0 }
+  w.me = { x = pc.x + depots.USE_METRES + 1, y = pc.y, z = 0 }
   c:tick(0.6)
-  T.check(not c:view().computer.near, '4 m away: no Use computer yet')
+  T.check(not c:view().computer.near, 'a step too far: no Use computer yet')
   w.me = { x = pc.x + 1, y = pc.y - 1, z = 0 }
   c:tick(0.6)
   v = c:view()
@@ -108,6 +108,69 @@ do
   for _ = 1, 10 do c:tick(0.6) end
   T.check(c.depotsBuilt[key] ~= nil, 'back in Penrith it is put down again')
   T.near(c.depotsBuilt[key].pc.x, pc.x, 0.5, 'at the same spot'); T.near(c.depotsBuilt[key].pc.y, pc.y, 0.5, 'the same spot')
+end
+
+-- A house just behind the shed, or right against its side, blocks the spot too.
+do
+  local w = F.depotWorld()
+  local spot = depots.check(w, 0, 0, 0, { metres = 40, bearing = 0 })
+  local bx, by = depots.at(spot, -1, depots.SHED_V[#depots.SHED_V] + depots.MARGIN)
+  w.boxes = { { bx - 1, by - 0.5, bx + 1, by + 0.5, 6 } }
+  T.eq(depots.check(w, 0, 0, 0, { metres = 40, bearing = 0 }), false, 'a house behind the shed blocks it')
+  local sx, sy = depots.at(spot, 4, 5.5)
+  w.boxes = { { sx - 1.1, sy - 1.1, sx + 1.1, sy + 1.1, 6 } }
+  T.eq(depots.check(w, 0, 0, 0, { metres = 40, bearing = 0 }), false, 'a corner only 2 m across is not missed')
+end
+
+-- The town's buildings load after its ground: the depot waits for them, and checks its spot twice.
+do
+  local w = F.depotWorld()
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, 5 do c:tick(0.6) end
+  T.eq(w:count(), 0, 'nothing put down the moment the town is reached')
+  for _ = 1, 30 do c:tick(0.6) end
+  local built = c.depotsBuilt[next(c.depotsBuilt)]
+  T.check(built ~= nil and built.spot ~= nil, 'put down once the town has settled')
+  -- A clear spot that a house loads onto before it is taken is passed over.
+  local w2 = F.depotWorld()
+  local c2 = F.controller({ depotWorld = w2 })
+  local first
+  for _ = 1, 40 do
+    c2:tick(0.6)
+    local s = c2.depotSearch and c2.depotSearch[next(c2.depotSearch or {}) or '']
+    if s and s.pending and not first then
+      first = depots.check(w2, 0, 0, 0, s.pending)
+      local hx, hy = depots.at(first, -1, 6.4)
+      w2.boxes = { { hx - 3, hy - 3, hx + 3, hy + 3, 7 } }
+    end
+  end
+  local built2 = c2.depotsBuilt[next(c2.depotsBuilt)]
+  T.check(first ~= nil and built2 ~= nil, 'still put down')
+  T.check(math.abs(built2.spot.x - first.x) + math.abs(built2.spot.y - first.y) > 1, 'somewhere else')
+end
+
+-- A house that loads after the depot is down: it moves while the player is out of sight, never while near.
+do
+  local w = F.depotWorld()
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, 40 do c:tick(0.6) end
+  local key = next(c.depotsBuilt)
+  local built = c.depotsBuilt[key]
+  local spot = built.spot
+  local hx, hy = depots.at(spot, -1, depots.SHED_V[#depots.SHED_V] + depots.MARGIN)
+  w.boxes = { { hx - 4, hy - 1, hx + 4, hy + 4, 7 } }
+  w.me = { x = built.pc.x + 20, y = built.pc.y, z = 0 }
+  for _ = 1, 20 do c:tick(0.6) end
+  T.eq(c.depotsBuilt[key], built, 'near it, the depot stays put')
+  w.me = { x = built.pc.x + depots.MOVE_METRES + 50, y = built.pc.y, z = 0 }
+  for _ = 1, 12 do c:tick(0.6) end
+  T.check(c.depotsBuilt[key] ~= built, 'out of sight, it is taken away')
+  for _ = 1, 40 do c:tick(0.6) end
+  local moved = c.depotsBuilt[key]
+  T.check(moved ~= nil, 'and put down again')
+  T.check(math.abs(moved.spot.x - spot.x) + math.abs(moved.spot.y - spot.y) > 1, 'at another spot')
+  T.eq(c.depotMoves[key], 1, 'once')
+  T.eq(w:count(), 4, 'with nothing left behind')
 end
 
 -- No clear ground anywhere: just the desk and computer, at the flattest try.

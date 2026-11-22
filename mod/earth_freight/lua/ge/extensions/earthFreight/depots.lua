@@ -16,7 +16,7 @@ local M = {}
 -- One-line settings. Tune these after testing in game.
 -- The truck must be parked within TRUCK_METRES of the computer to load; the player, on foot, within
 -- USE_METRES of it for Use computer to show.
-M.TRUCK_METRES, M.USE_METRES = 30, 2.5
+M.TRUCK_METRES, M.USE_METRES = 30, 4
 -- A depot is looked for and put down once its town's middle (or the fuel depot) is within
 -- NEAR_METRES of the player, and taken away past FAR_METRES.
 M.NEAR_METRES, M.FAR_METRES = 1500, 2500
@@ -35,6 +35,14 @@ M.MAX_RISE, M.ROAD_CLEAR = 2, 3
 -- each time, so the search never holds up a frame. Ground that Earth has not loaded yet is tried
 -- again after WAIT_SECONDS.
 M.CHECK_SECONDS, M.TRIES_PER_CHECK, M.WAIT_SECONDS = 0.5, 2, 2
+-- Earth brings the buildings in a few seconds after the ground. A town is first looked at
+-- SETTLE_SECONDS after the player comes near, and a spot that is clear is checked again
+-- SETTLE_SECONDS later before the depot goes down there.
+M.SETTLE_SECONDS = 4
+-- Once a depot is down, the ground round its shed is checked again every RECHECK_SECONDS while the
+-- player is more than MOVE_METRES from its computer (out of sight), for a building that loaded
+-- late. If one is there, the depot moves to the next clear spot, at most MAX_MOVES times a visit.
+M.RECHECK_SECONDS, M.MOVE_METRES, M.MAX_MOVES = 5, 150, 3
 
 -- Where the pieces go, in metres. u runs along the road, v away from it; the desk's corner is at
 -- 0, 0. The desk and computer face the road, so the player stands on the road side of the desk and
@@ -46,9 +54,28 @@ M.PIECES = {
   { shape = 'screen', u = 0, v = 0 },
 }
 M.PC = { u = -1.4, v = 1.4, z = 1 }
--- Where the ground is checked: the shed (about 7 by 20 m), the desk and the strip in front of it.
-M.SHED_U, M.SHED_V = { -11, -5.5, 0, 5.5, 9 }, { 2.5, 6.4, 10.5 }
-M.FRONT_U, M.FRONT_V = { -11, -5.5, 0, 5.5, 9 }, { -4, -1, 1 }
+-- Where the ground is checked, every 2 m: the shed (about 7 by 20 m), the desk and the strip in
+-- front of it, and a MARGIN round the shed's sides and back, so a house can't slip between the
+-- points or stand right against the walls.
+M.SHED_U, M.SHED_V = { -11, -9, -7, -5, -3, -1, 1, 3, 5, 7, 9 }, { 2.5, 4.5, 6.5, 8.5, 10.5 }
+M.FRONT_U, M.FRONT_V = M.SHED_U, { -4, -2, 0 }
+M.MARGIN = 2.5
+-- The points just outside the shed and desk (its sides, its back and the far edge of the parking
+-- strip). Once the depot is down only these are checked again, since the rays would hit the shed.
+function M.outside()
+  local out = {}
+  local u0, u1 = M.SHED_U[1] - M.MARGIN, M.SHED_U[#M.SHED_U] + M.MARGIN
+  local back = M.SHED_V[#M.SHED_V] + M.MARGIN
+  for _, v in ipairs({ -4, -2, 0, 2.5, 4.5, 6.5, 8.5, 10.5, back }) do
+    out[#out + 1] = { u = u0, v = v }
+    out[#out + 1] = { u = u1, v = v }
+  end
+  for _, u in ipairs(M.SHED_U) do
+    out[#out + 1] = { u = u, v = back }
+    out[#out + 1] = { u = u, v = M.FRONT_V[1] }
+  end
+  return out
+end
 
 -- The tries for a depot, nearest first: { metres, bearing } from its middle. The same every time
 -- for the same key.
@@ -110,12 +137,19 @@ function M.check(world, cx, cy, cz, try)
   end
   measure(front, M.FRONT_U, M.FRONT_V)
   measure(shed, M.SHED_U, M.SHED_V)
+  local margin = {}
+  for _, p in ipairs(M.outside()) do
+    local x, y = M.at(spot, p.u, p.v)
+    local h = world:ground(x, y, cz)
+    if h == nil then missing = true else margin[#margin + 1] = h end
+  end
   if missing then return 'wait' end
   -- The road itself counts too, so a big flat roof beside it is not taken for flat ground.
   local all = {}
-  if road and type(road.z) == 'number' then all[1] = road.z end
+  if road and type(road.z) == 'number' then all[1] = road.z; spot.roadZ = road.z end
   for _, h in ipairs(front) do all[#all + 1] = h end
   for _, h in ipairs(shed) do all[#all + 1] = h end
+  for _, h in ipairs(margin) do all[#all + 1] = h end
   local rise = M.rise(all)
   local _, shedLow = M.rise(shed)
   spot.rise, spot.frontRise, spot.shedZ = rise, M.rise(front), shedLow
@@ -131,6 +165,20 @@ function M.check(world, cx, cy, cz, try)
     end
   end
   return spot
+end
+
+-- Whether the ground just outside a depot that is down is still clear: true, false when something
+-- (a building that loaded late) now stands there, or 'wait' when the ground is not loaded.
+function M.stillClear(world, spot, cz)
+  local all = { spot.roadZ or spot.shedZ }
+  for _, p in ipairs(M.outside()) do
+    local x, y = M.at(spot, p.u, p.v)
+    local h = world:ground(x, y, cz)
+    if h == nil then return 'wait' end
+    all[#all + 1] = h
+  end
+  local rise = M.rise(all)
+  return rise ~= nil and rise <= M.MAX_RISE
 end
 
 -- The lowest ground under a spot's shed, where it is put down (its concrete base reaches 1 m down).
@@ -241,10 +289,21 @@ function M.attach(c)
   local function search(self, f, d, cx, cy)
     local s = self.depotSearch[d.key]
     if not s then
-      s = { next = 1, tries = M.tries(d.key) }
+      -- The first look waits for the town's buildings to come in.
+      s = { next = 1, tries = M.tries(d.key), waitUntil = self.clock + M.SETTLE_SECONDS }
       self.depotSearch[d.key] = s
     end
     if s.waitUntil and self.clock < s.waitUntil then return nil end
+    if s.pending then
+      -- A clear spot, checked again a little later before it is taken.
+      local again = M.check(self.depotWorld, cx, cy, f.z, s.pending)
+      if again == 'wait' then
+        s.waitUntil = self.clock + M.WAIT_SECONDS
+        return nil
+      end
+      s.pending = nil
+      if again then return again end
+    end
     for _ = 1, M.TRIES_PER_CHECK do
       local try = s.tries[s.next]
       if not try then
@@ -263,7 +322,10 @@ function M.attach(c)
         return nil
       end
       s.next = s.next + 1
-      if spot then return spot end
+      if spot then
+        s.pending, s.waitUntil = try, self.clock + M.SETTLE_SECONDS
+        return nil
+      end
       if near and near.frontRise and (not s.best or near.frontRise < s.best.frontRise) then s.best = near end
     end
     return nil
@@ -299,6 +361,27 @@ function M.attach(c)
       end
     end
     if not f then return end
+    self.depotMoves = self.depotMoves or {}
+    for key in pairs(self.depotMoves) do
+      if not self.depotsBuilt[key] and not wanted[key] then self.depotMoves[key] = nil end
+    end
+    -- A building that loaded after the depot went down: out of sight, the depot moves.
+    for key, built in pairs(self.depotsBuilt) do
+      local spot = built.spot
+      local away = math.sqrt((f.x - built.pc.x) ^ 2 + (f.y - built.pc.y) ^ 2)
+      if spot and not spot.small and away > M.MOVE_METRES and (self.depotMoves[key] or 0) < M.MAX_MOVES
+          and self.clock - (built.checkedAt or 0) >= M.RECHECK_SECONDS then
+        built.checkedAt = self.clock
+        if M.stillClear(self.depotWorld, spot, f.z) == false then
+          for _, id in ipairs(built.ids) do self.depotWorld:remove(id) end
+          self.depotsBuilt[key], self.depotSpots[key] = nil, nil
+          self.depotMoves[key] = (self.depotMoves[key] or 0) + 1
+          -- The GPS follows it to its new spot.
+          if self.gpsTownDepot == key then self.gpsTownDepot, self.depotRegps = nil, key end
+          self.diag:event('depot', key .. ' moved: blocked', 'I')
+        end
+      end
+    end
     for key, d in pairs(wanted) do
       if not self.depotsBuilt[key] then
         local cx, cy = toWorld(f, d)
@@ -307,7 +390,7 @@ function M.attach(c)
           if spot then
             -- Found before, kept by where it is on Earth: back into today's world frame.
             local x, y = toWorld(f, spot.geo)
-            spot = { x = x, y = y, nx = spot.nx, ny = spot.ny, small = spot.small, geo = spot.geo }
+            spot = { x = x, y = y, nx = spot.nx, ny = spot.ny, small = spot.small, geo = spot.geo, roadZ = spot.roadZ }
             spot.shedZ = not spot.small and M.shedLow(self.depotWorld, spot, f.z) or nil
           else
             spot = search(self, f, d, cx, cy)
@@ -315,7 +398,7 @@ function M.attach(c)
               local dx, dy = spot.x - f.x, spot.y - f.y
               local geo = location.destination(f.geo, (math.deg(math.atan2(dx, dy)) + 360) % 360, math.sqrt(dx * dx + dy * dy))
               spot.geo = geo
-              self.depotSpots[key] = { geo = geo, nx = spot.nx, ny = spot.ny, small = spot.small }
+              self.depotSpots[key] = { geo = geo, nx = spot.nx, ny = spot.ny, small = spot.small, roadZ = spot.roadZ }
               self.depotSearch[key] = nil
               self.diag:event('depot', string.format('%s %s rise %.1f', key, spot.small and 'desk only' or 'shed',
                 spot.small and (spot.frontRise or 0) or (spot.rise or 0)))
@@ -325,10 +408,15 @@ function M.attach(c)
             local built = build(self, f, d, spot)
             if built then
               built.key, built.name, built.town, built.fuel, built.geo = key, d.name, d.town, d.fuel, spot.geo
+              built.spot, built.checkedAt = spot, self.clock
               -- Where its computer is on Earth, for the GPS.
               local px, py = built.pc.x - f.x, built.pc.y - f.y
               built.pcGeo = location.destination(f.geo, (math.deg(math.atan2(px, py)) + 360) % 360, math.sqrt(px * px + py * py))
               self.depotsBuilt[key] = built
+              if self.depotRegps == key then
+                self.depotRegps = nil
+                self:gpsToTownDepot()
+              end
             else
               -- The game would not put it down: depots are off for this game, and jobs are taken on the HUD.
               self.depotsBroken = true

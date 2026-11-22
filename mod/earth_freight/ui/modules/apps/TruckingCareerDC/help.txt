@@ -34,6 +34,7 @@ Park within {depotTruckMetres} m of the computer, get out and walk up to it. Pre
 Your truck must still be within {depotTruckMetres} m when you take the job, or it won't load.
 Deliveries haven't changed: drive to the drop-off and press Deliver on the HUD.
 If there's no clear ground for a shed, the depot is just the desk and computer by the road.
+The depot appears a few seconds after you reach a town, once its buildings have loaded. If a building loads late where the depot stands, the depot moves to a clear spot while you're out of sight.
 
 # route | On the road
 The GPS is set when you take a job. If it goes missing, copy the drop-off coordinates on the Route tab into the BeamNG.Earth map.

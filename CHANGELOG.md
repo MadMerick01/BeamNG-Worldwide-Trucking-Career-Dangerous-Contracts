@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Depot sheds no longer end up inside houses.** The depot now waits a few seconds for a town's buildings to load before picking its spot, checks the ground much more closely, keeps a gap around the shed, and checks the spot a second time before putting it down. If a building loads late where a depot already stands, the depot moves to a clear spot while you're out of sight, never while you're standing at it.
+- The computer's Use computer button now shows from a little further away, so it's easier to reach from either side of the desk. Your saves still work.
+
 ## Build 265 · 22 Nov 2026
 
 - **An arrow now points you to the depot.** In town, the Town tab shows an arrow that turns as you drive, with how far the depot is and which way. Press GPS next to it for a route straight to the depot. With the HUD minimised, the strip shows the distance and direction to the depot while you have no job. Your saves still work.
