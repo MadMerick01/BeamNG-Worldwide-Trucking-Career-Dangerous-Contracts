@@ -61,6 +61,8 @@ local TELEPORT_WAIT_SECONDS = 30
 -- (back where it left, or off a little) before it settles. For this long, any jump that ends near the
 -- booked place is that settling, not a teleport, and being near it frees a player stranded meanwhile.
 M.LANDING_GRACE_SECONDS = 120
+-- A job taken on foot at a depot computer loads the truck this long after the player gets back in.
+M.LOAD_AFTER_SECONDS = 2
 -- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
 -- been stopped this long and nothing else is going on.
 local AUTOSAVE_SECONDS = 3
@@ -2330,8 +2332,14 @@ function M.new(deps)
     -- On foot, in the game's walking mode, the car waits where it was left.
     local wasOnFoot = self.onFoot
     self.onFoot = self.garage ~= nil and self.garage.onFoot ~= nil and self.garage:onFoot() or false
-    -- A job taken at a depot's computer, on foot, puts its weight on the truck once back in it.
-    if wasOnFoot and not self.onFoot and self.load then self:applyWeight() end
+    -- A job taken at a depot's computer, on foot, puts its weight on the truck LOAD_AFTER_SECONDS
+    -- after the player is back in it, once the game has really put them in the driver's seat.
+    if wasOnFoot and not self.onFoot and self.load then self.loadWeightAt = self.clock + M.LOAD_AFTER_SECONDS end
+    if self.onFoot then self.loadWeightAt = nil end
+    if self.loadWeightAt and self.clock >= self.loadWeightAt then
+      self.loadWeightAt = nil
+      self:applyWeight()
+    end
     if self.garage and self.garage.keepParked then
       if not self.onFoot then self.garage:releaseParked()
       elseif self.ownedParts then self.garage:keepParked(self.ownedParts.id) end

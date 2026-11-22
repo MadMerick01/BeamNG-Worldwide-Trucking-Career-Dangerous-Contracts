@@ -78,8 +78,10 @@ do
   T.check(c.load ~= nil, 'loaded')
   T.eq(#cargo.weights, weights, 'no weight while on foot')
   g.walking = false
-  c:tick(0.6)
-  T.check(#cargo.weights > weights, 'the weight goes on once back in the truck')
+  c:tick(0.6); c:tick(0.6)
+  T.eq(#cargo.weights, weights, 'not the moment you get back in')
+  c:tick(0.6); c:tick(0.6); c:tick(0.6)
+  T.check(#cargo.weights > weights, 'the weight goes on 2 seconds after getting back in')
   T.eq(cargo.weights[#cargo.weights].kg, c.load.kg, 'all of it')
   -- Delivering is the HUD's Deliver, as before: drive there in the truck.
   local to = places.get(c.load.to)
