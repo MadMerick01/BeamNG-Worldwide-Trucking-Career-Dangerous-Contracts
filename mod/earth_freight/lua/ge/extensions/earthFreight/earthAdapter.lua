@@ -8,6 +8,8 @@
 -- missing or changed one is skipped, so Earth updates only break Earth Freight if every way changes.
 local location = require('earthFreight/location')
 local M = {}
+-- Earth's GPS destination counts as the one asked for within this many metres.
+M.GPS_MATCH_METRES = 100
 
 local function findCore()
   local core = rawget(_G, 'beamngEarth_core')
@@ -207,6 +209,27 @@ function M.new(environment)
   local function has(name)
     local ok, yes = call('has', name)
     return ok and yes == true
+  end
+
+  -- The length in metres of the road route Earth's GPS has planned to point (within GPS_MATCH_METRES
+  -- of it), read from what Earth already has: its planned route's length (API 1.6, routeGeometry), or
+  -- else the distance left on a planned route. Returns metres, or nil and why: 'none' (no GPS
+  -- destination, or no API), 'other' (the GPS goes somewhere else now), 'planning' (no road route
+  -- yet: still planning, or Earth's app is offline and it only points the way).
+  function a:gpsRouteLength(point)
+    if not location.valid(point) then return nil, 'none' end
+    local ok, g = call('gps')
+    if not ok or type(g) ~= 'table' then return nil, 'none' end
+    local target = position(tonumber(g.lat), tonumber(g.lon))
+    if not target or (location.distance(target, point) or math.huge) > M.GPS_MATCH_METRES then return nil, 'other' end
+    if g.planning == true or not location.finite(g.routeVersion) or g.routeVersion <= 0 then return nil, 'planning' end
+    if has('routeGeometry') then
+      local okRoute, r = call('gpsRoute')
+      if okRoute and type(r) == 'table' and location.finite(r.dist) and r.dist > 0
+          and (r.version == nil or r.version == g.routeVersion) then return r.dist end
+    end
+    if location.finite(g.remaining) and g.remaining > 0 then return g.remaining end
+    return nil, 'planning'
   end
 
   -- GPS through several stops (API 1.2, gpsSetRoute): stops is a list of { point, name }, the last one

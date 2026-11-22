@@ -6,6 +6,11 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Jobs now pay for the real road, not a guess.** Town job distances used to be the straight line plus 30%, so a winding mountain road that's 20 km to drive was paid as about 8 km. Press a job's GPS button in town and the GPS measures the actual road: after a few seconds the job shows "km by road" and its real price, before you take it. Distances that haven't been measured yet show a ~ in front.
+- Measured roads are remembered, so the next time that town shows up on a board, it already shows the real distance and price.
+- A job taken without pressing GPS first is measured as soon as the GPS plans its route. If the road is longer than the estimate, your pay goes up and a message tells you by how much.
+- Pay only ever goes up: a job never pays less than the board showed, even if the road turns out shorter. If BeamNG.Earth can't plan a road (its app is offline, auto-GPS is off, or the route is far longer than any sensible road), the job keeps its board price. Off-road drops and fuel runs are paid as before. Your saves still work.
+
 ## Build 267 · 22 Nov 2026
 
 - **Town buildings no longer float on top of the depot.** BeamNG.Earth sometimes loads a building after the depot is already up, and it was setting that building down on the shed's roof. The shed, desk and computer are now scenery you can walk and drive through, so late buildings land on the ground. The depot then sees the building and moves to a clear spot as soon as you're not standing at it.
