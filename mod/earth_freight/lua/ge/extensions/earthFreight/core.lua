@@ -180,6 +180,9 @@ function M.new(deps)
     nametagsOff = deps.nametagsOff,
     -- The name of the HUD layout the game has up now, or nil.
     layout = deps.layout,
+    -- The game's HUD layouts: the one that's up (current) and adding the HUD to it (add); without them the player is
+    -- given the steps to add the HUD themselves.
+    layouts = deps.layouts,
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
@@ -446,44 +449,120 @@ function M.new(deps)
     self.diag:event('first_car', ok and 'spawned' or tostring(why), ok and 'I' or 'W')
   end
 
-  -- The HUD is a UI app the player adds to their screen layout once. A player who has never added it (often someone
-  -- joining a server, who got the mod from it) sees nothing at all, so a pop-up says how, while BeamNG.Earth is
-  -- loaded and the HUD hasn't been on screen this level: after HUD_HINT_SECONDS, then every HUD_HINT_REPEAT_SECONDS,
-  -- at most HUD_HINT_TIMES. Once the HUD has shown, never again that level (it also closes while the game's menus are
-  -- open, which is no reason to nag).
-  M.HUD_HINT_SECONDS, M.HUD_HINT_REPEAT_SECONDS, M.HUD_HINT_TIMES = 20, 180, 3
+  -- The HUD is a UI app on the game's screen layout. A player who has never added it (often someone joining a server,
+  -- who got the mod from it) sees nothing of the mod at all, so while BeamNG.Earth is loaded and the HUD hasn't been
+  -- on screen this level, the game is asked to add it: after HUD_HINT_SECONDS (online, once the career is in, so the
+  -- join has settled), a pop-up asks whether to add the HUD to the layout that's up, and one press of Add the HUD puts
+  -- it there (BeamNG's own ui_appLayouts, as the HUD Apps menu does). It asks once a game for each layout. Without
+  -- that (an older BeamNG, or Not now), a smaller pop-up gives the steps every HUD_HINT_REPEAT_SECONDS until the HUD
+  -- is on screen. Once it has shown, nothing more that level.
+  M.HUD_HINT_SECONDS, M.HUD_HINT_REPEAT_SECONDS, M.HUD_ASK_WAIT_SECONDS = 15, 120, 60
+  M.HUD_APP = 'TruckingCareerDC'
+  M.HUD_APP_NAME = 'Worldwide Trucking HUD'
+  -- Where the HUD goes on the layout: the same as app.json's css, where + Add to layout in the HUD Apps menu puts it.
+  M.HUD_PLACEMENT = { top = '100px', left = '20px', width = '380px', height = '620px' }
   M.HUD_HINT_TITLE = 'Turn on the trucking HUD'
-  -- Each layout has its own apps. Playing alone, BeamNG.Earth's level usually uses its ".Earth" layout; on a BeamMP
-  -- server, BeamNG.Earth 1.10.1 and later usually leave BeamMP's own "BeamMP" layout up, so a HUD added in single
-  -- player is missing there until it's added to that layout too. Which layout is up isn't always the usual one (a
-  -- player who has BeamMP installed can have its layout up playing alone), so the pop-up names the one the game has
-  -- up now when it can tell.
+  M.HUD_ASK_TITLE = 'Add the trucking HUD?'
+  M.HUD_ADDED_TITLE = 'Trucking HUD added'
+  -- The titles players see in the HUD Apps menu for the layouts the game names by type, for when the game can't say.
+  M.LAYOUT_TITLES = { beamngEarth = '.Earth', beamngEarthMP = '.Earth multiplayer', beammp = 'BeamMP', freeroam = 'Freeroam' }
+  local function cleanTitle(title)
+    if type(title) ~= 'string' then return nil end
+    title = title:gsub('[%c"<>]', ''):match('^%s*(.-)%s*$')
+    if title == '' or #title > 40 then return nil end
+    return M.LAYOUT_TITLES[title] or title
+  end
   local function hudHint(layout, extra)
     return 'Worldwide Trucking needs its HUD on screen. Press Esc, go to System > HUD Apps > ' .. layout .. ' (edit layout), '
-      .. 'press + Add app, pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom of the list, press '
-      .. '+ Add to layout, move it where you like and press Save.' .. (extra or '')
+      .. 'press + Add app, pick "' .. M.HUD_APP_NAME .. '" near the bottom of the list, press + Add to layout, move it '
+      .. 'where you like and press Save.' .. (extra or '')
   end
   M.HUD_HINT_OTHER = ' Each layout has its own apps, so a HUD added to another layout does not show on this one.'
   M.HUD_HINT_STOPS = ' This reminder stops as soon as the HUD is on screen.'
   M.HUD_HINT_TEXT = hudHint('.Earth', M.HUD_HINT_STOPS)
   M.HUD_HINT_TEXT_SERVER = hudHint('BeamMP', ' Added it in single player already? The server uses the BeamMP layout, '
     .. 'so it needs adding there too.' .. M.HUD_HINT_STOPS)
-  function c:hudHintText()
-    local ok, layout = pcall(function() return self.layout and self.layout() end)
-    if ok and type(layout) == 'string' then
-      layout = layout:gsub('[%c"]', ''):match('^%s*(.-)%s*$')
-      if layout ~= '' and #layout <= 40 then return hudHint(layout, M.HUD_HINT_OTHER .. M.HUD_HINT_STOPS) end
-    end
+  -- The layout that's up, as the game's layouts say it ({ filename, title, has }: has, the HUD is on it), or nil.
+  function c:hudLayout()
+    if not self.layouts then return nil end
+    local ok, layout = pcall(self.layouts.current)
+    if not ok or type(layout) ~= 'table' or type(layout.filename) ~= 'string' or layout.filename == '' then return nil end
+    return layout
+  end
+  -- The name of the layout that's up, as the HUD Apps menu shows it, or nil.
+  function c:layoutTitle(layout)
+    local title = layout and cleanTitle(layout.title)
+    if title then return title end
+    local ok, name = pcall(function() return self.layout and self.layout() end)
+    return ok and cleanTitle(name) or nil
+  end
+  function c:hudHintText(layout)
+    local title = self:layoutTitle(layout)
+    if title then return hudHint(title, M.HUD_HINT_OTHER .. M.HUD_HINT_STOPS) end
     return self.mp and M.HUD_HINT_TEXT_SERVER or M.HUD_HINT_TEXT
+  end
+  -- The pop-up that adds the HUD for the player: the game's own dialog, over everything, with two buttons.
+  function c:askToAddHud(layout)
+    if not self.trigger then return false end
+    local call = "if earthFreight_core then earthFreight_core.addHud(%s) end"
+    local title = self:layoutTitle(layout)
+    local ok = pcall(self.trigger, 'showConfirmationDialog', {
+      title = M.HUD_ASK_TITLE,
+      text = 'Worldwide Trucking needs its HUD on screen, and it isn\'t on your ' .. (title and ('<b>' .. title .. '</b> ') or '')
+        .. 'layout yet.<br><br>Press <b>Add the HUD</b> and it appears straight away. You can move it later in Esc > '
+        .. 'System > HUD Apps.',
+      buttons = {
+        { label = 'Not now', luaCallback = string.format(call, 'false'), isCancel = true },
+        { label = 'Add the HUD', luaCallback = string.format(call, 'true'), default = true, isConfirm = true },
+      },
+    })
+    return ok
+  end
+  -- Add the HUD (yes): puts the HUD on the layout that's up and has the game show it. Not now (no): the steps pop-up
+  -- carries on instead. True when the HUD was added.
+  function c:addHud(yes)
+    self.hudAsking = nil
+    if not yes then
+      self.diag:event('hud_add', 'not_now')
+      return false
+    end
+    local layout = self:hudLayout()
+    if layout and layout.has then return true end
+    local ok, added = false, false
+    if layout then ok, added = pcall(self.layouts.add, layout.filename, M.HUD_APP, M.HUD_PLACEMENT) end
+    if ok and added then
+      self.diag:event('hud_add', 'added')
+      self:toast('success', M.HUD_ADDED_TITLE, 'The HUD is on your ' .. (self:layoutTitle(layout) or 'screen') .. ' layout now. '
+        .. 'To move it, press Esc and go to System > HUD Apps.', 12)
+      return true
+    end
+    self.diag:event('hud_add', 'failed', 'W')
+    self.hudMissingFor = 0
+    self:toast('info', M.HUD_HINT_TITLE, 'The HUD could not be added for you. ' .. self:hudHintText(layout), 30)
+    return false
   end
   function c:hintHud(sample, dt)
     local earth = type(sample) == 'table' and (sample.valid or sample.reason == 'vehicle_required')
-    if self.hudSeen or not earth or (self.hudHints or 0) >= M.HUD_HINT_TIMES then return end
+    if self.hudSeen or not earth then return end
+    -- The add pop-up is up: wait for an answer (a pop-up closed some other way is taken as Not now after a while).
+    if self.hudAsking and self.clock - self.hudAsking < M.HUD_ASK_WAIT_SECONDS then return end
+    -- Online, not before the career is in: the join has settled by then, and a HUD built during it can upset BeamMP's.
+    if self.mp and (not self.mp:ready() or self.loadStatus == 'mp_waiting') then return end
     self.hudMissingFor = (self.hudMissingFor or 0) + dt
     local due = M.HUD_HINT_SECONDS + (self.hudHints or 0) * M.HUD_HINT_REPEAT_SECONDS
     if self.hudMissingFor < due then return end
     self.hudHints = (self.hudHints or 0) + 1
-    self:toast('info', M.HUD_HINT_TITLE, self:hudHintText(), 30)
+    local layout = self:hudLayout()
+    -- On the layout already: it is on its way to the screen (or the game's menus are open), nothing to tell.
+    if layout and layout.has then return end
+    self.hudAsked = self.hudAsked or {}
+    if layout and not self.hudAsked[layout.filename] and self:askToAddHud(layout) then
+      self.hudAsked[layout.filename] = true
+      self.hudAsking = self.clock
+      self.diag:event('hud_ask', self:layoutTitle(layout) or '?')
+      return
+    end
+    self:toast('info', M.HUD_HINT_TITLE, self:hudHintText(layout), 30)
     self.diag:event('hud_hint', tostring(self.hudHints))
   end
 
@@ -622,7 +701,7 @@ function M.new(deps)
 
   function c:endMission()
     self.whereSent, self.whereAt = nil, nil
-    self.hudSeen, self.hudHints, self.hudMissingFor = nil, nil, nil
+    self.hudSeen, self.hudHints, self.hudMissingFor, self.hudAsking = nil, nil, nil, nil
     self.mayday, self.maydayRun, self.maydayClaim, self.maydayFeedback = nil, nil, nil, nil
     self.finding = nil
     self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
@@ -3283,6 +3362,38 @@ local function gameLayout()
   local state = type(gs) == 'table' and gs.state
   return type(state) == 'table' and type(state.appLayout) == 'string' and state.appLayout or nil
 end
+-- The game's HUD layouts (BeamNG's ui_appLayouts, 0.39): the one that's up, whether the HUD is on it, and adding the
+-- HUD to it, which writes the player's own copy of that layout, as the HUD Apps menu does, and has the game show it.
+local function gameLayouts()
+  local function api()
+    local l = rawget(_G, 'ui_appLayouts')
+    if type(l) ~= 'table' and type(rawget(_G, 'extensions')) == 'table' then l = extensions.ui_appLayouts end
+    if type(l) ~= 'table' then return nil end
+    for _, name in ipairs({ 'getCurrentLayout', 'addApp', 'setCurrentLayout' }) do
+      if type(l[name]) ~= 'function' then return nil end
+    end
+    return l
+  end
+  return {
+    current = function()
+      local l = api()
+      local layout = l and l.getCurrentLayout()
+      if type(layout) ~= 'table' or type(layout.filename) ~= 'string' then return nil end
+      local has = false
+      for _, app in ipairs(type(layout.apps) == 'table' and layout.apps or {}) do
+        if type(app) == 'table' and app.appName == M.HUD_APP then has = true end
+      end
+      return { filename = layout.filename, title = layout.title, type = layout.type, has = has }
+    end,
+    add = function(filename, appName, placement)
+      local l = api()
+      if not l or not l.addApp(filename, appName, placement) then return false end
+      -- The layout read again from its file, with the HUD on it, and the game's UI told to show it.
+      l.setCurrentLayout(filename)
+      return true
+    end,
+  }
+end
 local function gameNametagsOff()
   if not settings or type(settings.getValue) ~= 'function' or type(settings.setValue) ~= 'function' then return false end
   if settings.getValue('mpNametagsEnabled') == false then return false end
@@ -3303,6 +3414,7 @@ local function ensure()
       punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(), depotWorld = depotWorld.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
       streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(), nametagsOff = gameNametagsOff, layout = gameLayout,
+      layouts = gameLayouts(),
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
   return active
@@ -3557,6 +3669,7 @@ function M.onPursuitAction(vehicleId, action, data)
 end
 function M.payPartsBill(serial) return safely(function() return ensure():payPartsBill(serial) end) end
 function M.partsBillShown(serial) return safely(function() if active then active:partsBillShown(serial) end end) end
+function M.addHud(yes) return safely(function() return ensure():addHud(yes == true) end) end
 function M.uiMounted(on) return safely(function() ensure():mount(on == true) end) end
 function M.getState() return safely(function() return ensure():view() end) end
 function M.onClientStartMission() return M.reload() end

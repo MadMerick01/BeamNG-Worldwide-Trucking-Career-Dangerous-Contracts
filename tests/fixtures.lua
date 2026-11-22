@@ -261,7 +261,7 @@ function F.controller(options)
   local c = Core.new({ io = io, adapter = adapter, garage = garage, paused = options.paused, random = options.random,
     punctures = options.punctures, cargo = cargo, fuel = fuel, aircraft = options.aircraft,
     streetView = options.streetView, openUrl = options.openUrl, multiplayer = options.multiplayer,
-    nametagsOff = options.nametagsOff, depotWorld = options.depotWorld, layout = options.layout,
+    nametagsOff = options.nametagsOff, depotWorld = options.depotWorld, layout = options.layout, layouts = options.layouts,
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
   -- Damage set in a test is a crash, not the car settling after a spawn: no settle time unless asked for.
