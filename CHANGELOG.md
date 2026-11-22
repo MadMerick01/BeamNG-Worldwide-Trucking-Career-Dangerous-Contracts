@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 270 · 22 Nov 2026
+
 - **Old depot sheds no longer stay behind.** If the mod was reloaded or updated while you were playing, the depots it had already put down were left standing in the world, often still with the bright orange walls of an older version, and nothing ever took them away. Leftover depots are now cleared as soon as the mod starts and every half minute after, and a reload or update takes its own depots down first. The depot for the town you're in stays put, and depots still come down once you're about 2.5 km away. Your saves still work.
 - **The "Turn on the trucking HUD" pop-up now names the layout you're actually using.** Each HUD layout has its own apps, so adding the HUD to the .Earth layout did nothing if your game had another layout up, such as BeamMP's, even playing alone, and the pop-up kept coming back. It now tells you which layout to edit, and says it stops as soon as the HUD is on screen.
 
