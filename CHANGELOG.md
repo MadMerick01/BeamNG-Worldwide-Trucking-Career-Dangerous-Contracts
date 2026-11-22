@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 269 · 22 Nov 2026
+
 - **Depots now go in real car parks.** When a town has an open-air car park near its middle, the depot is now built there, with room to park your truck. Car parks on roofs or underground are skipped, and so are any where the ground doesn't check out. Towns with none, or a game with no internet, find a spot by the road as before.
 - **The depot computer no longer ends up on a rooftop.** In tightly packed towns with no room for a shed, the desk and computer could be put on a flat roof. They now always stand at street level, and if there's no open ground beside the road, they go right at the road's edge. Your saves still work.
 
