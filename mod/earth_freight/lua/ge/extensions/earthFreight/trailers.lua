@@ -539,7 +539,8 @@ function M.attach(c)
     if not t or not t.stored then return false end
     local problem = self:trailerProblem()
     local place = t.at or 'depot'
-    local fee = self:trailerMoveFee(place)
+    -- After a robber chase the trailer comes back free; if it couldn't, bringing it out here is free too (thief.lua).
+    local fee = self.trailerComesFree and 0 or self:trailerMoveFee(place)
     if not problem and fee > 0 and not self:canAfford(fee) then
       problem = 'Not enough money. You need ' .. dollars(fee - self.profile.progression.balance) .. ' more.'
     end
@@ -552,6 +553,9 @@ function M.attach(c)
       return false
     end
     if fee > 0 then self:spend(fee, 'trailer_storage') end
+    self.trailerComesFree = nil
+    -- A job's cargo in it goes on with it.
+    self:applyWeight()
     self.trailerFeedback = 'Your ' .. t.name .. ' is behind your car' .. (fee > 0 and (', for ' .. dollars(fee)) or '')
       .. ': back up to it slowly and it hitches itself.'
     self:autoSaveSoon('bringing your trailer out')
@@ -887,7 +891,7 @@ function M.attach(c)
         view.sendAllowed = free and view.base and not view.atBase and view.spotFree and self:trailerStoreProblem('base') == nil
         view.depotAllowed = free and self:trailerStoreProblem('depot') == nil
       else
-        view.bringOutFee = self:trailerMoveFee(view.owned.at)
+        view.bringOutFee = self.trailerComesFree and 0 or self:trailerMoveFee(view.owned.at)
         view.bringOutAllowed = problem == nil and view.bringOutFee <= balance
       end
       view.storeArmed = self.storeArmed or nil

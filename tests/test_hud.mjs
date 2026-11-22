@@ -1489,6 +1489,16 @@ test('Base thief: the card shows while a theft is on, and Chase and EMP send fix
   a.scope.empThief(); a.scope.thiefLetGo()
   assert.deepEqual(a.commands, [fixed('thiefChase()'), fixed('empThief()')], 'no Let them go once the chase is on')
   a.commands.length = 0
+  // Chase in a parked car: by its slot, only when both Chase and that car are allowed.
+  const cars = [{ index: 1, name: 'Pickup D15', allowed: true }, { index: 2, name: 'Moonhawk', allowed: false }]
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'stolen', amount: 1000, chaseAllowed: false, cars } })
+  a.scope.thiefChaseIn(cars[0])
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'stolen', amount: 1000, chaseAllowed: true, cars } })
+  a.scope.thiefChaseIn(cars[1]); a.scope.thiefChaseIn({ index: 1.5, allowed: true }); a.scope.thiefChaseIn(null)
+  a.scope.thiefChaseIn(cars[0])
+  assert.deepEqual(a.commands, [fixed('thiefChase(1)')], 'Chase in the allowed car only')
+  assert.ok(html.includes('ng-click="thiefChaseIn(car)"'), 'a button for each parked car')
+  a.commands.length = 0
   a.state({ state: 'READY', arrived: true, robbery: { allowed: false, problem: 'You need a base first.', amount: 1000, bounty: 5000 } })
   a.scope.getRobbed()
   a.state({ state: 'READY', arrived: true, robbery: { allowed: true, amount: 1000, bounty: 5000 } })

@@ -417,7 +417,7 @@ function M.attach(c)
       local fee = self:insuranceFee()
       local short = fee - math.min(fee, self.profile.progression.balance)
       self.repairFeedback = 'Press Confirm claim: your car is fixed and put back on the road for ' .. dollars(fee)
-        .. (self.load and ', but your job and its cargo are lost.' or '.')
+        .. ((self.load and not self:jobCarParked()) and ', but your job and its cargo are lost.' or '.')
         .. (short > 0 and (' You are ' .. dollars(short) .. ' short, so that is owed and comes out of your next deliveries.') or '')
       return false
     end
@@ -452,7 +452,8 @@ function M.attach(c)
     local short = fee - paid
     if short > 0 then self.profile.progression.insuranceOwed = self:insuranceOwed() + short end
     local lost = ''
-    if self.load then
+    -- A job held in the truck parked for a robber chase isn't in this car, so it isn't lost (thief.lua).
+    if self.load and not self:jobCarParked() then
       lost = ' Your job and its cargo are lost.'
       self.diag:event('job_lost', 'insurance:' .. self.load.good)
       self:finishJob()
@@ -476,7 +477,7 @@ function M.attach(c)
     if not self.insurancePending and not (self.garage and self.arrived and self:seriousCrash()) then return nil end
     local d = self.lastDamage
     return { fee = self:insuranceFee(), armed = self.insuranceArmed, pending = self.insurancePending ~= nil,
-      allowed = self:insuranceAllowed(), loseJob = self.load ~= nil,
+      allowed = self:insuranceAllowed(), loseJob = self.load ~= nil and not self:jobCarParked(),
       wealth = self:insuranceWealth(), topWealth = M.TOP_WEALTH,
       topPercent = math.floor(M.TOP_SHARE * 100 + 0.5), sharePercent = math.floor(M.TOP_SHARE * 100 * math.min(1, self:insuranceWealth() / M.TOP_WEALTH) + 0.5),
       short = math.max(0, self:insuranceFee() - (self.profile and self.profile.progression.balance or 0)),
@@ -1259,7 +1260,8 @@ function M.attach(c)
 
   -- Whether the load on board still fits the space these parts give.
   function c:loadFits(snapshot)
-    if not self.load then return true end
+    -- The job's truck parked for a robber chase keeps the load (thief.lua): the chase car carries none of it.
+    if not self.load or self:jobCarParked() then return true end
     local space = cargo.capacity(snapshot)
     local good = goods.get(self.load.good)
     -- What is in the trailer does not need room in the car.
