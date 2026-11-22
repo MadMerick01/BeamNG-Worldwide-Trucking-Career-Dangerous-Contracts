@@ -267,6 +267,8 @@ function M.validate(s)
   if s.extraCarSlot ~= nil and s.extraCarSlot ~= true then return nil, 'invalid_home' end
   -- The old "Robbers can rob me" opt-out: still read so an old save loads, but no longer used or saved.
   if s.noRobbers ~= nil and s.noRobbers ~= true then return nil, 'invalid_identity' end
+  -- Robbers and thieves switched off on the Route tab (roadRobber.lua): single player only, ignored online.
+  if s.robbersOff ~= nil and s.robbersOff ~= true then return nil, 'invalid_identity' end
   -- The play counted towards the hourly base thief (thief.lua): whole seconds.
   local thiefClock = nil
   if s.thiefClock ~= nil then
@@ -347,7 +349,7 @@ function M.validate(s)
       worth = s.vehicle.worth },
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
     trailer = trailer, spareTrailers = spareTrailers, property = home, storedCars = stored, commissionId = s.commissionId, rewardId = s.rewardId,
-    corp = member, extraCarSlot = s.extraCarSlot, noRobbers = s.noRobbers, thiefClock = thiefClock,
+    corp = member, extraCarSlot = s.extraCarSlot, noRobbers = s.noRobbers, robbersOff = s.robbersOff, thiefClock = thiefClock,
   }
 end
 
@@ -417,7 +419,7 @@ function M.new(io, directory)
       atStart = candidate.atStart, load = candidate.load, offer = candidate.offer,
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
       trailer = candidate.trailer, spareTrailers = candidate.spareTrailers, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId, rewardId = candidate.rewardId,
-      corp = candidate.corp, extraCarSlot = candidate.extraCarSlot, noRobbers = candidate.noRobbers,
+      corp = candidate.corp, extraCarSlot = candidate.extraCarSlot, noRobbers = candidate.noRobbers, robbersOff = candidate.robbersOff,
       thiefClock = candidate.thiefClock,
     }
     local clean, why = M.validate(prepared)

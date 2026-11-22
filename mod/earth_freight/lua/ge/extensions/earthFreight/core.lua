@@ -268,6 +268,8 @@ function M.new(deps)
     self.storedCars = self.profile and copy(self.profile.storedCars) or {}
     self.carCards, self.fleetFeedback = nil, nil
     self.extraCarSlot = self.profile and self.profile.extraCarSlot or nil
+    -- Robbers and thieves switched off on the Route tab: single player only (roadRobber.lua's robbersOff).
+    self.robbersOffSaved = self.profile and self.profile.robbersOff or nil
     -- The play counted towards the hourly base thief (thief.lua).
     self.thiefClock = self.profile and copy(self.profile.thiefClock) or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
@@ -2984,6 +2986,7 @@ function M.new(deps)
         worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
+      robbersOff = self.robbersOffSaved or nil,
       thiefClock = self:savedThiefClock(),
       trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
@@ -3425,6 +3428,11 @@ function M.thiefTest() return safely(function() return ensure():startTheft(true)
 function M.getRobbed() return safely(function() return ensure():startTheft(true) end) end
 -- The road robber: the Route tab's ROB ME button.
 function M.robMe() return safely(function() return ensure():robMe() end) end
+-- Its "Robbers and thieves" switch, single player only (true: on, false: off).
+function M.setRobbersOn(on)
+  if type(on) ~= 'boolean' then return false end
+  return safely(function() return ensure():setRobbersOn(on) end)
+end
 -- The admin robber (the server's admins only): Rob a player from the Route tab's list, his EMP, and Stop.
 function M.adminRob(id)
   if type(id) ~= 'number' or id < 0 or id ~= math.floor(id) then return false end

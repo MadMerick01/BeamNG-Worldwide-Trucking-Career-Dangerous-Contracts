@@ -187,15 +187,90 @@ do
   T.eq(c.robber, nil, 'gave up 500 m behind')
 end
 
--- ROB ME: any time, one at a time. There's no opting out of robbers any more (MadMerick): no tick box.
+-- ROB ME: any time, one at a time. The old "Robbers can rob me" tick box is gone for good.
 do
   local c, a, car = ready(0.99)
-  T.eq(c:view().robMe.robbersAllowed, nil, 'no tick box')
-  T.eq(c.setRobbersAllowed, nil, 'and no way to turn robbers off')
+  T.eq(c:view().robMe.robbersAllowed, nil, 'no old tick box')
+  T.eq(c.setRobbersAllowed, nil, 'and not its command')
   T.check(c:view().robMe.allowed, 'ROB ME allowed')
   T.check(c:robMe(), 'ROB ME'); F.advance(c, 0.5)
   T.eq(c.robber.phase, 'hunting', 'a robber on the road')
   T.check(not c:robMe(), 'one at a time')
+end
+
+-- Single player: the "Robbers and thieves" switch keeps road robbers and the base thief away, costs nothing, and is saved.
+-- ROB ME and Get robbed still work for testing.
+do
+  local c, a, car = ready(0)
+  T.check(c:view().robMe.canSwitch, 'offered in single player')
+  T.check(c:view().robMe.robbersOn, 'on by default')
+  T.check(c:setRobbersOn(false), 'switched off')
+  T.check(not c:view().robMe.robbersOn, 'shown off')
+  T.eq(c:robberProblem(false), 'Robbers are switched off.', 'no road robber')
+  local id = F.offer(c, townBetween(c, 20, 60), 'food')
+  T.check(c:takeJob(id), 'job taken'); c:tick(0.1)
+  T.eq(c.robberAtKm, nil, 'no robbery planned'); T.eq(car.loaded, 0, 'nothing loaded')
+  T.check(c:robMe(), 'ROB ME still works'); F.advance(c, 0.5)
+  T.eq(c.robber.phase, 'hunting', 'a test robber on the road')
+end
+
+-- Switching off while a job's robber waits for its moment sends it away; switching on again doesn't bring it back.
+do
+  local c, a, car = ready(0.1)
+  local id = F.offer(c, townBetween(c, 20, 60), 'food')
+  T.check(c:takeJob(id), 'job taken'); c:tick(0.1)
+  T.check(c.robber and c.robber.phase == 'loaded', 'a robber waiting')
+  T.check(c:setRobbersOn(false), 'switched off')
+  T.eq(c.robber, nil, 'it went'); T.eq(c.robberAtKm, nil, 'and the job is safe')
+  T.check(c:setRobbersOn(true), 'on again')
+  F.advance(c, 1)
+  T.eq(c.robber, nil, 'no robber for this job')
+end
+
+-- The base thief stays away too, and the hour's theft is dropped rather than kept for later.
+do
+  local c, a = ready()
+  T.check(c:setRobbersOn(false), 'switched off')
+  T.check(c:buyBase(F.copy(a.pose)), 'a base')
+  a.pose = location.destination(a.pose, 90, thief.MIN_AWAY_METRES + 1000); F.advance(c, 1); c.stranded = nil
+  T.eq(c:theftProblem(false), 'Robbers are switched off.', 'no base thief')
+  T.check(c:robberyView().allowed, 'Get robbed still works')
+  c.thiefClock = { played = 100, hour = 0, due = 50 }
+  F.advance(c, 0.5)
+  T.eq(c.thief, nil, 'no theft'); T.eq(c.thiefClock.due, nil, 'the hour\'s theft dropped')
+  T.check(c:setRobbersOn(true), 'on again')
+  T.check(c:theftProblem(false) ~= 'Robbers are switched off.', 'thieves are back')
+  F.advance(c, 0.5)
+  T.eq(c.thief, nil, 'but not the dropped theft')
+end
+
+-- The switch is kept through a save and a reload.
+do
+  local c, io = F.controller({ random = function() return 0.99 end })
+  c.thiefCar = fakeCar()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c:setRobbersOn(false), 'switched off')
+  T.check(c:manualSave(), 'saved')
+  local r = F.controller({ io = io })
+  r.thiefCar = fakeCar()
+  r:tick(0.1); r:tick(0.6)
+  T.check(r:robbersOff(), 'still off after a reload')
+  local s = F.save(1)
+  s.robbersOff = true
+  T.check(persistence.validate(s), 'robbersOff saves')
+  s.robbersOff = 'yes'
+  T.check(not persistence.validate(s), 'only true')
+end
+
+-- Online the switch isn't offered, can't be used, and a saved one is ignored: everyone can be robbed.
+do
+  local c, a, car = ready(0)
+  c.mp = { state = 'server' }
+  c.robbersOffSaved = true
+  T.check(not c:robbersOff(), 'ignored online')
+  T.eq(c:robMeView().canSwitch, nil, 'not offered')
+  T.check(not c:setRobbersOn(false), 'and refused')
+  T.eq(c:robberProblem(false), nil, 'robbers come')
 end
 
 -- ROB ME before a robbed job's moment: the job still gets its own robber later.
