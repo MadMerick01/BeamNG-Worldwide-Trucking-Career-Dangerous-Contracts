@@ -186,6 +186,35 @@ do
   T.eq(depots.stillClear(w, spot, 0), 'wait', 'unloaded ground: no answer yet')
 end
 
+-- Car parks from OpenStreetMap are tried first; the HUD is asked once per town.
+do
+  local w = F.depotWorld()
+  local c = F.controller({ depotWorld = w })
+  c:tick(0.6); c:tick(0.6)
+  local want = c:view().computer.lots
+  T.check(want and want.key and want.latitude and want.metres == depots.LOT_METRES, 'the HUD is asked for car parks round the town')
+  for _ = 1, 10 do c:tick(0.6) end
+  T.eq(w:count(), 0, 'the depot waits for the answer')
+  T.check(not c:setDepotLots('town:nowhere', {}), 'an answer for a town not wanted is refused')
+  local d = c:depotsWanted()[1]
+  local lot = location.destination(d, 90, 250)
+  local far = location.destination(d, 0, 5000)
+  T.check(c:setDepotLots(want.key, { lot, far }), 'the answer is taken')
+  T.eq(#c.depotLots[want.key], 1, 'a car park far from town is left out')
+  local again = c:view().computer.lots
+  T.check(not again or again.key ~= want.key, 'and not asked again')
+  for _ = 1, 20 do c:tick(0.6) end
+  local built = c.depotsBuilt[want.key]
+  T.check(built and built.spot.lot, 'the depot is in the car park')
+  T.check(location.distance(lot, built.pcGeo) < 30, 'next to it')
+  -- No answer from the HUD: after a while the roads are searched as before.
+  local w2 = F.depotWorld()
+  local c2 = F.controller({ depotWorld = w2 })
+  for _ = 1, 40 do c2:tick(0.6) end
+  local built2 = c2.depotsBuilt[next(c2.depotsBuilt)]
+  T.check(built2 and not built2.spot.lot, 'without car parks the depot still goes down')
+end
+
 -- No clear ground anywhere: just the desk and computer, at the flattest try.
 do
   local w = F.depotWorld()
@@ -197,12 +226,26 @@ do
   T.check(built ~= nil, 'and it is a depot with a computer')
 end
 
+-- A packed town: flat roofs right up to the road. The desk goes at the road's edge, at road height,
+-- never on a roof.
+do
+  local w = F.depotWorld()
+  w.boxes = { { -1000, -1000, 1000, -3.5, 8 }, { -1000, 3.5, 1000, 1000, 8 } }
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, 200 do c:tick(0.6) end
+  T.eq(w:count(), 3, 'just the desk, computer and screen')
+  for _, o in pairs(w.objects) do
+    T.eq(o.z, 0, o.shape .. ' at the height of the road, not the roofs')
+    T.check(math.abs(o.y) <= 3 + depots.EDGE_METRES + 0.01, o.shape .. ' at the edge of the road')
+  end
+end
+
 -- The game can't put objects down: depots are off and jobs are taken on the HUD, as before.
 do
   local w = F.depotWorld()
   w.placeFails = true
   local c = F.controller({ depotWorld = w })
-  for _ = 1, 20 do c:tick(0.6) end
+  for _ = 1, 40 do c:tick(0.6) end
   T.check(not c:depotsOn(), 'depots off')
   T.eq(c:view().town.takeProblem, nil, 'no depot message')
   T.eq(c:view().computer, nil, 'no computer')

@@ -3434,6 +3434,15 @@ function M.setBusiness(key, name, kind, latitude, longitude)
       or not location.finite(latitude) or not location.finite(longitude) then return false end
   return safely(function() return ensure():setBusiness(key, name, kind, latitude, longitude) end)
 end
+-- The HUD's car parks for a depot: "lat,lon;lat,lon", best first, or "" for none.
+function M.setDepotLots(key, list)
+  if not businessKey(key) or type(list) ~= 'string' or #list > 600 or list:find('[^%d%.,;%-]') then return false end
+  local lots = {}
+  for lat, lon in list:gmatch('(%-?[%d%.]+),(%-?[%d%.]+)') do
+    lots[#lots + 1] = { latitude = tonumber(lat), longitude = tonumber(lon) }
+  end
+  return safely(function() return ensure():setDepotLots(key, lots) end)
+end
 function M.noBusiness(key)
   if not businessKey(key) then return false end
   return safely(function() return ensure():noBusiness(key) end)
