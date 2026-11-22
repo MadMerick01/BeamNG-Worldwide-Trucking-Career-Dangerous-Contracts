@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 264 · 22 Nov 2026
+
 - **The depot's tin shed now has its metal walls.** Parts of it showed in bright orange because two of its textures only load on some of the game's own maps. The mod now brings them along, so the shed looks right on every map. Your saves still work.
 
 ## Build 263 · 22 Nov 2026
