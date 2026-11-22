@@ -2608,6 +2608,19 @@ do
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
   T.eq(hints(c), 1, 'on a server too')
   T.check(c.toasts[1].msg:find('BeamMP (edit layout)', 1, true) ~= nil, 'on a server: the BeamMP layout')
+  T.check(c.toasts[1].msg:find('stops as soon as the HUD is on screen', 1, true) ~= nil, 'and says when it stops')
+
+  -- The layout the game has up is named, whatever it is: playing alone with BeamMP's layout up, it says BeamMP.
+  c = watched({ layout = function() return 'BeamMP' end })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.check(c.toasts[1].msg:find('BeamMP (edit layout)', 1, true) ~= nil, 'the layout that is up')
+  T.check(c.toasts[1].msg:find('another layout', 1, true) ~= nil, 'and that each layout has its own apps')
+  c = watched({ layout = function() error('no game state') end })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'unknown: the usual one')
+  c = watched({ layout = function() return '  ' end })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'blank: the usual one')
 end
 
 -- The game's name tags are kept off, and turned off again if the player turns them on.

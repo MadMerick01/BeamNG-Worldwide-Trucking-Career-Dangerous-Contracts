@@ -51,6 +51,9 @@ M.SETTLE_SECONDS = 4
 -- never on its roof, and the checks see it). If one is there, the depot moves to the next clear spot,
 -- at most MAX_MOVES times a visit, and never while the player is within MOVE_METRES of its computer.
 M.RECHECK_SECONDS, M.MOVE_METRES, M.MAX_MOVES = 5, 30, 3
+-- Depot pieces this game didn't put down (left by a reload of the mod, or by an older version of it,
+-- that lost track of them) are taken away when the mod starts and every SWEEP_SECONDS after.
+M.SWEEP_SECONDS = 30
 
 -- Where the pieces go, in metres. u runs along the road, v away from it; the desk's corner is at
 -- 0, 0. The desk and computer face the road, so the player stands on the road side of the desk and
@@ -388,6 +391,10 @@ function M.attach(c)
     self.depotsBuilt = self.depotsBuilt or {}
     if self.depotCheckAt and self.clock - self.depotCheckAt < M.CHECK_SECONDS then return end
     self.depotCheckAt = self.clock
+    if not self.depotSweptAt or self.clock - self.depotSweptAt >= M.SWEEP_SECONDS then
+      self.depotSweptAt = self.clock
+      self:sweepDepots()
+    end
     local ready = self.profile and not self.error and self.state == 'READY' and self.arrived and not self.hire
     local f = ready and frame(self) or nil
     local wanted = {}
@@ -606,13 +613,26 @@ function M.attach(c)
     return true
   end
 
-  -- Takes every depot away, as when the level unloads.
+  -- Takes away depot pieces that aren't one of the depots built now.
+  function c:sweepDepots()
+    if not self.depotWorld or not self.depotWorld.sweep then return 0 end
+    local keep = {}
+    for _, built in pairs(self.depotsBuilt or {}) do
+      for _, id in ipairs(built.ids) do keep[id] = true end
+    end
+    local gone = self.depotWorld:sweep(keep)
+    if gone > 0 then self.diag:event('depot', 'left behind: ' .. gone .. ' taken away') end
+    return gone
+  end
+
+  -- Takes every depot away, as when the mod is reloaded or turned off.
   function c:removeDepots()
-    if not self.depotWorld or not self.depotsBuilt then return end
-    for key, built in pairs(self.depotsBuilt) do
+    if not self.depotWorld then return end
+    for key, built in pairs(self.depotsBuilt or {}) do
       for _, id in ipairs(built.ids) do self.depotWorld:remove(id) end
       self.depotsBuilt[key] = nil
     end
+    if self.depotWorld.sweep then self.depotWorld:sweep({}) end
   end
 end
 

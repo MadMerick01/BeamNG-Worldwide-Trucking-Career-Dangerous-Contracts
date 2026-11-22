@@ -40,6 +40,21 @@ local function defaults()
       load(M.MATERIALS)
       return true
     end,
+    -- The ids of every object whose name starts with prefix: the depot pieces in the world, this
+    -- game's and any a reloaded or older copy of the mod left behind.
+    named = function(prefix)
+      local ids = {}
+      local tree = rawget(_G, 'scenetree')
+      if not tree or type(tree.findClassObjects) ~= 'function' then return ids end
+      for _, name in pairs(tree.findClassObjects('TSStatic') or {}) do
+        if type(name) == 'string' and name:sub(1, #prefix) == prefix then
+          local o = tree.findObject(name)
+          local id = o and o:getID()
+          if id then ids[#ids + 1] = id end
+        end
+      end
+      return ids
+    end,
     -- Whether this game can put objects down and look at the ground at all.
     available = function()
       return type(rawget(_G, 'createObject')) == 'function' and type(rawget(_G, 'castRayStatic')) == 'function'
@@ -49,6 +64,10 @@ local function defaults()
 end
 
 M.MATERIALS = '/art/shapes/earth_freight_depot/main.materials.json'
+
+-- Every depot piece's name starts with PREFIX, then a tag for this load of the mod, so a piece left
+-- behind by an earlier load never shares a name with one put down now.
+M.PREFIX = 'earthFreight_depot_'
 
 -- Rays look for the ground from RAY_FROM metres above the player, down to RAY_DOWN metres.
 M.RAY_FROM, M.RAY_DOWN = 300, 900
@@ -120,6 +139,8 @@ function M.new(environment)
   -- Puts down one of SHAPES at x, y, z, its forward along fx, fy. Returns its id, or nil.
   local made = 0
   local materialsLoaded = false
+  local okTag, tag = pcall(function() return string.format('%x', os.time() % 0x1000000) end)
+  tag = okTag and tag or tostring(math.random(0x1000000))
   function w:place(shape, x, y, z, fx, fy)
     local path = M.SHAPES[shape]
     if not path then return nil end
@@ -139,7 +160,7 @@ function M.new(environment)
       o:setPosition(env.point(x, y, z))
       o.canSave = false
       made = made + 1
-      o:registerObject('earthFreight_depot_' .. shape .. '_' .. made)
+      o:registerObject(M.PREFIX .. tag .. '_' .. shape .. '_' .. made)
       local group = env.group()
       if group then group:addObject(o) end
       -- Turned to face fx, fy: by a rotation where the game has one, else by the angle about the
@@ -173,6 +194,19 @@ function M.new(environment)
     local o = object(id)
     if not o then return false end
     return (pcall(function() o:delete() end))
+  end
+
+  -- Takes away every depot piece in the world that is not in keep (ids as keys): ones a reload of
+  -- the mod, or an older version of it, put down and lost track of. Returns how many went.
+  function w:sweep(keep)
+    if not env.named then return 0 end
+    local ok, ids = pcall(env.named, M.PREFIX)
+    if not ok or type(ids) ~= 'table' then return 0 end
+    local gone = 0
+    for _, id in ipairs(ids) do
+      if not (keep and keep[id]) and self:remove(id) then gone = gone + 1 end
+    end
+    return gone
   end
 
   return w
