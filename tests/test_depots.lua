@@ -197,6 +197,20 @@ do
   T.check(built ~= nil, 'and it is a depot with a computer')
 end
 
+-- A packed town: flat roofs right up to the road. The desk goes at the road's edge, at road height,
+-- never on a roof.
+do
+  local w = F.depotWorld()
+  w.boxes = { { -1000, -1000, 1000, -3.5, 8 }, { -1000, 3.5, 1000, 1000, 8 } }
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, 200 do c:tick(0.6) end
+  T.eq(w:count(), 3, 'just the desk, computer and screen')
+  for _, o in pairs(w.objects) do
+    T.eq(o.z, 0, o.shape .. ' at the height of the road, not the roofs')
+    T.check(math.abs(o.y) <= 3 + depots.EDGE_METRES + 0.01, o.shape .. ' at the edge of the road')
+  end
+end
+
 -- The game can't put objects down: depots are off and jobs are taken on the HUD, as before.
 do
   local w = F.depotWorld()

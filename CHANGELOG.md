@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The depot computer no longer ends up on a rooftop.** In tightly packed towns with no room for a shed, the desk and computer could be put on a flat roof. They now always stand at street level, and if there's no open ground beside the road, they go right at the road's edge. Your saves still work.
+
 ## Build 268 · 22 Nov 2026
 
 - **You can chase a base thief in one of your parked cars.** When a thief hits your base, the card now has a Chase in button for each parked car as well as Chase. It's free, even on a job. Your truck is parked in that car's slot with your job in it, and the chase car takes you to your base. When you press Back to your job, your truck is swapped back in at the spot you left and your trailer comes out behind it. The chase car goes back to its slot with any damage it picked up, and a crash in it never loses your job.

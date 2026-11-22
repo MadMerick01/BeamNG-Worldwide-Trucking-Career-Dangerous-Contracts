@@ -31,6 +31,10 @@ M.SETBACK = 6
 -- to its highest point, the road beside it included: a building, a wall or a tree there, or a steep
 -- slope, makes it rise more. No other road may come within ROAD_CLEAR metres of the shed.
 M.MAX_RISE, M.ROAD_CLEAR = 2, 3
+-- Where there is no clear ground for a shed anywhere, the depot is just its desk and computer: on
+-- ground no more than MAX_RISE above the road, or else EDGE_METRES past the road's edge, at the road's
+-- height, so it is never put on a roof.
+M.EDGE_METRES = 1
 -- Every CHECK_SECONDS the depots near the player are looked after; TRIES_PER_CHECK spots are tried
 -- each time, so the search never holds up a frame. Ground that Earth has not loaded yet is tried
 -- again after WAIT_SECONDS.
@@ -122,7 +126,8 @@ function M.check(world, cx, cy, cz, try)
     if len < 0.5 then nx, ny, len = -road.dy, road.dx, 1 end
     nx, ny = nx / len, ny / len
     local back = road.radius + M.SETBACK
-    spot = { x = road.x + nx * back, y = road.y + ny * back, nx = nx, ny = ny }
+    spot = { x = road.x + nx * back, y = road.y + ny * back, nx = nx, ny = ny,
+      road = { x = road.x, y = road.y, radius = road.radius, z = road.z } }
   else
     spot = { x = px, y = py, nx = math.sin(b), ny = math.cos(b) }
   end
@@ -153,7 +158,11 @@ function M.check(world, cx, cy, cz, try)
   for _, h in ipairs(margin) do all[#all + 1] = h end
   local rise = M.rise(all)
   local _, shedLow = M.rise(shed)
-  spot.rise, spot.frontRise, spot.shedZ = rise, M.rise(front), shedLow
+  -- The desk's ground against the road's, so a flat roof is never taken for it.
+  local frontAll = {}
+  if spot.roadZ then frontAll[1] = spot.roadZ end
+  for _, h in ipairs(front) do frontAll[#frontAll + 1] = h end
+  spot.rise, spot.frontRise, spot.shedZ = rise, M.rise(frontAll), shedLow
   if rise > M.MAX_RISE then return false, spot end
   -- No other road through the shed.
   if road then
@@ -262,6 +271,8 @@ function M.attach(c)
     local pieces = spot.small and { M.PIECES[2], M.PIECES[3], M.PIECES[4] } or M.PIECES
     local dx, dy = M.at(spot, -1, 0.85)
     local deskZ = self.depotWorld:ground(dx, dy, f.z)
+    -- Never above the road by more than MAX_RISE: that is a roof or a wall, not the ground.
+    if spot.roadZ and (spot.edge or not deskZ or deskZ > spot.roadZ + M.MAX_RISE) then deskZ = spot.roadZ end
     for _, p in ipairs(pieces) do
       local x, y = M.at(spot, p.u, p.v)
       -- Forward: the desk faces the road, the shed runs along it.
@@ -318,6 +329,8 @@ function M.attach(c)
           s.best.small = true
           return s.best
         end
+        -- Nowhere flat at road level: the desk at the edge of the road.
+        if s.edge then return s.edge end
         -- Nothing loaded anywhere yet: start again.
         s.next = 1
         s.waitUntil = self.clock + M.WAIT_SECONDS
@@ -333,7 +346,15 @@ function M.attach(c)
         s.pending, s.waitUntil = try, self.clock + M.SETTLE_SECONDS
         return nil
       end
-      if near and near.frontRise and (not s.best or near.frontRise < s.best.frontRise) then s.best = near end
+      if near and near.frontRise and near.frontRise <= M.MAX_RISE and (not s.best or near.frontRise < s.best.frontRise) then
+        s.best = near
+      end
+      if near and near.road and not s.edge then
+        local r = near.road
+        local out = r.radius + M.EDGE_METRES
+        s.edge = { x = r.x + near.nx * out, y = r.y + near.ny * out, nx = near.nx, ny = near.ny, small = true,
+          edge = true, roadZ = r.z }
+      end
     end
     return nil
   end
@@ -397,7 +418,7 @@ function M.attach(c)
           if spot then
             -- Found before, kept by where it is on Earth: back into today's world frame.
             local x, y = toWorld(f, spot.geo)
-            spot = { x = x, y = y, nx = spot.nx, ny = spot.ny, small = spot.small, geo = spot.geo, roadZ = spot.roadZ }
+            spot = { x = x, y = y, nx = spot.nx, ny = spot.ny, small = spot.small, edge = spot.edge, geo = spot.geo, roadZ = spot.roadZ }
             spot.shedZ = not spot.small and M.shedLow(self.depotWorld, spot, f.z) or nil
           else
             spot = search(self, f, d, cx, cy)
@@ -405,7 +426,7 @@ function M.attach(c)
               local dx, dy = spot.x - f.x, spot.y - f.y
               local geo = location.destination(f.geo, (math.deg(math.atan2(dx, dy)) + 360) % 360, math.sqrt(dx * dx + dy * dy))
               spot.geo = geo
-              self.depotSpots[key] = { geo = geo, nx = spot.nx, ny = spot.ny, small = spot.small, roadZ = spot.roadZ }
+              self.depotSpots[key] = { geo = geo, nx = spot.nx, ny = spot.ny, small = spot.small, edge = spot.edge, roadZ = spot.roadZ }
               self.depotSearch[key] = nil
               self.diag:event('depot', string.format('%s %s rise %.1f', key, spot.small and 'desk only' or 'shed',
                 spot.small and (spot.frontRise or 0) or (spot.rise or 0)))
