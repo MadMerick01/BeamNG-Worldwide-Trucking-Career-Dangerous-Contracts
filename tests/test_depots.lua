@@ -47,6 +47,19 @@ do
   T.eq(v.here.name, 'Penrith', 'in Penrith')
   T.check(v.town.takeProblem and v.town.takeProblem:find('depot computer'), 'in the car, jobs are taken at the depot computer')
   T.check(v.computer and v.computer.depot and v.computer.depot.distanceMetres, 'the HUD says how far it is')
+  T.check(v.computer.depot.letters ~= nil, 'and which way')
+  T.eq(v.computer.depot.arrow, nil, 'no arrow before the game says which way the player faces')
+  c.heading = 90
+  local d = c:view().computer.depot
+  local b = location.bearing(F.PENRITH, c.depotsBuilt[next(c.depotsBuilt)].pcGeo)
+  T.near(d.arrow, (b - 90) % 360, 1, 'the arrow turns with the way the player faces')
+  T.check(v.computer.depot.gpsAllowed, 'and a GPS button')
+  T.check(c:gpsToTownDepot(), 'the GPS is set to the depot')
+  T.eq(a.gps[#a.gps].name, 'Penrith depot', 'by name')
+  local built0 = c.depotsBuilt[next(c.depotsBuilt)]
+  T.near(location.distance(a.gps[#a.gps], built0.pcGeo), 0, 1e-6, 'at its computer')
+  T.check(location.distance(F.PENRITH, built0.pcGeo) > 30, 'which is away from the middle of town')
+  T.check(c:view().computer.depot.gps, 'the GPS button shows it is set')
   for _, j in ipairs(v.town.jobs) do T.check(not j.allowed, j.id .. ' cannot be taken from the car') end
   local id = v.town.jobs[1].id
   T.check(not c:takeJob(id), 'Take job from the car is refused')

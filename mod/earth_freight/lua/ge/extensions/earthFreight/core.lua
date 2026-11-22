@@ -1691,6 +1691,7 @@ function M.new(deps)
     local name = load.business and (load.business.name .. ', ' .. town.name) or town.name
     local ok, why = self.adapter:setDestination(spot, name)
     self.gpsTown, self.gpsContract, self.gpsFeedback = ok and not load.business and town.id or nil, nil, nil
+    self.gpsTownDepot = nil
     if not ok then self.tradeFeedback = 'Set the GPS yourself: copy the drop-off coordinates on the Route tab.' end
     self.diag:event('gps', ok and (load.business and ('business:' .. town.id) or town.id) or tostring(why), ok and 'I' or 'W')
     return ok == true
@@ -1810,6 +1811,7 @@ function M.new(deps)
     local ok, why = self.adapter:setDestination(place, place.name)
     self.diag:event('gps', ok and ('town:' .. place.id) or tostring(why), ok and 'I' or 'W')
     self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = ok and place.id or nil, nil, nil, nil
+    self.gpsTownDepot = nil
     self.gpsFeedback = ok and ('The GPS is set to ' .. place.name .. '.')
       or ('Could not set the GPS. Paste ' .. coordinates(place) .. ' into the BeamNG.Earth map instead.')
     return ok == true
@@ -1826,6 +1828,7 @@ function M.new(deps)
     local ok, why = self.adapter:setDestination(section.start, section.name .. ' start')
     self.diag:event('gps', ok and ('contract_start:' .. section.id) or tostring(why), ok and 'I' or 'W')
     self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = nil, ok and section.id or nil, nil, nil
+    self.gpsTownDepot = nil
     self.gpsFeedback = ok and ('The GPS is set to the start of ' .. section.name .. ', ' .. section.region .. '.')
       or ('Could not set the GPS. Paste ' .. coordinates(section.start) .. ' into the BeamNG.Earth map instead.')
     return ok == true
@@ -3443,6 +3446,7 @@ function M.pickUpBeacon() return safely(function() return ensure():pickUpBeacon(
 function M.ignoreBeacon() return safely(function() return ensure():ignoreBeacon() end) end
 function M.gpsToContract(contract) return safely(function() return ensure():gpsToContract(id(contract)) end) end
 function M.gpsToTown(place) return safely(function() return ensure():gpsToTown(id(place)) end) end
+function M.gpsToTownDepot() return safely(function() return ensure():gpsToTownDepot() end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
 -- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.
 function M.bookShippingTo(latitude, longitude)

@@ -325,6 +325,9 @@ function M.attach(c)
             local built = build(self, f, d, spot)
             if built then
               built.key, built.name, built.town, built.fuel, built.geo = key, d.name, d.town, d.fuel, spot.geo
+              -- Where its computer is on Earth, for the GPS.
+              local px, py = built.pc.x - f.x, built.pc.y - f.y
+              built.pcGeo = location.destination(f.geo, (math.deg(math.atan2(px, py)) + 360) % 360, math.sqrt(px * px + py * py))
               self.depotsBuilt[key] = built
             else
               -- The game would not put it down: depots are off for this game, and jobs are taken on the HUD.
@@ -366,7 +369,8 @@ function M.attach(c)
         if not me then return built end
         local dx, dy = built.pc.x - me.x, built.pc.y - me.y
         local metres = math.sqrt(dx * dx + dy * dy)
-        return built, metres, metres > 1 and location.compassPoint((math.deg(math.atan2(dx, dy)) + 360) % 360) or nil
+        local bearing = (math.deg(math.atan2(dx, dy)) + 360) % 360
+        return built, metres, metres > 1 and location.compassPoint(bearing) or nil, metres > 1 and bearing or nil
       end
     end
     return nil
@@ -401,11 +405,35 @@ function M.attach(c)
       out.truckOk = truck ~= nil and truck <= M.TRUCK_METRES
     end
     local here = self:here()
-    local depot, metres, direction = self:depotFor(here and here.id, nil)
+    local depot, metres, direction, bearing = self:depotFor(here and here.id, nil)
     if depot and not built then
-      out.depot = { name = depot.name, distanceMetres = metres and math.floor(metres + 0.5) or nil, direction = direction }
+      -- The arrow: which way to turn, the depot's bearing from the way the player faces, 0 straight ahead.
+      local sample = self.lastSample
+      local heading = sample and location.finite(sample.heading) and sample.heading or self.heading
+      out.depot = { name = depot.name, distanceMetres = metres and math.floor(metres + 0.5) or nil, direction = direction,
+        letters = bearing and location.compassLetters(bearing) or nil,
+        arrow = bearing and heading and (bearing - heading) % 360 or nil,
+        gps = self.gpsTownDepot ~= nil and self.gpsTownDepot == depot.key or nil,
+        gpsAllowed = depot.pcGeo ~= nil and self.adapter.setDestination ~= nil and not self.hire }
     end
     return out
+  end
+
+  -- Sets the GPS to the computer of the depot in the town the player is in.
+  function c:gpsToTownDepot()
+    local here = self:here()
+    local depot = self:depotFor(here and here.id, nil)
+    if not depot or not depot.pcGeo or not self.adapter.setDestination or self.hire then
+      self.gpsFeedback = 'The GPS cannot be set right now.'
+      return false
+    end
+    local name = depot.name .. ' depot'
+    local ok, why = self.adapter:setDestination(depot.pcGeo, name)
+    self.diag:event('gps', ok and ('depot:' .. depot.key) or tostring(why), ok and 'I' or 'W')
+    self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = nil, nil, nil, nil
+    self.gpsTownDepot = ok and depot.key or nil
+    self.gpsFeedback = ok and ('The GPS is set to the ' .. name .. '.') or 'Could not set the GPS.'
+    return ok == true
   end
 
   -- Takes every depot away, as when the level unloads.

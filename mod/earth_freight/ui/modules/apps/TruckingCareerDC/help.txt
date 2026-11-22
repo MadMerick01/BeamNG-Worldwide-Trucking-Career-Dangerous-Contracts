@@ -29,6 +29,7 @@ Tap a job to see its details and press GPS to see the route before you take it.
 # depot | Depots and the computer
 Every town has a depot: a tin shed with a computer on a desk in front of it, near the middle of town. A fuel depot has one too.
 Jobs, off-road drops and fuel runs are only taken at the depot's computer. The Town tab shows them, and how far away the depot is.
+In town, an arrow on the Town tab points to the depot and says how far it is. Press GPS next to it for a route to the door. The minimised HUD shows the distance too.
 Park within {depotTruckMetres} m of the computer, get out and walk up to it. Press Use computer when it shows, pick a job and take it.
 Your truck must still be within {depotTruckMetres} m when you take the job, or it won't load.
 Deliveries haven't changed: drive to the drop-off and press Deliver on the HUD.

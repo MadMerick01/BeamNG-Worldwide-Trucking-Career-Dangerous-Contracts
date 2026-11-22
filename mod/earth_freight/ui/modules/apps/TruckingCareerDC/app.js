@@ -499,6 +499,15 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         if (c && c.near) kept.pc.open = true
       }
       scope.closeComputer = function () { kept.pc.open = false }
+      // The depot of the town the player is in, while they have no job and aren't at its computer.
+      scope.depotStrip = function (d) {
+        var c = d && d.computer
+        return c && c.depot && !c.near && !d.load && c.depot.distanceMetres != null ? c.depot : null
+      }
+      scope.gpsToTownDepot = function () {
+        var c = scope.data && scope.data.computer
+        if (c && c.depot && c.depot.gpsAllowed) core('gpsToTownDepot()')
+      }
       // The town's jobs and the fuel runs this computer offers.
       scope.pcTown = function () {
         var d = scope.data || {}, c = d.computer
