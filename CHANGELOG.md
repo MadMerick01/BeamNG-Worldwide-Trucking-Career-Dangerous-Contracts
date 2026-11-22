@@ -6,6 +6,11 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **You can chase a base thief in one of your parked cars.** When a thief hits your base, the card now has a Chase in button for each parked car as well as Chase. It's free, even on a job. Your truck is parked in that car's slot with your job in it, and the chase car takes you to your base. When you press Back to your job, your truck is swapped back in at the spot you left and your trailer comes out behind it. The chase car goes back to its slot with any damage it picked up, and a crash in it never loses your job.
+- **A trailer now comes back loaded after a thief chase.** Before, the trailer that came out behind you after Back to your job had no cargo weight on it, so it towed light and a tanker trailer came back with no fuel in it. If the trailer can't come out behind you, bringing it out on the Garage tab is now free.
+- **Robbers no longer come during a Mayday Rescue run.** That includes the Get robbed and ROB ME test buttons. If a thief struck just before your run, their Chase button waits and their clock stops until the run is over.
+- Save now waits until you press Back to your job after a thief chase, so your save always has your truck, trailer and job together. Your saves still work.
+
 ## Build 267 · 22 Nov 2026
 
 - **Town buildings no longer float on top of the depot.** BeamNG.Earth sometimes loads a building after the depot is already up, and it was setting that building down on the shed's roof. The shed, desk and computer are now scenery you can walk and drive through, so late buildings land on the ground. The depot then sees the building and moves to a clear spot as soon as you're not standing at it.

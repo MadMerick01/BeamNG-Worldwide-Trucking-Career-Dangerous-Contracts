@@ -305,6 +305,127 @@ do
   T.check(c.load.drivenKm > driven, 'driving counts again')
 end
 
+-- A trailer with part of the job in it: it goes to the base for the chase, and comes back behind the car with its
+-- cargo's weight on it.
+local function trailerJob(options)
+  local places = require('earthFreight/places')
+  local stClair
+  for _, p in ipairs(places.list) do if p.name == 'St Clair' then stClair = p end end
+  local hitched = F.garage(); hitched.fitted.hitch = 'pickup_tow_hitch'
+  local car = fakeCar()
+  local c, io, a, g, w = F.controller({ garage = hitched, random = function() return 0.99 end })
+  c.thiefCar = car
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 2000000
+  c:openTrailers(true)
+  T.check(c:buyTrailer(1), 'a trailer'); c.trailer.maxKg = 5000; c:readTrailerSpace()
+  c:couplerChanged(1, c.trailerOut.id, true)
+  local here = F.copy(a.pose)
+  c.property = { latitude = here.latitude + 0.5, longitude = here.longitude, paid = 250000 }
+  if options and options.parked then
+    c.storedCars = { { config = { model = 'pickup', parts = { engine = 'pickup_engine_v8' } }, name = 'Pickup D15', fuelLitres = 30 } }
+  end
+  T.check(c:takeJob(F.offer(c, stClair, 'parts'), 50), 'on a job'); T.eq(c.load.trailerUnits, 50, 'half of it in the trailer')
+  return c, a, g, w, car, here, stClair
+end
+
+do
+  local c, a, g, w, car, here, stClair = trailerJob()
+  local trailerKg = w.trailerWeights[#w.trailerWeights].kg
+  T.check(trailerKg > 0, 'the trailer carries its share')
+  T.check(c:startTheft(true), 'robbed'); T.check(c:thiefChase(), 'Chase')
+  a.pose = { latitude = c.property.latitude, longitude = c.property.longitude }
+  F.advance(c, 1)
+  T.check(c.trailer.stored and c.trailer.at == 'base', 'the trailer went to the base'); T.eq(c.load.trailerUnits, 50, 'its cargo still in the job')
+  F.advance(c, thief.SETTLE_SECONDS + 1)
+  car.metres = 3; F.advance(c, 0.2); T.check(c:empThief(), 'caught')
+  T.check(c:thiefGoBack(), 'Back to your job')
+  a.pose = F.copy(here); F.advance(c, 1)
+  local id = c.trailerOut.id
+  local last = w.trailerWeights[#w.trailerWeights]
+  T.eq(last.id, id, 'the weight is on the trailer that came back'); T.near(last.kg, trailerKg, 1e-9, 'all of its cargo')
+  c:couplerChanged(1, id, true)
+  F.drive(c, a, stClair)
+  T.check(c:deliver(), 'delivered once hitched')
+end
+
+-- Chase in a parked car: the truck is parked with the job and the trailer's cargo, the chase car goes to the base and
+-- carries none of it, and Back to your job swaps the truck back in at the spot, trailer and all. Free both ways.
+do
+  local c, a, g, w, car, here, stClair = trailerJob({ parked = true })
+  local driven, balance, truck = c.load.drivenKm, nil, c.ownedParts.model
+  T.check(c:startTheft(true), 'robbed'); balance = c.profile.progression.balance
+  local v = c:view().thief
+  T.eq(#v.cars, 1, 'Chase in: the parked car'); T.eq(v.cars[1].name, 'Pickup D15', 'by its name'); T.check(v.cars[1].allowed, 'allowed with the job on')
+  T.check(not c:thiefChase(2), 'not an empty slot')
+  T.check(c:thiefChase(1), 'Chase in the pickup'); T.eq(c.thief.phase, 'swapping', 'the pickup is on its way')
+  T.eq(c.storedCars[1].config.model, truck, 'the truck is parked in its slot')
+  T.eq(c:view().thief.cars, nil, 'no more Chase in buttons')
+  T.check(c:jobCarParked(), 'with the job in it')
+  c:vehicleSpawned(); F.advance(c, 0.3)
+  T.eq(c.ownedParts.model, 'pickup', 'driving the pickup'); T.eq(c.thief.phase, 'travelling', 'then off to the base')
+  T.eq(w.weights[#w.weights].kg, 0, 'none of the job on the pickup'); T.check(c.load and c.load.trailerUnits == 50, 'the job held')
+  a.pose = { latitude = c.property.latitude, longitude = c.property.longitude }
+  F.advance(c, 1)
+  T.eq(c.thief.phase, 'settling', 'at the base'); T.check(c.trailer.stored, 'the trailer went to the base')
+  T.eq(c.profile.progression.balance, balance, 'free')
+  T.check(not c:sellParkedCar(1), 'the truck with the job cannot be sold'); T.check(c.fleetFeedback:find('job in it', 1, true), 'says why')
+  T.check(not c:manualSave(), 'no saving while away'); T.check(c.feedback:find('Back to your job', 1, true), 'says why')
+  T.check(c:loadFits({ parts = {} }), 'the job never has to fit in the chase car')
+  F.advance(c, thief.SETTLE_SECONDS + 1)
+  car.metres = 3; F.advance(c, 0.2); T.check(c:empThief(), 'caught in the pickup'); balance = c.profile.progression.balance
+  local r = c:view().thief
+  T.eq(r.phase, 'return', 'the way back'); T.check(r.truck and r.job and r.trailer and r.returnAllowed, 'with the truck, job and trailer')
+  T.check(c:thiefGoBack(), 'Back to your job'); a.pose = F.copy(here); F.advance(c, 1)
+  T.check(c.thiefReturn and c.thiefReturn.swapAt, 'the truck is coming back'); T.check(c:view().thief.travelling, 'the card says so')
+  T.check(not c:thiefGoBack(), 'Back to your job only once')
+  c:vehicleSpawned(); F.advance(c, 0.3)
+  T.eq(c.thiefReturn, nil, 'back'); T.eq(c.ownedParts.model, truck, 'in the truck again')
+  T.eq(c.storedCars[1].config.model, 'pickup', 'the pickup back in its slot')
+  T.check(c.trailerOut ~= nil, 'the trailer behind it'); T.eq(w.trailerWeights[#w.trailerWeights].id, c.trailerOut.id, 'with its cargo')
+  T.check(w.weights[#w.weights].kg > 0, 'the truck carries its share again')
+  T.eq(c.load.drivenKm, driven, 'the job as it was'); T.eq(c.profile.progression.balance, balance, 'nothing charged for the way back')
+  T.eq(c.flash.title, 'BACK ON THE ROAD', 'told')
+  c:couplerChanged(1, c.trailerOut.id, true)
+  F.drive(c, a, stClair)
+  T.check(c:deliver(), 'delivered')
+end
+
+-- Chase in a parked car from the base: no teleport either way, and Back to your job swaps the truck back in there.
+do
+  local c, a, g, w, car, here = trailerJob({ parked = true })
+  c.property = { latitude = here.latitude, longitude = here.longitude, paid = 250000 }
+  T.check(c:atHome(), 'at the base')
+  T.check(c:startTheft(true), 'robbed'); T.check(c:thiefChase(1), 'Chase in the pickup')
+  c:vehicleSpawned(); F.advance(c, 0.3)
+  T.eq(c.thief.phase, 'settling', 'straight into the chase'); T.eq(c.booking, nil, 'no teleport')
+  T.check(c.trailerOut ~= nil, 'the trailer stays where it is')
+  F.advance(c, thief.SETTLE_SECONDS + 1)
+  car.metres = 3; F.advance(c, 0.2); T.check(c:empThief(), 'caught')
+  T.check(c:thiefGoBack(), 'Back to your job'); T.eq(c.booking, nil, 'already there: no teleport')
+  c:vehicleSpawned(); F.advance(c, 0.3)
+  T.eq(c.thiefReturn, nil, 'back'); T.eq(c.storedCars[1].config.model, 'pickup', 'the pickup parked again')
+end
+
+-- No robbers during a Mayday Rescue run, not even Get robbed's. A theft already on waits: Chase can't be pressed and
+-- its clock stops until the run is over.
+do
+  local c, a = ready()
+  T.check(c:buyBase(F.copy(a.pose)), 'base bought')
+  F.drive(c, a, location.destination(a.pose, 0, 6000))
+  c.maydayRun = { round = 1, edge = 'n', at = c.clock }
+  T.check(not c:startTheft(true), 'no theft on a run'); T.eq(c:view().robbery.problem, 'Not during a Mayday Rescue run.', 'Get robbed says why')
+  c.maydayRun = nil
+  T.check(c:startTheft(true), 'stolen')
+  c.maydayRun = { round = 1, edge = 'n', at = c.clock }
+  local left = c:theftSecondsLeft()
+  T.check(not c:view().thief.chaseAllowed, 'no Chase on a run'); T.check(c:view().thief.problem:find('Mayday Rescue', 1, true), 'says why')
+  F.advance(c, 60)
+  T.near(c:theftSecondsLeft(), left, 0.5, 'the clock stopped')
+  c.maydayRun = nil
+  T.check(c:view().thief.chaseAllowed, 'Chase once the run is over')
+end
+
 -- The Fire EMP hotkey does nothing when no chase is on.
 do
   local c, a, car = ready()
