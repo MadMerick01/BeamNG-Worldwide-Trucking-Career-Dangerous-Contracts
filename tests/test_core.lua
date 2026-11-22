@@ -929,6 +929,10 @@ do
   T.check(c:takeJob(F.offer(c, stClair, 'food'), 10), 'a tenth of the food'); T.eq(c.load.units, 1, 'still at least one unit')
   c.load = nil; c.profile.load = nil
   T.check(c:takeJob(food), 'filled the box again')
+  g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
+  c.profile.progression.balance = 100000
+  T.check(c:view().buyPartsAllowed, 'a turbo leaves the box alone')
+  T.check(c:revertParts(false), 'turbo put back')
   g:fit('box', ''); c:vehicleSpawned(); c:tick(0.1)
   T.check(not c:view().buyPartsAllowed, 'cannot keep a change the load no longer fits')
   T.check(not c:buyParts(), 'refused'); T.check(c:view().partsFeedback:find('would not fit'), 'told why')
@@ -1384,6 +1388,11 @@ do
   T.check(c:takeJob(id, 10), 'a fluid job goes in the tanker'); T.eq(c.load.slots, 1200, 'a tenth of the tank')
   T.eq(w.weights[#w.weights].fluid.litres, 1200, 'poured into its containers')
   T.eq(#w.weights[#w.weights].parts, 0, 'with no tank part to put the weight on')
+  -- A turbo mid-job: the respawn clears the tank's answer, but the tank is the same, so the job still fits.
+  c.profile.progression.balance = 100000
+  g:fit('turbo', 'pickup_turbo'); c:beforeRespawn(); c:vehicleSpawned(); c:tick(0.1)
+  T.check(c:view().buyPartsAllowed, 'a turbo can be bought with a fuel load in the tanker')
+  T.check(c:buyParts(), 'and is'); T.check(c.load ~= nil, 'the load stays on board')
 end
 
 -- The off-road drop: no GPS, an arrow to a spot about 2 km out, delivered stopped within 100 m.

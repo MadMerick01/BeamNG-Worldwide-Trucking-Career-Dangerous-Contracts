@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **You can buy parts in the middle of a fuel run again.** With fuel in a tanker, every parts bill said "Your job would not fit with these parts", even for a turbo or new wheels, because the game forgot how big the tanker's tank was each time the parts menu changed the truck. Now only changes that really take away room for your load, such as removing the cargo tank or a cargo box the load is in, are blocked until you deliver. Your saves still work.
+
 ## Build 270 · 22 Nov 2026
 
 - **Old depot sheds no longer stay behind.** If the mod was reloaded or updated while you were playing, the depots it had already put down were left standing in the world, often still with the bright orange walls of an older version, and nothing ever took them away. Leftover depots are now cleared as soon as the mod starts and every half minute after, and a reload or update takes its own depots down first. The depot for the town you're in stays put, and depots still come down once you're about 2.5 km away. Your saves still work.
