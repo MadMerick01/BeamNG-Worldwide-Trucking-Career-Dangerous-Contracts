@@ -53,6 +53,7 @@ They need a tank. Fit a Cargo Load fluid tank with Buy parts, or tow a tanker tr
 # car | Your car, parts and cargo
 Buy parts, Buy new car and Second hand all work the same way: change what you like, then the bill shows on the Garage tab. Nothing is paid until you press Pay, and you can undo it.
 Your cargo space is counted in slots and kg. More Cargo Load boxes carry bigger loads, and bigger loads pay more.
+You can change parts with a job on board, even on a fuel run. Only taking off the cargo boxes or tank your load is in waits until you deliver.
 Second hand cars look worn but drive like new, and cost less.
 
 # cars | Your cars and trailers

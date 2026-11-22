@@ -1264,6 +1264,12 @@ function M.attach(c)
     if not self.load or self:jobCarParked() then return true end
     local space = cargo.capacity(snapshot)
     local good = goods.get(self.load.good)
+    -- The load went into the boxes (or tanks) the car has now. If those are still fitted, other parts (a turbo,
+    -- wheels) do not change its room: a tanker's built-in tank and a tank's real size come only from the car,
+    -- whose answer a part change's respawn clears, so the guess from part names would wrongly say no.
+    local owned = self.ownedParts and cargo.capacity(self.ownedParts)
+    local key = good and good.kind == 'fluid' and 'tankParts' or 'parts'
+    if owned and table.concat(owned[key], '\n') == table.concat(space[key], '\n') then return true end
     -- What is in the trailer does not need room in the car.
     local inTrailer = good and (self.load.trailerUnits or 0) or 0
     local slots = self.load.slots - inTrailer * (good and good.slots or 0)
