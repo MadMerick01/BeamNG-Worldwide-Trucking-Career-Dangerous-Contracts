@@ -12,6 +12,10 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - The HUD has a new picture in the HUD Apps list, from the Magnate update poster, so it's easy to spot.
 - **On a trucking server, the chat reminders about turning on the HUD now go only to players who don't have it on screen.** Your game tells the server when the HUD is missing, and the server reminds just you, now and then, until it's on screen. Everyone else stops seeing those reminders.
 
+## Build 272 · 22 Nov 2026
+
+- **You now keep your camera after buying parts or teleporting.** Leaving the parts menu, teleporting with BeamNG.Earth or the HUD's Teleport buttons, and coming back to your car from the helicopter or sightseeing could leave you on the free camera, or on the car's default view. You're now put back on the camera you last used in that car, such as the driver's seat or chase view. This works when you open the parts menu with Ctrl+W too, not only with Buy parts. If you switched to the free camera yourself before, you stay on it. Your saves still work.
+
 ## Build 271 · 22 Nov 2026
 
 - **You can buy parts in the middle of a fuel run again.** With fuel in a tanker, every parts bill said "Your job would not fit with these parts", even for a turbo or new wheels, because the game forgot how big the tanker's tank was each time the parts menu changed the truck. Now only changes that really take away room for your load, such as removing the cargo tank or a cargo box the load is in, are blocked until you deliver. Your saves still work.

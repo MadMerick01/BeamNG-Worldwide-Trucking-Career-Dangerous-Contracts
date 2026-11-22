@@ -17,6 +17,7 @@ local jobs = require('earthFreight/jobs')
 local cargo = require('earthFreight/cargo')
 local fuel = require('earthFreight/fuel')
 local workshop = require('earthFreight/workshop')
+local camera = require('earthFreight/camera')
 local shipping = require('earthFreight/shipping')
 local contracts = require('earthFreight/contracts')
 local beacons = require('earthFreight/beacons')
@@ -170,8 +171,8 @@ function M.new(deps)
     odometer = odometer.new(),
     -- Sends game UI events, such as the pop-ups that show over the game's own menus.
     trigger = deps.trigger,
-    -- The game's camera: whether it is the free camera, and back to the car's own camera. The parts
-    -- menu turns the free camera on; without this the camera is left as the menu leaves it.
+    -- The game's camera: whether it is the free camera, which one the car is on, and back to one of
+    -- the car's own (camera.lua). Without it the camera is left as the parts menu or a teleport leaves it.
     camera = deps.camera,
     -- The Street View window's little web server, and how a web page is opened in the player's
     -- browser; without them there is no Street View button.
@@ -186,6 +187,7 @@ function M.new(deps)
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
+  camera.attach(c)
   flights.attach(c)
   trailers.attach(c)
   home.attach(c)
@@ -1009,6 +1011,8 @@ function M.new(deps)
   function c:teleported(from, to)
     -- Earth drops the car in while the terrain loads: its bumps on the way down are not damage.
     if self.startSettle then self:startSettle(true, workshop.LANDING_SETTLE_SECONDS) end
+    -- And can leave the free camera on: the car's own camera back (camera.lua).
+    self:cameraSettle(camera.LONG_CHECKS, true)
     -- To the base to chase a thief, or back again: the job and any Mayday Rescue run are held, not lost (thief.lua).
     local b = self.booking
     if b and (b.thief or b.thiefReturn) then
@@ -1625,6 +1629,8 @@ function M.new(deps)
       if away and away <= self.configuration.resumeRadiusMetres then
         self.arrived = true
         self.odometer:reset()
+        -- Usually by Earth's teleport, which can leave the free camera on.
+        self:cameraSettle(camera.LONG_CHECKS, true)
         if self.mode == 'start' then
           local town = self:startTown()
           self:showFlash('delivered', self:named('Welcome to ' .. (town or 'your start')):upper(),
@@ -2482,7 +2488,7 @@ function M.new(deps)
     self:watchParts()
     self:watchRockets()
     self:watchPartsBill()
-    self:watchPartsCamera()
+    self:watchCamera()
     self:watchTrailer()
     self:afterRespawn()
     self:watchFuel()
@@ -3343,24 +3349,42 @@ local function gamePaused()
   end
   return false
 end
--- The game's camera. The parts menu switches to the free camera and can leave it on when it closes,
--- so the player is put back on the car's own camera (driver, chase, orbit...) they had before.
+-- The game's camera. The parts menu, a respawn and Earth's teleports can leave the free camera on, or
+-- the car on its default camera, so the player is put back on the one they had (camera.lua).
 local function gameCamera()
   local function commands()
     local cmd = rawget(_G, 'commands')
     if type(cmd) ~= 'table' or type(cmd.isFreeCamera) ~= 'function' or type(cmd.setGameCamera) ~= 'function' then return nil end
     return cmd
   end
+  local function cameras()
+    local cam = rawget(_G, 'core_camera')
+    return type(cam) == 'table' and cam or nil
+  end
+  local function name()
+    local cam = cameras()
+    if not cam or type(cam.getActiveCamName) ~= 'function' then return nil end
+    local ok, value = pcall(cam.getActiveCamName, 0)
+    return ok and type(value) == 'string' and value or nil
+  end
   return {
     isFree = function()
       local cmd = commands()
       return cmd ~= nil and cmd.isFreeCamera() == true
     end,
-    backToCar = function()
+    -- The car's camera the player is on: driver, chase, orbit...
+    name = name,
+    -- Off the free camera, then onto the named camera of the car when it has one.
+    backToCar = function(wanted)
+      local changed = false
       local cmd = commands()
-      if not cmd or not cmd.isFreeCamera() then return false end
-      cmd.setGameCamera()
-      return true
+      if cmd and cmd.isFreeCamera() then cmd.setGameCamera(); changed = true end
+      local cam = cameras()
+      if type(wanted) == 'string' and cam and type(cam.setByName) == 'function' and name() ~= wanted then
+        local ok = pcall(cam.setByName, 0, wanted)
+        changed = changed or ok
+      end
+      return changed
     end,
   }
 end
@@ -3471,12 +3495,14 @@ function M.requestRepairQuote() return safely(function() return ensure():request
 function M.repairVehicle() return safely(function() return ensure():repairVehicle() end) end
 function M.buyParts() return safely(function() return ensure():buyParts() end) end
 -- The HUD's Buy parts button is about to open the parts menu.
-function M.partsMenuOpening() return safely(function() return ensure():partsMenuOpening() end) end
--- The game's UI moved from one screen to another: leaving the parts menu is the menu closing.
+function M.partsMenuOpening() return safely(function() return ensure():partsMenuOpening(false) end) end
+-- The game's UI moved from one screen to another: entering the parts menu (Buy parts or Ctrl+W) is
+-- it opening, and leaving it is the menu closing.
 function M.onUiChangedState(to, from)
-  if type(from) ~= 'string' or not from:find('vehicleconfig', 1, true) then return end
-  if type(to) == 'string' and to:find('vehicleconfig', 1, true) then return end
-  return safely(function() if active then active:partsMenuClosed(true) end end)
+  local inTo = type(to) == 'string' and to:find('vehicleconfig', 1, true) ~= nil
+  local inFrom = type(from) == 'string' and from:find('vehicleconfig', 1, true) ~= nil
+  if inTo and not inFrom then return safely(function() if active then active:partsMenuOpening(true) end end) end
+  if inFrom and not inTo then return safely(function() if active then active:partsMenuClosed(true) end end) end
 end
 function M.revertParts() return safely(function() return ensure():revertParts(false) end) end
 function M.buyCar(keep) return safely(function() return ensure():buyCar(keep == true) end) end
