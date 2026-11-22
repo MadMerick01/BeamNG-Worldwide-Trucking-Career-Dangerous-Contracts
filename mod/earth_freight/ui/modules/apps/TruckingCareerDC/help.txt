@@ -55,6 +55,7 @@ Buy parts, Buy new car and Second hand all work the same way: change what you li
 Your cargo space is counted in slots and kg. More Cargo Load boxes carry bigger loads, and bigger loads pay more.
 You can change parts with a job on board, even on a fuel run. Only taking off the cargo boxes or tank your load is in waits until you deliver.
 Second hand cars look worn but drive like new, and cost less.
+After the parts menu, a teleport or coming back from the helicopter, you're put back on the camera you last used in that car. If you were on the free camera yourself, you stay on it.
 
 # cars | Your cars and trailers
 You start with {startSlots} car slots. A base or a corp gives you {baseSlots}, and then you can buy a {boughtSlots}th for {slotPrice}.

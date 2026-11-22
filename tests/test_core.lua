@@ -992,37 +992,107 @@ do
   T.eq(#states, 0, 'but leaves the parts menu open for the player to close')
 end
 
--- Buy parts and the camera: the parts menu turns on the free camera, and closing it puts the player
--- back on the car's own camera, unless they were on the free camera before.
+-- The camera (camera.lua): the camera the player drives with is remembered for each car, and put
+-- back after the parts menu, a respawn, a teleport or a swap back into the car. The free camera the
+-- player chose themselves is left on.
 do
   local Core = require('earthFreight/core')
-  local Workshop = require('earthFreight/workshop')
-  local c = F.controller()
-  local free, backs = false, 0
-  c.camera = { isFree = function() return free end,
-    backToCar = function() backs = backs + 1; local was = free; free = false; return was end }
+  local Camera = require('earthFreight/camera')
+  local c, _, a = F.controller()
+  local cam = { free = false, name = 'driver', backs = 0 }
+  c.camera = { isFree = function() return cam.free end, name = function() return cam.name end,
+    backToCar = function(wanted)
+      cam.backs = cam.backs + 1; cam.free = false
+      if wanted then cam.name = wanted end
+      return true
+    end }
+  F.advance(c, 12)
+  T.eq(c.cameras['1|pickup'], 'driver', 'the camera the player drives with is remembered for the car')
+  cam.name = 'chase'; F.advance(c, 0.5)
+  T.eq(c.cameras['1|pickup'], 'chase', 'and follows them changing camera')
+
+  -- Buy parts: the menu turns the free camera on, and closing it puts the chase camera back.
   T.check(not c:partsMenuClosed(true), 'nothing to do before Buy parts')
-  T.check(c:partsMenuOpening(), 'Buy parts notes the camera'); free = true
+  T.check(c:partsMenuOpening(false), 'Buy parts notes the camera'); cam.free = true; cam.name = 'free'
   T.check(not c:partsMenuClosed(false), 'a HUD built as the menu opens is not the menu closing')
-  F.advance(c, Workshop.PARTS_MENU_MIN_SECONDS + 0.5)
+  F.advance(c, 5)
+  T.eq(c.cameras['1|pickup'], 'chase', 'the free camera of the open menu is not remembered')
+  T.check(not c.cameraChosenFree, 'nor taken as the player\'s choice')
+  -- The parts change respawns the car, which goes back to its default camera.
+  c:vehicleSpawned(1)
   T.check(c:partsMenuClosed(true), 'the menu closed')
-  T.check(not free, 'back on the car\'s own camera')
-  free = true; F.advance(c, 2)
-  T.check(not free, 'and again when the game turns the free camera back on a moment later')
-  local count = backs; F.advance(c, 3)
-  T.eq(backs, count, 'only checked for a moment')
+  F.advance(c, 0.1)
+  T.check(not cam.free, 'off the free camera'); T.eq(cam.name, 'chase', 'and back on the chase camera')
+  cam.free = true; F.advance(c, 2)
+  T.check(not cam.free, 'and again when the game turns the free camera back on a moment later')
+  F.advance(c, 4)
+  local count = cam.backs; F.advance(c, 3)
+  T.eq(cam.backs, count, 'only checked for a moment')
   T.check(not c:partsMenuClosed(true), 'once per Buy parts')
-  -- Already on the free camera: left on it.
-  free = true; c:partsMenuOpening(); F.advance(c, 2)
-  T.check(not c:partsMenuClosed(true), 'a player on the free camera before stays on it')
-  T.check(free, 'still free')
+
+  -- The game's own Ctrl+W: the parts menu is seen opening and closing from the game's screens.
+  T.check(pcall(Core.onUiChangedState, 'menu.vehicleconfig.parts', 'play'), 'the game\'s UI hook is safe to call')
+  c:partsMenuOpening(true); cam.free = true; cam.name = 'free'; F.advance(c, 4)
+  c:vehicleSpawned(1); cam.free, cam.name = false, 'orbit'
+  T.check(c:partsMenuClosed(true), 'closing the menu opened with Ctrl+W counts too')
+  F.advance(c, 0.2)
+  T.eq(cam.name, 'chase', 'the respawn\'s default camera is swapped for the chase camera')
+  F.advance(c, 5)
+
+  -- A respawn without the menu, such as a tanker's Load Volume: the chase camera back too.
+  cam.name = 'orbit'; c:vehicleSpawned(1); F.advance(c, 0.2)
+  T.eq(cam.name, 'chase', 'a respawn keeps the camera')
+  F.advance(c, 4)
+  -- A player changing camera a moment after is left on it: only the free camera is put back late.
+  c:vehicleSpawned(1); F.advance(c, Camera.NAME_SECONDS + 0.2); cam.name = 'relative'; F.advance(c, 3)
+  T.eq(cam.name, 'relative', 'a camera changed after the respawn is kept')
+  F.advance(c, 1)
+  T.eq(c.cameras['1|pickup'], 'relative', 'and remembered')
+  cam.name = 'chase'; F.advance(c, 1)
+  -- Someone else's car spawning is nothing to do with the player's camera.
+  cam.name = 'orbit'; c:vehicleSpawned(99); F.advance(c, 1)
+  T.eq(cam.name, 'orbit', 'traffic spawning leaves the camera alone')
+  cam.name = 'chase'; F.advance(c, 1)
+
+  -- A teleport: Earth turns the free camera on while the terrain loads, then puts the car down with a reset.
+  cam.free, cam.name = true, 'free'; F.advance(c, 3)
+  T.check(c.cameraChosenFree, 'the free camera on for a while looks like the player\'s choice')
+  c:vehicleReset(1); F.advance(c, 0.2)
+  T.check(not cam.free, 'but the teleport landing puts the car\'s own camera back')
+  T.eq(cam.name, 'chase', 'the chase camera')
+  F.advance(c, 12)
+
+  -- The player's own free camera (Shift+C), long before: left on through the parts menu and a teleport.
+  cam.free, cam.name = true, 'free'; F.advance(c, Camera.TELEPORT_FREE_SECONDS + 1)
+  c:partsMenuOpening(false); F.advance(c, 2); c:partsMenuClosed(true); F.advance(c, 4)
+  T.check(cam.free, 'the free camera chosen before Buy parts stays on')
+  c:vehicleReset(1); F.advance(c, 12)
+  T.check(cam.free, 'and through a teleport')
+  cam.free, cam.name = false, 'chase'; F.advance(c, 1)
+
+  -- Back from the helicopter: it took the car's id, and the car comes back on its own camera.
+  a.vehicle = { id = 1, model = 'heli' }; cam.name = 'orbit'; F.advance(c, 2)
+  T.eq(c.cameras['1|heli'], 'orbit', 'the helicopter\'s camera is its own')
+  a.vehicle = { id = 1, model = 'pickup' }; cam.free = true; F.advance(c, 0.5)
+  T.check(not cam.free, 'back in the car, off the free camera'); T.eq(cam.name, 'chase', 'and on its chase camera')
+  F.advance(c, 12)
+
+  -- On foot, the walking camera is the game's own.
+  c.garage.walking = true
+  cam.free = true; c:vehicleReset(1); F.advance(c, 2)
+  T.check(cam.free, 'left alone on foot')
+  c.garage.walking = nil
+
   -- The HUD built again after the menu closes counts as it closing.
-  free = false; c:partsMenuOpening(); free = true
+  cam.free, cam.name = false, 'chase'; F.advance(c, 1)
+  c:partsMenuOpening(false); cam.free = true
   c:mount(false); F.advance(c, 2); c:mount(true)
   F.advance(c, 1)
-  T.check(not free, 'the HUD coming back puts the car\'s camera back too')
-  -- The game's UI moving between other screens is ignored; leaving the parts menu is its closing.
-  T.check(pcall(Core.onUiChangedState, 'play', 'menu.vehicleconfig.parts'), 'the game\'s UI hook is safe to call')
+  T.check(not cam.free, 'the HUD coming back puts the car\'s camera back too')
+  -- Buy parts pressed but the menu never came up: the camera is noted again.
+  c:partsMenuOpening(false); F.advance(c, Camera.MENU_GONE_SECONDS + 1)
+  T.eq(c.partsCamera, nil, 'a menu that never opened is not waited for')
+  T.check(pcall(Core.onUiChangedState, 'play', 'menu.vehicleconfig.parts'), 'leaving the menu is safe to call')
 end
 
 -- Repairs are priced by the car's Value, as in Enduro.
