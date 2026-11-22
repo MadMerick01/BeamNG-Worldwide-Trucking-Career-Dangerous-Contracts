@@ -35,6 +35,9 @@ M.MAX_RISE, M.ROAD_CLEAR = 2, 3
 -- ground no more than MAX_RISE above the road, or else EDGE_METRES past the road's edge, at the road's
 -- height, so it is never put on a roof.
 M.EDGE_METRES = 1
+-- Real open car parks (then sports pitches) from OpenStreetMap, found by the HUD within LOT_METRES of
+-- a depot's middle, are tried before the roads. The search waits up to LOT_WAIT_SECONDS for them.
+M.LOT_METRES, M.LOT_WAIT_SECONDS, M.MAX_LOTS = 400, 10, 6
 -- Every CHECK_SECONDS the depots near the player are looked after; TRIES_PER_CHECK spots are tried
 -- each time, so the search never holds up a frame. Ground that Earth has not loaded yet is tried
 -- again after WAIT_SECONDS.
@@ -131,6 +134,7 @@ function M.check(world, cx, cy, cz, try)
   else
     spot = { x = px, y = py, nx = math.sin(b), ny = math.cos(b) }
   end
+  spot.lot = try.lot
   local front, shed, missing = {}, {}, false
   local function measure(list, us, vs)
     for _, u in ipairs(us) do
@@ -308,10 +312,26 @@ function M.attach(c)
     local s = self.depotSearch[d.key]
     if not s then
       -- The first look waits for the town's buildings to come in.
-      s = { next = 1, tries = M.tries(d.key), waitUntil = self.clock + M.SETTLE_SECONDS }
+      s = { next = 1, tries = M.tries(d.key), waitUntil = self.clock + M.SETTLE_SECONDS,
+        lotsBy = self.clock + M.LOT_WAIT_SECONDS }
       self.depotSearch[d.key] = s
     end
     if s.waitUntil and self.clock < s.waitUntil then return nil end
+    -- The car parks OpenStreetMap knows go first, once the HUD has said (or after waiting for it).
+    if not s.lotsDone then
+      local lots = self.depotLots and self.depotLots[d.key]
+      if lots == nil and self.clock < s.lotsBy then return nil end
+      s.lotsDone = true
+      if lots and #lots > 0 then
+        local first = {}
+        for _, lot in ipairs(lots) do
+          local metres, bearing = location.distance(d, lot), location.bearing(d, lot)
+          if metres and bearing then first[#first + 1] = { metres = metres, bearing = bearing, lot = true } end
+        end
+        for _, try in ipairs(s.tries) do first[#first + 1] = try end
+        s.tries, s.next = first, 1
+      end
+    end
     if s.pending then
       -- A clear spot, checked again a little later before it is taken.
       local again = M.check(self.depotWorld, cx, cy, f.z, s.pending)
@@ -428,7 +448,7 @@ function M.attach(c)
               spot.geo = geo
               self.depotSpots[key] = { geo = geo, nx = spot.nx, ny = spot.ny, small = spot.small, edge = spot.edge, roadZ = spot.roadZ }
               self.depotSearch[key] = nil
-              self.diag:event('depot', string.format('%s %s rise %.1f', key, spot.small and 'desk only' or 'shed',
+              self.diag:event('depot', string.format('%s %s%s rise %.1f', key, spot.small and 'desk only' or 'shed', spot.lot and ' car park' or '',
                 spot.small and (spot.frontRise or 0) or (spot.rise or 0)))
             end
           end
@@ -513,7 +533,7 @@ function M.attach(c)
   function c:computerView()
     if not self:depotsOn() then return nil end
     local built, truck = self:computerHere()
-    local out = { truckMetres = M.TRUCK_METRES, useMetres = M.USE_METRES }
+    local out = { truckMetres = M.TRUCK_METRES, useMetres = M.USE_METRES, lots = self:depotLotsWanted() }
     if built then
       out.near = true
       out.name, out.town, out.fuel = built.name, built.town, built.fuel
@@ -550,6 +570,40 @@ function M.attach(c)
     self.gpsTownDepot = ok and depot.key or nil
     self.gpsFeedback = ok and ('The GPS is set to the ' .. name .. '.') or 'Could not set the GPS.'
     return ok == true
+  end
+
+  -- The town the HUD should ask OpenStreetMap about for car parks, or nil.
+  function c:depotLotsWanted()
+    if not self:depotsOn() or not self.depotsBuilt then return nil end
+    self.depotLots = self.depotLots or {}
+    for _, d in ipairs(self:depotsWanted()) do
+      if self.depotLots[d.key] == nil and not self.depotsBuilt[d.key] and not (self.depotSpots and self.depotSpots[d.key]) then
+        return { key = d.key, latitude = d.latitude, longitude = d.longitude, metres = M.LOT_METRES }
+      end
+    end
+    return nil
+  end
+
+  -- The HUD's answer: the car parks round a depot's town, { latitude, longitude } each, best first
+  -- (an empty list when there are none or the web couldn't be reached).
+  function c:setDepotLots(key, lots)
+    if type(key) ~= 'string' or type(lots) ~= 'table' then return false end
+    local depot
+    for _, d in ipairs(self:depotsWanted()) do
+      if d.key == key then depot = d end
+    end
+    if not depot then return false end
+    local list = {}
+    for _, lot in ipairs(lots) do
+      local metres = location.valid(lot) and location.distance(depot, lot)
+      if #list < M.MAX_LOTS and metres and metres <= M.LOT_METRES * 1.5 then
+        list[#list + 1] = { latitude = lot.latitude, longitude = lot.longitude }
+      end
+    end
+    self.depotLots = self.depotLots or {}
+    self.depotLots[key] = list
+    self.diag:event('depot', key .. ' car parks ' .. #list)
+    return true
   end
 
   -- Takes every depot away, as when the level unloads.

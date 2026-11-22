@@ -9,6 +9,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     server: { status: 'checking', at: null },
     // Towns already looked up for a real business this game, so each is only asked once.
     businessAsked: {},
+    // Towns already asked about for car parks to put a depot in.
+    lotsAsked: {},
     // The depot computer's window: open from Use computer until the player walks away or takes a job.
     pc: { open: false }
   }
@@ -1233,6 +1235,50 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           } else core('noBusiness("' + want.key + '")')
         }, function () { /* No answer from the web: the town's usual drop-off stays for this game. */ })
       }
+      // Depots in real car parks: when the game is about to place a town's depot it asks (computer.lots),
+      // and the HUD asks Overpass once for the open car parks round the town (none on a roof or under
+      // ground), then sports pitches. The game tries them first, nearest the middle first, and still
+      // checks the ground at each; with no answer it looks along the roads as before.
+      var LOT_MIN_M2 = 600, LOTS_SENT = 6
+      var lotQuery = function (lat, lon, metres) {
+        var at = '(around:' + Math.round(metres) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')'
+        return '[out:json][timeout:15];(way' + at + '[amenity=parking];way' + at + '[leisure=pitch];);out geom 200;'
+      }
+      // The lots worth trying, best first: open car parks, then pitches, each nearest the middle first.
+      scope.depotLots = function (elements, lat, lon) {
+        var kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540
+        var out = []
+        ;(elements || []).forEach(function (e) {
+          var t = (e && e.tags) || {}, g = (e && e.geometry) || []
+          var rank = t.amenity === 'parking' ? 0 : (t.leisure === 'pitch' ? 1 : -1)
+          if (rank < 0 || g.length < 4) return
+          if (/^(multi-storey|underground|rooftop|sheds|carports|garage_boxes)$/.test(t.parking) || t.building || t.indoor === 'yes' ||
+              (t.layer && Number(t.layer) !== 0) || t.location === 'underground' || t.location === 'rooftop') return
+          var area = 0, cx = 0, cy = 0, n = 0
+          for (var i = 0; i < g.length; i++) {
+            var p = g[i], q = g[(i + 1) % g.length]
+            if (typeof p.lat !== 'number' || typeof p.lon !== 'number' || typeof q.lat !== 'number' || typeof q.lon !== 'number') return
+            var px = (p.lon - lon) * kx, py = (p.lat - lat) * ky, qx = (q.lon - lon) * kx, qy = (q.lat - lat) * ky
+            area += px * qy - qx * py
+            if (i < g.length - 1 || p.lat !== g[0].lat || p.lon !== g[0].lon) { cx += px; cy += py; n++ }
+          }
+          area = Math.abs(area) / 2
+          if (area < LOT_MIN_M2 || !n) return
+          cx /= n; cy /= n
+          out.push({ id: e.type + '/' + e.id, rank: rank, d: Math.sqrt(cx * cx + cy * cy), lat: lat + cy / ky, lon: lon + cx / kx })
+        })
+        out.sort(function (a, b) { return a.rank - b.rank || a.d - b.d || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) })
+        return out.slice(0, LOTS_SENT)
+      }
+      scope.lookUpLots = function (want) {
+        if (!want || !/^[a-z0-9_]+:[a-z0-9_-]+$/i.test(String(want.key)) || kept.lotsAsked[want.key]) return null
+        if (typeof want.latitude !== 'number' || typeof want.longitude !== 'number') return null
+        kept.lotsAsked[want.key] = true
+        return overpass(lotQuery(want.latitude, want.longitude, want.metres || 400)).then(function (elements) {
+          var lots = scope.depotLots(elements, want.latitude, want.longitude)
+          core('setDepotLots("' + want.key + '","' + lots.map(function (l) { return l.lat.toFixed(6) + ',' + l.lon.toFixed(6) }).join(';') + '")')
+        }, function () { /* No answer from the web: the depot is found along the roads. */ })
+      }
       scope.$on('EarthFreightState', function (event, data) {
         if (disposed || !data || typeof data.state !== 'string') return
         lastMessage = Date.now()
@@ -1245,6 +1291,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           scope.data = data
           if (data.load && data.load.lookup) scope.lookUpBusiness(data.load.lookup)
           if (data.fuelRuns && data.fuelRuns.lookup) scope.lookUpBusiness(data.fuelRuns.lookup)
+          if (data.computer && data.computer.lots) scope.lookUpLots(data.computer.lots)
         })
       })
       mount(true)
