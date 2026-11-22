@@ -126,9 +126,11 @@ function M.attach(c)
     if self.thief or self:awayFromJob() then return 'A thief is already about.' end
     if self.robber and self.robber.phase ~= 'loaded' then return 'A robber is already about.' end
     if not self:canAfford(M.MIN_TAKE) then return 'Less than ' .. dollars(M.MIN_TAKE) .. ' in the bank.' end
+    -- No robbers during a Mayday Rescue run (MadMerick, 22 Nov), not even ROB ME's.
+    if self.maydayRun then return 'Not during a Mayday Rescue run.' end
     if forced then return nil end
     if self:robbersOff() then return 'Robbers are switched off.' end
-    if self.maydayRun or self.booking or self.stranded then return 'Busy.' end
+    if self.booking or self.stranded then return 'Busy.' end
     return nil
   end
 

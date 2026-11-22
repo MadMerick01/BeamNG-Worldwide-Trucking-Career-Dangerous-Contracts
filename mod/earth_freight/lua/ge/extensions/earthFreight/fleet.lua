@@ -155,21 +155,17 @@ function M.attach(c)
     return nil
   end
 
-  -- Puts the parked car in this slot out where the one being driven stands, for SWAP_FEE, and parks the
-  -- one being driven in its slot. The parked car comes back as a saved car does on loading: with its fuel,
-  -- wear and the repair it owes.
-  function c:swapCars(index)
+  -- Puts the parked car in this slot out where the one being driven stands, and parks the one being driven in its
+  -- slot. The parked car comes back as a saved car does on loading: with its fuel, wear and the repair it owes.
+  -- Returns the names of the car brought out and the one parked, or nil and the line to show. Charges nothing:
+  -- Drive charges SWAP_FEE, and a robber chase (thief.lua) is free.
+  function c:bringParkedCar(index)
     local stored = type(index) == 'number' and self:parkedCars()[index] or nil
-    local problem = not stored and 'That slot is empty.' or self:swapProblem()
-    if problem then
-      self.fleetFeedback = problem
-      return false
-    end
+    if not stored then return nil, 'That slot is empty.' end
     local outgoing = self:activeCarRecord()
     if not outgoing then
-      self.fleetFeedback = 'Your car could not be parked. Try again in a moment.'
       self.diag:event('swap_failed', 'unsaved_config', 'W')
-      return false
+      return nil, 'Your car could not be parked. Try again in a moment.'
     end
     local config = stored.config
     local model, configFile = config.model, config.partConfigFilename
@@ -190,11 +186,9 @@ function M.attach(c)
       self.ourRespawn, self.fuel = nil, oldFuel
       self.arrivingModel, self.arrivingValue, self.arrivingUsed, self.arrivingName, self.arrivingConfigFile = nil, nil, nil, nil, nil
       self:applyWeight()
-      self.fleetFeedback = 'Could not bring your parked car out. Try again in a moment.'
       self.diag:event('swap_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'E')
-      return false
+      return nil, 'Could not bring your parked car out. Try again in a moment.'
     end
-    self:spend(M.SWAP_FEE, 'car_swap')
     -- A Mayday Rescue run is one car, even one of the same model.
     self:endMaydayRun('car')
     self.storedCars[index] = outgoing
@@ -208,9 +202,33 @@ function M.attach(c)
     end
     self.photoModel, self.photoStamp = nil, nil
     self:photoSoon()
-    self.fleetFeedback = 'Your ' .. tostring(stored.name or name or model) .. ' was brought to you for ' .. dollars(M.SWAP_FEE)
-      .. '. Your ' .. tostring(outgoing.name or oldModel) .. ' is parked in slot ' .. tostring(index + 1) .. '.'
     self.diag:event('cars_swapped', tostring(oldModel) .. ' -> ' .. tostring(model))
+    return tostring(stored.name or name or model), tostring(outgoing.name or oldModel)
+  end
+
+  -- Whether the car brought out by bringParkedCar is in and ready: the game has spawned it and its parts are read
+  -- (workshop.lua clears ourRespawn then).
+  function c:carArrived()
+    return not self.ourRespawn and not self.partsCheckDue and self.ownedParts ~= nil
+  end
+
+  -- Drive: puts the parked car in this slot out where the one being driven stands, for SWAP_FEE, and parks the
+  -- one being driven in its slot.
+  function c:swapCars(index)
+    local stored = type(index) == 'number' and self:parkedCars()[index] or nil
+    local problem = not stored and 'That slot is empty.' or self:swapProblem()
+    if problem then
+      self.fleetFeedback = problem
+      return false
+    end
+    local name, parked = self:bringParkedCar(index)
+    if not name then
+      self.fleetFeedback = parked
+      return false
+    end
+    self:spend(M.SWAP_FEE, 'car_swap')
+    self.fleetFeedback = 'Your ' .. name .. ' was brought to you for ' .. dollars(M.SWAP_FEE)
+      .. '. Your ' .. parked .. ' is parked in slot ' .. tostring(index + 1) .. '.'
     self:autoSaveSoon('changing cars')
     return true
   end
@@ -219,6 +237,8 @@ function M.attach(c)
   function c:sellCarProblem()
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Your cars are unavailable right now.' end
     if self.pendingCar then return 'Pay for or undo the car bill first.' end
+    -- A truck parked for a robber chase holds the job (thief.lua), and its slot must stay where it is.
+    if self:jobCarParked() then return 'Not while your truck is parked with your job in it. Go back to your job first.' end
     return nil
   end
 

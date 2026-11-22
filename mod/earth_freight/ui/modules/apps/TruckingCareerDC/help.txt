@@ -103,7 +103,9 @@ A delivery is only ever robbed once.
 In single player you can switch robbers and base thieves off with the Robbers and thieves tick box on the Route tab. It costs nothing and you can switch them back on any time. Online, every trucker can be robbed.
 Your EMP takes {empSeconds} seconds to charge again after each shot.
 A base thief can strike about once every {thiefMinutes} minutes of play, when you're at least {thiefAwayKm} km from your base, and take some of your money. Chase takes you there for free. Catch them for your money back plus a bonus from their trunk.
-On a chase, your job waits where you left it, with its cargo.
+On a chase, your job waits where you left it, with its cargo. Your trailer waits at your base and comes back behind you, still loaded.
+To chase in another car, press Chase in and pick one of your parked cars. It's free. Your truck is parked in that car's slot with your job in it, and Back to your job swaps it back in for you.
+Robbers never come during a Mayday Rescue run. A thief who strikes before one waits for you, and their Chase clock stops until the run is over.
 
 # mayday | Mayday Rescue | online
 Now and then a Mayday call goes out somewhere on Earth. The first trucker to reach the scene wins the reward.

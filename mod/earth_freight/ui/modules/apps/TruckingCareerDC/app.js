@@ -321,6 +321,12 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       scope.robberyGood = function (t) { var m = scope.robberyMoney(t); return !!(m && m.good) }
       scope.thiefChase = function () { if (scope.data && scope.data.thief && scope.data.thief.chaseAllowed) core('thiefChase()') }
+      // Chase in a parked car: by its slot number, a whole number only.
+      scope.thiefChaseIn = function (car) {
+        var t = scope.data && scope.data.thief
+        if (!t || !t.chaseAllowed || !car || !car.allowed || car.index !== Math.floor(car.index) || car.index < 1) return
+        core('thiefChase(' + car.index + ')')
+      }
       scope.getRobbed = function () { if (scope.data && scope.data.robbery && scope.data.robbery.allowed) core('getRobbed()') }
       scope.thiefGoBack = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'return' && scope.data.thief.returnAllowed) core('thiefGoBack()') }
       scope.thiefLetGo = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'stolen') core('thiefLetGo()') }

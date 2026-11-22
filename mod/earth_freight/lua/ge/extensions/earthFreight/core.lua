@@ -732,14 +732,17 @@ function M.new(deps)
   function c:applyWeight(force)
     -- The load waits in the car while the player flies a helicopter or is on foot.
     if not self.cargo or self.hire or self.onFoot then return end
-    local kg = self.load and self.load.kg or 0
-    local good = self.load and goods.get(self.load.good)
+    -- The job's truck parked for a robber chase keeps its load: none of it goes on the chase car (thief.lua).
+    local load = not self:jobCarParked() and self.load or nil
+    local kg = load and load.kg or 0
+    local good = load and goods.get(load.good)
     local key = tostring(kg) .. ':' .. tostring(good and good.id) .. ':' .. tostring(self.trailerOut and self.trailerOut.id)
     if not force and self.appliedWeight == key then return end
     local space = self:space()
-    -- The trailer's share goes on the trailer; the rest is in the car.
-    kg = self:applyTrailerWeight(kg, good)
-    local carUnits = self.load and (self.load.units - (self.load.trailerUnits or 0)) or 0
+    -- The trailer's share goes on the trailer; the rest is in the car. A trailer left behind with the parked truck
+    -- keeps what it has.
+    if not self:jobCarParked() then kg = self:applyTrailerWeight(kg, good) end
+    local carUnits = load and (load.units - (load.trailerUnits or 0)) or 0
     local fluid = { litres = 0, density = 1, tanks = space.tankParts }
     if good and good.kind == 'fluid' then
       fluid.litres = carUnits * good.litres
@@ -2127,7 +2130,7 @@ function M.new(deps)
   function c:finishJob()
     local progression = self.profile.progression
     progression.jobsDone = (progression.jobsDone or 0) + 1
-    self.load, self.abandonArmed = nil, false
+    self.load, self.abandonArmed, self.trailerComesFree = nil, false, nil
     self:applyWeight()
   end
 
@@ -3102,6 +3105,11 @@ function M.new(deps)
       self.diag:event('manual_save_rejected', self.stranded and 'stranded' or 'booking', 'W')
       return false
     end
+    if self:awayFromJob() then
+      self.feedback = 'Press Back to your job before saving: your job is waiting where you left it.'
+      self.diag:event('manual_save_rejected', 'thief_chase', 'W')
+      return false
+    end
     if self.hire then
       self.feedback = self.hire.sightseeing and 'Press Return to your job before saving: Save keeps your car, not the sightseeing car.'
         or 'Press Back to my car on the Heli tab before saving: Save keeps your car, not the helicopter.'
@@ -3584,7 +3592,10 @@ function M.bookOffer() return safely(function() return ensure():bookOffer() end)
 -- edge: 'n', 'e', 's' or 'w'.
 -- The base thief: Chase, the EMP (MadMerick's EMP button can call earthFreight_core.empThief()), and a theft
 -- straight away: the Base tab's Get robbed button, or earthFreight_core.thiefTest() in the console (it needs a base).
-function M.thiefChase() return safely(function() return ensure():thiefChase() end) end
+function M.thiefChase(index)
+  if index ~= nil and not parkedIndex(index) then return false end
+  return safely(function() return ensure():thiefChase(index) end)
+end
 function M.empThief() return safely(function() return ensure():empThief() end) end
 function M.empHotkey() return safely(function() return ensure():empHotkey() end) end
 function M.thiefLetGo() return safely(function() return ensure():thiefLetGo() end) end
