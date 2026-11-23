@@ -398,4 +398,33 @@ do
   T.eq(depotWorld.new({ named = function() error('no scenetree') end }):sweep({}), 0, 'a game without the call takes nothing')
 end
 
+-- The game's lookup by id only knows vehicles: a piece put down can still be taken away, so a
+-- depot that moves never leaves its old shed and desk behind.
+do
+  local depotWorld = require('earthFreight/depotWorld')
+  local objects = {}
+  local env = {
+    create = function()
+      local o = { id = #objects + 1 }
+      function o:setField() end
+      function o:setPosition() end
+      function o:setPosRot() end
+      function o:registerObject() end
+      function o:getID() return self.id end
+      function o:delete() objects[self.id] = nil end
+      objects[#objects + 1] = o
+      return o
+    end,
+    objectById = function() return nil end,
+    point = function(x, y, z) return { x = x, y = y, z = z } end,
+    upright = function() return { x = 0, y = 0, z = 0, w = 1 } end,
+    group = function() return nil end,
+  }
+  local w = depotWorld.new(env)
+  local id = w:place('shed', 0, 0, 0, 1, 0)
+  T.check(w:remove(id), 'taken away')
+  T.eq(objects[id], nil, 'and gone from the world')
+  T.check(not w:remove(id), 'not twice')
+end
+
 T.done('depots')

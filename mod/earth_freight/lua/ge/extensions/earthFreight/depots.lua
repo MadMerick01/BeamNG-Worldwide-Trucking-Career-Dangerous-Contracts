@@ -234,6 +234,15 @@ function M.attach(c)
   end
 
   -- The player's position in the world and on Earth, to turn one into the other near them.
+  -- Takes a depot's pieces away; says in the log when the game would not let one go.
+  local function takeDown(self, key, built)
+    local stuck = 0
+    for _, id in ipairs(built.ids) do
+      if not self.depotWorld:remove(id) then stuck = stuck + 1 end
+    end
+    if stuck > 0 then self.diag:event('depot', key .. ' ' .. stuck .. ' pieces could not be taken away', 'W') end
+  end
+
   local function frame(self)
     local sample = self.lastSample
     if not sample or not sample.valid then return nil end
@@ -460,7 +469,7 @@ function M.attach(c)
       local d = wanted[key]
       local far = not f or not built.geo or (location.distance(f.geo, built.geo) or math.huge) > M.FAR_METRES
       if not d and far then
-        for _, id in ipairs(built.ids) do self.depotWorld:remove(id) end
+        takeDown(self, key, built)
         self.depotsBuilt[key] = nil
       elseif d then
         built.name, built.town, built.fuel = d.name, d.town, d.fuel
@@ -479,7 +488,7 @@ function M.attach(c)
           and self.clock - (built.checkedAt or 0) >= M.RECHECK_SECONDS then
         built.checkedAt = self.clock
         if M.stillClear(self.depotWorld, spot, f.z) == false then
-          for _, id in ipairs(built.ids) do self.depotWorld:remove(id) end
+          takeDown(self, key, built)
           self.depotsBuilt[key], self.depotSpots[key] = nil, nil
           self.depotMoves[key] = (self.depotMoves[key] or 0) + 1
           -- The GPS follows it to its new spot.
