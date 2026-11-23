@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Joining the server with the mod already installed now just works.** If you have your own copy of the mod, from GitHub or BeamNG.Earth's Add-ons page, the game now switches to the server's copy as you join. Before, your own copy kept running, and if it was older than the server's you were sent off as "out of date". This works from this build on, so if your copy is older than this build, update it once.
+- **Your own copy is turned back on when you leave a server.** BeamMP turns it off while you play online and used to leave it off, so the mod was missing in single player until you turned it on again in the Mod Manager. Now it comes back by itself. Your saves still work.
+
 ## Build 273 · 23 Nov 2026
 
 - **The game now adds the trucking HUD for you.** If the HUD isn't on your screen, a pop-up asks "Add the trucking HUD?" and names the layout you're on, such as .Earth or BeamMP. Press **Add the HUD** and it appears straight away, in the same spot + Add to layout would put it. You can still move it with Esc > System > HUD Apps. Each layout has its own apps, so you're asked once for each layout you play on: once alone, and once the first time you join a server. Players who already have the HUD on screen never see the pop-up. Online it waits until your career has come in from the server, so joining isn't disturbed.
