@@ -79,8 +79,10 @@ Fuel is cheapest at a petrol station: drive slowly up to a pump. Refuelling anyw
 # relocate | Relocate
 Move your empty car anywhere in the world. To go to your base, press Book next to Base, then Teleport.
 To go anywhere else, press Open the big map, right-click any spot and press Teleport here.
+If the big map doesn't work, paste coordinates into the box under it and press Teleport. Copy copies them for the BeamNG.Earth map.
 A pop-up then asks you to pay for the relocation: {relocateBase} plus {relocatePerKm} a km from where you left. Or press Go back to return for free.
 Until you pay or go back, deliveries and driving don't count, and the game doesn't save.
+Relocate from the driver's seat: teleporting on foot leaves your truck behind, so the game takes you straight back to it. If that teleport fails, copy your truck's coordinates from the pop-up into the BeamNG.Earth map.
 Your car goes with you; cargo can't. Teleporting with a job on board cancels it for {abandonFee}.
 Now and then a town in a tough region offers to pay your relocation back if you come and deliver there. Relocating to within {offerKm} km of it with the big map counts too.
 

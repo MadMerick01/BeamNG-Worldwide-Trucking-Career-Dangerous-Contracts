@@ -2911,3 +2911,50 @@ do
 end
 
 T.done('Earth Freight controller')
+
+-- On foot, a teleport takes only the walker: the player is taken back to the car, and getting back in is no teleport.
+-- The Relocate tab's coordinates box is the backup to the big map: it teleports, then the pay pop-up asks.
+do
+  local shipping = require('earthFreight/shipping')
+  local c, io, a, g = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  local car = F.copy(c.lastSample)
+  T.check(c:getOut(), 'out'); g.vehicleId, a.vehicle = 99, { id = 99, model = 'unicycle' }
+  c:vehicleSpawned(99); c:tick(0.1); c:tick(0.1)
+  T.check(c:view().onFoot, 'on foot'); T.eq(c:view().footAway, nil, 'next to the car: no pop-up')
+  local asked = #a.teleports
+  a.pose = F.copy(F.PLACES.bormio); c:tick(0.1); c:tick(0.6)
+  T.eq(c.stranded, nil, 'a walker is never stranded'); T.eq(c:view().relocateHere, nil, 'nor asked to pay')
+  T.eq(#a.teleports, asked + 1, 'Earth asked to take the walker back')
+  T.check(location.distance(a.teleports[#a.teleports], car) < 10, 'to the car')
+  T.eq(c:view().flash.title, 'BACK TO YOUR TRUCK', 'told why')
+  local away = c:view().footAway
+  T.check(away ~= nil and away.teleporting and not away.backAllowed, 'the pop-up shows the car, on the way back')
+  T.check(location.distance(away, car) < 10, 'with its coordinates to copy')
+  -- Earth refusing: the button and the coordinates are the backup.
+  for _ = 1, 31 do c:tick(1) end
+  a.teleportRefused = true
+  T.check(c:view().footAway.backAllowed, 'Teleport back to my truck offered again')
+  T.check(not c:goBackToCar(), 'refused'); T.check(c:view().footAway.feedback:find('Copy'), 'told to copy')
+  a.teleportRefused = nil
+  -- Getting back in the car from far away (the game's switch vehicle): the car never moved, so no teleport.
+  g.vehicleId, a.vehicle, g.walking = 1, { id = 1, model = 'pickup' }, false
+  a.pose = F.copy(car); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(not c:view().onFoot, 'in the car'); T.eq(c.stranded, nil, 'not stranded'); T.eq(c:view().footAway, nil, 'the pop-up is gone')
+  local km = c.profile.progression.totalDistanceKm
+  a.pose = location.destination(car, 0, 20); c:tick(1)
+  T.check(c.profile.progression.totalDistanceKm > km, 'driving counts')
+  -- The coordinates box: teleports there, and the pop-up asks to pay.
+  T.check(not c:relocateTo(95, 0), 'not past the pole'); T.check(c:view().shipping.feedback:find('not coordinates'), 'told so')
+  T.check(not c:relocateTo(car.latitude, car.longitude), 'not a hop'); T.check(c:view().shipping.feedback:find('Drive there'), 'told to drive')
+  T.check(c:relocateTo(F.PLACES.leh.latitude, F.PLACES.leh.longitude), 'teleport asked')
+  T.eq(a.teleports[#a.teleports].latitude, F.PLACES.leh.latitude, 'to the coordinates')
+  a.pose = F.copy(F.PLACES.leh); c:tick(0.1); c:tick(1); c:tick(1); c:tick(1.5)
+  local pop = c:view().relocateHere
+  T.check(pop ~= nil and pop.payAllowed, 'the pay pop-up'); T.check(location.distance(pop, c.lastDriven) > 1000, 'with where they left')
+  local cash = c:view().balance
+  T.check(c:payRelocation(), 'paid'); T.eq(c:view().balance, cash - pop.fee, 'the fee taken')
+  c.load = { units = 1 }
+  T.check(not c:relocateTo(F.PLACES.bormio.latitude, F.PLACES.bormio.longitude), 'not with a job on board'); T.check(c:view().shipping.feedback:find('cargo cannot'), 'told why')
+  c.load = nil
+end

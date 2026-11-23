@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Teleporting on foot no longer loses your truck.** Using the big map's Teleport here while out of your truck moved only you and left the truck behind. Now the game takes you straight back to your truck, and a pop-up shows its coordinates with a **Copy** button in case that teleport fails. If you got back in by switching vehicles, you are no longer asked to pay for a relocation you never made. To move your truck, get in it first.
+- **A backup to the big map on the Relocate tab:** paste coordinates into the box and press **Teleport**, then pay in the pop-up as usual. **Copy** copies them, so you can paste them into the BeamNG.Earth map yourself. The pay pop-up also shows where you left, with a **Copy** button, in case **Go back** doesn't work. Your saves still work.
 ## Build 280 · 23 Nov 2026
 
 - **You can now use a depot computer without getting out of your truck.** Stop within 30 m of the computer and the **Use computer** button shows in the cab, so you can pick and take a job straight away. Getting out and walking up to it still works too. This helps if your game won't let you get out on a server. Your saves still work.
