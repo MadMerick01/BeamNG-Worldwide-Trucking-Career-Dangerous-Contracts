@@ -8,6 +8,12 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **You can now buy fuel anywhere, not just at a petrol station or in a town.** Stop the truck anywhere on the road and the **Refuel** button on the Garage tab works, at 20 times the pump price. For example, diesel in Europe costs $2.49 a litre at a pump, $12.45 in a town and $49.80 at the roadside. The Fuel section shows "roadside price" in red with both prices, so you know what you're paying before you press it, and afterwards it tells you what a pump would have cost.
 - Petrol station pumps and town prices are unchanged: the pump price at a pump, and 5 times that in a town. The fuel you haul on a fuel run stays in the tanker and is never used to refuel your truck. Your saves still work.
+## Build 276 · 23 Nov 2026
+
+- **Relocating is simpler: pick any spot on the big map.** The Relocate tab now only lists your Base. To go anywhere else, press **Open the big map**, right-click any spot and press **Teleport here**. A pop-up then asks you to pay the relocation fee, the same price as before, or to **Go back** where you left for free. Until you choose, deliveries and driving don't count. The list of towns (Penrith, Katoomba, La Paz and the rest), the town search and the coordinates box are gone.
+- Relocating to within 50 km of the town that pays relocations back still gets your fee back when you deliver there, whether you use its **Book** button or the big map. Your saves still work.
+- No other changes in the game. A test that sometimes failed by chance now passes every time.
+
 ## Build 275 · 23 Nov 2026
 
 - **On the server, your truck no longer turns into your tanker trailer.** Taking a fuel or water job with a tanker trailer, or joining the server with one hooked up, filled the trailer's tank in a way that BeamMP applied to the truck you were driving instead, so the truck became a second tanker. The same could happen when the game put a trailer's parts back as you bought them. Now only the trailer changes, and you stay in your truck. Single player was never affected. Your saves still work: if your truck turned into a tanker, press **Get my car back** on the Garage tab, or leave and join again without saving.

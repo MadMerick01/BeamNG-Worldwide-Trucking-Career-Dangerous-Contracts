@@ -336,7 +336,7 @@ function M.attach(c)
     -- With depots, a run is loaded on foot at the fuel depot's computer, the truck parked close by.
     if self.depotsOn and self:depotsOn() then
       if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-      if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+      if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back to where you left from.' end
       local at = self:computerHere()
       if not (at and at.fuel == hub.id) and not self:depotFor(nil, hub.id) then
         return depot and ('Drive to ' .. depot.name .. ' in ' .. hub.name .. ' and use the computer at its depot to load.')
@@ -351,7 +351,7 @@ function M.attach(c)
     end
     if not self.odometer:stopped() then return 'Stop the truck to load.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+    if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back to where you left from.' end
     return nil
   end
 
