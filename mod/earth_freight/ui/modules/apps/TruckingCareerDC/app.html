@@ -977,17 +977,17 @@
           </div>
         </div>
         <div class="ef-sec">
-          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('fuel')" aria-expanded="{{isOpen('fuel')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('fuel') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Fuel</div><span class="ef-sum" ng-if="data.refuel"><span ng-if="data.refuel.full">tank full</span><span ng-if="!data.refuel.full">{{data.refuel.fuelType}} ${{data.refuel.pricePerLitre | number:2}}/L<span ng-if="data.refuel.atPump"> at the pump</span><span ng-if="!data.refuel.atPump && !data.refuel.problem" style="color:#f2c94c;"> town price</span></span></span></div>
+          <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('fuel')" aria-expanded="{{isOpen('fuel')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('fuel') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Fuel</div><span class="ef-sum" ng-if="data.refuel"><span ng-if="data.refuel.full">tank full</span><span ng-if="!data.refuel.full">{{data.refuel.fuelType}} ${{data.refuel.pricePerLitre | number:2}}/L<span ng-if="data.refuel.atPump"> at the pump</span><span ng-if="!data.refuel.atPump && !data.refuel.roadside && !data.refuel.problem" style="color:#f2c94c;"> town price</span><span ng-if="data.refuel.roadside && !data.refuel.problem" style="color:#eb5757;"> roadside price</span></span></span></div>
             <button type="button" ng-click="refuel()" ng-disabled="!(data.refuel && data.refuel.allowed)" style="flex:none;padding:3px 10px;">Refuel<span ng-if="data.refuel && data.refuel.allowed"> &middot; ${{data.refuel.cost | number:0}}</span></button></div>
           <div ng-if="isOpen('fuel') && data.refuel" class="ef-sb" style="font-size:13px;color:#c9d6d2;">
             <div>{{data.refuel.fuelType}} in {{data.refuel.continent}}: ${{data.refuel.pumpPricePerLitre | number:2}} a litre at a petrol station pump. <button type="button" class="ef-q" ng-click="help('repair')" title="How this works" aria-label="How this works">?</button></div>
             <div ng-if="data.refuel.atPump" style="margin-top:2px;">You are at <b>{{data.refuel.station || 'a petrol station'}}</b>. Press Refuel, or use the pump&rsquo;s own Refuel prompt: both are charged at the pump price.</div>
-            <div ng-if="!data.refuel.atPump" style="margin-top:2px;">Drive slowly up to a pump at any petrol station to fill up.</div>
+            <div ng-if="!data.refuel.atPump" style="margin-top:2px;">Drive slowly up to a pump at any petrol station to fill up. Away from a pump, Refuel costs {{data.refuel.townTimes}} times as much in a town and {{data.refuel.roadsideTimes}} times as much anywhere else.</div>
             <div ng-if="data.refuel.full" style="margin-top:2px;">Your tank is full.</div>
             <div ng-if="!data.refuel.full && data.refuel.litres != null" style="margin-top:2px;">Refuel: {{data.refuel.litres | number:1}} L for ${{data.refuel.cost | number:0}} at ${{data.refuel.pricePerLitre | number:2}} a litre.</div>
             <div ng-if="data.refuel.reading" style="margin-top:2px;">Reading your fuel gauge...</div>
           </div>
-          <div ng-if="data.refuel && data.refuel.warning && !data.refuel.problem && !data.refuel.full" role="note" style="margin:0 0 6px;font-size:13px;color:#f2c94c;">&#9888; {{data.refuel.warning}}</div>
+          <div ng-if="data.refuel && data.refuel.warning && !data.refuel.problem && !data.refuel.full" role="note" style="margin:0 0 6px;font-size:13px;color:#f2c94c;" ng-style="data.refuel.roadside && {color: '#eb5757'}">&#9888; {{data.refuel.warning}}</div>
           <div ng-if="data.refuel && data.refuel.problem" style="margin:0 0 6px;font-size:13px;color:#f2c94c;">{{data.refuel.problem}}</div>
           <div ng-if="data.fuelFeedback" role="status" style="margin:0 0 6px;">{{data.fuelFeedback}}</div>
         </div>

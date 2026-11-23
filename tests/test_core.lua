@@ -777,8 +777,12 @@ do
   c.pendingCar = { id = 1, fromId = 1 }
   c:tick(2.1); c:fuelReading(1, 50, 50, 'diesel'); T.eq(#f.sets, setsBefore + 1, 'a car on trial keeps its fuel')
   c.pendingCar = nil
-  T.check(not c:view().refuel.allowed, 'no Refuel away from pumps and towns')
-  T.eq(c:view().refuel.problem, 'Stop at a petrol station pump, or in a town, to refuel.', 'told where to go')
+  -- Away from pumps and towns Refuel still works, at the roadside price (MadMerick, 18 Nov: 20 times).
+  c:tick(2.1); c:fuelReading(1, 9, 50, 'diesel')
+  T.eq(c:view().refuel.problem, nil, 'Refuel works at the roadside')
+  T.check(c:view().refuel.roadside, 'priced as the roadside'); T.check(c:view().refuel.allowed, 'Refuel offered at the roadside')
+  T.check(c:view().refuel.warning:find('Roadside fuel costs 20 times the pump price', 1, true), 'warned it costs 20 times as much')
+  T.eq(c:view().refuel.pricePerLitre, fuel.price(c:fuelPrice().continent, 'diesel', 'roadside'), 'the roadside price')
 end
 
 -- In game the car can answer a Refuel before its tanks show the new level (MadMerick, 15 Nov: "Refuelled
@@ -818,6 +822,10 @@ do
   T.eq(fuel.continent('Antarctica'), nil, 'Antarctica has no roads')
   T.eq(fuel.price(nil, 'diesel'), fuel.WORLD.diesel, 'world average elsewhere')
   T.eq(fuel.TOWN_PRICE_TIMES, 5, 'towns cost 5 times the pump price')
+  T.eq(fuel.ROADSIDE_PRICE_TIMES, 20, 'the roadside costs 20 times the pump price')
+  T.eq(fuel.price('Europe', 'diesel', 'roadside'), math.floor(fuel.PRICES.Europe.diesel * 2000 + 0.5) / 100, 'roadside 20 times as much')
+  T.eq(fuel.price('Europe', 'diesel', 'town'), fuel.price('Europe', 'diesel', true), 'town by name or flag')
+  T.eq(fuel.price('Europe', 'diesel', 'pump'), fuel.price('Europe', 'diesel'), 'pump by name or nothing')
   T.eq(fuel.price('Europe', 'gasoline', true), math.floor(fuel.PRICES.Europe.gasoline * 500 + 0.5) / 100, 'towns cost 5 times as much')
   local was = fuel.PRICE_PERCENT; fuel.PRICE_PERCENT = 50
   T.eq(fuel.price('Europe', 'diesel'), math.floor(fuel.PRICES.Europe.diesel * 50 + 0.5) / 100, 'one setting scales every price')
@@ -853,9 +861,21 @@ do
   -- Short of money: fills as far as it goes.
   c.profile.progression.balance = 50; c:fuelReading(1, 12, 50)
   T.near(c:view().town.refuel.litres, math.floor(50 / fuel.price('Oceania', 'gasoline', true)), 1e-9, 'only what the money buys')
-  -- Away from a town there is no Refuel.
+  -- Away from a town Refuel still works, at 20 times the pump price, and must be stopped.
+  c.profile.progression.balance = 10000
   a.pose = location.destination(F.PENRITH, 0, 1900); c:tick(0.1); c:tick(0.6); c:tick(0.6)
-  T.eq(c:view().town, nil, 'no town panel out of town'); T.check(not c:refuel(), 'no refuel out of town')
+  T.eq(c:view().town, nil, 'no town panel out of town')
+  local roadside = fuel.price('Oceania', 'gasoline', 'roadside')
+  T.eq(roadside, math.floor(fuel.PRICES.Oceania.gasoline * 2000 + 0.5) / 100, '20 times the pump price')
+  c:fuelReading(1, 40, 50); T.eq(c:view().refuel.pricePerLitre, roadside, 'priced at the roadside')
+  local wanted = 50 - c.fuel.litres
+  T.eq(c:view().refuel.cost, fuel.cost(wanted, roadside), 'quoted at the roadside price')
+  local balance = c:view().balance
+  T.check(c:refuel(), 'refuel out of town'); c:fuelSet(1, f.sets[#f.sets].serial, 50 - wanted, 50, 50)
+  T.eq(c:view().balance, balance - fuel.cost(wanted, roadside), 'charged the roadside price')
+  T.check(c:view().fuelFeedback:find('A petrol station pump would have cost ' .. require('earthFreight/pricing').dollars(fuel.cost(wanted, roadside / 20)), 1, true),
+    'told what a pump would have cost')
+  c:fuelReading(1, 12, 50)
   -- A repair respawns the car with a full tank; the fuel it had is put back, free.
   c.profile.progression.balance = 10000; g.damage = 2000; c:tick(0.1)
   c:fuelReading(1, 12, 50)
