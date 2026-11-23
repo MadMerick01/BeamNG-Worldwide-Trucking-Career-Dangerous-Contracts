@@ -11,6 +11,24 @@ local function defaults()
     objects = function() local m = rawget(_G, 'map'); return type(m) == 'table' and m.objects or nil end,
     manager = function() return rawget(_G, 'core_vehicle_manager') or (extensions and extensions.core_vehicle_manager) end,
     vehicles = function() return rawget(_G, 'core_vehicles') or (extensions and extensions.core_vehicles) end,
+    -- On a BeamMP server, BeamMP puts its own function in place of the game's replaceVehicle, and that one drops the
+    -- vehicle it is given and always replaces the one the player is in (MPVehicleGE's replaceRequest). True then.
+    replacesPlayerOnly = function()
+      local mp = rawget(_G, 'MPVehicleGE')
+      local vehicles = rawget(_G, 'core_vehicles') or (extensions and extensions.core_vehicles)
+      if type(mp) == 'table' and type(vehicles) == 'table' and mp.replaceRequest ~= nil
+        and vehicles.replaceVehicle == mp.replaceRequest then return true end
+      local net = rawget(_G, 'MPCoreNetwork')
+      if type(net) ~= 'table' or type(net.isMPSession) ~= 'function' then return false end
+      local ok, on = pcall(net.isMPSession)
+      return ok and on == true
+    end,
+    -- Respawns that very vehicle where it stands with a config table, as BeamMP itself does for a car whose setup
+    -- changed, without the game putting the player in it.
+    respawnInPlace = function(vehicle, config)
+      vehicle:setDynDataFieldbyName('autoEnterVehicle', 0, 'false')
+      vehicle:respawn(serialize(config))
+    end,
     -- jbeam/io looks up a part's jbeam data, whose information.value is the price career uses.
     jbeam = function() return require('jbeam/io') end,
     objectById = function(id) return getObjectByID(id) end,
@@ -374,6 +392,31 @@ function M.new(environment)
     return options
   end
 
+  -- Respawns vehicle (id) where it stands as model with config. The player's own vehicle goes through the game's
+  -- replaceVehicle. Another vehicle (their trailer, for its Load Volume or its parts put back) does too in single
+  -- player, but on a BeamMP server that would replace the player's truck instead, turning it into the trailer: there
+  -- the vehicle itself is respawned. A config that is a .pc path is read first. -> ok, why.
+  local function replaceInPlace(vehicles, model, config, vehicle, id)
+    local _, playerId = current()
+    local other = id ~= nil and id ~= playerId
+    local mpOK, mp = pcall(function() return env.replacesPlayerOnly and env.replacesPlayerOnly() end)
+    if not other or not (mpOK and mp) then
+      return pcall(vehicles.replaceVehicle, model, respawnOptions(config, id), vehicle)
+    end
+    if type(env.respawnInPlace) ~= 'function' then return false, 'respawn_unavailable' end
+    local spawnConfig = config
+    if type(config) == 'string' then
+      local readOK, data = pcall(env.read, config)
+      if not readOK or type(data) ~= 'table' then return false, 'config_unavailable' end
+      spawnConfig = copy(data)
+      spawnConfig.partConfigFilename = config
+    else
+      spawnConfig = copy(config)
+    end
+    if type(spawnConfig.model) ~= 'string' or spawnConfig.model == '' then spawnConfig.model = model end
+    return pcall(env.respawnInPlace, vehicle, spawnConfig)
+  end
+
   -- Respawns the vehicle where it stands, which leaves every part new. With no config it keeps the
   -- current parts, tuning and paint; with one, it fits that config's parts but keeps the current
   -- tuning and paint. Returns true once the game accepted the respawn.
@@ -401,7 +444,7 @@ function M.new(environment)
     local modelOK, model = pcall(function() return vehicle:getJBeamFilename() end)
     if not modelOK or type(model) ~= 'string' or model == '' then model = config.model end
     if type(model) ~= 'string' or model == '' then return false, 'config_unavailable' end
-    local ok, why = pcall(vehicles.replaceVehicle, model, respawnOptions(config, id), vehicle)
+    local ok, why = replaceInPlace(vehicles, model, config, vehicle, id)
     if not ok then return false, 'repair_failed', tostring(why) end
     return true
   end
@@ -444,7 +487,7 @@ function M.new(environment)
     local modelOK, model = pcall(function() return vehicle:getJBeamFilename() end)
     if not modelOK or type(model) ~= 'string' or model == '' then model = config.model end
     if type(model) ~= 'string' or model == '' then return false, 'config_unavailable' end
-    local ok, why = pcall(vehicles.replaceVehicle, model, respawnOptions(config, id), vehicle)
+    local ok, why = replaceInPlace(vehicles, model, config, vehicle, id)
     if not ok then return false, 'respawn_failed', tostring(why) end
     return true
   end

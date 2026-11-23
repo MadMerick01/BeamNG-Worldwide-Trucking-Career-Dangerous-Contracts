@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **On the server, your truck no longer turns into your tanker trailer.** Taking a fuel or water job with a tanker trailer, or joining the server with one hooked up, filled the trailer's tank in a way that BeamMP applied to the truck you were driving instead, so the truck became a second tanker. The same could happen when the game put a trailer's parts back as you bought them. Now only the trailer changes, and you stay in your truck. Single player was never affected. Your saves still work: if your truck turned into a tanker, press **Get my car back** on the Garage tab, or leave and join again without saving.
+
 ## Build 274 · 23 Nov 2026
 
 - **Joining the server with the mod already installed now just works.** If you have your own copy of the mod, from GitHub or BeamNG.Earth's Add-ons page, the game now switches to the server's copy as you join. Before, your own copy kept running, and if it was older than the server's you were sent off as "out of date". This works from this build on, so if your copy is older than this build, update it once.
