@@ -110,6 +110,41 @@ do
   T.near(c.depotsBuilt[key].pc.x, pc.x, 0.5, 'at the same spot'); T.near(c.depotsBuilt[key].pc.y, pc.y, 0.5, 'the same spot')
 end
 
+-- From the cab: the truck stopped within TRUCK_METRES of the computer shows Use computer without
+-- getting out (for players whose game won't let them out); moving, or too far, it does not.
+do
+  local w = F.depotWorld()
+  local c, _, a, g, cargo = F.controller({ depotWorld = w })
+  w.follow, w.origin = a, F.copy(F.PENRITH)
+  g.fitted.box = 'pickup_cargo_load_box_m'
+  c.now = function() return 50000 end
+  w.cars[1] = { x = 0, y = 0, z = 0 }
+  for _ = 1, 40 do c:tick(0.6) end
+  local key = next(c.depotsBuilt)
+  local pc = c.depotsBuilt[key].pc
+  local v = c:view()
+  T.check(v.town.takeProblem:find('from the cab or on foot'), 'the Town tab says it works from the cab')
+  local id = v.town.jobs[1].id
+  w.cars[1] = { x = pc.x, y = pc.y - (depots.TRUCK_METRES + 5), z = 0 }
+  c:tick(0.6)
+  T.check(not c:view().computer.near, 'in the cab too far away: no Use computer')
+  w.cars[1] = { x = pc.x, y = pc.y - 20, z = 0 }
+  local stopped = c.odometer.stopped
+  c.odometer.stopped = function() return false end
+  c:tick(0.6)
+  T.check(not c:view().computer.near, 'close but still moving: no Use computer')
+  c.odometer.stopped = stopped
+  c:tick(0.6)
+  v = c:view()
+  T.check(v.computer.near, 'stopped 20 m away in the cab: Use computer')
+  T.check(v.computer.cab, 'from the cab')
+  T.eq(v.computer.truckAway, 20, 'the truck is 20 m away'); T.check(v.computer.truckOk, 'close enough to load')
+  T.check(v.town.jobs[1].allowed, 'the job can be taken from the cab')
+  local weights = #cargo.weights
+  T.check(c:takeJob(id), 'taken from the cab')
+  T.check(#cargo.weights > weights, 'the weight goes straight on, the player is already in the truck')
+end
+
 -- A house just behind the shed, or right against its side, blocks the spot too.
 do
   local w = F.depotWorld()

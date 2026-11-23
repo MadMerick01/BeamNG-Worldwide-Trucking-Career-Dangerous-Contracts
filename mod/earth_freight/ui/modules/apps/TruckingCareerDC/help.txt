@@ -13,7 +13,7 @@
 Choose where you start: open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.
 Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.
 Then fit cargo boxes: the starter car only has its boot, which takes 2 slots. In Buy parts, put Cargo Load boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.
-Drive to a town's depot, a tin shed with a computer on a desk in front. Park close to the computer, get out, walk up to it and press Use computer. Pick a job and press Take job: it fills your car.
+Drive to a town's depot, a tin shed with a computer on a desk in front. Park close to the computer and press Use computer. It works from the cab, or get out and walk up to it. Pick a job and press Take job: it fills your car.
 Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.
 The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.
 
@@ -33,7 +33,7 @@ Pay only goes up when a road is measured: a job never pays less than the board s
 Every town has a depot: a tin shed with a computer on a desk in front of it, near the middle of town. A fuel depot has one too.
 Jobs, off-road drops and fuel runs are only taken at the depot's computer. The Town tab shows them, and how far away the depot is.
 In town, an arrow on the Town tab points to the depot and says how far it is. Press GPS next to it for a route to the door. The minimised HUD shows the distance too.
-Park within {depotTruckMetres} m of the computer, get out and walk up to it. Press Use computer when it shows, pick a job and take it.
+Stop your truck within {depotTruckMetres} m of the computer and Use computer shows, right there in the cab. You can also get out and walk up to it, with the truck parked that close. Pick a job and take it.
 Your truck must still be within {depotTruckMetres} m when you take the job, or it won't load.
 Deliveries haven't changed: drive to the drop-off and press Deliver on the HUD.
 Depots go in a real open car park near the middle of town where the map knows one, or else on clear ground beside a road.
