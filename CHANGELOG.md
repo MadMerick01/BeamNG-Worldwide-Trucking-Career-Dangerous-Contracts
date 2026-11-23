@@ -6,8 +6,11 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 279 · 23 Nov 2026
+
 - **You can now buy fuel anywhere, not just at a petrol station or in a town.** Stop the truck anywhere on the road and the **Refuel** button on the Garage tab works, at 20 times the pump price. For example, diesel in Europe costs $2.49 a litre at a pump, $12.45 in a town and $49.80 at the roadside. The Fuel section shows "roadside price" in red with both prices, so you know what you're paying before you press it, and afterwards it tells you what a pump would have cost.
 - Petrol station pumps and town prices are unchanged: the pump price at a pump, and 5 times that in a town. The fuel you haul on a fuel run stays in the tanker and is never used to refuel your truck. Your saves still work.
+
 ## Build 278 · 23 Nov 2026
 
 - **A town's jobs no longer stay locked behind "Finding a spot for the depot".** In some towns the depot kept looking for a spot for minutes on end, with Take job greyed out the whole time, because part of the ground it wanted to check never finished loading, or no spot passed its checks. Now a spot whose ground won't load is skipped, and if no spot is found within 45 seconds of reaching town the desk and computer go down beside the nearest road anyway.
