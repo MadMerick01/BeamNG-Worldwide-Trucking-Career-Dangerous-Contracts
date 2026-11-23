@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 280 · 23 Nov 2026
+
 - **You can now use a depot computer without getting out of your truck.** Stop within 30 m of the computer and the **Use computer** button shows in the cab, so you can pick and take a job straight away. Getting out and walking up to it still works too. This helps if your game won't let you get out on a server. Your saves still work.
 
 ## Build 279 · 23 Nov 2026
