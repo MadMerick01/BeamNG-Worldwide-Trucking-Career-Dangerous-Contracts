@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 274 · 23 Nov 2026
+
 - **Joining the server with the mod already installed now just works.** If you have your own copy of the mod, from GitHub or BeamNG.Earth's Add-ons page, the game now switches to the server's copy as you join. Before, your own copy kept running, and if it was older than the server's you were sent off as "out of date". This works from this build on, so if your copy is older than this build, update it once.
 - **Your own copy is turned back on when you leave a server.** BeamMP turns it off while you play online and used to leave it off, so the mod was missing in single player until you turned it on again in the Mod Manager. Now it comes back by itself. Your saves still work.
 
