@@ -363,6 +363,17 @@ function M.new(environment)
     return stock
   end
 
+  -- The game's options for respawning a vehicle where it stands. The game puts the player in a vehicle it respawns
+  -- unless told not to, a moment later, once it has spawned. A vehicle that is not the one the player is in (their
+  -- trailer, respawned to fill its Load Volume or to put its parts back) must not take them out of their car: they
+  -- would be left sitting in the trailer, and the HUD would bill it as a car they are buying.
+  local function respawnOptions(config, id)
+    local options = { config = config, keepOtherVehRotation = true }
+    local _, playerId = current()
+    if id ~= nil and id ~= playerId then options.autoEnterVehicle = false end
+    return options
+  end
+
   -- Respawns the vehicle where it stands, which leaves every part new. With no config it keeps the
   -- current parts, tuning and paint; with one, it fits that config's parts but keeps the current
   -- tuning and paint. Returns true once the game accepted the respawn.
@@ -390,7 +401,7 @@ function M.new(environment)
     local modelOK, model = pcall(function() return vehicle:getJBeamFilename() end)
     if not modelOK or type(model) ~= 'string' or model == '' then model = config.model end
     if type(model) ~= 'string' or model == '' then return false, 'config_unavailable' end
-    local ok, why = pcall(vehicles.replaceVehicle, model, { config = config, keepOtherVehRotation = true }, vehicle)
+    local ok, why = pcall(vehicles.replaceVehicle, model, respawnOptions(config, id), vehicle)
     if not ok then return false, 'repair_failed', tostring(why) end
     return true
   end
@@ -433,7 +444,7 @@ function M.new(environment)
     local modelOK, model = pcall(function() return vehicle:getJBeamFilename() end)
     if not modelOK or type(model) ~= 'string' or model == '' then model = config.model end
     if type(model) ~= 'string' or model == '' then return false, 'config_unavailable' end
-    local ok, why = pcall(vehicles.replaceVehicle, model, { config = config, keepOtherVehRotation = true }, vehicle)
+    local ok, why = pcall(vehicles.replaceVehicle, model, respawnOptions(config, id), vehicle)
     if not ok then return false, 'respawn_failed', tostring(why) end
     return true
   end

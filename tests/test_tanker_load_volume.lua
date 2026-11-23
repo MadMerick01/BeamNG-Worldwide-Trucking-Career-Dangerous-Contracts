@@ -81,4 +81,104 @@ do
   T.near(cargo.trailerWeights[#cargo.trailerWeights].kg, 100 * fuel.kg, 1e-9, 'the mod weighs it instead')
 end
 
+-- A tanker truck with its own Load Volume setting carries its fluid the same way: the setting
+-- is filled with a respawn where it stands, the damage it had stays owed and its fuel is kept.
+do
+  local c, _, _, g, cargo = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c.ownedParts ~= nil, 'the truck is known')
+  local id = c.ownedParts.id
+  local volume, asks = 0, {}
+  function g:loadVolume(vehicleId)
+    if vehicleId ~= id then return nil end
+    return { name = '$load_volume', max = 1600, value = volume }
+  end
+  function g:setLoadVolume(vehicleId, name, litres)
+    asks[#asks + 1] = { id = vehicleId, litres = litres }
+    return true
+  end
+  g.damage = 2500
+  local owed = c.owedDamage or 0
+  local water = goods.get('water')
+  c.load = { good = 'water', units = 150, kg = 150 * water.kg }
+  c:applyWeight(true)
+  T.eq(#asks, 1, 'the truck\'s Load Volume is set'); T.eq(asks[1].id, id, 'on the truck')
+  T.eq(asks[1].litres, 150 * water.litres, 'to the litres it carries')
+  T.near((c.owedDamage or 0) - owed, 2500, 1e-9, 'the damage it had stays owed')
+  c:applyWeight(true)
+  T.eq(#asks, 1, 'one respawn for each amount')
+  volume = 150 * water.litres
+  c:applyWeight(true)
+  T.eq(#asks, 1, 'already filled')
+  T.eq(cargo.weights[#cargo.weights].kg, 0, 'no weight of the mod on top')
+  T.eq(cargo.weights[#cargo.weights].fluid.litres, 0, 'nor fluid of its own')
+  c.load = nil
+  c:applyWeight(true)
+  T.eq(#asks, 2, 'emptied after the job'); T.eq(asks[2].litres, 0, 'to 0 L')
+end
+
+-- A truck whose respawn the game refuses keeps the mod's own weight.
+do
+  local c, _, _, g, cargo = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  function g:loadVolume() return { name = '$load_volume', max = 1600, value = 0 } end
+  function g:setLoadVolume() return false, 'respawn_failed' end
+  local water = goods.get('water')
+  c.load = { good = 'water', units = 100, kg = 100 * water.kg }
+  c:applyWeight(true)
+  T.near(cargo.weights[#cargo.weights].kg, 100 * water.kg, 1e-9, 'the mod weighs it instead')
+  T.check(not c.ourRespawn, 'no respawn is waited for')
+end
+
+-- The short 17,700 L tanker: a respawn the mod did not ask for (Apply in the game's Vehicle
+-- Config, or its parts put back as bought) can leave the Load Volume at another amount. It is
+-- filled again, rather than the load weighing nothing for the rest of the job.
+do
+  local c, _, _, g, cargo = F.controller()
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.trailer = { model = 'tanker', config = 'vehicles/tanker/empty_short.pc', maxKg = 17700, paid = 20000 }
+  T.check(c:spawnTrailer(), 'the short tanker is out')
+  local id = c.trailerOut.id
+  c:watchTrailerParts()
+  local volume, asks = 0, {}
+  function g:loadVolume(vehicleId)
+    if vehicleId ~= id then return nil end
+    return { name = '$loadVolume', max = 17700, value = volume }
+  end
+  function g:setLoadVolume(vehicleId, name, litres)
+    asks[#asks + 1] = { id = vehicleId, name = name, litres = litres }
+    return true
+  end
+  local fuel = goods.get('fuel')
+  c.load = { good = 'fuel', units = 17700, trailerUnits = 17700, kg = 17700 * fuel.kg }
+  c:applyWeight(true)
+  T.eq(#asks, 1, 'filled'); T.eq(asks[1].litres, 17700, 'to the whole tank'); T.eq(asks[1].name, '$loadVolume', 'by its setting')
+
+  -- The respawn the mod asked for: nothing more to do.
+  volume = 17700
+  c:vehicleSpawned(id); c:watchTrailerParts()
+  T.eq(#asks, 1, 'its own respawn is not asked again')
+  T.eq(cargo.trailerWeights[#cargo.trailerWeights].kg, 0, 'the game carries the weight')
+
+  -- The player moves the slider in Vehicle Config and applies it: filled again.
+  volume = 0
+  c:vehicleSpawned(id); c:watchTrailerParts()
+  T.eq(#asks, 2, 'asked again after a respawn of the player'); T.eq(asks[2].litres, 17700, 'to the load')
+  volume = 17700
+  c:vehicleSpawned(id); c:watchTrailerParts()
+  T.eq(#asks, 2, 'and not again once filled')
+
+  -- Its parts changed and put back as bought, which empties the setting: filled again too.
+  g.trailers[id].fitted = { deck = 'something_else' }
+  c:vehicleSpawned(id); c:watchTrailerParts()
+  T.eq(g.trailerRepairs, 1, 'the parts are put back')
+  volume = 0
+  c:vehicleSpawned(id); c:watchTrailerParts()
+  T.eq(#asks, 3, 'filled again after the parts are put back'); T.eq(asks[3].litres, 17700, 'to the load')
+
+  -- A respawn the game did not take is still asked for only once.
+  c:applyWeight(true); c:applyWeight(true)
+  T.eq(#asks, 3, 'not over and over')
+end
+
 T.done('Tanker Load Volume')

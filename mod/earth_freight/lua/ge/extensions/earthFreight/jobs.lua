@@ -31,6 +31,12 @@ M.MAX_KM = 20
 -- A board shows one job each of parts, bricks and the town's fluid, then the off-road drop. The
 -- three town jobs take these road-distance bands in turn, from a seeded start, where the towns allow.
 M.BANDS = { { 0, 8 }, { 8, 13 }, { 13, 20 } }
+-- Dangerous contracts are switched off for now (MadMerick, 21 Nov: not popular and need more work).
+-- Their code stays, so a contract taken before the change still finishes, and true brings them back.
+-- While they are off, their place on the board goes to a long haul: parts or bricks to a town
+-- LONG_HAUL km away by road, or the farthest town short of that.
+M.CONTRACTS = false
+M.LONG_HAUL = { 20, 60 }
 -- The Distance filter on the Town tab: picking one sends all three town jobs to towns in that band,
 -- each to a different town where there are enough. 'any' (or nil) keeps the mix above. Long reaches
 -- out to LONG_KM, so a player in a sparse region (a mountain state, the outback) has towns to go to
@@ -283,7 +289,8 @@ function M.boardGoods(place)
   return out
 end
 
--- The board of a town: one job each for its goods, then the off-road drop and the dangerous contract, fixed for a seed (the
+-- The board of a town: one job each for its goods, then (with contracts off) a long haul, then the
+-- off-road drop and (with them on) the dangerous contract, fixed for a seed (the
 -- controller's count of jobs done), so it changes after every delivery or abandoned job. A good
 -- short in a town within MAX_KM goes there; otherwise each job goes to a town in its distance band. At
 -- least one job is decent: if none pays its base rate, the best one is raised to it. distance is
@@ -291,22 +298,47 @@ end
 -- outside it, for want of towns that far, is marked outside.
 function M.board(from, seed, needs, now, distance)
   local only = M.FILTERS[distance]
-  local list = M.destinations(from, only and math.max(M.MAX_KM, only[2]))
+  local reach = only and only[2] or (not M.CONTRACTS and M.LONG_HAUL[2]) or M.MAX_KM
+  local list = M.destinations(from, math.max(M.MAX_KM, reach))
   local wanted = M.boardGoods(from)
   if #list == 0 or #wanted == 0 then return {} end
   seed = tostring(seed or 0)
+  -- The towns within MAX_KM, for the usual jobs: with none, any town on the list.
+  local near = {}
+  for _, x in ipairs(list) do if x.km <= M.MAX_KM then near[#near + 1] = x end end
+  if #near == 0 then near = list end
+  -- With contracts off, one more job: a long haul of parts or bricks.
+  local long = #wanted + 1
+  if not M.CONTRACTS then
+    local carried = goods.ofKind('parcel')
+    wanted[long] = carried[math.floor(hash01(from.id .. ':' .. seed .. ':long:good') * #carried) + 1]
+  end
   local start = math.floor(hash01(from.id .. ':' .. seed .. ':band') * #M.BANDS)
   local function inBand(x, band) return x.km > band[1] and x.km <= band[2] end
   local out, used = {}, {}
   for i, good in ipairs(wanted) do
     local d, outside
+    local isLong = i == long
     for _, x in ipairs(list) do
-      if not d and x.km <= M.MAX_KM and (not only or inBand(x, only) and not used[x.place.id]) and M.shortage(x.place, good, now) then d = x end
+      local fits
+      if only then fits = inBand(x, only) and not used[x.place.id]
+      elseif isLong then fits = inBand(x, M.LONG_HAUL) and not used[x.place.id]
+      else fits = x.km <= M.MAX_KM end
+      if not d and fits and M.shortage(x.place, good, now) then d = x end
     end
-    if not d then
+    if not d and isLong and not only then
+      -- The long haul: a seeded distance across LONG_HAUL and the unused town nearest it, so it is
+      -- as likely to be 25 km as 55 km. With no town that far, the farthest unused town there is.
+      local target = M.LONG_HAUL[1] + (M.LONG_HAUL[2] - M.LONG_HAUL[1]) * hash01(from.id .. ':' .. seed .. ':long:to')
+      for _, x in ipairs(list) do
+        local better = not d or (used[d.place.id] and not used[x.place.id])
+          or (not used[x.place.id] == not used[d.place.id] and math.abs(x.km - target) < math.abs(d.km - target))
+        if better then d = x end
+      end
+    elseif not d then
       local band = only or M.BANDS[(start + i - 1) % #M.BANDS + 1]
       local pool = {}
-      for _, x in ipairs(list) do if inBand(x, band) then pool[#pool + 1] = x end end
+      for _, x in ipairs(only and list or near) do if inBand(x, band) then pool[#pool + 1] = x end end
       outside = only and #pool == 0 or nil
       if outside then
         -- No town that far: the town closest to the band, a different one for each job where it can.
@@ -317,7 +349,7 @@ function M.board(from, seed, needs, now, distance)
           if better then d = x end
         end
       else
-        if #pool == 0 then pool = list end
+        if #pool == 0 then pool = near end
         local h = hash01(from.id .. ':' .. seed .. ':' .. good.id .. ':to')
         if only then
           -- A seeded distance across the band, and the unused town nearest it, so a long run is as
@@ -335,6 +367,7 @@ function M.board(from, seed, needs, now, distance)
     end
     used[d.place.id] = true
     local j = job(from, d, good, seed)
+    if isLong then j.id, j.long = 'long_' .. j.id, true end
     j.outside = outside
     out[#out + 1] = j
   end
@@ -345,7 +378,7 @@ function M.board(from, seed, needs, now, distance)
   end
   if bestFactor < 1 then best.decent = true end
   out[#out + 1] = M.dropJob(from, seed)
-  out[#out + 1] = M.contractJob(from, seed)
+  if M.CONTRACTS then out[#out + 1] = M.contractJob(from, seed) end
   return out
 end
 

@@ -1,0 +1,10 @@
+{
+  "earthFreightFireEmp": {
+    "cat": "gameplay",
+    "order": 1,
+    "ctx": "tlua",
+    "onDown": "if earthFreight_core and earthFreight_core.empHotkey then earthFreight_core.empHotkey() end",
+    "title": "Fire EMP",
+    "desc": "Fires the EMP at the base thief during a chase. It reaches 5 m."
+  }
+}

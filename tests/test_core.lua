@@ -181,16 +181,19 @@ do
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
   T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 3000 * places.ROAD_FACTOR, 'distances are road estimates')
   T.eq(#v.nearby[1].dots, 4, 'a dot per good: parts, bricks, water and fuel')
-  T.eq(#v.town.jobs, 5, 'the board lists parts, bricks, a fluid, the off-road drop and a dangerous contract')
+  T.eq(#v.town.jobs, 5, 'the board lists parts, bricks, a fluid, a long haul and the off-road drop')
   T.eq(v.town.jobs[1].goodId, 'parts', 'parts first'); T.eq(v.town.jobs[2].goodId, 'bricks', 'then bricks')
-  T.eq(v.town.jobs[3].goodId, jobs.fluid(penrith).id, 'then the town fluid'); T.check(v.town.jobs[4].drop, 'then the drop')
-  T.check(v.town.jobs[5].contract ~= nil, 'then the dangerous contract')
+  T.eq(v.town.jobs[3].goodId, jobs.fluid(penrith).id, 'then the town fluid')
+  T.check(v.town.jobs[4].long and v.town.jobs[4].distanceMetres > 20000, 'then a long haul past 20 km')
+  T.check(v.town.jobs[5].drop, 'then the drop')
+  for _, j in ipairs(v.town.jobs) do T.eq(j.contract, nil, 'no dangerous contract: they are off for now') end
+  T.eq(v.career.contractsOn, nil, 'and the start page leaves out the Dangerous count')
   T.check(v.town.jobs[3].fluid and v.town.jobs[3].units == 0 and not v.town.jobs[3].allowed, 'a fluid needs a tank')
   for _, j in ipairs(v.town.jobs) do
     -- A brick (127.5 kg) just fits one box M (130 kg).
     if j.goodId == 'bricks' then T.check(j.units == 1 and j.allowed, j.id .. ' fits one box M')
     elseif not j.fluid then T.check(j.pay > 0 and j.allowed, j.id .. ' pays and can be taken') end
-    T.check(j.distanceMetres <= 20000 + 1e-6, j.id .. ' within 20 km')
+    if not j.long then T.check(j.distanceMetres <= 20000 + 1e-6, j.id .. ' within 20 km') end
   end
   T.check(v.bestJob ~= nil and v.bestJob.from == 'Penrith', 'the best job is suggested')
   -- The Distance filter: the board is built for it, and a job taken comes from that board.
@@ -372,6 +375,11 @@ do
   end
   T.eq(v.gpsFeedback, 'The GPS is set to St Clair.', 'and says so')
   -- A dangerous contract's GPS goes to the start of its road; an off-road drop has none.
+  -- Contracts are off for now, so one is put on the board here.
+  local cj = jobs.contractJob(penrith, 0)
+  local board = c.board
+  c.board = function(self, place) local list = board(self, place); list[#list + 1] = F.copy(cj); return list end
+  v = c:view()
   local contract
   for _, j in ipairs(v.town.jobs) do if j.contract then contract = j end end
   T.check(contract ~= nil and contract.contract.id ~= nil, 'the board names the contract')
@@ -581,6 +589,19 @@ do
   T.check(c:towHere(), 'towed'); a.vehicle = { id = 1, model = 'pickup' }
   c:vehicleReset(1); c:tick(0.1); c:tick(0.1)
   T.check(c.maydayRun ~= nil, 'a tow of a few metres keeps a Mayday Rescue run going'); c.maydayRun = nil
+  -- A Mayday Rescue call that ends mid-run (it moved on, or someone else won) says so instead of vanishing.
+  local flashBefore = c.flash
+  c.maydayRun = { round = 65, edge = 'n', at = c.clock }
+  c.mayday = { round = 66, state = 'open', spot = { name = 'Cheaha Mountain' } }
+  c:maydayCallEnded({ round = 65, state = 'open', spot = { name = 'Elelim' } })
+  T.eq(c.maydayRun, nil, 'the run is over when the call moves on')
+  T.eq(c:view().flash.title, 'MAYDAY RUN OVER', 'told the run is over')
+  T.check(c:view().flash.text:find('Nobody reached the scene near Elelim in time', 1, true), 'told the call moved on')
+  c.maydayRun = { round = 66, edge = 's', at = c.clock }
+  c.mayday = { round = 66, state = 'won', winner = 'Psygo', spot = { name = 'Cheaha Mountain' } }
+  c:maydayCallEnded({ round = 66, state = 'open', spot = { name = 'Cheaha Mountain' } })
+  T.check(c:view().flash.text:find('Psygo reached the scene near Cheaha Mountain first', 1, true), 'told who won')
+  c.mayday, c.maydayFeedback, c.flash = nil, nil, flashBefore
   T.eq(g.tows, 1, 'brought over'); T.eq(c:view().balance, balance - 500, 'charged $500')
   T.check(c.load ~= nil, 'the job is kept'); T.eq(c.owedDamage, 8000, 'the damage is still owed')
   T.eq(c:view().flash.title, 'REPAIR STILL OWED', 'told so'); T.check(c:view().flash.text:find('Towing', 1, true), 'by the tow')
@@ -928,6 +949,10 @@ do
   T.check(c:takeJob(F.offer(c, stClair, 'food'), 10), 'a tenth of the food'); T.eq(c.load.units, 1, 'still at least one unit')
   c.load = nil; c.profile.load = nil
   T.check(c:takeJob(food), 'filled the box again')
+  g:fit('turbo', 'pickup_turbo'); c:vehicleSpawned(); c:tick(0.1)
+  c.profile.progression.balance = 100000
+  T.check(c:view().buyPartsAllowed, 'a turbo leaves the box alone')
+  T.check(c:revertParts(false), 'turbo put back')
   g:fit('box', ''); c:vehicleSpawned(); c:tick(0.1)
   T.check(not c:view().buyPartsAllowed, 'cannot keep a change the load no longer fits')
   T.check(not c:buyParts(), 'refused'); T.check(c:view().partsFeedback:find('would not fit'), 'told why')
@@ -987,37 +1012,107 @@ do
   T.eq(#states, 0, 'but leaves the parts menu open for the player to close')
 end
 
--- Buy parts and the camera: the parts menu turns on the free camera, and closing it puts the player
--- back on the car's own camera, unless they were on the free camera before.
+-- The camera (camera.lua): the camera the player drives with is remembered for each car, and put
+-- back after the parts menu, a respawn, a teleport or a swap back into the car. The free camera the
+-- player chose themselves is left on.
 do
   local Core = require('earthFreight/core')
-  local Workshop = require('earthFreight/workshop')
-  local c = F.controller()
-  local free, backs = false, 0
-  c.camera = { isFree = function() return free end,
-    backToCar = function() backs = backs + 1; local was = free; free = false; return was end }
+  local Camera = require('earthFreight/camera')
+  local c, _, a = F.controller()
+  local cam = { free = false, name = 'driver', backs = 0 }
+  c.camera = { isFree = function() return cam.free end, name = function() return cam.name end,
+    backToCar = function(wanted)
+      cam.backs = cam.backs + 1; cam.free = false
+      if wanted then cam.name = wanted end
+      return true
+    end }
+  F.advance(c, 12)
+  T.eq(c.cameras['1|pickup'], 'driver', 'the camera the player drives with is remembered for the car')
+  cam.name = 'chase'; F.advance(c, 0.5)
+  T.eq(c.cameras['1|pickup'], 'chase', 'and follows them changing camera')
+
+  -- Buy parts: the menu turns the free camera on, and closing it puts the chase camera back.
   T.check(not c:partsMenuClosed(true), 'nothing to do before Buy parts')
-  T.check(c:partsMenuOpening(), 'Buy parts notes the camera'); free = true
+  T.check(c:partsMenuOpening(false), 'Buy parts notes the camera'); cam.free = true; cam.name = 'free'
   T.check(not c:partsMenuClosed(false), 'a HUD built as the menu opens is not the menu closing')
-  F.advance(c, Workshop.PARTS_MENU_MIN_SECONDS + 0.5)
+  F.advance(c, 5)
+  T.eq(c.cameras['1|pickup'], 'chase', 'the free camera of the open menu is not remembered')
+  T.check(not c.cameraChosenFree, 'nor taken as the player\'s choice')
+  -- The parts change respawns the car, which goes back to its default camera.
+  c:vehicleSpawned(1)
   T.check(c:partsMenuClosed(true), 'the menu closed')
-  T.check(not free, 'back on the car\'s own camera')
-  free = true; F.advance(c, 2)
-  T.check(not free, 'and again when the game turns the free camera back on a moment later')
-  local count = backs; F.advance(c, 3)
-  T.eq(backs, count, 'only checked for a moment')
+  F.advance(c, 0.1)
+  T.check(not cam.free, 'off the free camera'); T.eq(cam.name, 'chase', 'and back on the chase camera')
+  cam.free = true; F.advance(c, 2)
+  T.check(not cam.free, 'and again when the game turns the free camera back on a moment later')
+  F.advance(c, 4)
+  local count = cam.backs; F.advance(c, 3)
+  T.eq(cam.backs, count, 'only checked for a moment')
   T.check(not c:partsMenuClosed(true), 'once per Buy parts')
-  -- Already on the free camera: left on it.
-  free = true; c:partsMenuOpening(); F.advance(c, 2)
-  T.check(not c:partsMenuClosed(true), 'a player on the free camera before stays on it')
-  T.check(free, 'still free')
+
+  -- The game's own Ctrl+W: the parts menu is seen opening and closing from the game's screens.
+  T.check(pcall(Core.onUiChangedState, 'menu.vehicleconfig.parts', 'play'), 'the game\'s UI hook is safe to call')
+  c:partsMenuOpening(true); cam.free = true; cam.name = 'free'; F.advance(c, 4)
+  c:vehicleSpawned(1); cam.free, cam.name = false, 'orbit'
+  T.check(c:partsMenuClosed(true), 'closing the menu opened with Ctrl+W counts too')
+  F.advance(c, 0.2)
+  T.eq(cam.name, 'chase', 'the respawn\'s default camera is swapped for the chase camera')
+  F.advance(c, 5)
+
+  -- A respawn without the menu, such as a tanker's Load Volume: the chase camera back too.
+  cam.name = 'orbit'; c:vehicleSpawned(1); F.advance(c, 0.2)
+  T.eq(cam.name, 'chase', 'a respawn keeps the camera')
+  F.advance(c, 4)
+  -- A player changing camera a moment after is left on it: only the free camera is put back late.
+  c:vehicleSpawned(1); F.advance(c, Camera.NAME_SECONDS + 0.2); cam.name = 'relative'; F.advance(c, 3)
+  T.eq(cam.name, 'relative', 'a camera changed after the respawn is kept')
+  F.advance(c, 1)
+  T.eq(c.cameras['1|pickup'], 'relative', 'and remembered')
+  cam.name = 'chase'; F.advance(c, 1)
+  -- Someone else's car spawning is nothing to do with the player's camera.
+  cam.name = 'orbit'; c:vehicleSpawned(99); F.advance(c, 1)
+  T.eq(cam.name, 'orbit', 'traffic spawning leaves the camera alone')
+  cam.name = 'chase'; F.advance(c, 1)
+
+  -- A teleport: Earth turns the free camera on while the terrain loads, then puts the car down with a reset.
+  cam.free, cam.name = true, 'free'; F.advance(c, 3)
+  T.check(c.cameraChosenFree, 'the free camera on for a while looks like the player\'s choice')
+  c:vehicleReset(1); F.advance(c, 0.2)
+  T.check(not cam.free, 'but the teleport landing puts the car\'s own camera back')
+  T.eq(cam.name, 'chase', 'the chase camera')
+  F.advance(c, 12)
+
+  -- The player's own free camera (Shift+C), long before: left on through the parts menu and a teleport.
+  cam.free, cam.name = true, 'free'; F.advance(c, Camera.TELEPORT_FREE_SECONDS + 1)
+  c:partsMenuOpening(false); F.advance(c, 2); c:partsMenuClosed(true); F.advance(c, 4)
+  T.check(cam.free, 'the free camera chosen before Buy parts stays on')
+  c:vehicleReset(1); F.advance(c, 12)
+  T.check(cam.free, 'and through a teleport')
+  cam.free, cam.name = false, 'chase'; F.advance(c, 1)
+
+  -- Back from the helicopter: it took the car's id, and the car comes back on its own camera.
+  a.vehicle = { id = 1, model = 'heli' }; cam.name = 'orbit'; F.advance(c, 2)
+  T.eq(c.cameras['1|heli'], 'orbit', 'the helicopter\'s camera is its own')
+  a.vehicle = { id = 1, model = 'pickup' }; cam.free = true; F.advance(c, 0.5)
+  T.check(not cam.free, 'back in the car, off the free camera'); T.eq(cam.name, 'chase', 'and on its chase camera')
+  F.advance(c, 12)
+
+  -- On foot, the walking camera is the game's own.
+  c.garage.walking = true
+  cam.free = true; c:vehicleReset(1); F.advance(c, 2)
+  T.check(cam.free, 'left alone on foot')
+  c.garage.walking = nil
+
   -- The HUD built again after the menu closes counts as it closing.
-  free = false; c:partsMenuOpening(); free = true
+  cam.free, cam.name = false, 'chase'; F.advance(c, 1)
+  c:partsMenuOpening(false); cam.free = true
   c:mount(false); F.advance(c, 2); c:mount(true)
   F.advance(c, 1)
-  T.check(not free, 'the HUD coming back puts the car\'s camera back too')
-  -- The game's UI moving between other screens is ignored; leaving the parts menu is its closing.
-  T.check(pcall(Core.onUiChangedState, 'play', 'menu.vehicleconfig.parts'), 'the game\'s UI hook is safe to call')
+  T.check(not cam.free, 'the HUD coming back puts the car\'s camera back too')
+  -- Buy parts pressed but the menu never came up: the camera is noted again.
+  c:partsMenuOpening(false); F.advance(c, Camera.MENU_GONE_SECONDS + 1)
+  T.eq(c.partsCamera, nil, 'a menu that never opened is not waited for')
+  T.check(pcall(Core.onUiChangedState, 'play', 'menu.vehicleconfig.parts'), 'leaving the menu is safe to call')
 end
 
 -- Repairs are priced by the car's Value, as in Enduro.
@@ -1383,6 +1478,11 @@ do
   T.check(c:takeJob(id, 10), 'a fluid job goes in the tanker'); T.eq(c.load.slots, 1200, 'a tenth of the tank')
   T.eq(w.weights[#w.weights].fluid.litres, 1200, 'poured into its containers')
   T.eq(#w.weights[#w.weights].parts, 0, 'with no tank part to put the weight on')
+  -- A turbo mid-job: the respawn clears the tank's answer, but the tank is the same, so the job still fits.
+  c.profile.progression.balance = 100000
+  g:fit('turbo', 'pickup_turbo'); c:beforeRespawn(); c:vehicleSpawned(); c:tick(0.1)
+  T.check(c:view().buyPartsAllowed, 'a turbo can be bought with a fuel load in the tanker')
+  T.check(c:buyParts(), 'and is'); T.check(c.load ~= nil, 'the load stays on board')
 end
 
 -- The off-road drop: no GPS, an arrow to a spot about 2 km out, delivered stopped within 100 m.
@@ -1489,10 +1589,7 @@ do
   T.eq(c.profile.progression.contractsDone[1], section.id, 'the road is counted')
   c.board = nil
   local again = false
-  for seed = 0, 20 do
-    local last = jobs.board(penrith, seed, {}, 0)
-    again = again or last[#last].contract == section.id
-  end
+  for seed = 0, 20 do again = again or jobs.contractJob(penrith, seed).contract == section.id end
   T.check(again, 'the delivered road comes round on the board again')
   T.check(c:manualSave(), 'saved'); T.eq(io.files[B].progression.contractsDone[1], section.id, 'kept in the save')
   local r2 = F.controller({ io = io })
@@ -1556,7 +1653,9 @@ end
 
 -- With every road delivered, every board still carries a dangerous contract, and every road
 -- still comes round; an old save listing delivered roads loads and keeps them all in rotation.
+-- Contracts are off for now: switched on here, they work as before.
 do
+  jobs.CONTRACTS = true
   local done = {}
   for _, sec in ipairs(contracts.LIST) do done[#done + 1] = sec.id end
   local seen = {}
@@ -1575,6 +1674,7 @@ do
   T.check(b[#b].contract ~= nil, 'and its boards still carry a dangerous contract')
   r:newGame(); T.check(r:newGame(), 'a new game')
   T.eq(r.profile.progression.contractsDone, nil, 'starts with no roads done')
+  jobs.CONTRACTS = false
 end
 
 -- Carhuaz runs between the points MadMerick checked in game, about 1.7 km apart as the crow flies.
@@ -1989,6 +2089,11 @@ do
   save.extraCarSlot = true; T.check(P.validate(save), 'a bought slot loads')
   save.extraCarSlot = 'yes'; T.eq(select(2, P.validate(save)), 'invalid_home', 'a bought slot is true or nothing')
   save.extraCarSlot = nil
+  save.thiefClock = { played = 4000, hour = 1, due = 5400, last = 1800 }
+  T.eq(P.validate(save).thiefClock.due, 5400, 'the base thief count loads')
+  save.thiefClock = { played = 4000.5 }; T.eq(select(2, P.validate(save)), 'invalid_identity', 'whole seconds only')
+  save.thiefClock = { hour = 1 }; T.eq(select(2, P.validate(save)), 'invalid_identity', 'played is needed')
+  save.thiefClock = nil
   save.storedCars[5] = { config = { model = 'sport' } }
   T.eq(select(2, P.validate(save)), 'invalid_home', 'no more than four')
   save.storedCars, save.property.paid = nil, -1
@@ -2556,7 +2661,7 @@ do
   if card then T.eq(card.repair, 0, 'the start page card shows no repair') end
 end
 
--- A player who has never put the HUD on screen is told how, a few times; once it shows, never again that level.
+-- A player who has never put the HUD on screen is told how until it shows; once it shows, never again that level.
 do
   local function hints(c)
     local n = 0
@@ -2565,8 +2670,11 @@ do
   end
   local function watched(options)
     local c = F.controller(options)
-    c.toasts = {}
-    c.trigger = function(name, data) if name == 'toastrMsg' then c.toasts[#c.toasts + 1] = data end end
+    c.toasts, c.dialogs = {}, {}
+    c.trigger = function(name, data)
+      if name == 'toastrMsg' then c.toasts[#c.toasts + 1] = data end
+      if name == 'showConfirmationDialog' then c.dialogs[#c.dialogs + 1] = data end
+    end
     return c
   end
   local c = watched()
@@ -2575,11 +2683,15 @@ do
   F.advance(c, 2)
   T.eq(hints(c), 1, 'no HUD for a while: a pop-up says how to add it')
   T.check(c.toasts[1].msg:find('+ Add app', 1, true) ~= nil, 'with the steps')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * (Core.HUD_HINT_TIMES + 2))
-  T.eq(hints(c), Core.HUD_HINT_TIMES, 'repeated a few times, then left alone')
+  T.check(c.toasts[1].msg:find('"Worldwide Trucking HUD"', 1, true) ~= nil, 'naming the HUD as the HUD Apps menu does')
+  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 5)
+  T.eq(hints(c), 6, 'and again every so often until the HUD is on screen')
+  c:mount(true)
+  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
+  T.eq(hints(c), 6, 'then never again')
   c:endMission(); c:reload()
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(hints(c), Core.HUD_HINT_TIMES + 1, 'a new level starts the count again')
+  T.eq(hints(c), 7, 'a new level without the HUD starts again')
 
   c = watched()
   F.advance(c, 5)
@@ -2596,12 +2708,178 @@ do
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
   T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'playing alone: the .Earth layout')
 
+  -- On a server, not while the career is on its way (the join is still settling), then the BeamMP layout.
   local mp = { inSession = function() return true end, send = function() end, listen = function() return true end,
     encode = function() return '' end, decode = function() return {} end }
   c = watched({ multiplayer = mp })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(hints(c), 1, 'on a server too')
+  T.eq(hints(c), 0, 'not while the server is still answering')
+  F.advance(c, 30)
+  T.eq(hints(c), 1, 'then on a server too')
   T.check(c.toasts[1].msg:find('BeamMP (edit layout)', 1, true) ~= nil, 'on a server: the BeamMP layout')
+  T.check(c.toasts[1].msg:find('stops as soon as the HUD is on screen', 1, true) ~= nil, 'and says when it stops')
+
+  -- The layout the game has up is named as the HUD Apps menu shows it, whatever it is.
+  for name, title in pairs({ beammp = 'BeamMP', beamngEarthMP = '.Earth multiplayer', beamngEarth = '.Earth', My_Layout = 'My_Layout' }) do
+    c = watched({ layout = function() return name end })
+    F.advance(c, Core.HUD_HINT_SECONDS + 1)
+    T.check(c.toasts[1].msg:find(title .. ' (edit layout)', 1, true) ~= nil, name .. ' is shown as ' .. title)
+    T.check(c.toasts[1].msg:find('another layout', 1, true) ~= nil, 'and that each layout has its own apps')
+  end
+  c = watched({ layout = function() error('no game state') end })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'unknown: the usual one')
+  c = watched({ layout = function() return '  ' end })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'blank: the usual one')
+end
+
+-- With the game's layouts at hand, the HUD is added for the player with one press, on the layout that's up.
+do
+  local function layouts(current)
+    local l = { now = current, added = {} }
+    l.current = function() return l.now and F.copy(l.now) end
+    l.add = function(filename, app, placement)
+      if l.fails then return false end
+      l.added[#l.added + 1] = { filename = filename, app = app, placement = F.copy(placement) }
+      l.now.has = true
+      return true
+    end
+    return l
+  end
+  local function watched(options)
+    local c = F.controller(options)
+    c.toasts, c.dialogs = {}, {}
+    c.trigger = function(name, data)
+      if name == 'toastrMsg' then c.toasts[#c.toasts + 1] = data end
+      if name == 'showConfirmationDialog' then c.dialogs[#c.dialogs + 1] = data end
+    end
+    return c
+  end
+  local function titled(c, title)
+    local n = 0
+    for _, e in ipairs(c.toasts) do if e.title == title then n = n + 1 end end
+    return n
+  end
+  local bmp = { filename = '/settings/ui_apps/layouts/default/beammp.uilayout.json', title = 'BeamMP', has = false }
+  local l = layouts(F.copy(bmp))
+  local c = watched({ layouts = l })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(#c.dialogs, 1, 'a pop-up asks to add the HUD')
+  T.eq(titled(c, Core.HUD_HINT_TITLE), 0, 'instead of the steps')
+  local d = c.dialogs[1]
+  T.eq(d.title, Core.HUD_ASK_TITLE, 'its title')
+  T.check(d.text:find('<b>BeamMP</b> layout', 1, true) ~= nil, 'naming the layout that is up')
+  T.eq(#d.buttons, 2, 'two buttons')
+  T.eq(d.buttons[2].label, 'Add the HUD', 'Add the HUD')
+  T.check(d.buttons[2].luaCallback:find('earthFreight_core.addHud(true)', 1, true) ~= nil, 'which adds it')
+  T.check(d.buttons[1].luaCallback:find('earthFreight_core.addHud(false)', 1, true) ~= nil, 'Not now, which does not')
+  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS)
+  T.eq(#c.dialogs + titled(c, Core.HUD_HINT_TITLE), 1, 'nothing more while it waits for an answer')
+  T.check(c:addHud(true), 'Add the HUD')
+  T.eq(#l.added, 1, 'the HUD is added once')
+  T.eq(l.added[1].filename, bmp.filename, 'to the layout that is up')
+  T.eq(l.added[1].app, Core.HUD_APP, 'the trucking HUD')
+  for k, v in pairs(Core.HUD_PLACEMENT) do T.eq(l.added[1].placement[k], v, 'where the HUD Apps menu puts it: ' .. k) end
+  T.eq(titled(c, Core.HUD_ADDED_TITLE), 1, 'and a pop-up says so')
+  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
+  T.eq(#c.dialogs + titled(c, Core.HUD_HINT_TITLE), 1, 'with the HUD on the layout, nothing more')
+  T.check(c:addHud(true), 'a second press is fine'); T.eq(#l.added, 1, 'and adds nothing more')
+
+  -- Already on the layout that's up: never asked, even if it is slow to show.
+  l = layouts({ filename = 'a', title = '.Earth', has = true })
+  c = watched({ layouts = l })
+  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
+  T.eq(#c.dialogs + #c.toasts, 0, 'a player who has the HUD on this layout is never asked')
+
+  -- Not now: the steps carry on, and that layout isn't asked about again this game, but another layout is.
+  l = layouts({ filename = 'earth', title = '.Earth', has = false })
+  c = watched({ layouts = l })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(#c.dialogs, 1, 'asked')
+  T.eq(c:addHud(false), false, 'Not now'); T.eq(#l.added, 0, 'adds nothing')
+  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS)
+  T.eq(#c.dialogs, 1, 'not asked again'); T.eq(titled(c, Core.HUD_HINT_TITLE), 1, 'the steps instead')
+  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'for that layout')
+  c:endMission(); c:reload()
+  l.now = { filename = 'mp', title = 'BeamMP', has = false }
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(#c.dialogs, 2, 'another layout (joining a server): asked again')
+  c:endMission(); c:reload()
+  l.now = { filename = 'earth', title = '.Earth', has = false }
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(#c.dialogs, 2, 'back on .Earth: not asked twice in one game')
+
+  -- A pop-up closed without an answer counts as Not now after a while.
+  l = layouts({ filename = 'earth', title = '.Earth', has = false })
+  c = watched({ layouts = l })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  F.advance(c, Core.HUD_ASK_WAIT_SECONDS + Core.HUD_HINT_REPEAT_SECONDS)
+  T.check(titled(c, Core.HUD_HINT_TITLE) >= 1, 'the steps come back')
+
+  -- Adding fails: the steps instead.
+  l = layouts({ filename = 'earth', title = '.Earth', has = false }); l.fails = true
+  c = watched({ layouts = l })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(c:addHud(true), false, 'not added')
+  T.eq(titled(c, Core.HUD_HINT_TITLE), 1, 'the steps straight away')
+  T.check(c.toasts[1].msg:find('could not be added', 1, true) ~= nil, 'saying it could not be added')
+
+  -- The game's layouts throwing, or with no layout up: the steps, as without them.
+  c = watched({ layouts = { current = function() error('broken') end, add = function() return false end } })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(#c.dialogs, 0, 'no pop-up'); T.eq(titled(c, Core.HUD_HINT_TITLE), 1, 'the steps')
+
+  -- A layout title can't put markup in the pop-up.
+  l = layouts({ filename = 'x', title = '<script>x</script>', has = false })
+  c = watched({ layouts = l })
+  F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.check(c.dialogs[1].text:find('<script>', 1, true) == nil, 'markup taken out')
+end
+
+-- Online, the server is told whether the HUD is on screen, each time that changes, for its chat reminders.
+do
+  local sent = {}
+  local mp = { inSession = function() return true end, listen = function() return true end,
+    send = function(event, text) if event == 'wwtcHud' then sent[#sent + 1] = text:find('"on":true', 1, true) ~= nil end end,
+    encode = function(t) return '{"on":' .. tostring(t.on) .. '}' end, decode = function() return {} end }
+  local c = F.controller({ multiplayer = mp })
+  c.mp.state = 'server'; c:reload()
+  F.advance(c, Core.HUD_HINT_SECONDS - 1)
+  T.eq(#sent, 0, 'nothing while the HUD may still be coming')
+  F.advance(c, 2)
+  T.eq(sent[1], false, 'missing: off')
+  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 2)
+  T.eq(#sent, 1, 'said once')
+  c:mount(true); c:tick(0.1)
+  T.eq(sent[2], true, 'on screen: on'); T.eq(#sent, 2, 'once')
+  c.mp.state = 'local'; c.hudSent = nil; c:tick(0.1)
+  T.eq(#sent, 2, 'nothing to a server without the plugin')
+end
+
+-- The game's name tags are kept off, and turned off again if the player turns them on.
+do
+  local on, calls = true, 0
+  local c = F.controller({ nametagsOff = function() calls = calls + 1; local was = on; on = false; return was end })
+  c:tick(0.1)
+  T.eq(on, false, 'name tags off straight away')
+  on = true
+  F.advance(c, 3)
+  T.eq(on, false, 'turned on in Options: off again within a few seconds')
+  T.check(calls <= 4, 'checked every 2 s, not every frame (' .. calls .. ')')
+end
+
+-- The help page's numbers come from the game's own rules, so its text matches the prices in play.
+do
+  local c = F.controller()
+  c:tick(0.1)
+  local rules = c:view().rules
+  T.eq(rules.robberMinKm, 5, 'how long a job robbers come for')
+  T.eq(rules.robberTake, nil, 'what robbers take is never on the help page')
+  T.eq(rules.basePrice, '$250,000', 'what a base costs')
+  T.eq(rules.driveFee, '$250', 'what Drive costs')
+  T.eq(rules.empSeconds, 20, 'EMP charge time')
+  T.eq(rules.online, false, 'single player is not online')
 end
 
 T.done('Earth Freight controller')

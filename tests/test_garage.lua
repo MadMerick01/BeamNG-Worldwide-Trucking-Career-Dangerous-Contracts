@@ -21,6 +21,7 @@ local info = g:inspect()
 T.eq(info.id, 7, 'reads the player vehicle id'); T.eq(info.damage, 1234, 'reads damage from map.objects')
 T.check(g:repair(), 'repair accepted'); T.eq(replaced.model, 'pickup', 'respawns the same model')
 T.eq(replaced.options.config.model, 'pickup', 'respawns with the current parts config'); T.eq(replaced.veh:getID(), 7, 'replaces the player vehicle in place')
+T.eq(replaced.options.autoEnterVehicle, nil, 'the player vehicle respawns with the player in it')
 -- A trailer put back as it was sold: another vehicle, by id, respawned from its .pc path.
 do
   local trailer = { getID = function() return 42 end, getJBeamFilename = function() return 'tiltdeck' end }
@@ -29,6 +30,7 @@ do
   T.check(tg:repair('vehicles/tiltdeck/earth_freight_22ft_boxes.pc', 42), 'trailer respawn accepted')
   T.eq(replaced.veh:getID(), 42, 'the trailer, not the player vehicle'); T.eq(replaced.model, 'tiltdeck', 'its own model')
   T.eq(replaced.options.config, 'vehicles/tiltdeck/earth_freight_22ft_boxes.pc', 'as its .pc file sets it up')
+  T.eq(replaced.options.autoEnterVehicle, false, 'the player stays in their car')
   T.eq(select(2, tg:repair('x.pc', 43)), 'vehicle_required', 'a vehicle that is gone is refused')
 end
 
@@ -330,6 +332,7 @@ do
   T.check(tg:setLoadVolume(60, '$load_volume', 12000), 'respawn asked')
   T.eq(replaced.veh:getID(), 60, 'the tanker respawned in place'); T.eq(replaced.options.config.vars['$load_volume'], 12000, 'filled to 12,000 L')
   T.eq(replaced.options.config.vars['$airtank'], 125, 'its other settings kept'); T.eq(replaced.options.config.parts.tank, 'x', 'and its parts')
+  T.eq(replaced.options.autoEnterVehicle, false, 'the game does not put the player in the tanker')
   T.eq(data.config.vars['$load_volume'], 0, 'the game data itself is not changed')
   local ok, why = tg:setLoadVolume(61, '$load_volume', 1)
   T.check(not ok and why == 'vehicle_required', 'no such vehicle')

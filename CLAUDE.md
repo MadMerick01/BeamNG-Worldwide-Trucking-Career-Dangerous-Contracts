@@ -12,6 +12,20 @@
 - Never edit the numbered build sections by hand, except to fix a mistake.
 - If two PRs both add to `## Coming next`, a merge conflict there is expected. Keep both sets of entries.
 
+## Every change to how the game works updates the help page
+
+The HUD's help page (the **?** at the top of the HUD) reads all its text from
+`mod/earth_freight/ui/modules/apps/TruckingCareerDC/help.txt`. A pull request that changes how something works,
+adds a feature or changes what a player sees must update that file in the same PR, like the changelog.
+
+- Keep each point short and in plain English, written for players, like the changelog.
+- Don't type in prices or numbers the game sets: use a `{name}` from `rulesView` in `core.lua`, and add one there if
+  it's missing.
+- Keep the section ids: the small **?** buttons on the HUD open sections by id. Mark online-only sections `| online`.
+- The **Getting started** points are also the start page's How to play steps, and `FALLBACK_STEPS` in `app.js` is a
+  copy of them (a test checks they match).
+- When a tab's long explanation would make the HUD taller, put it in `help.txt` and give the tab a small **?** instead.
+
 ## The author's name
 
 The author is **MadMerick** everywhere in this repo and anything posted online: docs, changelog, code comments, commit messages and pull requests. Never use any other name for them.

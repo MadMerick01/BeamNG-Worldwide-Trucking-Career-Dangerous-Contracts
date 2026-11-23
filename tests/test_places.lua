@@ -147,14 +147,18 @@ do
   T.check(count > 0 and count < total * 0.03, 'shortages are rare: ' .. count .. ' of ' .. total)
 end
 
--- The board: 3 to 5 jobs within 20 km, always one decent, the same until a job is done.
+-- The board: three town jobs within 20 km and a long haul of 20 to 60 km, always one decent, the
+-- same until a job is done. Dangerous contracts are off for now, so the board ends with the drop.
 do
+  T.eq(jobs.CONTRACTS, false, 'dangerous contracts are off for now')
   local jackpots, jobsSeen, sweet = 0, 0, 0
   for _, n in ipairs(places.nearest(penrith, 20)) do
     for seed = 0, 9 do
       local board = jobs.board(n.place, seed, {}, 5000)
-      local contract = table.remove(board)
-      T.check(contract.contract ~= nil and contract.drop ~= nil and contract.to == n.place.id, n.place.name .. ' ends its board with a dangerous contract')
+      for _, j in ipairs(board) do T.eq(j.contract, nil, n.place.name .. ' offers no dangerous contract') end
+      -- The contract job still works, for when they come back.
+      local contract = jobs.contractJob(n.place, seed)
+      T.check(contract.contract ~= nil and contract.drop ~= nil and contract.to == n.place.id, 'a dangerous contract can still be made')
       local section = contracts.get(contract.contract)
       T.near(contract.drop.latitude, section.finish.latitude, 1e-12, 'delivered at the section finish')
       T.eq(jobs.quote(contract, 10, {}, 5000).pay, math.floor(jobs.basePay(goods.get(contract.good), 10, 5) * section.pay / 10 + 0.5) * 10, 'paid its multiple of a 5 km job')
@@ -163,12 +167,17 @@ do
       local metres = location.distance(n.place, drop.drop)
       T.check(metres >= jobs.DROP_MIN - 1 and metres <= jobs.DROP_MAX + 1, 'the drop spot is 1.8 to 3.2 km out: ' .. math.floor(metres))
       T.near(drop.km, metres / 1000, 1e-9, 'its distance is the straight line')
+      local long = table.remove(board)
+      T.check(long.long and long.id:match('^long_') ~= nil, n.place.name .. ' posts a long haul before the drop')
+      T.check(long.good == 'parts' or long.good == 'bricks', 'of parts or bricks')
+      T.check(long.km > jobs.LONG_HAUL[1] and long.km <= jobs.LONG_HAUL[2] and long.to ~= n.place.id, 'to a town 20 to 60 km away: ' .. long.km)
       T.eq(#board, 3, n.place.name .. ' posts three town jobs')
       T.eq(board[1].good, 'parts', 'parts'); T.eq(board[2].good, 'bricks', 'bricks')
       T.eq(board[3].good, jobs.fluid(n.place).id, 'and the town fluid')
-      local ids, decent = { [drop.id] = true }, false
+      local ids, decent = { [drop.id] = true, [long.id] = true }, jobs.quote(long, 10, {}, 5000).factor >= 1
       for _, j in ipairs(board) do
         T.check(not ids[j.id], 'each job once'); ids[j.id] = true
+        T.check(j.to ~= long.to, 'the long haul goes to a town of its own')
         T.check(j.km <= jobs.MAX_KM + 1e-9 and j.to ~= n.place.id, 'jobs go to another town within 20 km')
         local q = jobs.quote(j, 10, {}, 5000)
         if q.factor >= 1 then decent = true end

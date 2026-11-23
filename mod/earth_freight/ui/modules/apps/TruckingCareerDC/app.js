@@ -8,7 +8,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     // The multiplayer server's status for Play online: 'checking', 'online', 'offline' or 'unknown' (not reachable).
     server: { status: 'checking', at: null },
     // Towns already looked up for a real business this game, so each is only asked once.
-    businessAsked: {}
+    businessAsked: {},
+    // Towns already asked about for car parks to put a depot in.
+    lotsAsked: {},
+    // The depot computer's window: open from Use computer until the player walks away or takes a job.
+    pc: { open: false }
   }
   // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
   var STORE = 'earthFreight.hudMinimised'
@@ -21,6 +25,12 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     server: 'https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/',
     discord: 'https://discord.gg/eYJCfXNGbP'
   }
+  // The help page's text, in help.txt next to this file, read once and kept for the rest of the game.
+  var HELP_URL = '/ui/modules/apps/TruckingCareerDC/help.txt'
+  // Whether the player has opened the help page yet: until then its ? button glows. Kept in the browser's storage.
+  var HELP_SEEN = 'earthFreight.helpSeen'
+  kept.help = { sections: [], status: 'none', at: null, seen: false }
+  try { kept.help.seen = window.localStorage.getItem(HELP_SEEN) === '1' } catch (e) {}
   var stored = function () { try { return window.localStorage.getItem(STORE) === '1' } catch (e) { return false } }
   var store = function (on) { try { window.localStorage.setItem(STORE, on ? '1' : '0') } catch (e) {} }
   // The Town tab's Distance filter, kept the same way: any, short, medium or long.
@@ -54,6 +64,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   kept.maydaySeen = storedMayday()
   // MadMerick's alert, played once when a new call's card shows.
   var MAYDAY_SOUND = '/ui/modules/apps/TruckingCareerDC/mayday_alert.wav'
+  var EMP_SOUND = '/ui/modules/apps/TruckingCareerDC/emp.wav'
+  // MadMerick's small alerts: cha-ching for money in, and the EMP reaching full charge.
+  var CASH_SOUND = '/ui/modules/apps/TruckingCareerDC/cha_ching.wav'
+  var EMP_CHARGED_SOUND = '/ui/modules/apps/TruckingCareerDC/emp_charged.wav'
   // The parts bill box. The HUD is hidden while the game's parts menu is open, so Lua sends each new
   // bill here and the box goes on the page itself, over the menu. It stays until the player closes
   // it, Lua says the bill was paid or undone, or the menu closes and the HUD is built again.
@@ -238,6 +252,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         d = d || scope.data || {}
         if (d.flash && (d.flash.kind === 'cancelled' || d.flash.kind === 'puncture')) return 'bad'
         if (scope.maydayCard(d)) return 'mayday'
+        if (scope.thiefCard(d) && !scope.robberyGood(d.thief)) return 'bad'
+        if (d.admin && d.admin.drive) return 'bad'
         for (var id in alerts) if (alerts[id](d)) return 'waiting'
         return ''
       }
@@ -278,6 +294,69 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var m = d.mayday
         return !!(m && m.open && !m.running && kept.maydaySeen !== m.round && !(scope.intro && scope.intro.open))
       }
+      // The base thief: the card shows while a theft is on, with Chase and then the EMP.
+      scope.thiefCard = function (d) {
+        d = d || scope.data || {}
+        return !!(d.thief && d.thief.phase && !(scope.intro && scope.intro.open))
+      }
+      // The card's heading: what to do, or how it ended.
+      scope.thiefTitle = function (t) {
+        if (!t) return ''
+        var who = t.road ? 'ROBBER' : 'THIEF'
+        if (t.phase === 'caught' || (t.phase === 'over' && t.outcome === 'caught')) return who + ' CAUGHT'
+        if (t.phase === 'over' && t.outcome === 'dropped') return 'THE THIEF DROPPED IT'
+        if (t.phase === 'over') return 'THE ' + who + ' GOT AWAY'
+        if (t.phase === 'return') return 'BACK TO YOUR JOB'
+        if (t.phase === 'chasing') return 'CATCH THE ' + who
+        return 'THIEF AT YOUR BASE'
+      }
+      var dollars = function (n) { return '$' + Math.round(n || 0).toLocaleString('en-US') }
+      // The money, big on the card: what was taken while it's on, what came back once it's over.
+      scope.robberyMoney = function (t) {
+        if (!t || !t.phase) return null
+        if (t.phase === 'caught' || ((t.phase === 'over' || t.phase === 'return') && t.paid)) {
+          return { good: true, text: '+' + dollars(t.paid) + (t.outcome === 'dropped' ? ' BACK' : ' WON BACK') }
+        }
+        if ((t.phase === 'over' || t.phase === 'return') && t.outcome) return { good: false, text: '-' + dollars(t.amount) + ' GONE' }
+        if (t.phase === 'return') return null
+        return t.amount ? { good: false, text: '-' + dollars(t.amount) + ' TAKEN' } : null
+      }
+      scope.robberyGood = function (t) { var m = scope.robberyMoney(t); return !!(m && m.good) }
+      scope.thiefChase = function () { if (scope.data && scope.data.thief && scope.data.thief.chaseAllowed) core('thiefChase()') }
+      // Chase in a parked car: by its slot number, a whole number only.
+      scope.thiefChaseIn = function (car) {
+        var t = scope.data && scope.data.thief
+        if (!t || !t.chaseAllowed || !car || !car.allowed || car.index !== Math.floor(car.index) || car.index < 1) return
+        core('thiefChase(' + car.index + ')')
+      }
+      scope.getRobbed = function () { if (scope.data && scope.data.robbery && scope.data.robbery.allowed) core('getRobbed()') }
+      scope.thiefGoBack = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'return' && scope.data.thief.returnAllowed) core('thiefGoBack()') }
+      scope.thiefLetGo = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'stolen') core('thiefLetGo()') }
+      scope.empThief = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'chasing') core('empThief()') }
+      // The road robber: ROB ME on the Route tab.
+      scope.robMe = function () { if (scope.data && scope.data.robMe && scope.data.robMe.allowed) core('robMe()') }
+      // Its "Robbers and thieves" switch, offered in single player only.
+      scope.setRobbersOn = function (on) { if (scope.data && scope.data.robMe && scope.data.robMe.canSwitch) core('setRobbersOn(' + (on ? 'true' : 'false') + ')') }
+      // The admin robber (the server's admins only): Rob a player from the list, and Stop.
+      scope.adminRob = function (p) { if (p && p.allowed && typeof p.id === 'number') core('adminRob(' + Math.floor(p.id) + ')') }
+      scope.adminEmp = function () { var d = scope.data && scope.data.admin && scope.data.admin.drive; if (d && d.emp && d.emp.ready) core('adminEmp()') }
+      scope.adminStop = function () { if (scope.data && scope.data.admin && scope.data.admin.drive && scope.data.admin.drive.stopAllowed) core('adminStop()') }
+      // The EMP button: grey and filling while it charges, then green IN RANGE or yellow OUT OF RANGE with the distance.
+      scope.empLabel = function (e) {
+        if (!e) return 'EMP'
+        if (!e.ready) return 'EMP charging ' + e.chargeLeft + ' s'
+        if (e.inRange) return 'EMP \u00b7 IN RANGE'
+        return 'EMP \u00b7 OUT OF RANGE' + (e.metres != null ? ' \u00b7 ' + e.metres + ' m' : '')
+      }
+      scope.empStyle = function (e) {
+        if (!e) return { background: '#f2c94c', border: '1px solid #f2c94c' }
+        if (!e.ready) {
+          var p = Math.max(0, Math.min(100, e.charged || 0))
+          return { background: 'linear-gradient(90deg, #8fa39d ' + p + '%, #3a4744 ' + p + '%)', border: '1px solid #8fa39d', opacity: 0.9 }
+        }
+        if (e.inRange) return { background: '#6fcf97', border: '1px solid #6fcf97' }
+        return { background: '#f2c94c', border: '1px solid #f2c94c' }
+      }
       scope.closeMaydayCard = function () { if (scope.data) seeMayday(scope.data.mayday) }
       scope.openMaydayCard = function () {
         if (!scope.data || !scope.data.mayday) return
@@ -296,6 +375,69 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         } catch (e) { chime() }
       }
       scope.maydayAlerts = function () { return kept.maydayAlerts || 0 }
+      // A new alert's card is at the top of the HUD, above the tabs: a player scrolled down a long tab would miss it, so
+      // the HUD goes back to the top once, as the alert rings. Then they can scroll down again. Not when minimised: the
+      // card shows by itself there.
+      var toTop = function () {
+        if (scope.hud && scope.hud.minimised) return
+        var page = element && element[0]
+        if (!page) return
+        kept.toTops = (kept.toTops || 0) + 1
+        try {
+          if (typeof page.scrollTo === 'function') page.scrollTo({ top: 0, behavior: 'smooth' })
+          else page.scrollTop = 0
+        } catch (e) { try { page.scrollTop = 0 } catch (e2) {} }
+      }
+      scope.toTops = function () { return kept.toTops || 0 }
+      // The EMP sound: once each time Lua counts one more (the player fired, or a robber's EMP hit them).
+      // Loaded as the HUD starts, so the first EMP plays straight away: a sound only fetched when it is needed missed it.
+      // Each loaded as the HUD starts, so the first one plays straight away: a sound only fetched when it is needed missed it.
+      var preloaded = {}
+      var loadSound = function (path, volume) {
+        if (preloaded[path] || typeof Audio === 'undefined') return preloaded[path] || null
+        try {
+          var sound = new Audio(path)
+          sound.preload = 'auto'
+          sound.volume = volume
+          if (typeof sound.load === 'function') sound.load()
+          preloaded[path] = sound
+        } catch (e) { return null }
+        return preloaded[path]
+      }
+      var playSound = function (path, volume) {
+        try {
+          var sound = loadSound(path, volume)
+          if (!sound) return
+          // From the start again, even if the last one is still playing.
+          try { sound.currentTime = 0 } catch (e) {}
+          var played = sound.play()
+          if (played && played.catch) played.catch(function () {})
+        } catch (e) {}
+      }
+      loadSound(EMP_SOUND, 0.8)
+      loadSound(CASH_SOUND, 0.6)
+      loadSound(EMP_CHARGED_SOUND, 0.6)
+      var empBang = function () {
+        kept.empBangs = (kept.empBangs || 0) + 1
+        playSound(EMP_SOUND, 0.8)
+      }
+      // Cha-ching: once each time Lua counts money earned or won back.
+      var cashIn = function () {
+        kept.cashIns = (kept.cashIns || 0) + 1
+        playSound(CASH_SOUND, 0.6)
+      }
+      scope.cashIns = function () { return kept.cashIns || 0 }
+      // The EMP button going from charging to ready, on the chase card or the admin robber's card.
+      var empReady = function (d) {
+        var e = d && ((d.thief && d.thief.emp) || (d.admin && d.admin.drive && d.admin.drive.emp))
+        return e ? (e.ready ? 'ready' : 'charging') : null
+      }
+      var empCharged = function () {
+        kept.empCharges = (kept.empCharges || 0) + 1
+        playSound(EMP_CHARGED_SOUND, 0.6)
+      }
+      scope.empCharges = function () { return kept.empCharges || 0 }
+      scope.empBangs = function () { return kept.empBangs || 0 }
       // Opens a tab when its bill, town or coordinates first appear; the player can switch away after.
       var autoOpen = [
         ['garage', function (d) { return !!d.carChange }], ['garage', function (d) { return !!d.partsChange }],
@@ -309,15 +451,29 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         // The start page opens once on a new game or on loading a save, until the player is there.
         if (next.arrived || (previous.mode && previous.mode !== next.mode)) kept.introShown = false
         if (scope.atDestination(next) && !scope.atDestination(previous)) chime()
+        // Only a new one: never for the count a rebuilt HUD first sees.
+        if (previous && typeof previous.empSound === 'number' && next.empSound > previous.empSound) empBang()
+        if (previous && typeof previous.cashSound === 'number' && next.cashSound > previous.cashSound) cashIn()
+        if (empReady(previous) === 'charging' && empReady(next) === 'ready') empCharged()
         if (scope.maydayCard(next) && kept.maydayRung !== next.mayday.round) {
           kept.maydayRung = next.mayday.round
           maydayAlert()
+          toTop()
         }
+        // A thief at the player's base or a road robber's hit rings the Mayday alert too, once as it happens (not for one
+        // a rebuilt HUD first sees).
+        var stolen = function (d) {
+          return !!(d && d.thief && ((d.thief.phase === 'stolen' && !d.thief.road) || (d.thief.road && d.thief.phase === 'chasing')))
+        }
+        if (previous && previous.state && stolen(next) && !stolen(previous)) { maydayAlert(); toTop() }
         if ((next.mode === 'start' || next.mode === 'resume') && !next.arrived && !kept.introShown) {
           kept.introShown = true; scope.openIntro(next)
         }
         // A bill, an insurance offer or being stranded needs the HUD, so the start page makes way.
         if (scope.intro.open && urgent(next) && !urgent(previous)) scope.closeIntro()
+        if (kept.help.at && urgent(next) && !urgent(previous)) scope.closeHelp()
+        // The computer's window closes once the player walks away from it, or has taken a job.
+        if (kept.pc.open && (!next.computer || !next.computer.near || (next.load && !previous.load) || urgent(next))) kept.pc.open = false
         for (var i = 0; i < autoOpen.length; i++) {
           if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) {
             scope.setTab(autoOpen[i][0])
@@ -338,8 +494,41 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.intro = kept.intro
       var startPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-start') : null
       if (startPage && typeof document !== 'undefined' && document.body) document.body.appendChild(startPage)
+      // The help page is moved onto the page body the same way, so it can fill the middle of the screen.
+      var helpPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-help') : null
+      if (helpPage && typeof document !== 'undefined' && document.body) document.body.appendChild(helpPage)
+      // The depot computer: its Use computer button low in the middle of the screen, and its window, a big
+      // one in the middle like the start page, are moved onto the page body the same way.
+      var pcPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-pc') : null
+      if (pcPage && typeof document !== 'undefined' && document.body) document.body.appendChild(pcPage)
+      scope.pc = kept.pc
+      scope.useComputer = function () {
+        var c = scope.data && scope.data.computer
+        if (c && c.near) kept.pc.open = true
+      }
+      scope.closeComputer = function () { kept.pc.open = false }
+      // The depot of the town the player is in, while they have no job and aren't at its computer.
+      scope.depotStrip = function (d) {
+        var c = d && d.computer
+        return c && c.depot && !c.near && !d.load && c.depot.distanceMetres != null ? c.depot : null
+      }
+      scope.gpsToTownDepot = function () {
+        var c = scope.data && scope.data.computer
+        if (c && c.depot && c.depot.gpsAllowed) core('gpsToTownDepot()')
+      }
+      // The town's jobs and the fuel runs this computer offers.
+      scope.pcTown = function () {
+        var d = scope.data || {}, c = d.computer
+        return !!(c && c.near && c.town && d.town && d.town.id === c.town)
+      }
+      scope.pcFuel = function () {
+        var d = scope.data || {}, c = d.computer
+        return !!(c && c.near && c.fuel && d.fuelRuns && d.fuelRuns.hub && d.fuelRuns.hub.id === c.fuel && !d.load)
+      }
       fit()
       scope.openIntro = function (d) {
+        if (scope.closeHelp) scope.closeHelp()
+        if (loadHelp) loadHelp()
         scope.intro.name = ((d || scope.data || {}).playerName) || ''
         scope.intro.open = true
         fit()
@@ -380,14 +569,100 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.returning = function (d) { return !!d && d.mode === 'resume' && !d.arrived && !!d.resume }
       // A new game that has not reached the start town yet: nothing to show or start over.
       scope.firstLaunch = function (d) { return !!d && d.mode === 'start' && !d.arrived }
-      scope.introSteps = [
-        'open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
+      // The start page's How to play steps are the help page's Getting started points, from help.txt. These are
+      // only shown if help.txt can't be read; edit help.txt, not these.
+      var FALLBACK_STEPS = [
+        'Choose where you start: open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
         'Then fit cargo boxes: the starter car only has its boot, which takes 2 slots. In Buy parts, put Cargo Load boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.',
-        'Stop in a town. The Town tab lists its jobs with what each pays. Press Take job: it fills your car.',
+        'Drive to a town\'s depot, a tin shed with a computer on a desk in front. Park close to the computer, get out, walk up to it and press Use computer. Pick a job and press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
         'The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.'
       ]
+      scope.introSteps = FALLBACK_STEPS
+      // The help page: a big window in the middle of the screen with every part of the game explained, opened
+      // with the ? at the top of the HUD or a small ? beside something, which opens it at that section. It closes
+      // with its own X or a click outside it, never with Esc, which is the game's own menu key.
+      scope.helpState = kept.help
+      // help.txt: a line starting with # starts a section (# id | Title, or # id | Title | online), // lines
+      // are notes, and every other line is one point.
+      scope.readHelp = function (text) {
+        var sections = []
+        String(text || '').split(/\r?\n/).forEach(function (raw) {
+          var line = raw.trim()
+          if (!line || line.indexOf('//') === 0) return
+          if (line.charAt(0) === '#') {
+            var parts = line.slice(1).split('|').map(function (p) { return p.trim() })
+            if (parts[0] && parts[1]) sections.push({ id: parts[0], title: parts[1], online: parts[2] === 'online', lines: [] })
+            return
+          }
+          if (sections.length) sections[sections.length - 1].lines.push(line)
+        })
+        return sections
+      }
+      var useHelp = function (sections) {
+        kept.help.sections = sections
+        kept.help.status = sections.length ? 'ready' : 'failed'
+        var start = sections.filter(function (s) { return s.id === 'start' })[0]
+        scope.introSteps = start && start.lines.length ? start.lines : FALLBACK_STEPS
+        var at = kept.help.at
+        if (at && !sections.some(function (s) { return s.id === at })) kept.help.at = sections.length ? sections[0].id : 'start'
+      }
+      var loadHelp = function () {
+        if (kept.help.status === 'ready' || kept.help.status === 'loading') return
+        if (typeof fetch !== 'function') { kept.help.status = 'failed'; return }
+        kept.help.status = 'loading'
+        var failed = function () { scope.$evalAsync(function () { kept.help.status = 'failed' }) }
+        try {
+          fetch(HELP_URL, { cache: 'no-store' })
+            .then(function (r) { if (!r || !r.ok || typeof r.text !== 'function') throw new Error('no help'); return r.text() })
+            .then(function (text) { scope.$evalAsync(function () { useHelp(scope.readHelp(text)) }) }, failed)
+        } catch (e) { failed() }
+      }
+      // Read when the start page or the help page first opens.
+      if (kept.help.status === 'ready') useHelp(kept.help.sections)
+      // A point's {names} filled in with the game's own numbers (rules, from rulesView in core.lua).
+      scope.helpLine = function (line) {
+        var rules = (scope.data && scope.data.rules) || {}
+        return String(line).replace(/\{(\w+)\}/g, function (all, name) {
+          var v = rules[name]
+          return typeof v === 'string' || typeof v === 'number' ? String(v) : '...'
+        })
+      }
+      scope.helpOpen = function () { return !!kept.help.at }
+      scope.help = function (id) {
+        var sections = kept.help.sections
+        var known = sections.some(function (s) { return s.id === id })
+        // Before help.txt is read the section asked for is kept, and checked once it is.
+        kept.help.at = known || !sections.length ? (id || 'start') : sections[0].id
+        kept.help.copied = null
+        if (kept.help.status === 'failed') kept.help.status = 'none'
+        loadHelp()
+        if (!kept.help.seen) {
+          kept.help.seen = true
+          try { window.localStorage.setItem(HELP_SEEN, '1') } catch (e) {}
+        }
+      }
+      scope.closeHelp = function () { kept.help.at = null; kept.help.copied = null }
+      // A click on the dark space around the window closes it; clicks inside the window don't.
+      scope.helpBackdrop = function (event) { if (event && event.target === event.currentTarget) scope.closeHelp() }
+      scope.helpNext = function () {
+        var sections = kept.help.sections
+        for (var i = 0; i < sections.length - 1; i++) if (sections[i].id === kept.help.at) { kept.help.at = sections[i + 1].id; return }
+      }
+      // The live server page and the Discord at the top of the help page: copied for the player to paste into their
+      // browser, or opened in it where the game can.
+      scope.helpLinks = LINKS
+      scope.copyHelpLink = function (which) {
+        var url = LINKS[which]
+        if (!url) return
+        call('setClipboard("' + url + '")')
+        kept.help.copied = which
+      }
+      scope.openHelpLink = function (which) {
+        scope.openLink(which)
+        kept.help.copied = which
+      }
       // While a text box has focus the game's keys are off, so typing does not drive the car.
       var typingNow = false
       scope.typing = function (on) {
@@ -960,6 +1235,50 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           } else core('noBusiness("' + want.key + '")')
         }, function () { /* No answer from the web: the town's usual drop-off stays for this game. */ })
       }
+      // Depots in real car parks: when the game is about to place a town's depot it asks (computer.lots),
+      // and the HUD asks Overpass once for the open car parks round the town (none on a roof or under
+      // ground), then sports pitches. The game tries them first, nearest the middle first, and still
+      // checks the ground at each; with no answer it looks along the roads as before.
+      var LOT_MIN_M2 = 600, LOTS_SENT = 6
+      var lotQuery = function (lat, lon, metres) {
+        var at = '(around:' + Math.round(metres) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')'
+        return '[out:json][timeout:15];(way' + at + '[amenity=parking];way' + at + '[leisure=pitch];);out geom 200;'
+      }
+      // The lots worth trying, best first: open car parks, then pitches, each nearest the middle first.
+      scope.depotLots = function (elements, lat, lon) {
+        var kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540
+        var out = []
+        ;(elements || []).forEach(function (e) {
+          var t = (e && e.tags) || {}, g = (e && e.geometry) || []
+          var rank = t.amenity === 'parking' ? 0 : (t.leisure === 'pitch' ? 1 : -1)
+          if (rank < 0 || g.length < 4) return
+          if (/^(multi-storey|underground|rooftop|sheds|carports|garage_boxes)$/.test(t.parking) || t.building || t.indoor === 'yes' ||
+              (t.layer && Number(t.layer) !== 0) || t.location === 'underground' || t.location === 'rooftop') return
+          var area = 0, cx = 0, cy = 0, n = 0
+          for (var i = 0; i < g.length; i++) {
+            var p = g[i], q = g[(i + 1) % g.length]
+            if (typeof p.lat !== 'number' || typeof p.lon !== 'number' || typeof q.lat !== 'number' || typeof q.lon !== 'number') return
+            var px = (p.lon - lon) * kx, py = (p.lat - lat) * ky, qx = (q.lon - lon) * kx, qy = (q.lat - lat) * ky
+            area += px * qy - qx * py
+            if (i < g.length - 1 || p.lat !== g[0].lat || p.lon !== g[0].lon) { cx += px; cy += py; n++ }
+          }
+          area = Math.abs(area) / 2
+          if (area < LOT_MIN_M2 || !n) return
+          cx /= n; cy /= n
+          out.push({ id: e.type + '/' + e.id, rank: rank, d: Math.sqrt(cx * cx + cy * cy), lat: lat + cy / ky, lon: lon + cx / kx })
+        })
+        out.sort(function (a, b) { return a.rank - b.rank || a.d - b.d || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) })
+        return out.slice(0, LOTS_SENT)
+      }
+      scope.lookUpLots = function (want) {
+        if (!want || !/^[a-z0-9_]+:[a-z0-9_-]+$/i.test(String(want.key)) || kept.lotsAsked[want.key]) return null
+        if (typeof want.latitude !== 'number' || typeof want.longitude !== 'number') return null
+        kept.lotsAsked[want.key] = true
+        return overpass(lotQuery(want.latitude, want.longitude, want.metres || 400)).then(function (elements) {
+          var lots = scope.depotLots(elements, want.latitude, want.longitude)
+          core('setDepotLots("' + want.key + '","' + lots.map(function (l) { return l.lat.toFixed(6) + ',' + l.lon.toFixed(6) }).join(';') + '")')
+        }, function () { /* No answer from the web: the depot is found along the roads. */ })
+      }
       scope.$on('EarthFreightState', function (event, data) {
         if (disposed || !data || typeof data.state !== 'string') return
         lastMessage = Date.now()
@@ -972,6 +1291,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           scope.data = data
           if (data.load && data.load.lookup) scope.lookUpBusiness(data.load.lookup)
           if (data.fuelRuns && data.fuelRuns.lookup) scope.lookUpBusiness(data.fuelRuns.lookup)
+          if (data.computer && data.computer.lots) scope.lookUpLots(data.computer.lots)
         })
       })
       mount(true)
@@ -993,6 +1313,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         disposed = true
         fitBox(false)
         if (startPage && startPage.parentNode) startPage.parentNode.removeChild(startPage)
+        if (helpPage && helpPage.parentNode) helpPage.parentNode.removeChild(helpPage)
+        if (pcPage && pcPage.parentNode) pcPage.parentNode.removeChild(pcPage)
         scope.typing(false)
         clearInterval(heartbeat)
         mount(false)

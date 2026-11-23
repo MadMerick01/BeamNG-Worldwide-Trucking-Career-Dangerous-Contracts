@@ -6,6 +6,7 @@ import test from 'node:test'
 const APP = '../mod/earth_freight/ui/modules/apps/TruckingCareerDC/'
 const source = readFileSync(new URL(APP + 'app.js', import.meta.url), 'utf8')
 const html = readFileSync(new URL(APP + 'app.html', import.meta.url), 'utf8')
+const help = readFileSync(new URL(APP + 'help.txt', import.meta.url), 'utf8')
 const fixed = body => 'if earthFreight_core then earthFreight_core.' + body + ' end'
 // Just enough of a page for the parts bill box: elements with text, style, children and a click.
 function page() {
@@ -922,7 +923,7 @@ test('sightseeing: Go sightseeing sits under Street View, and sightseeing swaps 
   const street = html.indexOf('ng-click="openStreetView()"')
   const go = html.indexOf('ng-click="goSightseeing()"')
   assert.ok(street > 0 && go > street, 'Go sightseeing comes after the Street View button')
-  const panel = html.slice(html.indexOf('<div ng-if="data.sightseeing.on"'), html.indexOf('role="tablist"'))
+  const panel = html.slice(html.indexOf('<div ng-if="data.sightseeing.on && !data.admin.drive"'), html.indexOf('role="tablist"'))
   assert.ok(panel.includes('ng-click="returnToJob()"'), 'Return to your job in the sightseeing panel')
   assert.ok(html.includes('role="tablist" ng-if="!data.sightseeing.on"'), 'tabs hidden while sightseeing')
   assert.ok(html.includes('role="tabpanel" ng-if="!data.sightseeing.on"'), 'tab panels hidden while sightseeing')
@@ -1006,11 +1007,11 @@ test('Street View has its own tab with sightseeing, and the header only shows a 
   const panel = html.slice(html.indexOf(`ng-if="tab === 'streetview'"`), html.indexOf(`ng-if="tab === 'radio'"`))
   for (const part of ['openStreetView()', 'stopStreetView()', 'copyStreetView()', 'goSightseeing()', 'Turn on', 'Turn off', 'Open again'])
     assert.ok(panel.includes(part), part + ' on the Street View tab')
-  const header = html.slice(0, html.indexOf('<div ng-if="data.sightseeing.on"'))
+  const header = html.slice(0, html.indexOf('<div ng-if="data.sightseeing.on && !data.admin.drive"'))
   for (const part of ['openStreetView()', 'copyStreetView()', 'goSightseeing()']) assert.ok(!header.includes(part), part + ' not in the header')
   assert.ok(header.includes(`ng-if="data.streetView.on && !data.sightseeing.on"`) && header.includes(`setTab('streetview')`), 'marker opens the tab')
   // The tabs are hidden while sightseeing, so its panel keeps Street View to hand.
-  const seeing = html.slice(html.indexOf('<div ng-if="data.sightseeing.on"'), html.indexOf('role="tablist"'))
+  const seeing = html.slice(html.indexOf('<div ng-if="data.sightseeing.on && !data.admin.drive"'), html.indexOf('role="tablist"'))
   assert.ok(seeing.includes('openStreetView()') && seeing.includes('copyStreetView()'), 'Street View while sightseeing')
   a.scope.setTab('streetview'); assert.equal(a.scope.tab, 'streetview')
 })
@@ -1096,6 +1097,94 @@ test('Mayday Rescue card: shows for a new call even when minimised, plays the al
   assert.equal(a.scope.tab, 'mayday', 'on the Mayday Rescue tab')
   assert.equal(a.scope.maydayCard(), false, 'and the card goes')
 })
+test('EMP sound: plays once for each EMP the game counts, never for the count a fresh HUD first sees', () => {
+  const played = [], made = []
+  class Audio { constructor(src) { this.src = src; this.loaded = 0; made.push(this) } load() { this.loaded++ } play() { played.push(this); return { catch() {} } } }
+  const a = app(undefined, undefined, { Audio })
+  assert.equal(made.filter(x => x.src.endsWith('/emp.wav')).length, 1, 'the EMP sound is loaded as the HUD starts')
+  a.state({ state: 'READY', arrived: true, empSound: 3 })
+  assert.equal(played.length, 0, 'the first count is old news')
+  a.state({ state: 'READY', arrived: true, empSound: 3 })
+  assert.equal(played.length, 0, 'no change: no sound')
+  a.state({ state: 'READY', arrived: true, empSound: 4 })
+  assert.equal(played.length, 1, 'one more EMP: the sound plays')
+  assert.equal(played[0].src, '/ui/modules/apps/TruckingCareerDC/emp.wav')
+  assert.equal(made.filter(x => x.src.endsWith('emp.wav')).length, 1, 'loaded once, as the HUD starts')
+  assert.ok(made.every(x => x.loaded === 1), 'every sound fetched ahead, so the first one plays')
+  a.state({ state: 'DRIVING', arrived: false, empSound: 5 })
+  assert.equal(played.length, 2, 'and again while driving')
+  assert.equal(a.scope.empBangs(), 2)
+  const quiet = app()
+  quiet.state({ state: 'READY', arrived: true, empSound: 0 })
+  quiet.state({ state: 'READY', arrived: true, empSound: 1 })
+  assert.equal(quiet.scope.empBangs(), 1, 'without Audio it still counts, silently')
+})
+test('Cha-ching: plays once for each time the game counts money in, never for the count a fresh HUD first sees', () => {
+  const played = [], made = []
+  class Audio { constructor(src) { this.src = src; this.loaded = 0; made.push(this) } load() { this.loaded++ } play() { played.push(this); return { catch() {} } } }
+  const a = app(undefined, undefined, { Audio })
+  assert.equal(made.filter(x => x.src.endsWith('/cha_ching.wav')).length, 1, 'loaded as the HUD starts')
+  a.state({ state: 'READY', arrived: true, cashSound: 2 })
+  assert.equal(played.length, 0, 'the first count is old news')
+  a.state({ state: 'READY', arrived: true, cashSound: 2 })
+  assert.equal(played.length, 0, 'no change: no sound')
+  a.state({ state: 'READY', arrived: true, cashSound: 3 })
+  assert.equal(played.length, 1, 'money in: cha-ching')
+  assert.equal(played[0].src, '/ui/modules/apps/TruckingCareerDC/cha_ching.wav')
+  assert.equal(a.scope.cashIns(), 1)
+  assert.equal(made.filter(x => x.src.endsWith('/cha_ching.wav')).length, 1, 'the same sound reused')
+})
+test('EMP charged: plays when the EMP button goes from charging to ready, for the player and the admin robber', () => {
+  const played = []
+  class Audio { constructor(src) { this.src = src } load() {} play() { played.push(this.src); return { catch() {} } } }
+  const a = app(undefined, undefined, { Audio })
+  const chase = emp => ({ state: 'DRIVING', arrived: false, thief: { phase: 'chasing', emp } })
+  a.state(chase({ ready: true }))
+  assert.equal(played.length, 0, 'a chase that starts ready: nothing to announce')
+  a.state(chase({ ready: false, chargeLeft: 20 }))
+  a.state(chase({ ready: false, chargeLeft: 1 }))
+  assert.equal(played.length, 0, 'still charging: quiet')
+  a.state(chase({ ready: true }))
+  assert.deepEqual(played, ['/ui/modules/apps/TruckingCareerDC/emp_charged.wav'], 'full charge: the sound plays once')
+  a.state(chase({ ready: true }))
+  assert.equal(played.length, 1, 'stays ready: no repeat')
+  a.state({ state: 'DRIVING', arrived: false, admin: { drive: { emp: { ready: false, chargeLeft: 3 } } } })
+  a.state({ state: 'DRIVING', arrived: false, admin: { drive: { emp: { ready: true } } } })
+  assert.equal(played.length, 2, 'the admin robber hears it too')
+  assert.equal(a.scope.empCharges(), 2)
+  const fresh = app(undefined, undefined, { Audio })
+  fresh.state(chase({ ready: true }))
+  assert.equal(played.length, 2, 'a rebuilt HUD that first sees a ready EMP stays quiet')
+})
+test('A new Mayday call, base theft or robber hit scrolls the HUD to the top once, then leaves the player to scroll', () => {
+  const page = { scrollTop: 400, scrolls: [], scrollTo(o) { this.scrolls.push(o); this.scrollTop = o.top }, parentElement: null }
+  const a = app(undefined, [page])
+  const call = { round: 3, open: true, name: 'Gobi Desert', reward: 80000, edges: [], secondsLeft: 3600 }
+  a.state({ state: 'READY', arrived: true })
+  a.state({ state: 'READY', arrived: true, mayday: call })
+  assert.equal(page.scrollTop, 0, 'a new Mayday call: back to the top')
+  assert.equal(page.scrolls[0].behavior, 'smooth', 'smoothly')
+  page.scrollTop = 400
+  a.state({ state: 'READY', arrived: true, mayday: call })
+  assert.equal(page.scrollTop, 400, 'the same call: the player can scroll down again')
+  a.state({ state: 'READY', arrived: true, mayday: call, thief: { phase: 'stolen', amount: 1000 } })
+  assert.equal(page.scrollTop, 0, 'a thief at the base: to the top')
+  page.scrollTop = 300
+  a.state({ state: 'READY', arrived: true, mayday: call, thief: { phase: 'stolen', amount: 1000 } })
+  assert.equal(page.scrollTop, 300, 'and only once')
+  a.state({ state: 'DRIVING', arrived: false, mayday: call })
+  a.state({ state: 'DRIVING', arrived: false, mayday: call, thief: { road: true, phase: 'chasing', amount: 1000 } })
+  assert.equal(page.scrollTop, 0, 'a road robber\'s hit: to the top')
+  assert.equal(a.scope.toTops(), 3)
+  const old = { scrollTop: 250 }
+  const b = app(undefined, [old])
+  b.state({ state: 'READY', arrived: true, mayday: call })
+  assert.equal(old.scrollTop, 0, 'without smooth scrolling it still jumps')
+  b.scope.setMinimised(true)
+  old.scrollTop = 250
+  b.state({ state: 'READY', arrived: true, mayday: { ...call, round: 4 } })
+  assert.equal(old.scrollTop, 250, 'minimised: the card shows by itself, nothing scrolls')
+})
 test('Mayday Rescue card: not for a won call, a run, or over the start page, and a minimised Mayday tab does not hide it', () => {
   const a = app()
   const call = { round: 3, open: true, name: 'Gobi Desert', reward: 80000, edges: [], secondsLeft: 3600 }
@@ -1140,6 +1229,28 @@ test('Relocate to a player: a Join button for each player, sent by number only, 
   assert.deepEqual(a.commands.map(c => c.replace(/^if earthFreight_core then earthFreight_core\.| end$/g, '')),
     ['findPlayer(0)', 'setFindable(false)'])
 })
+test('Admin robber: the Route tab list sends Rob by number only, and his EMP and Stop only while they are allowed', () => {
+  const a = app()
+  const route = html.slice(html.indexOf('Road robbers'), html.indexOf(`ng-if="tab === 'town'"`))
+  for (const part of ['Admin robber', 'adminRob(p)', 'ng-if="data.admin && !data.admin.drive"']) assert.ok(route.includes(part), part)
+  assert.ok(html.includes('<div ng-if="data.admin.drive"') && html.includes('YOU ARE THE ROBBER'), 'his own panel while robbing')
+  const sam = { id: 3, name: 'Sam', allowed: true }
+  a.state({ state: 'READY', arrived: true, admin: { targets: [sam] } })
+  a.commands.length = 0
+  a.scope.adminRob(sam)
+  a.scope.adminRob({ id: 4, allowed: false })
+  a.scope.adminRob({ id: '1); evil(', allowed: true })
+  a.scope.adminStop()
+  a.scope.adminEmp()
+  a.state({ state: 'READY', arrived: true, admin: { targets: [], drive: { stage: 'ready', name: 'Sam', stopAllowed: true, emp: { ready: false, chargeLeft: 12, charged: 40 } } } })
+  a.scope.adminEmp()
+  a.scope.adminStop()
+  a.state({ state: 'READY', arrived: true, admin: { targets: [], drive: { stage: 'ready', name: 'Sam', stopAllowed: true, emp: { ready: true, charged: 100 } } } })
+  a.scope.adminEmp()
+  assert.ok(html.includes('ng-click="adminEmp()"'), 'his own EMP button while robbing')
+  assert.deepEqual(a.commands.map(c => c.replace(/^if earthFreight_core then earthFreight_core\.| end$/g, '')),
+    ['adminRob(3)', 'adminStop()', 'adminEmp()'])
+})
 test('Play online shows whether the server is up and how many are on it, from its stats', async () => {
   const asked = []
   let answer = { ok: true, json: async () => ({ updated: '2026-11-10T18:44:23Z', server: { name: 'WW Trucking Career | MadMerick', online: true, maxPlayers: 20 },
@@ -1149,12 +1260,12 @@ test('Play online shows whether the server is up and how many are on it, from it
   assert.equal(a.scope.server.status, 'checking')
   a.scope.openIntro()
   await new Promise(r => setImmediate(r))
-  assert.deepEqual(asked, ['https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json'])
+  assert.deepEqual(asked.filter(u => !u.endsWith('/help.txt')), ['https://raw.githubusercontent.com/MadMerick01/trucking-server-stats/main/status.json'])
   assert.equal(a.scope.server.status, 'online')
   assert.equal(a.scope.server.players, 2); assert.equal(a.scope.server.max, 20); assert.equal(a.scope.server.season, 1)
   assert.equal(a.scope.server.name, 'WW Trucking Career | MadMerick')
   a.scope.toggleOnline()
-  assert.equal(asked.length, 1, 'asked at most once a minute')
+  assert.equal(asked.filter(u => !u.endsWith('/help.txt')).length, 1, 'asked at most once a minute')
   const read = a.scope.readServer
   assert.equal(read({ updated: '2026-11-10T18:20:00Z', server: { online: true } }, now).status, 'offline', 'stats older than 15 minutes')
   assert.equal(read({ updated: '2026-11-10T18:49:00Z', server: { online: true }, sample: true }, now).status, 'offline', 'the sample is not the server')
@@ -1214,7 +1325,8 @@ test('Radio tab: opens the radio page in the browser, shows what it plays, and c
   a.scope.copyRadio()
   assert.equal(a.commands.length, count, 'only the radio address')
   const panel = html.slice(html.indexOf(`ng-if="tab === 'radio'"`), html.indexOf(`ng-if="tab === 'heli'"`))
-  for (const part of ['openRadio()', 'copyRadio()', 'data.radio.playing', 'Open radio', 'Radio Browser']) assert.ok(panel.includes(part), part)
+  for (const part of ['openRadio()', 'copyRadio()', 'data.radio.playing', 'Open radio', "help('extras')"]) assert.ok(panel.includes(part), part)
+  assert.ok(help.includes('Radio Browser'), 'the help page says where the stations come from')
 })
 
 // The HUD gets a fresh copy of the state up to four times a second. A list of rows without track by
@@ -1265,7 +1377,7 @@ test('Land Race and Leaderboard tab: copies the live page address, shows the rac
   assert.equal(a.scope.raceSummary({ race: {} }), 'nobody holds land yet')
   assert.equal(a.scope.landWidth(25, 50), '50%'); assert.equal(a.scope.landWidth(0, 50), '1%')
 })
-test('Fuel runs: the Route tab card loads a run and sets the GPS to the depot only when Lua allows it', () => {
+test('Fuel runs: the Town tab card loads a run and sets the GPS to the depot only when Lua allows it', () => {
   assert.match(html, /ng-click="takeFuelRun\(r\)"/)
   assert.match(html, /ng-click="gpsToDepot\(\)"/)
   assert.match(html, /ng-repeat="r in data\.fuelRuns\.runs track by r\.id"/)
@@ -1309,4 +1421,266 @@ test('Fuel runs: the HUD looks for a depot that suits loading fuel', () => {
   const list = a.scope.businessCandidates(elements, 'gn9:fuelhub', 'fuelhub')
   assert.equal(list.map(b => b.name).join('|'), 'Ampol Terminal|Truck Stop', 'a fuel terminal first, then a truck stop, never a shop')
   assert.equal(list[0].kind, 'terminal')
+})
+test('Base thief and road robber: a theft or a hit rings the Mayday alert once, but not for one a rebuilt HUD first sees', () => {
+  const played = []
+  class Audio { constructor(src) { this.src = src } play() { played.push(this); return { catch() {} } } }
+  const theft = { phase: 'stolen', amount: 1000, bounty: 5000, secondsLeft: 600, chaseAllowed: true }
+  let a = app(undefined, undefined, { Audio })
+  a.state({ state: 'READY', arrived: true })
+  a.state({ state: 'READY', arrived: true, thief: theft })
+  assert.equal(played.length, 1, 'the alert plays as the theft starts')
+  assert.equal(played[0].src, '/ui/modules/apps/TruckingCareerDC/mayday_alert.wav')
+  a.state({ state: 'READY', arrived: true, thief: { ...theft, secondsLeft: 590 } })
+  a.state({ state: 'READY', arrived: true, thief: { ...theft, phase: 'travelling' } })
+  assert.equal(played.length, 1, 'only once for a theft')
+  a.state({ state: 'READY', arrived: true })
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'chasing', road: true, amount: 1000 } })
+  assert.equal(played.length, 2, 'a road robber\'s hit rings it too')
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'chasing', road: true, amount: 1000, distanceMetres: 50 } })
+  assert.equal(played.length, 2, 'once')
+  a = app(undefined, undefined, { Audio })
+  a.state({ state: 'READY', arrived: true, thief: theft })
+  assert.equal(played.length, 2, 'a rebuilt HUD stays quiet')
+  assert.equal(a.scope.thiefCard(), true, 'but shows the card')
+})
+test('Robbery cards: the money in big letters, how it ended, and the admin robber card when minimised', () => {
+  const a = app()
+  const big = () => { const m = a.scope.robberyMoney(a.scope.data.thief); return m && { good: m.good, text: m.text } }
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'stolen', amount: 1000, bounty: 5000 } })
+  assert.deepEqual(big(), { good: false, text: '-$1,000 TAKEN' }, 'taken')
+  assert.equal(a.scope.thiefTitle(a.scope.data.thief), 'THIEF AT YOUR BASE')
+  a.state({ state: 'READY', arrived: true, thief: { road: true, phase: 'chasing', amount: 1000, bounty: 20000 } })
+  assert.equal(a.scope.thiefTitle(a.scope.data.thief), 'CATCH THE ROBBER')
+  a.state({ state: 'READY', arrived: true, thief: { road: true, phase: 'caught', amount: 1000, bounty: 20000, paid: 21000 } })
+  assert.equal(a.scope.thiefCard(), true, 'the card stays up once caught')
+  assert.deepEqual(big(), { good: true, text: '+$21,000 WON BACK' }, 'won back')
+  assert.equal(a.scope.thiefTitle(a.scope.data.thief), 'ROBBER CAUGHT')
+  assert.equal(a.scope.robberyGood(a.scope.data.thief), true, 'a green card'); assert.equal(a.scope.hudAlert(), '', 'and no red dot')
+  a.state({ state: 'READY', arrived: true, thief: { road: true, phase: 'over', outcome: 'escaped', amount: 1000 } })
+  assert.equal(a.scope.thiefTitle(a.scope.data.thief), 'THE ROBBER GOT AWAY')
+  assert.deepEqual(big(), { good: false, text: '-$1,000 GONE' }, 'gone')
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'over', outcome: 'dropped', amount: 1000, paid: 1000 } })
+  assert.equal(a.scope.thiefTitle(a.scope.data.thief), 'THE THIEF DROPPED IT'); assert.deepEqual(big(), { good: true, text: '+$1,000 BACK' })
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'return', outcome: 'caught', amount: 1000, paid: 6000, returnAllowed: true } })
+  assert.deepEqual(big(), { good: true, text: '+$6,000 WON BACK' }, 'and on the way back')
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'return', returnAllowed: true } })
+  assert.equal(big(), null, 'nothing to say: no line')
+  for (const part of ['class="ef-money"', '&#9888; YOU ARE THE ROBBER', 'hud.minimised && !intro.open && data.admin.drive']) assert.ok(html.includes(part), part)
+  a.state({ state: 'READY', arrived: true, admin: { drive: { stage: 'ready', name: 'Sam' } } })
+  assert.equal(a.scope.hudAlert(), 'bad', 'the admin robber: a red dot on the strip')
+})
+test('Base thief: the card shows while a theft is on, and Chase and EMP send fixed commands', () => {
+  const a = app()
+  a.state({ state: 'READY', arrived: true })
+  assert.equal(a.scope.thiefCard(), false, 'no theft: no card')
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'stolen', amount: 1000, bounty: 5000, secondsLeft: 600, chaseAllowed: false } })
+  assert.equal(a.scope.thiefCard(), true, 'a theft: the card')
+  assert.equal(a.scope.hudAlert(), 'bad', 'and the minimised HUD is marked')
+  a.commands.length = 0
+  a.scope.thiefChase(); a.scope.empThief()
+  assert.deepEqual(a.commands, [], 'nothing while Chase is not allowed and before the chase')
+  a.scope.thiefLetGo()
+  assert.deepEqual(a.commands, [fixed('thiefLetGo()')], 'Let them go, even when Chase is not allowed')
+  a.commands.length = 0
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'stolen', amount: 1000, bounty: 5000, secondsLeft: 500, chaseAllowed: true } })
+  a.scope.thiefChase()
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'chasing', amount: 1000, bounty: 5000, distanceMetres: 40, empMetres: 5, escapeMetres: 450 } })
+  a.scope.empThief(); a.scope.thiefLetGo()
+  assert.deepEqual(a.commands, [fixed('thiefChase()'), fixed('empThief()')], 'no Let them go once the chase is on')
+  a.commands.length = 0
+  // Chase in a parked car: by its slot, only when both Chase and that car are allowed.
+  const cars = [{ index: 1, name: 'Pickup D15', allowed: true }, { index: 2, name: 'Moonhawk', allowed: false }]
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'stolen', amount: 1000, chaseAllowed: false, cars } })
+  a.scope.thiefChaseIn(cars[0])
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'stolen', amount: 1000, chaseAllowed: true, cars } })
+  a.scope.thiefChaseIn(cars[1]); a.scope.thiefChaseIn({ index: 1.5, allowed: true }); a.scope.thiefChaseIn(null)
+  a.scope.thiefChaseIn(cars[0])
+  assert.deepEqual(a.commands, [fixed('thiefChase(1)')], 'Chase in the allowed car only')
+  assert.ok(html.includes('ng-click="thiefChaseIn(car)"'), 'a button for each parked car')
+  a.commands.length = 0
+  a.state({ state: 'READY', arrived: true, robbery: { allowed: false, problem: 'You need a base first.', amount: 1000, bounty: 5000 } })
+  a.scope.getRobbed()
+  a.state({ state: 'READY', arrived: true, robbery: { allowed: true, amount: 1000, bounty: 5000 } })
+  a.scope.getRobbed()
+  assert.deepEqual(a.commands, [fixed('getRobbed()')], 'Get robbed only when allowed')
+  a.commands.length = 0
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'return', job: true, returnAllowed: false, problem: 'Get back in your car first.' } })
+  a.scope.thiefGoBack()
+  a.state({ state: 'READY', arrived: true, thief: { phase: 'return', job: true, returnAllowed: true } })
+  assert.equal(a.scope.thiefCard(), true, 'the way back shows on the card')
+  a.scope.thiefGoBack()
+  assert.deepEqual(a.commands, [fixed('thiefGoBack()')], 'Back to your job only when allowed')
+  assert.ok(html.includes('ng-click="thiefGoBack()"'))
+  for (const part of ['ng-click="getRobbed()"', 'Base thief (trial)']) assert.ok(html.includes(part), part)
+  for (const part of ['arrowStyle(data.thief)', 'thiefTitle(data.thief)', 'ng-click="thiefChase()"', 'ng-click="empThief()"', 'escape with the money'])
+    assert.ok(html.includes(part), part)
+})
+
+// The help page: one big window with every part of the game, its text in help.txt.
+const helpApp = (storage) => app(storage || null, null, { fetch: url => Promise.resolve({ ok: true, text: () => Promise.resolve(help) }), Promise })
+const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(r => setImmediate(r)) }
+test('Help page: help.txt is read into sections, and every small ? opens a section that exists', async () => {
+  const a = helpApp()
+  const sections = a.scope.readHelp(help)
+  const ids = sections.map(s => s.id)
+  for (const id of ['start', 'jobs', 'fuel', 'robbers', 'mayday', 'base']) assert.ok(ids.includes(id), id + ' section')
+  assert.equal(new Set(ids).size, ids.length, 'no two sections share an id')
+  assert.ok(sections.every(s => s.title && s.lines.length), 'every section has a title and points')
+  assert.ok(sections.every(s => s.lines.every(l => !l.startsWith('//'))), 'notes are not shown')
+  assert.deepEqual([...sections.filter(s => s.online).map(s => s.id)], ['mayday', 'online'], 'online-only sections are marked')
+  const used = [...html.matchAll(/help\('(\w+)'\)/g)].map(m => m[1])
+  assert.ok(used.length >= 10, 'small ? buttons across the HUD')
+  for (const id of used) assert.ok(ids.includes(id), "help('" + id + "') has a section")
+  assert.deepEqual(JSON.parse(JSON.stringify(a.scope.readHelp('# a | A\none\n// note\n\n# bad\ntwo\n# b | B | online\nthree'))),
+    [{ id: 'a', title: 'A', online: false, lines: ['one', 'two'] }, { id: 'b', title: 'B', online: true, lines: ['three'] }])
+})
+test('Help page: the start page steps are its Getting started points, with the built-in copy matching help.txt', async () => {
+  const a = helpApp()
+  const fallback = a.scope.introSteps.slice()
+  a.scope.help('start')
+  await settle()
+  const start = a.scope.readHelp(help).find(s => s.id === 'start')
+  assert.deepEqual([...a.scope.introSteps], [...start.lines], 'the start page reads help.txt')
+  assert.deepEqual([...fallback], [...start.lines], 'the copy used when help.txt cannot be read is the same')
+  assert.ok(html.includes(`ng-click="help('start')"`) && html.includes('Read the full guide'), 'the start page links to the full guide')
+})
+test('Help page: {names} are filled in with the game\'s own numbers', () => {
+  const a = helpApp()
+  a.state({ state: 'READY', rules: { robberTake: '$1,000', empRange: 15 } })
+  assert.equal(a.scope.helpLine('Take {robberTake} within {empRange} m'), 'Take $1,000 within 15 m')
+  assert.equal(a.scope.helpLine('Unknown {nope}'), 'Unknown ...')
+  const names = new Set([...help.split('\n').filter(l => !l.startsWith('//')).join('\n').matchAll(/\{(\w+)\}/g)].map(m => m[1]))
+  const core = readFileSync(new URL('../mod/earth_freight/lua/ge/extensions/earthFreight/core.lua', import.meta.url), 'utf8')
+  const rules = core.slice(core.indexOf('function c:rulesView()'), core.indexOf('function c:serverSaveWarning()'))
+  for (const name of names) assert.match(rules, new RegExp('\\b' + name + ' = '), name + ' is sent by the game')
+})
+test('Help page: opens from ?, its ? glows until the first time, and closes with X or a click outside, not Esc', async () => {
+  const store = {}
+  const storage = { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = String(v) } }
+  const a = helpApp(storage)
+  assert.equal(a.scope.helpState.seen, false, 'glows on a new game')
+  assert.ok(html.includes(`ng-class="{'ef-help-new': !helpState.seen}"`), 'the glow is on the ? at the top of the HUD')
+  a.scope.help()
+  await settle()
+  assert.equal(a.scope.helpOpen(), true)
+  assert.equal(a.scope.helpState.at, 'start', 'the ? at the top opens Getting started')
+  assert.equal(store['earthFreight.helpSeen'], '1', 'remembered')
+  a.scope.help('robbers'); assert.equal(a.scope.helpState.at, 'robbers')
+  a.scope.helpNext(); assert.equal(a.scope.helpState.at, 'mayday')
+  a.scope.help('not-a-section'); assert.equal(a.scope.helpState.at, 'start', 'an unknown section opens the first one')
+  const inside = {}, outside = {}
+  a.scope.helpBackdrop({ target: inside, currentTarget: outside }); assert.equal(a.scope.helpOpen(), true, 'a click in the window keeps it')
+  a.scope.helpBackdrop({ target: outside, currentTarget: outside }); assert.equal(a.scope.helpOpen(), false, 'a click outside closes it')
+  a.scope.help('jobs'); a.scope.closeHelp(); assert.equal(a.scope.helpOpen(), false, 'X closes it')
+  assert.ok(!/keydown|Escape|keyCode/.test(source), 'Esc is left to the game')
+  const b = helpApp(storage)
+  assert.equal(b.scope.helpState.seen, true, 'no glow after the first time, after a restart too')
+})
+test('Help page: the live page and the Discord are copied or opened, and only those two addresses', () => {
+  const a = helpApp()
+  a.scope.copyHelpLink('server')
+  assert.equal(a.commands.at(-1), 'setClipboard("https://madmerick01.github.io/BeamNG-Worldwide-Trucking-Career-Dangerous-Contracts/")')
+  assert.equal(a.scope.helpState.copied, 'server')
+  a.scope.copyHelpLink('discord')
+  assert.equal(a.commands.at(-1), 'setClipboard("https://discord.gg/eYJCfXNGbP")')
+  a.scope.openHelpLink('discord')
+  assert.match(a.commands.at(-1), /openWebBrowser\("https:\/\/discord\.gg\/eYJCfXNGbP"\)/)
+  const count = a.commands.length
+  a.scope.copyHelpLink('elsewhere'); assert.equal(a.commands.length, count, 'nothing else')
+  const page = html.slice(html.indexOf('class="ef-help"'), html.indexOf('<div ng-if="!hud.minimised && !intro.open">'))
+  for (const part of ["copyHelpLink('server')", "openHelpLink('server')", "copyHelpLink('discord')", "openHelpLink('discord')", 'closeHelp()', 'helpBackdrop($event)', 'Online only'])
+    assert.ok(page.includes(part), part)
+})
+test('Help page: cannot be read, says so and tries again next time', async () => {
+  let ok = false
+  const a = app(null, null, { fetch: () => Promise.resolve(ok ? { ok: true, text: () => Promise.resolve(help) } : { ok: false }), Promise })
+  a.scope.help('fuel'); await settle()
+  assert.equal(a.scope.helpState.status, 'failed')
+  assert.ok(a.scope.introSteps.length === 6, 'the start page keeps its steps')
+  ok = true; a.scope.help('fuel'); await settle()
+  assert.equal(a.scope.helpState.status, 'ready'); assert.equal(a.scope.helpState.at, 'fuel')
+})
+test('Fuel runs sit on the Town tab, not the Route tab', () => {
+  const route = html.slice(html.indexOf("tab === 'route'"), html.indexOf("tab === 'town'"))
+  const town = html.slice(html.indexOf("tab === 'town'"), html.indexOf("tab === 'garage'"))
+  assert.ok(!route.includes('data.fuelRuns'), 'not on Route')
+  for (const part of ['ng-click="teleportToDepot()"', 'ng-click="gpsToDepot()"', 'ng-click="takeFuelRun(r)"', 'ng-click="gpsToRun(r)"']) assert.ok(town.includes(part), part + ' on Town')
+})
+
+test('Depot computer: Use computer shows at the desk, opens the computer, and it closes on walking away or taking a job', () => {
+  assert.match(html, /class="ef-pc"/)
+  assert.match(html, /ng-click="useComputer\(\)"/)
+  assert.match(html, /ng-if="pcTown\(\)"/)
+  const a = app()
+  const town = { id: 'gn1', name: 'Penrith', jobs: [{ id: 'parts_gn2', good: 'Parts', to: 'St Clair', units: 4, allowed: true }] }
+  a.state({ state: 'READY', town, computer: { truckMetres: 30 } })
+  a.scope.useComputer()
+  assert.equal(a.scope.pc.open, false, 'not away from the computer')
+  a.state({ state: 'READY', town, computer: { near: true, name: 'Penrith', town: 'gn1', truckAway: 12, truckOk: true, truckMetres: 30 } })
+  assert.equal(a.scope.pcTown(), true, 'this computer has the town jobs')
+  assert.equal(a.scope.pcFuel(), false, 'and no fuel runs')
+  a.scope.useComputer()
+  assert.equal(a.scope.pc.open, true, 'opens at the desk')
+  a.scope.takeJob(town.jobs[0])
+  assert.equal(a.commands.at(-1), fixed("takeJob('parts_gn2', 100)"), 'Take job sends the job')
+  a.state({ state: 'READY', town, load: { good: 'Parts', to: 'St Clair', pay: 900 }, computer: { near: true, name: 'Penrith', town: 'gn1', truckOk: true } })
+  assert.equal(a.scope.pc.open, false, 'closes once the job is taken')
+  a.scope.useComputer()
+  a.state({ state: 'READY', town, computer: { truckMetres: 30 } })
+  assert.equal(a.scope.pc.open, false, 'closes on walking away')
+  const element = [{ querySelector: sel => sel === '.ef-pc' ? { tag: 'pc' } : null }]
+  const b = app(null, element)
+  assert.equal(b.document.body.children.some(c => c.tag === 'pc'), true, 'the computer is moved onto the page, to fill the middle of the screen')
+})
+
+test('Depot arrow: the Town tab points to the depot with a GPS button, and the minimised strip shows how far', () => {
+  assert.match(html, /ng-style="arrowStyle\(data\.computer\.depot\)"/)
+  assert.match(html, /ng-click="gpsToTownDepot\(\)"/)
+  assert.match(html, /depotStrip\(data\)/)
+  const a = app()
+  const depot = { name: 'Penrith', distanceMetres: 180, direction: 'north-east', letters: 'NE', arrow: 45, gpsAllowed: false }
+  a.state({ state: 'READY', town: { id: 'gn1', jobs: [] }, computer: { truckMetres: 30, depot } })
+  assert.equal(a.scope.depotStrip(a.scope.data).letters, 'NE', 'the strip shows the depot')
+  let count = a.commands.length
+  a.scope.gpsToTownDepot()
+  assert.equal(a.commands.length, count, 'no GPS unless Lua allows it')
+  a.state({ state: 'READY', town: { id: 'gn1', jobs: [] }, computer: { truckMetres: 30, depot: { ...depot, gpsAllowed: true } } })
+  a.scope.gpsToTownDepot()
+  assert.equal(a.commands.at(-1), fixed('gpsToTownDepot()'))
+  a.state({ state: 'READY', town: { id: 'gn1', jobs: [] }, load: { to: 'Blaxland' }, computer: { truckMetres: 30, depot } })
+  assert.equal(a.scope.depotStrip(a.scope.data), null, 'not while on a job')
+})
+
+test('Depot car parks: the HUD asks OpenStreetMap once for open car parks and sends the best to the game', async () => {
+  const lat = 46.02, lon = 7.75
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540
+  // A square way of side metres, its middle dx, dy metres from the town's middle.
+  const square = (id, dx, dy, side, tags) => {
+    const h = side / 2, c = [[-h, -h], [h, -h], [h, h], [-h, h], [-h, -h]]
+    return { type: 'way', id, tags, geometry: c.map(([x, y]) => ({ lat: lat + (dy + y) / ky, lon: lon + (dx + x) / kx })) }
+  }
+  const lots = [
+    square(1, 200, 0, 40, { amenity: 'parking', parking: 'surface' }),
+    square(2, 50, 0, 40, { amenity: 'parking', parking: 'multi-storey' }),
+    square(3, 30, 0, 40, { leisure: 'pitch' }),
+    square(4, 100, 0, 40, { amenity: 'parking' }),
+    square(5, 20, 0, 10, { amenity: 'parking' }),
+    square(6, 60, 0, 40, { amenity: 'parking', layer: '-1' })
+  ]
+  const a = app()
+  const best = a.scope.depotLots(lots, lat, lon)
+  assert.deepEqual([...best.map(l => l.id)], ['way/4', 'way/1', 'way/3'], 'open car parks nearest first, then the pitch; none on a roof, under ground or too small')
+  assert.ok(Math.abs((best[0].lon - lon) * kx - 100) < 1, 'at the middle of the car park')
+  const asked = []
+  const fetch = (url, opts) => { asked.push(decodeURIComponent(opts.body.slice(5))); return Promise.resolve({ ok: true, json: () => Promise.resolve({ elements: lots }) }) }
+  const b = app(null, null, { fetch, Promise })
+  const want = { key: 'town:zermatt_1', latitude: lat, longitude: lon, metres: 400 }
+  b.state({ state: 'READY', computer: { lots: want } })
+  b.state({ state: 'READY', computer: { lots: want } })
+  await new Promise(r => setTimeout(r, 10))
+  assert.equal(asked.length, 1, 'asked once')
+  assert.ok(asked[0].includes('around:400,46.020000,7.750000') && asked[0].includes('amenity=parking'))
+  assert.match(b.commands.at(-1), /^if earthFreight_core then earthFreight_core\.setDepotLots\("town:zermatt_1","46\.\d{6},7\.\d{6};46\.\d{6},7\.\d{6};46\.\d{6},7\.\d{6}"\) end$/)
+  assert.equal(b.scope.lookUpLots({ ...want, key: 'bad key"' }), null, 'odd keys ignored')
 })

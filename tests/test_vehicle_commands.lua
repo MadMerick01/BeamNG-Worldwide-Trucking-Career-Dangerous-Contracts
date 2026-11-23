@@ -195,13 +195,13 @@ do
   w:setWeight(100, { tank }, { litres = 100, density = 1, tanks = { tank } }); replies = run(vehicle.commands[5], legacy)
   T.eq(masses[0], 60, 'half on each weight node'); T.eq(masses[1], 60, 'both')
   T.eq(replies[1], 'if earthFreight_core then earthFreight_core.tanksRead(9, 300.000) end', 'found by its part')
-  -- A tank whose expressions give no weight (a tanker weighed by a tuning setting): the fluid is not
-  -- lost, it goes over the tank's nodes instead.
+  -- A tank whose expressions give no weight (a tanker weighed by a tuning setting): nothing of its
+  -- fluid is put anywhere else, which bent the MD tanker's tank into a spike.
   local dead = world()
   dead.v.data.nodes[0].nodeWeightFunction = '=10+$fill_level'
   masses = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }
   w:setWeight(150, { tank }, { litres = 200, density = 0.75, tanks = { tank } }); run(vehicle.commands[#vehicle.commands], dead)
-  T.near((masses[0] - 10) + (masses[1] - 10), 150, 1e-6, 'all 150 kg still on the tank')
+  T.eq(masses[1], 10, 'not on the tank panels'); T.eq(masses[2], 5, 'nor on the rest of the vehicle')
   -- Asking only: reports the size, changes nothing.
   masses = { [0] = 10, [1] = 10, [2] = 5, [3] = 4 }
   T.check(w:readTanks({ tank }), 'read sent'); replies = run(vehicle.commands[#vehicle.commands], world())

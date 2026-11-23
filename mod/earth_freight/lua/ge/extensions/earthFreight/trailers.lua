@@ -27,6 +27,8 @@ M.PARCEL_KG_PER_SLOT = 20
 M.CHECK_SECONDS = 1
 -- How long a trailer has to spawn after Buy or Bring out before it counts as failed.
 M.SPAWN_SECONDS = 5
+-- After the mod respawns the trailer, for this long a player the game put in it is put back in their car.
+M.RETURN_DRIVER_SECONDS = 10
 -- A haulier taking the trailer to the base, or bringing it out from there, away from the base: a
 -- flat fee plus a little per km between the player and the base (the same as Shipping).
 M.HAUL_FEE, M.HAUL_PER_KM = 100, 0.02
@@ -354,6 +356,14 @@ function M.attach(c)
     return true
   end
 
+  -- After a respawn of the trailer: one the mod did not ask for to fill its Load Volume (the
+  -- game's Vehicle Config, the parts put back below) can leave that setting at another amount, so
+  -- it is asked for again, and the load's weight is put back on.
+  local function trailerRespawned(self, out)
+    if out.loadVolumeRespawn then out.loadVolumeRespawn = nil else out.loadVolumeAsked = nil end
+    if self.load then self:applyWeight(true) end
+  end
+
   function c:watchTrailerParts()
     local out, t = self.trailerOut, self.trailer
     if not out or not t or not self.garage.parts then return end
@@ -362,14 +372,17 @@ function M.attach(c)
     if not snapshot or type(snapshot.parts) ~= 'table' then return end
     if not out.parts then
       -- The parts it came out with, read once it is in the world.
+      local respawned = out.respawned
       out.parts, out.respawned = snapshot.parts, false
       self:readTrailerSpace(snapshot)
+      if respawned then trailerRespawned(self, out) end
       return
     end
     out.respawned = false
     if sameParts(out.parts, snapshot.parts) then
       out.restores = nil
       self:readTrailerSpace(snapshot)
+      trailerRespawned(self, out)
       return
     end
     -- Tried twice already: leave it, rather than respawn it over and over.
@@ -385,6 +398,7 @@ function M.attach(c)
       return
     end
     -- The respawn this asks for is checked again; the player goes back to their car and hitches.
+    out.returnDriverUntil = (self.clock or 0) + M.RETURN_DRIVER_SECONDS
     if self.ownedParts and self.garage.enter then self.garage:enter(self.ownedParts.id) end
     if self.garage.hitch then self.garage:hitch(out.id) end
     self.diag:event('trailer_parts_restored', tostring(out.id))
@@ -525,7 +539,8 @@ function M.attach(c)
     if not t or not t.stored then return false end
     local problem = self:trailerProblem()
     local place = t.at or 'depot'
-    local fee = self:trailerMoveFee(place)
+    -- After a robber chase the trailer comes back free; if it couldn't, bringing it out here is free too (thief.lua).
+    local fee = self.trailerComesFree and 0 or self:trailerMoveFee(place)
     if not problem and fee > 0 and not self:canAfford(fee) then
       problem = 'Not enough money. You need ' .. dollars(fee - self.profile.progression.balance) .. ' more.'
     end
@@ -538,6 +553,9 @@ function M.attach(c)
       return false
     end
     if fee > 0 then self:spend(fee, 'trailer_storage') end
+    self.trailerComesFree = nil
+    -- A job's cargo in it goes on with it.
+    self:applyWeight()
     self.trailerFeedback = 'Your ' .. t.name .. ' is behind your car' .. (fee > 0 and (', for ' .. dollars(fee)) or '')
       .. ': back up to it slowly and it hitches itself.'
     self:autoSaveSoon('bringing your trailer out')
@@ -629,6 +647,7 @@ function M.attach(c)
       return false
     end
     self:addMoney(price)
+    self:cashSound()
     self.trailer, self.sellArmed = table.remove(self.spareTrailers or {}, 1), false
     self.trailerFeedback = 'Sold your ' .. t.name .. ' for ' .. dollars(price) .. '.'
     self:autoSaveSoon('selling your trailer')
@@ -652,6 +671,7 @@ function M.attach(c)
       return false
     end
     self:addMoney(price)
+    self:cashSound()
     table.remove(self.spareTrailers, index)
     self.spareSellArmed = nil
     self.trailerFeedback = 'Sold your ' .. t.name .. ' for ' .. dollars(price) .. '.'
@@ -779,7 +799,8 @@ function M.attach(c)
   -- game then carries the fluid), false when it has none or it could not be set. Changing it
   -- respawns the trailer where it stands, which leaves it as new, so the damage it had is kept
   -- owed first; then it hitches again and the player stays in their car. Asked once for each
-  -- amount, so a respawn the game did not take is not asked for over and over.
+  -- amount, so a respawn the game did not take is not asked for over and over; any other respawn
+  -- of the trailer lets it be asked again (watchTrailerParts), as that may have changed it.
   function c:trailerLoadVolume(out, litres)
     if not self.garage or not self.garage.loadVolume then return false end
     local setting = self.garage:loadVolume(out.id)
@@ -801,7 +822,8 @@ function M.attach(c)
       t.damage = self:trailerDamage()
       if t.damage <= 0 then t.damage = nil end
     end
-    out.damage, out.loadVolumeAsked = 0, litres
+    out.damage, out.loadVolumeAsked, out.loadVolumeRespawn = 0, litres, true
+    out.returnDriverUntil = (self.clock or 0) + M.RETURN_DRIVER_SECONDS
     if self.ownedParts and self.garage.enter then self.garage:enter(self.ownedParts.id) end
     if self.garage.hitch then self.garage:hitch(out.id) end
     self.diag:event('trailer_load_volume', string.format('%s %d L', setting.name, litres))
@@ -869,7 +891,7 @@ function M.attach(c)
         view.sendAllowed = free and view.base and not view.atBase and view.spotFree and self:trailerStoreProblem('base') == nil
         view.depotAllowed = free and self:trailerStoreProblem('depot') == nil
       else
-        view.bringOutFee = self:trailerMoveFee(view.owned.at)
+        view.bringOutFee = self.trailerComesFree and 0 or self:trailerMoveFee(view.owned.at)
         view.bringOutAllowed = problem == nil and view.bringOutFee <= balance
       end
       view.storeArmed = self.storeArmed or nil

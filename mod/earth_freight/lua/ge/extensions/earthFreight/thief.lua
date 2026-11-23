@@ -1,0 +1,559 @@
+-- Base thief (trial): while the player is out on the road, a thief breaks into their base and steals its take (M.take: SHARE of the bank).
+-- The HUD shows the alert and a CHASE_WINDOW_SECONDS countdown. Chase relocates the player to their base for free,
+-- waits SETTLE_SECONDS for the world to load and the car to settle, then the thief's car turns up nearby and flees
+-- (thiefCar.lua drives it with the game's flee AI, or MadMerick's smartAI when it is installed). Within EMP_METRES the
+-- EMP button cuts the thief's ignition: the player gets the money back plus BOUNTY_SHARE of it from the thief's trunk. The thief
+-- gets away with the money once ESCAPE_METRES clear, and their car disappears. It works the same on a server: each
+-- player's own game runs their thief (BeamMP shows its car to everyone), and the money goes into the career the server
+-- keeps like any other. The thief's car needs a free car slot (the server's MaxCars). Pure Lua: the car itself is handled by c.thiefCar (thiefCar.lua), which may be missing.
+-- Chase holds whatever the player was doing: a delivery keeps its cargo and the distance driven, and a trailer goes to
+-- the base. Once the chase is over, Back to your job takes them (free) to the exact spot they left from, brings the
+-- trailer out behind them with its cargo, and everything carries on. While they're away the job's distance doesn't
+-- count, it can't be delivered, and nothing saves.
+-- The player can chase in one of their parked cars instead (MadMerick, 22 Nov): Chase in puts it out in place of the
+-- one they're driving, for free, and parks that one (the job's truck, with the job in it) in its slot. Once the car is
+-- in, it's off to the base. Back to your job swaps the truck back in at the spot, then the trailer comes out.
+-- Robbers don't come during a Mayday Rescue run (MadMerick, 22 Nov): a theft waits, and a theft already on can't be
+-- chased during a run, so its Chase clock stops until the run is over.
+local pricing = require('earthFreight/pricing')
+local flights = require('earthFreight/flights')
+local emp = require('earthFreight/emp')
+local location = require('earthFreight/location')
+local M = {}
+
+local function round10(n) return math.floor(n / 10 + 0.5) * 10 end
+
+-- What the thief takes (MadMerick, 21 Nov): SHARE of the bank, at least MIN_TAKE (or what's there) and at most
+-- MAX_TAKE. Catching them pays it back plus BOUNTY_SHARE of it again from their trunk; not for a theft the Get robbed
+-- button started, which is a test.
+M.SHARE = 0.03
+M.MIN_TAKE = 1000
+M.MAX_TAKE = 10000
+M.BOUNTY_SHARE = 0.5
+-- How long the player has to press Chase after the theft.
+M.CHASE_WINDOW_SECONDS = 600
+-- After landing at the base, how long the world gets to load and the car to settle before the thief turns up. The
+-- count starts only once the car is really there: within ARRIVED_METRES of the base, in the car, with Earth reading
+-- its position. A jump away again while Earth loads (the car can turn up somewhere near first) starts it over.
+M.SETTLE_SECONDS = 30
+M.ARRIVED_METRES = 500
+-- How far from the player the thief's car turns up: on the nearest road, lined up with it.
+M.SPAWN_METRES = 50
+-- How often a spawn the game refused is tried again, and how many times.
+M.SPAWN_RETRY_SECONDS = 5
+M.SPAWN_TRIES = 3
+-- The chase: the thief gets away with the money this far from the player.
+M.ESCAPE_METRES = 450
+-- The EMP works this close to the thief (emp.lua, shared with the road robber).
+M.EMP_METRES = emp.RANGE
+-- A caught thief's car stays this long before it is taken away.
+M.CAUGHT_SECONDS = 10
+-- Chasing in a parked car: how long its spawn gets before the trip goes ahead anyway.
+M.SWAP_SECONDS = 15
+-- Back to your job carries on without a teleport when the player is this close to the spot already.
+M.BACK_METRES = 200
+-- The thief's take from a bank of balance, and the trunk bonus for catching them with that much.
+function M.take(balance)
+  balance = math.floor(tonumber(balance) or 0)
+  return math.min(balance, round10(math.max(M.MIN_TAKE, math.min(M.MAX_TAKE, balance * M.SHARE))))
+end
+function M.bounty(amount) return round10((amount or 0) * M.BOUNTY_SHARE) end
+
+-- When thefts happen (MadMerick, 21 Nov): one an hour of play, at a random moment in each hour. Play is counted only
+-- while the career is ready and the game isn't paused, and the count is kept in the save (thiefClock), so quitting
+-- and coming back neither dodges a theft nor brings a fresh one. A theft needs a base, at least MIN_AWAY_METRES from
+-- it, MIN_TAKE in the bank and the player not busy; if they can't be robbed when it's due, it happens as soon as they
+-- can. An hour that ends without its theft drops it (they never stack), and two thefts are at least GAP_MINUTES apart.
+M.MIN_AWAY_METRES = 5000
+M.HOUR_SECONDS = 3600
+M.GAP_MINUTES = 20
+-- The thief's car: for now the same Moonhawk as the sightseeing car, until MadMerick supplies the real one.
+M.MODEL = flights.SIGHTSEEING.model
+M.CONFIG = flights.SIGHTSEEING.config
+
+local dollars = pricing.dollars
+
+function M.attach(c)
+  local backOnTheRoad -- below
+  -- The controller keeps:
+  --   self.thief: the theft going on, or nil: { phase, amount, at, settleAt, carId, chaseAt, caughtAt, tries,
+  --     nextTry, metres, feedback, swapAt }. phase: 'stolen' (Chase not pressed yet), 'swapping' (the chase car
+  --     coming out), 'travelling' (relocating to the base), 'settling' (at the base, waiting for the world),
+  --     'chasing', 'caught'.
+  --   self.thiefClock: the hourly thefts, kept in the save: { played (seconds of play counted), hour (the hour of
+  --     play it is in, from 0), due (the played seconds when this hour's theft is due; nil once it has happened),
+  --     last (the played seconds at the last theft, or nil) }.
+  --   self.thiefReturn: once the chase is over, where Back to your job goes: { latitude, longitude, load, trailer,
+  --     jobCar, swapAt, feedback }. jobCar: the slot the job's truck is parked in while the player chases in another
+  --     car; swapAt: when Back to your job started bringing it out again. While the chase is on, it waits in
+  --     self.thief.returnTo.
+
+  -- Why a theft can't happen now (forced: the Get robbed button, which skips the distance and the hourly plan), or nil.
+  function c:theftProblem(forced)
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Not ready yet.' end
+    if not self.property then return 'You need a base first.' end
+    if self.thief then return 'A thief is already about.' end
+    if self.robber and self.robber.phase ~= 'loaded' then return 'A robber is already about.' end
+    if self.thiefReturn then return 'Go back to your job first.' end
+    if not self:canAfford(M.MIN_TAKE) then return 'Less than ' .. dollars(M.MIN_TAKE) .. ' in the bank.' end
+    if self.maydayRun then return 'Not during a Mayday Rescue run.' end
+    if forced then return nil end
+    if self:robbersOff() then return 'Robbers are switched off.' end
+    if self.thiefReturn or self.hire or self.onFoot or self.booking or self.stranded then return 'Busy.' end
+    local away = self:homeDistance()
+    if not away or away < M.MIN_AWAY_METRES then return 'Too close to the base.' end
+    return nil
+  end
+
+  -- A thief takes the money now. Returns true when it did.
+  function c:startTheft(forced)
+    if self:theftProblem(forced) then return false end
+    local amount = M.take(self.profile.progression.balance)
+    if amount <= 0 or not self:spend(amount, 'thief') then return false end
+    local bounty = (not forced) and M.bounty(amount) or 0
+    self.thief = { phase = 'stolen', amount = amount, bounty = bounty, at = self.clock }
+    local text = 'A thief broke into your base and took ' .. dollars(amount) .. '. Press Chase within '
+      .. math.floor(M.CHASE_WINDOW_SECONDS / 60) .. ' minutes to go after them. Catch them with the EMP and you get it back'
+      .. (bounty > 0 and (', plus ' .. dollars(bounty) .. ' from their trunk.') or '.')
+    self:showFlash('cancelled', 'THIEF AT YOUR BASE: -' .. dollars(amount), text)
+    self:toast('warning', 'Thief at your base', text, 15)
+    self:autoSaveSoon('the theft')
+    self.diag:event('thief_stole', tostring(amount))
+    self:robberyNews('thief', 'struck', amount)
+    return true
+  end
+
+  -- Seconds left to press Chase, or nil once the chase is under way.
+  function c:theftSecondsLeft()
+    local t = self.thief
+    if not t or (t.phase ~= 'stolen' and t.phase ~= 'swapping' and t.phase ~= 'travelling') then return nil end
+    return math.max(0, M.CHASE_WINDOW_SECONDS - (self.clock - t.at))
+  end
+
+  -- Why Chase can't be pressed now, or nil.
+  function c:thiefChaseProblem()
+    local t = self.thief
+    if not t or t.phase ~= 'stolen' then return nil end
+    if not self:homeDestination() then return 'You no longer have a base.' end
+    if self.onFoot then return 'Get back in your car first.' end
+    if self.maydayRun then return 'Finish your Mayday Rescue run first. The thief waits: the clock stops until then.' end
+    if self:atHome() then return nil end
+    -- As for any relocation, except that a job is held, not lost.
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Relocation is unavailable right now.' end
+    if self.hire then return self:awayText() end
+    if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if self.booking then return 'You already have a relocation booked to ' .. self.booking.name .. '. Cancel it on the Relocate tab first.' end
+    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from first.' end
+    return nil
+  end
+
+  -- Why Chase in this parked car can't be pressed now, or nil.
+  function c:pursuitProblem(index)
+    local problem = self:thiefChaseProblem()
+    if problem then return problem end
+    if type(index) ~= 'number' or not self:parkedCars()[index] then return 'That slot is empty.' end
+    if self.secondHand then return 'Bringing the car out...' end
+    local vehicle = self.lastSample and self.lastSample.valid and self.lastSample.vehicle
+    if not self.ownedParts or not vehicle or vehicle.id ~= self.ownedParts.id then
+      return 'Get in your own car first.'
+    end
+    if not self.odometer:stopped() then return 'Stop to change cars.' end
+    return nil
+  end
+
+  -- Off to the base, free, with what the player was doing held. Returns true once the teleport is asked for.
+  local function goToBase(self, t)
+    local home = self:homeDestination()
+    self.booking = { id = 'home', name = home.name, region = home.region, fee = 0, latitude = home.latitude,
+      longitude = home.longitude, thief = true }
+    self.bookingTeleportAt = nil
+    if not self:teleportToBooking() then
+      self.booking = nil
+      t.feedback = self.shippingFeedback
+      return false
+    end
+    t.phase, t.feedback = 'travelling', 'Off to your base. The thief is still there.'
+    self.diag:event('thief_chase', 'relocating')
+    return true
+  end
+
+  -- Chase: off to the base (free), or straight into the chase when already there. index: a parked car's slot on
+  -- Your cars, to chase in that car instead (free); the one being driven is parked in its place, job and all.
+  function c:thiefChase(index)
+    local t = self.thief
+    if not t or t.phase ~= 'stolen' then return false end
+    local problem = index ~= nil and self:pursuitProblem(index) or self:thiefChaseProblem()
+    if problem then
+      t.feedback = problem
+      return false
+    end
+    local home = self:atHome()
+    if home and index == nil then
+      self:thiefLanded()
+      return true
+    end
+    local here = self.lastSample
+    -- Where to come back to, with what was going on. Pressed again after the chase car came out (its teleport
+    -- failed), the truck is already parked and the spot is already kept.
+    if t.returnTo and t.returnTo.jobCar then
+      if index ~= nil then
+        t.feedback = 'You are already in your chase car. Press Chase.'
+        return false
+      end
+      if home then self:thiefLanded() return true end
+      return goToBase(self, t)
+    end
+    t.returnTo = { latitude = here.latitude, longitude = here.longitude, load = self.load ~= nil,
+      trailer = (not home) and self.trailerOut ~= nil }
+    if index ~= nil then
+      local name, why = self:bringParkedCar(index)
+      if not name then
+        t.returnTo, t.feedback = nil, why
+        return false
+      end
+      t.returnTo.jobCar = index
+      t.phase, t.swapAt = 'swapping', self.clock
+      t.feedback = 'Your ' .. name .. ' is on its way. Your ' .. why .. ' is parked in slot ' .. tostring(index + 1)
+        .. (self.load and ' with your job in it.' or '.')
+      self.diag:event('thief_chase', 'swapping')
+      return true
+    end
+    if not goToBase(self, t) then
+      t.returnTo = nil
+      return false
+    end
+    return true
+  end
+
+  -- The chase car is in: off to the base, or into the chase when already there.
+  local function swapped(self, t)
+    if self:atHome() then
+      self:thiefLanded()
+      return
+    end
+    -- The teleport failed: the chase car stays out, and Chase can be pressed again (in it, from here).
+    if not goToBase(self, t) then
+      t.phase, t.swapAt = 'stolen', nil
+    end
+  end
+
+  -- At the base: the world gets SETTLE_SECONDS to load before the thief shows.
+  function c:thiefLanded()
+    local t = self.thief
+    if not t then return end
+    t.phase, t.settleAt, t.feedback, t.tries = 'settling', nil, nil, 0
+    self:showFlash('delivered', 'BACK AT YOUR BASE', 'Get ready. The thief makes a run for it in a few seconds.')
+    self.diag:event('thief_chase', 'at base')
+  end
+
+  -- Let them go: the player doesn't want to chase. The money is gone and the card goes away. Returns true when done.
+  function c:thiefLetGo()
+    local t = self.thief
+    if not t or t.phase ~= 'stolen' then return false end
+    self:endTheft('let')
+    return true
+  end
+
+  -- The theft is over. outcome: 'caught', 'escaped', 'late' (Chase never pressed), 'let' (Let them go) or 'lost' (no
+  -- car to chase).
+  function c:endTheft(outcome)
+    local t = self.thief
+    if not t then return end
+    if t.carId and self.thiefCar then self.thiefCar:remove(t.carId) end
+    if t.preloadId and self.thiefCar then self.thiefCar:remove(t.preloadId) end
+    if self.booking and self.booking.thief then self.booking, self.bookingTeleportAt = nil, nil end
+    self.thief = nil
+    if t.returnTo then self.thiefReturn = t.returnTo end
+    if outcome == 'let' then
+      self:showFlash('cancelled', 'YOU LET THEM GO', 'The thief keeps your ' .. dollars(t.amount) .. '.')
+    elseif outcome == 'late' then
+      self:showFlash('cancelled', 'THE THIEF GOT AWAY', 'Nobody went after them. Your ' .. dollars(t.amount) .. ' is gone.')
+    elseif outcome == 'escaped' then
+      self:showFlash('cancelled', 'THE THIEF GOT AWAY', 'They got ' .. M.ESCAPE_METRES .. ' m clear of you and escaped with your '
+        .. dollars(t.amount) .. '.')
+    elseif outcome == 'lost' then
+      -- The game wouldn't put the thief's car down: not the player's fault, so the money comes back.
+      self:addMoney(t.amount)
+      self:cashSound()
+      self:showFlash('delivered', 'THE THIEF DROPPED IT', 'They ran off on foot and left your ' .. dollars(t.amount) .. ' behind.')
+    end
+    self.diag:event('thief_over', tostring(outcome))
+    if outcome == 'lost' then self:robberyNews('thief', 'dropped', t.amount)
+    elseif outcome == 'let' or outcome == 'late' or outcome == 'escaped' then self:robberyNews('thief', 'escaped', t.amount) end
+  end
+
+  -- The EMP button (emp.lua: every press fires and starts the charge). Returns true when it stopped the thief.
+  function c:empThief()
+    return self:fireEmp()
+  end
+
+  -- The EMP hit the thief within EMP_METRES (emp.lua): their ignition is cut for good and the player is paid.
+  function c:catchThief()
+    local t = self.thief
+    if not t or t.phase ~= 'chasing' or not self.thiefCar then return false end
+    self.thiefCar:emp(t.carId)
+    local bounty = t.bounty or 0
+    local paid = t.amount + bounty
+    self:addMoney(paid)
+    self:cashSound()
+    t.phase, t.caughtAt, t.feedback = 'caught', self.clock, nil
+    if t.returnTo then self.thiefReturn, t.returnTo = t.returnTo, nil end
+    self:showFlash('delivered', 'THIEF CAUGHT: +' .. dollars(paid), 'The EMP stopped them dead. You got your '
+      .. dollars(t.amount) .. ' back' .. (bounty > 0 and (', and ' .. dollars(bounty) .. ' from their trunk.')
+      or '. Get robbed is a test, so there is no trunk bonus.'))
+    if not self:awayFromJob() then self:autoSaveSoon('catching the thief') end
+    self.diag:event('thief_caught', tostring(paid))
+    self:robberyNews('thief', 'caught', t.amount, paid)
+    return true
+  end
+
+  -- Counts play towards the hourly thefts: only while the career is ready and the game isn't paused. Each new hour of
+  -- play picks its theft's moment, and drops the last hour's if it never came.
+  function c:countThiefClock(dt)
+    local ready = self.profile and not self.error and self.state == 'READY' and self.arrived and not self.paused()
+    if not ready then return end
+    local k = self.thiefClock or { played = 0 }
+    self.thiefClock = k
+    k.played = k.played + math.max(0, tonumber(dt) or 0)
+    local hour = math.floor(k.played / M.HOUR_SECONDS)
+    if k.hour ~= hour then
+      k.hour, k.due = hour, (hour + self.random()) * M.HOUR_SECONDS
+    end
+  end
+
+  -- The hourly count for the save, in whole seconds.
+  function c:savedThiefClock()
+    local k = self.thiefClock
+    if not k or type(k.played) ~= 'number' then return nil end
+    local function whole(n) return n and math.floor(n) or nil end
+    return { played = whole(k.played), hour = whole(k.hour), due = whole(k.due), last = whole(k.last) }
+  end
+
+  -- Every tick.
+  function c:watchThief(dt)
+    if self.thiefCar and self.thiefCar.update then self.thiefCar:update(dt) end
+    local t = self.thief
+    self:countThiefClock(dt)
+    -- Back to your job: the truck is coming back out in place of the chase car.
+    local r = self.thiefReturn
+    if r and r.swapAt and (self:carArrived() or self.clock - r.swapAt > M.SWAP_SECONDS) then backOnTheRoad(self, r) end
+    if not t then
+      local k = self.thiefClock
+      -- Robbers switched off (single player): the hour's theft is dropped, so switching back on doesn't bring it.
+      if k and k.due and k.played >= k.due and self:robbersOff() then k.due = nil end
+      if k and k.due and k.played >= k.due and (not k.last or k.played - k.last >= M.GAP_MINUTES * 60)
+          and not self:theftProblem(false) and self:startTheft(false) then
+        k.due, k.last = nil, k.played
+      end
+      return
+    end
+    -- On a Mayday Rescue run the thief waits: Chase can't be pressed, so its clock stops.
+    if t.phase == 'stolen' and self.maydayRun then t.at = t.at + math.max(0, tonumber(dt) or 0) end
+    if t.phase == 'stolen' or t.phase == 'swapping' or t.phase == 'travelling' then
+      if self:theftSecondsLeft() <= 0 then self:endTheft('late') return end
+      if t.phase == 'swapping' and (self:carArrived() or self.clock - t.swapAt > M.SWAP_SECONDS) then swapped(self, t) end
+      return
+    end
+    if t.phase == 'settling' then
+      local sample = self.lastSample
+      local away = self:homeDistance()
+      local there = not self.onFoot and not self.booking and type(sample) == 'table' and sample.valid
+        and away ~= nil and away <= M.ARRIVED_METRES
+      if not there then t.settleAt = nil return end
+      t.settleAt = t.settleAt or self.clock
+      -- The thief's car is loaded out of sight now, while the player waits, so it turns up later without a stutter.
+      if not t.preloadTried and self.thiefCar and self.thiefCar.preload then
+        t.preloadTried = true
+        t.preloadId = self.thiefCar:preload(M.MODEL, M.CONFIG)
+        self.diag:event('thief_preloaded', tostring(t.preloadId))
+      end
+      if self.clock - t.settleAt < M.SETTLE_SECONDS then return end
+      if t.nextTry and self.clock < t.nextTry then return end
+      local id
+      if t.preloadId then
+        -- Put on the road ahead once the ground there has loaded; if it never does, spawned the old way instead.
+        local ok, why = self.thiefCar:place(t.preloadId, M.SPAWN_METRES)
+        if ok then
+          id, t.preloadId = t.preloadId, nil
+        elseif why ~= 'gone' and (t.placeTries or 0) < M.SPAWN_TRIES then
+          t.placeTries = (t.placeTries or 0) + 1
+          t.nextTry = self.clock + M.SPAWN_RETRY_SECONDS
+          return
+        else
+          self.thiefCar:remove(t.preloadId)
+          t.preloadId = nil
+        end
+      end
+      id = id or (self.thiefCar and self.thiefCar:spawn(M.MODEL, M.CONFIG, M.SPAWN_METRES))
+      if not id then
+        t.tries = (t.tries or 0) + 1
+        t.nextTry = self.clock + M.SPAWN_RETRY_SECONDS
+        self.diag:event('thief_spawn_failed', tostring(t.tries), 'W')
+        if t.tries >= M.SPAWN_TRIES then self:endTheft('lost') end
+        return
+      end
+      self.thiefCar:flee(id)
+      t.phase, t.carId, t.chaseAt = 'chasing', id, self.clock
+      self:showFlash('cancelled', 'THERE THEY GO', 'Chase the thief down and hit the EMP within ' .. M.EMP_METRES .. ' m.')
+      self.diag:event('thief_spawned', tostring(id))
+      return
+    end
+    if t.phase == 'chasing' then
+      self:watchStuck(t, dt, 'thief')
+      local d = self.thiefCar and self.thiefCar:distance(t.carId)
+      t.metres = d
+      t.arrow = d and self.thiefCar.bearing and self.thiefCar:bearing(t.carId) or nil
+      if not d then self:endTheft('escaped') return end
+      if d > M.ESCAPE_METRES then self:endTheft('escaped') end
+      return
+    end
+    if t.phase == 'caught' and self.clock - t.caughtAt > M.CAUGHT_SECONDS then
+      if t.carId and self.thiefCar then self.thiefCar:remove(t.carId) end
+      self.thief = nil
+    end
+  end
+
+  -- The Base tab's Get robbed button, which starts a theft whenever the rules allow.
+  function c:robberyView()
+    if not self.profile or self.error then return nil end
+    local problem = self:theftProblem(true)
+    if problem == 'Not ready yet.' then problem = 'Get in your car first.' end
+    -- What a thief takes is never shown here (MadMerick): only the amount, once it happens.
+    return { allowed = problem == nil, problem = problem }
+  end
+
+  -- Whether the player left a job or spot to chase a thief and hasn't gone back yet.
+  function c:awayFromJob()
+    return self.thiefReturn ~= nil or (self.thief ~= nil and self.thief.returnTo ~= nil)
+  end
+
+  -- Whether the job's truck is parked for the chase, with the job in it: its weight isn't on the chase car, a crash
+  -- in the chase car doesn't lose it, and its slot can't be sold.
+  function c:jobCarParked()
+    local r = self.thiefReturn or (self.thief and self.thief.returnTo)
+    return r ~= nil and r.jobCar ~= nil
+  end
+
+  -- Why Back to your job can't be pressed now, or nil.
+  function c:thiefReturnProblem()
+    local r = self.thiefReturn
+    if not r then return nil end
+    if self.booking and self.booking.thiefReturn then return nil end
+    if self.onFoot then return 'Get back in your car first.' end
+    if self.hire then return self:awayText() end
+    if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if self.booking then return 'You have a relocation booked to ' .. self.booking.name .. '. Cancel it on the Relocate tab first.' end
+    return nil
+  end
+
+  -- Back to your job: a free teleport to the spot the player left from. Already there (they chased from it, or their
+  -- truck couldn't come back out the first time), it carries on without one.
+  function c:thiefGoBack()
+    local r = self.thiefReturn
+    if not r or r.swapAt then return false end
+    local problem = self:thiefReturnProblem()
+    if problem then
+      r.feedback = problem
+      return false
+    end
+    local here = self.lastSample
+    local d = here and here.valid and location.distance(here, r)
+    if d and d <= M.BACK_METRES and not (self.booking and self.booking.thiefReturn) then
+      self:thiefReturned()
+      return true
+    end
+    if not (self.booking and self.booking.thiefReturn) then
+      self.booking = { id = 'return', name = 'where you left off', region = 'back on the road', fee = 0,
+        latitude = r.latitude, longitude = r.longitude, thiefReturn = true }
+      self.bookingTeleportAt = nil
+    end
+    if not self:teleportToBooking() then
+      r.feedback = self.shippingFeedback
+      return false
+    end
+    r.feedback = 'On your way back. The terrain takes a few seconds to load.'
+    self.diag:event('thief_return', 'teleport')
+    return true
+  end
+
+  -- Back where the player left off with their truck: the trailer comes out behind it with its cargo, and the job
+  -- carries on.
+  backOnTheRoad = function(self, r)
+    self.thiefReturn = nil
+    local trailer = ''
+    if r.trailer and self.trailer and self.trailer.stored and not self.trailerOut then
+      trailer = self:spawnTrailer() and ' Your trailer is behind you: back up to it slowly and it hitches itself.'
+        or ' Bring your trailer out on the Garage tab: it is free this time.'
+      if not self.trailerOut then self.trailerComesFree = true end
+    end
+    -- The job's weight goes back on the truck and the trailer.
+    self:applyWeight(true)
+    local what = r.load and 'Your job carries on from here.' or 'You are back where you left off.'
+    self:showFlash('delivered', 'BACK ON THE ROAD', what .. trailer)
+    self:autoSaveSoon('your trip back')
+    self.diag:event('thief_return', 'landed')
+  end
+
+  -- Landed back where the player left off. A truck parked for the chase comes back out first, in place of the chase
+  -- car (which goes back to its slot); backOnTheRoad follows once it's in (watchThief).
+  function c:thiefReturned()
+    local r = self.thiefReturn
+    if not r then return end
+    if r.jobCar then
+      local name, why = self:bringParkedCar(r.jobCar)
+      if not name then
+        r.feedback = why .. ' Press Back to your job again.'
+        self.diag:event('thief_return', 'truck_failed', 'W')
+        return
+      end
+      r.swapAt, r.feedback = self.clock, 'Your ' .. name .. ' is on its way back to you.'
+      self.diag:event('thief_return', 'truck')
+      return
+    end
+    backOnTheRoad(self, r)
+  end
+
+  -- The HUD's card, or nil.
+  function c:thiefView()
+    local t = self.thief
+    local r = self.thiefReturn
+    if r and (not t or t.phase == 'caught') then
+      local problem = self:thiefReturnProblem()
+      -- How the chase ended, with the money, so the card says it big.
+      local outcome, paid = self:robberyOutcome(false)
+      local taken = self.robberyResult and not self.robberyResult.road and self.robberyResult.amount or (t and t.amount)
+      if not outcome and t and t.phase == 'caught' then outcome, paid = 'caught', t.amount + (t.bounty or 0) end
+      return { phase = 'return', job = r.load, trailer = r.trailer, returnAllowed = problem == nil and not r.swapAt,
+        problem = problem, travelling = (self.booking ~= nil and self.booking.thiefReturn == true) or r.swapAt ~= nil or nil,
+        feedback = r.feedback, outcome = outcome, amount = taken, paid = paid, truck = r.jobCar ~= nil or nil }
+    end
+    if not t then return nil end
+    local settleLeft = t.phase == 'settling' and t.settleAt and math.max(0, M.SETTLE_SECONDS - (self.clock - t.settleAt)) or nil
+    local problem = t.phase == 'stolen' and self:thiefChaseProblem() or nil
+    -- Chase in: each parked car, while Chase can be pressed. Not once the chase car is out.
+    local cars = nil
+    if t.phase == 'stolen' and not (t.returnTo and t.returnTo.jobCar) and #self:parkedCars() > 0 then
+      cars = {}
+      for i = 1, #self:parkedCars() do
+        local card = self:parkedCard(i)
+        cars[i] = { index = i, name = card and card.name or 'car', allowed = self:pursuitProblem(i) == nil }
+      end
+    end
+    local driving = self.ownedParts and (self.ownedParts.name or self.ownedParts.model) or nil
+    return {
+      phase = t.phase, amount = t.amount, bounty = t.bounty or 0, secondsLeft = self:theftSecondsLeft(),
+      paid = t.phase == 'caught' and t.amount + (t.bounty or 0) or nil,
+      chaseAllowed = t.phase == 'stolen' and problem == nil, problem = problem,
+      settleLeft = settleLeft,
+      distanceMetres = t.phase == 'chasing' and t.metres and math.floor(t.metres + 0.5) or nil,
+      arrow = t.phase == 'chasing' and t.arrow and math.floor(t.arrow + 0.5) or nil,
+      empMetres = M.EMP_METRES, empInRange = t.phase == 'chasing' and t.metres ~= nil and t.metres <= M.EMP_METRES,
+      emp = t.phase == 'chasing' and self:empView() or nil,
+      escapeMetres = M.ESCAPE_METRES, feedback = t.feedback,
+      held = t.returnTo and { job = t.returnTo.load, truck = t.returnTo.jobCar ~= nil or nil } or nil,
+      cars = cars, driving = driving, carProblem = cars and problem == nil and self:pursuitProblem(1) or nil,
+    }
+  end
+end
+
+return M

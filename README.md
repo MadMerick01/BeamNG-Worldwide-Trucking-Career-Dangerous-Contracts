@@ -22,13 +22,15 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 - **Trailers.** Buy one of 16 trailers, from a small box trailer to a 34,000 L tanker, with cargo boxes or fluid tanks fitted. Hitch it for extra cargo space. You can own as many trailers as you have car slots: 2, 3 with a base, 4 with the bought slot. Your base keeps them for free; without one, a depot keeps them for a fee.
 - **Real businesses.** Many town jobs end at a real shop, yard or warehouse in that town, found on OpenStreetMap. Pull up within 25 m of it to deliver; with Street View open you see the real place.
 - **Off-road drops.** No GPS route: follow the arrow on the Route tab to a spot off the road.
-- **Dangerous highly paid contracts.** Death Road, Carhuaz, Anta, Marcará, Zoji La, Ravin de Piquet, Sani Pass and Grimsel, for up to **8x the pay**. They stay in rotation after you deliver them, so you can drive your favourites again.
+- **Long hauls.** Every job board has a long haul of parts or bricks to a town 20 to 60 km away, for bigger pay.
+- **Dangerous contracts** (Death Road, Zoji La, Sani Pass and more) are off for now while they get more work. They'll be back.
 - **Dynamic economy.** Towns want different goods, repeat runs pay less, shortages pay double.
 - **Steep, remote and notorious roads** pay up to 3x. Regions are graded for difficulty.
 - **Buy a home.** For $250,000, make any spot on Earth yours. It stores a second car you can swap into there, and repairs at home are half price.
 - **Relocate.** Pay to move to any town or coordinates on Earth. Some of the world's hardest regions will pay your way if you come and deliver their wares.
 - **Fuel, punctures and breakdowns.** Refuel in towns, repair burst tyres and use **Tow to road** when you're stuck.
 - **Insurance** after a big crash costs $1,000 when you're starting out, and covers less the richer you get, up to a quarter of the repair from $300,000 (the load is lost, and what you can't afford is paid off from your next deliveries), abandoning a job costs $1,000, and the Insert key won't fix your car for free. Press the **–** at the top of the HUD to tuck it away while you drive.
+- **Help page.** Press **?** at the top of the HUD for a How to play window that explains every part of the game, with the live server page and the Discord invite at the top. Small **?** buttons on the HUD's tabs open it at the right section.
 - **Street View window.** On the HUD's **Street View** tab, press **Turn on** to follow your truck in Google Street View in your web browser, updated every 10 seconds (or every 6 or 20, in the page's Settings). Handy on a second screen.
 - **Go sightseeing.** Save, swap your truck for a free Moonhawk, teleport anywhere on Earth to look around, then press **Return to your job** to get your truck and job back.
 - **Heli flights.** Hire a Bell 407 for $1,000 and search for **'dont ask questions'** jobs. Needs the [Revamped Bell 407](https://www.beamng.com/threads/revamped-bell-407-with-weapons.98195/) mod by stefan750.
@@ -37,8 +39,8 @@ A freight career for [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth),
 
 1. Download `worldwide-trucking-dangerous-contracts.zip` from the [latest release](../../releases/latest).
 2. Drop it, **still zipped**, into the `mods` folder of your BeamNG user folder. If an older `earth-freight-sim.zip` or `earth_freight.zip` is there, delete it so two copies don't load. Your saves carry over.
-3. In game, turn on the **BeamNG Worldwide Trucking Career: Dangerous Contracts** HUD app. Press Esc, go to System > HUD Apps and edit the layout you're using: **.Earth** when you play alone, **BeamMP** on a server. Then + Add app > scroll down to the bottom of HUD APPS >
-   BeamNG Worldwide Trucking Career: Dangerous Contracts > + Add to layout > (move it where you wish onscreen) > Save. Each layout keeps its own apps, so if you play both alone and on a server, add it to both.
+3. In game, a pop-up offers to add the HUD to your screen: press **Add the HUD**. Each layout keeps its own apps (**.Earth** when you play alone, usually **BeamMP** on a server), so you're asked once for each.
+   To add it yourself instead, press Esc, go to System > HUD Apps and edit the layout you're using, then + Add app > scroll down to **Worldwide Trucking HUD** > + Add to layout > (move it where you wish onscreen) > Save.
 
 ## How to Start
 

@@ -17,6 +17,7 @@ local jobs = require('earthFreight/jobs')
 local cargo = require('earthFreight/cargo')
 local fuel = require('earthFreight/fuel')
 local workshop = require('earthFreight/workshop')
+local camera = require('earthFreight/camera')
 local shipping = require('earthFreight/shipping')
 local contracts = require('earthFreight/contracts')
 local beacons = require('earthFreight/beacons')
@@ -32,10 +33,20 @@ local rockets = require('earthFreight/rockets')
 local mayday = require('earthFreight/mayday')
 local magnate = require('earthFreight/magnate')
 local fuelruns = require('earthFreight/fuelruns')
+local thief = require('earthFreight/thief')
+local thiefCar = require('earthFreight/thiefCar')
+local emp = require('earthFreight/emp')
+local roadRobber = require('earthFreight/roadRobber')
+local adminRobber = require('earthFreight/adminRobber')
+local heli = require('earthFreight/heli')
+local depots = require('earthFreight/depots')
+local depotWorld = require('earthFreight/depotWorld')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
 local MAX_BALANCE = 9007199254740991
+-- How often the game's name tags are checked and turned off again (watchNametags).
+local NAMETAGS_EVERY_SECONDS = 2
 M.STARTING_MONEY = STARTING_MONEY
 -- What the game's traffic police take when they catch the player, for a ticket or an arrest.
 local POLICE_FINE = 200
@@ -51,6 +62,8 @@ local TELEPORT_WAIT_SECONDS = 30
 -- (back where it left, or off a little) before it settles. For this long, any jump that ends near the
 -- booked place is that settling, not a teleport, and being near it frees a player stranded meanwhile.
 M.LANDING_GRACE_SECONDS = 120
+-- A job taken on foot at a depot computer loads the truck this long after the player gets back in.
+M.LOAD_AFTER_SECONDS = 2
 -- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
 -- been stopped this long and nothing else is going on.
 local AUTOSAVE_SECONDS = 3
@@ -150,23 +163,41 @@ function M.new(deps)
     cargo = deps.cargo, fuelTank = deps.fuel,
     -- Reads where the hired helicopter is and how high; without it there are no heli flights.
     aircraft = deps.aircraft,
+    -- The base thief's car (thiefCar.lua); without it a thief can't be chased.
+    thiefCar = deps.thiefCar,
+    -- Puts the depots' sheds and computers down in the world (depotWorld.lua); without it there are
+    -- no depots, and jobs are taken on the HUD.
+    depotWorld = deps.depotWorld,
     odometer = odometer.new(),
     -- Sends game UI events, such as the pop-ups that show over the game's own menus.
     trigger = deps.trigger,
-    -- The game's camera: whether it is the free camera, and back to the car's own camera. The parts
-    -- menu turns the free camera on; without this the camera is left as the menu leaves it.
+    -- The game's camera: whether it is the free camera, which one the car is on, and back to one of
+    -- the car's own (camera.lua). Without it the camera is left as the parts menu or a teleport leaves it.
     camera = deps.camera,
     -- The Street View window's little web server, and how a web page is opened in the player's
     -- browser; without them there is no Street View button.
     streetView = deps.streetView, openUrl = deps.openUrl,
+    -- Turns the game's multiplayer name tags off; returns true when they were on (see watchNametags).
+    nametagsOff = deps.nametagsOff,
+    -- The name of the HUD layout the game has up now, or nil.
+    layout = deps.layout,
+    -- The game's HUD layouts: the one that's up (current) and adding the HUD to it (add); without them the player is
+    -- given the steps to add the HUD themselves.
+    layouts = deps.layouts,
     punctureDamage = 0, owedDamage = 0, refuelSerial = 0,
   }
   workshop.attach(c)
+  camera.attach(c)
   flights.attach(c)
   trailers.attach(c)
   home.attach(c)
   fleet.attach(c)
   fuelruns.attach(c)
+  thief.attach(c)
+  emp.attach(c)
+  roadRobber.attach(c)
+  adminRobber.attach(c)
+  depots.attach(c)
 
   function c:transition(nextState, reason)
     if self.state == nextState and self.reason == reason then return end
@@ -229,6 +260,7 @@ function M.new(deps)
       self.mp = nil
     elseif not self.mp then
       mp.listen(function(event, data) self:multiplayerEvent(event, data) end)
+      self.mpGame = mp
       self.mp = multiplayer.new({ send = mp.send, encode = mp.encode, decode = mp.decode, io = deps.io })
       self.mp:start(self.clock)
       self.diag:event('multiplayer', 'asking the server for the career')
@@ -251,6 +283,10 @@ function M.new(deps)
     self.storedCars = self.profile and copy(self.profile.storedCars) or {}
     self.carCards, self.fleetFeedback = nil, nil
     self.extraCarSlot = self.profile and self.profile.extraCarSlot or nil
+    -- Robbers and thieves switched off on the Route tab: single player only (roadRobber.lua's robbersOff).
+    self.robbersOffSaved = self.profile and self.profile.robbersOff or nil
+    -- The play counted towards the hourly base thief (thief.lua).
+    self.thiefClock = self.profile and copy(self.profile.thiefClock) or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
     self.corp = self.profile and copy(self.profile.corp) or nil
     self.homeFeedback, self.homeCard, self.corpSeen, self.leaveArmed, self.corpAskedAt = nil, nil, nil, nil, nil
@@ -366,9 +402,10 @@ function M.new(deps)
       self:reload()
     end
     if event == 'wwtcMayday' then
+      local before = self.mayday
       self.mayday = mayday.clean(self.mp.mayday, self.clock)
-      -- A new call, or the old one won: a run from before is over.
-      if self.maydayRun and not self:maydayRunning() then self.maydayRun, self.maydayClaim = nil, nil end
+      -- A new call, or the old one won: a run from before is over. Say so, or the run just vanishes from the HUD.
+      if self.maydayRun and not self:maydayRunning() then self:maydayCallEnded(before) end
     elseif event == 'wwtcMaydayWon' then
       self:maydayAnswered(mayday.cleanAnswer(self.mp.maydayWon))
     elseif event == 'wwtcLocate' then
@@ -379,6 +416,14 @@ function M.new(deps)
       self:baseClaimAnswered(self.mp.baseClaimed)
     elseif event == 'wwtcOutpostDone' then
       self:outpostAnswered(self.mp.outpostDone)
+    elseif event == 'wwtcAdminSpot' then
+      self:adminSpotAnswered(self.mp.adminSpot)
+    elseif event == 'wwtcAdminState' then
+      self:adminStateChanged(self.mp.adminState)
+    elseif event == 'wwtcRobAsk' then
+      self:answerRobAsk(self.mp.robAsk)
+    elseif event == 'wwtcRob' then
+      self:robNews(self.mp.rob)
     end
     if event == 'wwtcSaveNow' then self:saveForRestart() end
     if event == 'wwtcSaved' and self.mp.saveError then
@@ -406,33 +451,132 @@ function M.new(deps)
     self.diag:event('first_car', ok and 'spawned' or tostring(why), ok and 'I' or 'W')
   end
 
-  -- The HUD is a UI app the player adds to their screen layout once. A player who has never added it (often someone
-  -- joining a server, who got the mod from it) sees nothing at all, so a pop-up says how, while BeamNG.Earth is
-  -- loaded and the HUD hasn't been on screen this level: after HUD_HINT_SECONDS, then every HUD_HINT_REPEAT_SECONDS,
-  -- at most HUD_HINT_TIMES. Once the HUD has shown, never again that level (it also closes while the game's menus are
-  -- open, which is no reason to nag).
-  M.HUD_HINT_SECONDS, M.HUD_HINT_REPEAT_SECONDS, M.HUD_HINT_TIMES = 20, 180, 3
+  -- The HUD is a UI app on the game's screen layout. A player who has never added it (often someone joining a server,
+  -- who got the mod from it) sees nothing of the mod at all, so while BeamNG.Earth is loaded and the HUD hasn't been
+  -- on screen this level, the game is asked to add it: after HUD_HINT_SECONDS (online, once the career is in, so the
+  -- join has settled), a pop-up asks whether to add the HUD to the layout that's up, and one press of Add the HUD puts
+  -- it there (BeamNG's own ui_appLayouts, as the HUD Apps menu does). It asks once a game for each layout. Without
+  -- that (an older BeamNG, or Not now), a smaller pop-up gives the steps every HUD_HINT_REPEAT_SECONDS until the HUD
+  -- is on screen. Once it has shown, nothing more that level.
+  M.HUD_HINT_SECONDS, M.HUD_HINT_REPEAT_SECONDS, M.HUD_ASK_WAIT_SECONDS = 15, 120, 60
+  M.HUD_APP = 'TruckingCareerDC'
+  M.HUD_APP_NAME = 'Worldwide Trucking HUD'
+  -- Where the HUD goes on the layout: the same as app.json's css, where + Add to layout in the HUD Apps menu puts it.
+  M.HUD_PLACEMENT = { top = '100px', left = '20px', width = '380px', height = '620px' }
   M.HUD_HINT_TITLE = 'Turn on the trucking HUD'
-  -- Each layout has its own apps. Playing alone, BeamNG.Earth's level uses its ".Earth" layout; on a BeamMP server,
-  -- BeamNG.Earth 1.10.1 and later usually leave BeamMP's own "BeamMP" layout up, so a HUD added in single player is
-  -- missing there until it's added to that layout too.
+  M.HUD_ASK_TITLE = 'Add the trucking HUD?'
+  M.HUD_ADDED_TITLE = 'Trucking HUD added'
+  -- The titles players see in the HUD Apps menu for the layouts the game names by type, for when the game can't say.
+  M.LAYOUT_TITLES = { beamngEarth = '.Earth', beamngEarthMP = '.Earth multiplayer', beammp = 'BeamMP', freeroam = 'Freeroam' }
+  local function cleanTitle(title)
+    if type(title) ~= 'string' then return nil end
+    title = title:gsub('[%c"<>]', ''):match('^%s*(.-)%s*$')
+    if title == '' or #title > 40 then return nil end
+    return M.LAYOUT_TITLES[title] or title
+  end
   local function hudHint(layout, extra)
     return 'Worldwide Trucking needs its HUD on screen. Press Esc, go to System > HUD Apps > ' .. layout .. ' (edit layout), '
-      .. 'press + Add app, pick "BeamNG Worldwide Trucking Career: Dangerous Contracts" near the bottom of the list, press '
-      .. '+ Add to layout, move it where you like and press Save.' .. (extra or '')
+      .. 'press + Add app, pick "' .. M.HUD_APP_NAME .. '" near the bottom of the list, press + Add to layout, move it '
+      .. 'where you like and press Save.' .. (extra or '')
   end
-  M.HUD_HINT_TEXT = hudHint('.Earth')
+  M.HUD_HINT_OTHER = ' Each layout has its own apps, so a HUD added to another layout does not show on this one.'
+  M.HUD_HINT_STOPS = ' This reminder stops as soon as the HUD is on screen.'
+  M.HUD_HINT_TEXT = hudHint('.Earth', M.HUD_HINT_STOPS)
   M.HUD_HINT_TEXT_SERVER = hudHint('BeamMP', ' Added it in single player already? The server uses the BeamMP layout, '
-    .. 'so it needs adding there too.')
+    .. 'so it needs adding there too.' .. M.HUD_HINT_STOPS)
+  -- The layout that's up, as the game's layouts say it ({ filename, title, has }: has, the HUD is on it), or nil.
+  function c:hudLayout()
+    if not self.layouts then return nil end
+    local ok, layout = pcall(self.layouts.current)
+    if not ok or type(layout) ~= 'table' or type(layout.filename) ~= 'string' or layout.filename == '' then return nil end
+    return layout
+  end
+  -- The name of the layout that's up, as the HUD Apps menu shows it, or nil.
+  function c:layoutTitle(layout)
+    local title = layout and cleanTitle(layout.title)
+    if title then return title end
+    local ok, name = pcall(function() return self.layout and self.layout() end)
+    return ok and cleanTitle(name) or nil
+  end
+  function c:hudHintText(layout)
+    local title = self:layoutTitle(layout)
+    if title then return hudHint(title, M.HUD_HINT_OTHER .. M.HUD_HINT_STOPS) end
+    return self.mp and M.HUD_HINT_TEXT_SERVER or M.HUD_HINT_TEXT
+  end
+  -- The pop-up that adds the HUD for the player: the game's own dialog, over everything, with two buttons.
+  function c:askToAddHud(layout)
+    if not self.trigger then return false end
+    local call = "if earthFreight_core then earthFreight_core.addHud(%s) end"
+    local title = self:layoutTitle(layout)
+    local ok = pcall(self.trigger, 'showConfirmationDialog', {
+      title = M.HUD_ASK_TITLE,
+      text = 'Worldwide Trucking needs its HUD on screen, and it isn\'t on your ' .. (title and ('<b>' .. title .. '</b> ') or '')
+        .. 'layout yet.<br><br>Press <b>Add the HUD</b> and it appears straight away. You can move it later in Esc > '
+        .. 'System > HUD Apps.',
+      buttons = {
+        { label = 'Not now', luaCallback = string.format(call, 'false'), isCancel = true },
+        { label = 'Add the HUD', luaCallback = string.format(call, 'true'), default = true, isConfirm = true },
+      },
+    })
+    return ok
+  end
+  -- Add the HUD (yes): puts the HUD on the layout that's up and has the game show it. Not now (no): the steps pop-up
+  -- carries on instead. True when the HUD was added.
+  function c:addHud(yes)
+    self.hudAsking = nil
+    if not yes then
+      self.diag:event('hud_add', 'not_now')
+      return false
+    end
+    local layout = self:hudLayout()
+    if layout and layout.has then return true end
+    local ok, added = false, false
+    if layout then ok, added = pcall(self.layouts.add, layout.filename, M.HUD_APP, M.HUD_PLACEMENT) end
+    if ok and added then
+      self.diag:event('hud_add', 'added')
+      self:toast('success', M.HUD_ADDED_TITLE, 'The HUD is on your ' .. (self:layoutTitle(layout) or 'screen') .. ' layout now. '
+        .. 'To move it, press Esc and go to System > HUD Apps.', 12)
+      return true
+    end
+    self.diag:event('hud_add', 'failed', 'W')
+    self.hudMissingFor = 0
+    self:toast('info', M.HUD_HINT_TITLE, 'The HUD could not be added for you. ' .. self:hudHintText(layout), 30)
+    return false
+  end
   function c:hintHud(sample, dt)
     local earth = type(sample) == 'table' and (sample.valid or sample.reason == 'vehicle_required')
-    if self.hudSeen or not earth or (self.hudHints or 0) >= M.HUD_HINT_TIMES then return end
+    if self.hudSeen or not earth then return end
+    -- The add pop-up is up: wait for an answer (a pop-up closed some other way is taken as Not now after a while).
+    if self.hudAsking and self.clock - self.hudAsking < M.HUD_ASK_WAIT_SECONDS then return end
+    -- Online, not before the career is in: the join has settled by then, and a HUD built during it can upset BeamMP's.
+    if self.mp and (not self.mp:ready() or self.loadStatus == 'mp_waiting') then return end
     self.hudMissingFor = (self.hudMissingFor or 0) + dt
     local due = M.HUD_HINT_SECONDS + (self.hudHints or 0) * M.HUD_HINT_REPEAT_SECONDS
     if self.hudMissingFor < due then return end
     self.hudHints = (self.hudHints or 0) + 1
-    self:toast('info', M.HUD_HINT_TITLE, self.mp and M.HUD_HINT_TEXT_SERVER or M.HUD_HINT_TEXT, 30)
+    local layout = self:hudLayout()
+    -- On the layout already: it is on its way to the screen (or the game's menus are open), nothing to tell.
+    if layout and layout.has then return end
+    self.hudAsked = self.hudAsked or {}
+    if layout and not self.hudAsked[layout.filename] and self:askToAddHud(layout) then
+      self.hudAsked[layout.filename] = true
+      self.hudAsking = self.clock
+      self.diag:event('hud_ask', self:layoutTitle(layout) or '?')
+      return
+    end
+    self:toast('info', M.HUD_HINT_TITLE, self:hudHintText(layout), 30)
     self.diag:event('hud_hint', tostring(self.hudHints))
+  end
+  -- Online: tells the server whether the HUD is on screen (off once it has been missing for HUD_HINT_SECONDS), each
+  -- time that changes, so the server's chat reminders go only to players without it.
+  function c:reportHud()
+    if not self.mp or self.mp.state ~= 'server' or not self.mp.hud then return end
+    local on
+    if self.hudSeen then on = true
+    elseif (self.hudMissingFor or 0) >= M.HUD_HINT_SECONDS then on = false
+    else return end
+    if self.hudSent == on then return end
+    if self.mp:hud(on) then self.hudSent = on end
   end
 
   -- For the server page: the town the player is in or nearest (its centre, never the player's own position), and what
@@ -460,11 +604,13 @@ function M.new(deps)
     local near = places.nearest(sample, 1)[1]
     if not near then return end
     local place, doing = near.place, self:doingText()
-    local key = place.id .. '|' .. doing
+    -- Whether an admin could rob this player now (adminRobber.lua): only the server's admins are shown it.
+    local robbable = self:adminRobProblem() == nil
+    local key = place.id .. '|' .. doing .. '|' .. tostring(robbable)
     if key == self.whereSent and self.clock - (self.whereAt or -math.huge) < M.WHERE_SECONDS then return end
     self.whereSent, self.whereAt = key, self.clock
     self.mp:where({ town = place.name, region = place.region, latitude = place.latitude, longitude = place.longitude,
-      doing = doing })
+      doing = doing, robbable = robbable or nil })
   end
 
   -- The two ends of a delivery for the server's commission (magnate.lua): the town centres only, never a spot.
@@ -484,6 +630,7 @@ function M.new(deps)
     self.profile.commissionId = d.id
     if d.amount > 0 then
       self:addMoney(d.amount)
+      self:cashSound()
       -- In a corp the tolls are split equally between everyone in it: this is the player's share.
       local shared = self.corp ~= nil
       for _, b in ipairs(self.mp.bases or {}) do if b.mine and #(b.members or {}) > 0 then shared = true end end
@@ -567,12 +714,17 @@ function M.new(deps)
 
   function c:endMission()
     self.whereSent, self.whereAt = nil, nil
-    self.hudSeen, self.hudHints, self.hudMissingFor = nil, nil, nil
+    self.hudSeen, self.hudHints, self.hudMissingFor, self.hudAsking, self.hudSent = nil, nil, nil, nil, nil
     self.mayday, self.maydayRun, self.maydayClaim, self.maydayFeedback = nil, nil, nil, nil
     self.finding = nil
     self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
     self.mp, self.firstCarSpawned, self.noCarFor = nil, nil, nil
     self.sessionVerified, self.lastSample = false, nil
+    -- A road robber's car went with the level (roadRobber.lua). The hourly base thief's count is in the save (thief.lua).
+    self.robber, self.robberJob, self.robberAtKm, self.empFiredAt = nil, nil, nil, nil
+    self.adminDrive, self.adminFeedback = nil, nil
+    -- The depots went with the level; their spots are kept, by where they are on Earth.
+    self.depotsBuilt, self.depotSearch = nil, nil
     self:interrupt('earth_level_required')
     self.adapter:invalidate()
   end
@@ -581,6 +733,10 @@ function M.new(deps)
     local progression = self.profile.progression
     progression.balance = math.min(MAX_BALANCE, progression.balance + math.floor(amount))
   end
+
+  -- The cha-ching on the HUD: counted for money the player earns or wins back (deliveries, rewards, a caught robber,
+  -- sales), not for fees refunded. The HUD plays it once for each new count.
+  function c:cashSound() self.cashSounds = (self.cashSounds or 0) + 1 end
 
   function c:canAfford(amount)
     return self.profile ~= nil and not self.error and type(amount) == 'number' and amount >= 0
@@ -619,6 +775,14 @@ function M.new(deps)
     end
     self:autoSaveSoon('your police fine')
     return true
+  end
+
+  -- Name tags stay off: checked every NAMETAGS_EVERY_SECONDS, so turning them on in Options doesn't last.
+  function c:watchNametags()
+    if not self.nametagsOff or (self.nametagsAt and self.clock - self.nametagsAt < NAMETAGS_EVERY_SECONDS) then return end
+    self.nametagsAt = self.clock
+    local ok, changed = pcall(self.nametagsOff)
+    if ok and changed then self.diag:event('nametags', 'turned off') end
   end
 
   function c:showFlash(kind, title, text)
@@ -670,18 +834,28 @@ function M.new(deps)
   function c:applyWeight(force)
     -- The load waits in the car while the player flies a helicopter or is on foot.
     if not self.cargo or self.hire or self.onFoot then return end
-    local kg = self.load and self.load.kg or 0
-    local good = self.load and goods.get(self.load.good)
+    -- The job's truck parked for a robber chase keeps its load: none of it goes on the chase car (thief.lua).
+    local load = not self:jobCarParked() and self.load or nil
+    local kg = load and load.kg or 0
+    local good = load and goods.get(load.good)
     local key = tostring(kg) .. ':' .. tostring(good and good.id) .. ':' .. tostring(self.trailerOut and self.trailerOut.id)
     if not force and self.appliedWeight == key then return end
     local space = self:space()
-    -- The trailer's share goes on the trailer; the rest is in the car.
-    kg = self:applyTrailerWeight(kg, good)
-    local carUnits = self.load and (self.load.units - (self.load.trailerUnits or 0)) or 0
+    -- The trailer's share goes on the trailer; the rest is in the car. A trailer left behind with the parked truck
+    -- keeps what it has.
+    if not self:jobCarParked() then kg = self:applyTrailerWeight(kg, good) end
+    local carUnits = load and (load.units - (load.trailerUnits or 0)) or 0
     local fluid = { litres = 0, density = 1, tanks = space.tankParts }
     if good and good.kind == 'fluid' then
       fluid.litres = carUnits * good.litres
       fluid.density = good.kg / good.litres
+    end
+    -- A tanker truck with a Load Volume setting carries its fluid by that setting, as a tanker
+    -- trailer does (trailers.lua): the game weighs it, and the mod adds none of its own.
+    if not good or good.kind == 'fluid' then
+      local handled, respawning = self:carLoadVolume(fluid.litres)
+      if respawning then return end
+      if handled then kg, fluid.litres = 0, 0 end
     end
     local ok, why, detail = self.cargo:setWeight(kg, cargo.partsFor(space, good), fluid)
     if ok then
@@ -697,6 +871,39 @@ function M.new(deps)
     local current = self.lastSample and self.lastSample.vehicle and self.lastSample.vehicle.id
     if current ~= nil and vehicleId ~= current then return end
     self.tankReading = { vehicleId = vehicleId, litres = litres > 0 and math.floor(litres + 0.5) or nil }
+  end
+
+  -- Sets the player's own truck's Load Volume (the tuning setting a tanker truck has, as the game's
+  -- tanker trailers do) to litres. Returns handled (the truck has the setting, so the game carries
+  -- the fluid) and respawning (a respawn to change it was just asked for). The respawn leaves the
+  -- truck as new, so the damage it had is kept owed, and its fuel is put back afterwards. Asked
+  -- once for each amount, so a respawn the game did not take is not asked for over and over.
+  function c:carLoadVolume(litres)
+    local owned = self.ownedParts
+    if not owned or not self.garage or not self.garage.loadVolume then return false end
+    local setting = self.garage:loadVolume(owned.id)
+    if not setting then return false end
+    litres = math.max(0, math.floor((litres or 0) + 0.5))
+    if setting.max and setting.max > 0 then litres = math.min(litres, setting.max) end
+    if math.abs(setting.value - litres) < 1 then self.carLoadVolumeAsked = nil; return true end
+    if self.carLoadVolumeAsked == litres then return true end
+    if not self.garage.setLoadVolume or self.respawned or self.partsCheckDue then return false end
+    local raw = self:vehicleDamage()
+    self:beforeRespawn()
+    local ok, why, detail = self.garage:setLoadVolume(owned.id, setting.name, litres)
+    if not ok then
+      self.ourRespawn = nil
+      if self.fuel then self.fuel.restore = nil end
+      self.diag:event('car_load_volume_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
+      return false
+    end
+    if raw and raw.id == owned.id and type(raw.damage) == 'number' and raw.damage > 0 then
+      self.owedDamage = (self.owedDamage or 0) + raw.damage
+    end
+    self.carLoadVolumeAsked = litres
+    if self.trailerOut and self.garage.hitch then self.garage:hitch(self.trailerOut.id) end
+    self.diag:event('car_load_volume', string.format('%s %d L', setting.name, litres))
+    return true, true
   end
 
   -- A respawn (repair, part change or reverted car) fills the tank and drops the load's weight;
@@ -786,7 +993,8 @@ function M.new(deps)
     if metres <= 0 then return end
     local progression = self.profile.progression
     progression.totalDistanceKm = progression.totalDistanceKm + metres / 1000
-    if self.load then self.load.drivenKm = self.load.drivenKm + metres / 1000 end
+    -- Away chasing a thief, the job waits where it was left (thief.lua).
+    if self.load and not self:awayFromJob() then self.load.drivenKm = self.load.drivenKm + metres / 1000 end
     self:roadPuncture(sample, metres, dt)
   end
 
@@ -803,6 +1011,15 @@ function M.new(deps)
   function c:teleported(from, to)
     -- Earth drops the car in while the terrain loads: its bumps on the way down are not damage.
     if self.startSettle then self:startSettle(true, workshop.LANDING_SETTLE_SECONDS) end
+    -- And can leave the free camera on: the car's own camera back (camera.lua).
+    self:cameraSettle(camera.LONG_CHECKS, true)
+    -- To the base to chase a thief, or back again: the job and any Mayday Rescue run are held, not lost (thief.lua).
+    local b = self.booking
+    if b and (b.thief or b.thiefReturn) then
+      if b.thief and self.trailerOut then self:trailerTeleported() end
+      if self:atBooking(to) then self:landAtBooking('') end
+      return
+    end
     -- Earth still settling the car in at a booking that just landed: not a teleport.
     if not self.booking and not self.load and self:settling(to) then
       if self.stranded then self:settled(to)
@@ -860,6 +1077,15 @@ function M.new(deps)
     local b = self.booking
     self.booking, self.stranded, self.bookingTeleportAt = nil, nil, nil
     self.landing = { latitude = b.latitude, longitude = b.longitude, at = self.clock, name = b.name, region = b.region }
+    if b.thiefReturn then
+      self:thiefReturned()
+      return
+    end
+    if b.thief then
+      self:thiefLanded()
+      self.diag:event('shipped', 'thief')
+      return
+    end
     if b.mayday then
       local call = self:maydayCall()
       if call and call.state == 'open' and call.round == b.mayday.round then
@@ -1043,6 +1269,27 @@ function M.new(deps)
     self.diag:event('mayday_run_ended', tostring(why))
   end
 
+  -- The call this player was racing to ended under them: someone else got there first, or it moved on (nobody
+  -- reached the scene in time). before is the call as it was when the run started, if this game still has it.
+  function c:maydayCallEnded(before)
+    local run, call = self.maydayRun, self.mayday
+    self.maydayRun, self.maydayClaim = nil, nil
+    local place = before and before.round == run.round and before.spot and before.spot.name
+    local near = place and (' near ' .. place) or ''
+    local why
+    if call and call.round == run.round and call.state == 'won' then
+      self.maydayFeedback = (call.winner or 'Someone else') .. ' reached the scene' .. near
+        .. ' first, so your Mayday Rescue run is over. The next call goes out soon.'
+      why = 'beaten'
+    else
+      self.maydayFeedback = 'Nobody reached the scene' .. near .. ' in time, so that call moved on and your Mayday '
+        .. 'Rescue run is over. Check the Mayday Rescue tab for the new call.'
+      why = 'moved_on'
+    end
+    self:showFlash('cancelled', 'MAYDAY RUN OVER', self.maydayFeedback)
+    self.diag:event('mayday_run_ended', why)
+  end
+
   -- An edge button: a free relocation to that edge (an empty car, as any relocation) and the teleport there, in one
   -- press. Already on that edge, the run starts from where the car is.
   function c:maydayEdge(edge)
@@ -1094,7 +1341,7 @@ function M.new(deps)
     end
     if not run or self.maydayClaim then return end
     local sample = self.lastSample
-    if self.state ~= 'READY' or not self.arrived or self.stranded or self.hire or self.onFoot or self.load
+    if self.state ~= 'READY' or not self.arrived or self.stranded or self.hire or self.onFoot or self.load or self:awayFromJob()
         or type(sample) ~= 'table' or not sample.valid then return end
     local d = location.distance(sample, call.spot)
     -- Every POS_SECONDS, how far from the scene (to 100 m), for the standings everyone sees.
@@ -1142,6 +1389,7 @@ function M.new(deps)
     self.profile.rewardId = r.id
     if r.amount > 0 then
       self:addMoney(r.amount)
+      self:cashSound()
       self:toast('info', 'Mayday Rescue', dollars(r.amount) .. ' for reaching the scene first.')
       self.diag:event('reward', string.format('#%d %d %s', r.id, r.amount, tostring(r.why)))
     end
@@ -1381,6 +1629,8 @@ function M.new(deps)
       if away and away <= self.configuration.resumeRadiusMetres then
         self.arrived = true
         self.odometer:reset()
+        -- Usually by Earth's teleport, which can leave the free camera on.
+        self:cameraSettle(camera.LONG_CHECKS, true)
         if self.mode == 'start' then
           local town = self:startTown()
           self:showFlash('delivered', self:named('Welcome to ' .. (town or 'your start')):upper(),
@@ -1440,6 +1690,19 @@ function M.new(deps)
     return nil
   end
 
+  -- Why taking a job at this place is not possible now, or nil when it is. With depots, jobs are
+  -- taken on foot at the town's depot computer, the truck parked close by (depots.lua); without
+  -- them, in the car, stopped in town.
+  function c:takeProblem(place)
+    if not self:depotsOn() then return self:tradeProblem(place) end
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Jobs are unavailable right now.' end
+    if self.hire then return self:awayText() end
+    if not place then return 'Drive into a town to find a job.' end
+    if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
+    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+    return self:computerProblem(place.id, nil)
+  end
+
   -- The job board of a place: its jobs, seeded by how many jobs the player has done, in the band
   -- picked on the Distance filter.
   function c:board(place)
@@ -1477,7 +1740,7 @@ function M.new(deps)
   function c:takeJob(jobId, share)
     share = share or 100
     local place = self:here()
-    local problem = self:tradeProblem(place)
+    local problem = self:takeProblem(place)
     if not problem and self.load then problem = 'You already have a job. Deliver it or abandon it first.' end
     if not problem and self.rockets then problem = rockets.TAKE_PROBLEM end
     local job
@@ -1541,6 +1804,7 @@ function M.new(deps)
     local name = load.business and (load.business.name .. ', ' .. town.name) or town.name
     local ok, why = self.adapter:setDestination(spot, name)
     self.gpsTown, self.gpsContract, self.gpsFeedback = ok and not load.business and town.id or nil, nil, nil
+    self.gpsTownDepot = nil
     if not ok then self.tradeFeedback = 'Set the GPS yourself: copy the drop-off coordinates on the Route tab.' end
     self.diag:event('gps', ok and (load.business and ('business:' .. town.id) or town.id) or tostring(why), ok and 'I' or 'W')
     return ok == true
@@ -1660,6 +1924,7 @@ function M.new(deps)
     local ok, why = self.adapter:setDestination(place, place.name)
     self.diag:event('gps', ok and ('town:' .. place.id) or tostring(why), ok and 'I' or 'W')
     self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = ok and place.id or nil, nil, nil, nil
+    self.gpsTownDepot = nil
     self.gpsFeedback = ok and ('The GPS is set to ' .. place.name .. '.')
       or ('Could not set the GPS. Paste ' .. coordinates(place) .. ' into the BeamNG.Earth map instead.')
     return ok == true
@@ -1676,6 +1941,7 @@ function M.new(deps)
     local ok, why = self.adapter:setDestination(section.start, section.name .. ' start')
     self.diag:event('gps', ok and ('contract_start:' .. section.id) or tostring(why), ok and 'I' or 'W')
     self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = nil, ok and section.id or nil, nil, nil
+    self.gpsTownDepot = nil
     self.gpsFeedback = ok and ('The GPS is set to the start of ' .. section.name .. ', ' .. section.region .. '.')
       or ('Could not set the GPS. Paste ' .. coordinates(section.start) .. ' into the BeamNG.Earth map instead.')
     return ok == true
@@ -1764,6 +2030,7 @@ function M.new(deps)
     local load, good = self.load, goods.get(self.load.good)
     self:loseRocketPay(load)
     self:addMoney(load.pay)
+    self:cashSound()
     -- A delivered dangerous contract's road is counted for the career page (it stays on the boards).
     if load.contract then
       local progression = self.profile.progression
@@ -1805,6 +2072,10 @@ function M.new(deps)
 
   -- Delivers the job at its drop-off: paid in full, and the town needs that good a little less.
   function c:deliver()
+    if self:awayFromJob() then
+      self.tradeFeedback = 'You left this job to chase a thief. Go back to it first.'
+      return false
+    end
     if self.load and self.load.drop then return self:deliverDrop() end
     local place, problem
     if self.load and self.load.business then
@@ -1825,6 +2096,7 @@ function M.new(deps)
     local load, good = self.load, goods.get(self.load.good)
     self:loseRocketPay(load)
     self:addMoney(load.pay)
+    self:cashSound()
     jobs.delivered(self.needs, place, good, self.now())
     self:finishJob()
     local from = places.get(load.from)
@@ -1850,7 +2122,7 @@ function M.new(deps)
   function c:finishJob()
     local progression = self.profile.progression
     progression.jobsDone = (progression.jobsDone or 0) + 1
-    self.load, self.abandonArmed = nil, false
+    self.load, self.abandonArmed, self.trailerComesFree = nil, false, nil
     self:applyWeight()
   end
 
@@ -2181,7 +2453,16 @@ function M.new(deps)
     local dt = location.finite(dtReal) and math.max(0, dtReal) or 0
     self.clock = self.clock + dt
     -- On foot, in the game's walking mode, the car waits where it was left.
+    local wasOnFoot = self.onFoot
     self.onFoot = self.garage ~= nil and self.garage.onFoot ~= nil and self.garage:onFoot() or false
+    -- A job taken at a depot's computer, on foot, puts its weight on the truck LOAD_AFTER_SECONDS
+    -- after the player is back in it, once the game has really put them in the driver's seat.
+    if wasOnFoot and not self.onFoot and self.load then self.loadWeightAt = self.clock + M.LOAD_AFTER_SECONDS end
+    if self.onFoot then self.loadWeightAt = nil end
+    if self.loadWeightAt and self.clock >= self.loadWeightAt then
+      self.loadWeightAt = nil
+      self:applyWeight()
+    end
     if self.garage and self.garage.keepParked then
       if not self.onFoot then self.garage:releaseParked()
       elseif self.ownedParts then self.garage:keepParked(self.ownedParts.id) end
@@ -2196,7 +2477,12 @@ function M.new(deps)
     self:observe(sample, dt)
     self:spawnFirstCar(sample, dt)
     self:hintHud(sample, dt)
+    self:reportHud()
     self:watchMayday()
+    self:watchThief(dt)
+    self:watchRobber(dt)
+    self:watchAdminDrive()
+    self:watchNametags()
     self:watchFind()
     self:watchCommission()
     self:watchReward()
@@ -2209,11 +2495,12 @@ function M.new(deps)
     self:watchParts()
     self:watchRockets()
     self:watchPartsBill()
-    self:watchPartsCamera()
+    self:watchCamera()
     self:watchTrailer()
     self:afterRespawn()
     self:watchFuel()
     self:watchStations()
+    self:watchDepots()
     self:watchInsurance()
     self:watchTow()
     self:watchTimedSave()
@@ -2278,7 +2565,7 @@ function M.new(deps)
         fluid = good.kind == 'fluid' or nil, unitLitres = good.litres, litres = good.litres and q.units * good.litres or nil,
         shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road - (q.baseBonus or 0) > 1.005 and q.road - (q.baseBonus or 0) or nil,
         -- What the player's base adds, as a percentage of the pay without it.
-        basePercent = q.baseBonus and math.floor(q.baseBonus / (q.road - q.baseBonus) * 100 + 0.5) or nil, outside = job.outside,
+        basePercent = q.baseBonus and math.floor(q.baseBonus / (q.road - q.baseBonus) * 100 + 0.5) or nil, outside = job.outside, long = job.long,
         tollTo = q.toll and q.toll.owner or nil, tollPercent = q.toll and math.floor(magnate.TOLL * 100 + 0.5) or nil,
         allowed = allowed and q.units > 0 and (not section or self:canAfford(contracts.FEE)) }
     end
@@ -2458,6 +2745,7 @@ function M.new(deps)
     local town
     if place then
       local problem = self:tradeProblem(place)
+      local takeProblem = self:takeProblem(place)
       local kind = jobs.character(place)
       local delivery
       if self.load and not self.load.drop and self.load.to == place.id then
@@ -2468,7 +2756,9 @@ function M.new(deps)
       town = {
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
         region = place.region, boost = jobs.roadBonusFor(places.boost(place)), character = characterText[kind],
-        jobs = self:boardView(place, problem == nil and not self.load), distance = self.jobDistance or 'any',
+        jobs = self:boardView(place, takeProblem == nil and not self.load), distance = self.jobDistance or 'any',
+        -- With depots, why the jobs can't be taken here (on the Town tab: at the depot computer).
+        takeProblem = self:depotsOn() and takeProblem or nil,
         delivery = delivery,
         refuel = refuel and { litres = refuel.litres, cost = refuel.cost, full = refuel.full } or nil,
         refuelAllowed = self:refuelProblem() == nil and self.fuelTank ~= nil and refuel ~= nil and not refuel.full and refuel.litres > 0
@@ -2646,7 +2936,7 @@ function M.new(deps)
       car = car,
       career = self.profile and {
         jobsDone = self.profile.progression.jobsDone or 0,
-        contractsDone = #(self.profile.progression.contractsDone or {}), contractsTotal = #contracts.LIST,
+        contractsDone = #(self.profile.progression.contractsDone or {}), contractsTotal = #contracts.LIST, contractsOn = jobs.CONTRACTS or nil,
       } or nil,
       balance = self.profile and self.profile.progression.balance or STARTING_MONEY,
       totalDistanceKm = self.profile and self.profile.progression.totalDistanceKm or 0,
@@ -2685,6 +2975,7 @@ function M.new(deps)
       insuranceDebt = self:insuranceOwed() > 0 and { owed = self:insuranceOwed(), payAllowed = self:payInsuranceAllowed(),
         sharePercent = math.floor(workshop.DEBT_SHARE * 100 + 0.5) } or nil,
       onFoot = self.onFoot == true,
+      computer = self:computerView(),
       -- Why Buy parts, Buy new car and Buy second hand are off, or nil when they are on.
       garageLocked = self.onFoot and 'Get back in your car to change parts or cars.' or self:towDebtProblem(),
       partsChange = self.pendingParts and {
@@ -2714,6 +3005,13 @@ function M.new(deps)
       heli = self:heliView(current), beacon = self:beaconView(current),
       shipping = self:shippingView(current),
       mayday = self:maydayView(current),
+      thief = self:thiefView() or self:robberView() or self:robberyResultView(),
+      robbery = self:robberyView(),
+      robMe = self:robMeView(),
+      rules = self:rulesView(),
+      admin = self:adminView(),
+      empSound = self.empSounds or 0,
+      cashSound = self.cashSounds or 0,
       away = self:awayView(),
       home = self:homeView(current),
       fleet = self:fleetView(),
@@ -2728,6 +3026,30 @@ function M.new(deps)
         tyreCost = math.floor(self.punctureDamage / PUNCTURE_DAMAGE + 0.5)
           * math.floor(PUNCTURE_DAMAGE * pricing.repairRate(self:carValueOf(self.ownedParts and self.ownedParts.id)) + 0.5),
       } or nil,
+    }
+  end
+
+  -- The game's own numbers for the HUD's help page, so its text always matches the prices and rules in play,
+  -- and whether this game is online (some help sections are for online play only).
+  function c:rulesView()
+    local percent = function(share) return math.floor(share * 100 + 0.5) .. '%' end
+    return {
+      online = self.mp ~= nil and self.mp.state == 'server',
+      -- What robbers and thieves take is kept off the help page on purpose (MadMerick): the alerts show the amount.
+      robberMinKm = math.floor(roadRobber.MIN_JOB_METRES / 1000 + 0.5),
+      thiefMinutes = math.floor(thief.HOUR_SECONDS / 60 + 0.5), thiefAwayKm = math.floor(thief.MIN_AWAY_METRES / 1000 + 0.5),
+      empRange = emp.RANGE, empSeconds = emp.CHARGE_SECONDS,
+      basePrice = dollars(home.PRICE), baseRepairOff = percent(home.REPAIR_SHARE),
+      startSlots = fleet.START_SLOTS, baseSlots = fleet.BASE_SLOTS, boughtSlots = fleet.BOUGHT_SLOTS,
+      slotPrice = dollars(fleet.SLOT_PRICE), driveFee = dollars(fleet.SWAP_FEE), sellShare = percent(pricing.CAR_TRADE_IN_SHARE),
+      towRange = workshop.TOW_RANGE, insuranceMin = dollars(workshop.INSURANCE_FEE), debtShare = percent(workshop.DEBT_SHARE),
+      abandonFee = dollars(jobs.ABANDON_FEE), longHaulMinKm = jobs.LONG_HAUL[1], longHaulMaxKm = jobs.LONG_HAUL[2],
+      heliFee = dollars(heli.HIRE_FEE), heliCrash = dollars(heli.CRASH_FEE),
+      beaconPay = dollars(beacons.PAY), beaconInsurance = dollars(beacons.INSURANCE_FEE),
+      contractFee = dollars(contracts.FEE),
+      fuelRunMinKm = fuelruns.MIN_KM, fuelRunMaxKm = fuelruns.MAX_KM, townFuelTimes = fuel.TOWN_PRICE_TIMES,
+      toll = percent(magnate.TOLL),
+      depotTruckMetres = depots.TRUCK_METRES, depotFarKm = depots.FAR_METRES / 1000,
     }
   end
 
@@ -2778,6 +3100,11 @@ function M.new(deps)
       self.diag:event('manual_save_rejected', self.stranded and 'stranded' or 'booking', 'W')
       return false
     end
+    if self:awayFromJob() then
+      self.feedback = 'Press Back to your job before saving: your job is waiting where you left it.'
+      self.diag:event('manual_save_rejected', 'thief_chase', 'W')
+      return false
+    end
     if self.hire then
       self.feedback = self.hire.sightseeing and 'Press Return to your job before saving: Save keeps your car, not the sightseeing car.'
         or 'Press Back to my car on the Heli tab before saving: Save keeps your car, not the helicopter.'
@@ -2826,6 +3153,8 @@ function M.new(deps)
         worth = self:carWorth() },
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
+      robbersOff = self.robbersOffSaved or nil,
+      thiefClock = self:savedThiefClock(),
       trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
@@ -2885,7 +3214,7 @@ function M.new(deps)
       and not self.stranded and not self.booking and not self.hire and not self.onFoot
       and not self.pendingParts and not self.pendingCar and not self.insurancePending
       and not self.refuelPending and not self.respawned and not self.partsCheckDue
-      and not self:trailerSaveProblem()
+      and not self:trailerSaveProblem() and not self:awayFromJob()
       -- Not while BeamNG.Earth is still taking the car to a dangerous contract's start and loading its terrain.
       and not (self.contractTeleportAt and self.clock - self.contractTeleportAt < TELEPORT_WAIT_SECONDS)
       and sample and sample.valid and self.odometer:stopped()) and true or false
@@ -3027,29 +3356,94 @@ local function gamePaused()
   end
   return false
 end
--- The game's camera. The parts menu switches to the free camera and can leave it on when it closes,
--- so the player is put back on the car's own camera (driver, chase, orbit...) they had before.
+-- The game's camera. The parts menu, a respawn and Earth's teleports can leave the free camera on, or
+-- the car on its default camera, so the player is put back on the one they had (camera.lua).
 local function gameCamera()
   local function commands()
     local cmd = rawget(_G, 'commands')
     if type(cmd) ~= 'table' or type(cmd.isFreeCamera) ~= 'function' or type(cmd.setGameCamera) ~= 'function' then return nil end
     return cmd
   end
+  local function cameras()
+    local cam = rawget(_G, 'core_camera')
+    return type(cam) == 'table' and cam or nil
+  end
+  local function name()
+    local cam = cameras()
+    if not cam or type(cam.getActiveCamName) ~= 'function' then return nil end
+    local ok, value = pcall(cam.getActiveCamName, 0)
+    return ok and type(value) == 'string' and value or nil
+  end
   return {
     isFree = function()
       local cmd = commands()
       return cmd ~= nil and cmd.isFreeCamera() == true
     end,
-    backToCar = function()
+    -- The car's camera the player is on: driver, chase, orbit...
+    name = name,
+    -- Off the free camera, then onto the named camera of the car when it has one.
+    backToCar = function(wanted)
+      local changed = false
       local cmd = commands()
-      if not cmd or not cmd.isFreeCamera() then return false end
-      cmd.setGameCamera()
-      return true
+      if cmd and cmd.isFreeCamera() then cmd.setGameCamera(); changed = true end
+      local cam = cameras()
+      if type(wanted) == 'string' and cam and type(cam.setByName) == 'function' and name() ~= wanted then
+        local ok = pcall(cam.setByName, 0, wanted)
+        changed = changed or ok
+      end
+      return changed
     end,
   }
 end
 -- Opens a page of this computer's own web server in the player's default browser (browser.lua),
 -- and notes in the log which way worked. False when none did.
+-- The game's multiplayer name tags (the mpNametagsEnabled setting): always off with this mod, so no car on a server
+-- shows who drives it, not even a robber driven by a person. Returns true when they were on and were turned off.
+-- The HUD layout the game has up now (core_gamestate's appLayout), or nil.
+local function gameLayout()
+  local gs = rawget(_G, 'core_gamestate')
+  local state = type(gs) == 'table' and gs.state
+  return type(state) == 'table' and type(state.appLayout) == 'string' and state.appLayout or nil
+end
+-- The game's HUD layouts (BeamNG's ui_appLayouts, 0.39): the one that's up, whether the HUD is on it, and adding the
+-- HUD to it, which writes the player's own copy of that layout, as the HUD Apps menu does, and has the game show it.
+local function gameLayouts()
+  local function api()
+    local l = rawget(_G, 'ui_appLayouts')
+    if type(l) ~= 'table' and type(rawget(_G, 'extensions')) == 'table' then l = extensions.ui_appLayouts end
+    if type(l) ~= 'table' then return nil end
+    for _, name in ipairs({ 'getCurrentLayout', 'addApp', 'setCurrentLayout' }) do
+      if type(l[name]) ~= 'function' then return nil end
+    end
+    return l
+  end
+  return {
+    current = function()
+      local l = api()
+      local layout = l and l.getCurrentLayout()
+      if type(layout) ~= 'table' or type(layout.filename) ~= 'string' then return nil end
+      local has = false
+      for _, app in ipairs(type(layout.apps) == 'table' and layout.apps or {}) do
+        if type(app) == 'table' and app.appName == M.HUD_APP then has = true end
+      end
+      return { filename = layout.filename, title = layout.title, type = layout.type, has = has }
+    end,
+    add = function(filename, appName, placement)
+      local l = api()
+      if not l or not l.addApp(filename, appName, placement) then return false end
+      -- The layout read again from its file, with the HUD on it, and the game's UI told to show it.
+      l.setCurrentLayout(filename)
+      return true
+    end,
+  }
+end
+local function gameNametagsOff()
+  if not settings or type(settings.getValue) ~= 'function' or type(settings.setValue) ~= 'function' then return false end
+  if settings.getValue('mpNametagsEnabled') == false then return false end
+  settings.setValue('mpNametagsEnabled', false)
+  return true
+end
+
 local function gameOpenUrl(url)
   local opened, how = browser.open(url)
   local logger = rawget(_G, 'log')
@@ -3060,9 +3454,10 @@ end
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
-      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(),
+      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(), depotWorld = depotWorld.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
-      streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(),
+      streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(), nametagsOff = gameNametagsOff, layout = gameLayout,
+      layouts = gameLayouts(),
       paused = gamePaused, trigger = function(event, payload) if guihooks then guihooks.trigger(event, payload) end end })
   end
   return active
@@ -3086,7 +3481,7 @@ end
 gameMultiplayer = function()
   local g = multiplayer.game()
   return {
-    inSession = g.inSession, send = g.send,
+    inSession = g.inSession, send = g.send, serverCarId = g.serverCarId, gameCarId = g.gameCarId,
     listen = function(handler) return g.listen(function(event, data) safely(function() handler(event, data) end) end) end,
     encode = function(t) return jsonEncode(t) end, decode = function(text) return jsonDecode(text) end,
   }
@@ -3107,12 +3502,14 @@ function M.requestRepairQuote() return safely(function() return ensure():request
 function M.repairVehicle() return safely(function() return ensure():repairVehicle() end) end
 function M.buyParts() return safely(function() return ensure():buyParts() end) end
 -- The HUD's Buy parts button is about to open the parts menu.
-function M.partsMenuOpening() return safely(function() return ensure():partsMenuOpening() end) end
--- The game's UI moved from one screen to another: leaving the parts menu is the menu closing.
+function M.partsMenuOpening() return safely(function() return ensure():partsMenuOpening(false) end) end
+-- The game's UI moved from one screen to another: entering the parts menu (Buy parts or Ctrl+W) is
+-- it opening, and leaving it is the menu closing.
 function M.onUiChangedState(to, from)
-  if type(from) ~= 'string' or not from:find('vehicleconfig', 1, true) then return end
-  if type(to) == 'string' and to:find('vehicleconfig', 1, true) then return end
-  return safely(function() if active then active:partsMenuClosed(true) end end)
+  local inTo = type(to) == 'string' and to:find('vehicleconfig', 1, true) ~= nil
+  local inFrom = type(from) == 'string' and from:find('vehicleconfig', 1, true) ~= nil
+  if inTo and not inFrom then return safely(function() if active then active:partsMenuOpening(true) end end) end
+  if inFrom and not inTo then return safely(function() if active then active:partsMenuClosed(true) end end) end
 end
 function M.revertParts() return safely(function() return ensure():revertParts(false) end) end
 function M.buyCar(keep) return safely(function() return ensure():buyCar(keep == true) end) end
@@ -3214,6 +3611,15 @@ function M.setBusiness(key, name, kind, latitude, longitude)
       or not location.finite(latitude) or not location.finite(longitude) then return false end
   return safely(function() return ensure():setBusiness(key, name, kind, latitude, longitude) end)
 end
+-- The HUD's car parks for a depot: "lat,lon;lat,lon", best first, or "" for none.
+function M.setDepotLots(key, list)
+  if not businessKey(key) or type(list) ~= 'string' or #list > 600 or list:find('[^%d%.,;%-]') then return false end
+  local lots = {}
+  for lat, lon in list:gmatch('(%-?[%d%.]+),(%-?[%d%.]+)') do
+    lots[#lots + 1] = { latitude = tonumber(lat), longitude = tonumber(lon) }
+  end
+  return safely(function() return ensure():setDepotLots(key, lots) end)
+end
 function M.noBusiness(key)
   if not businessKey(key) then return false end
   return safely(function() return ensure():noBusiness(key) end)
@@ -3234,6 +3640,7 @@ function M.pickUpBeacon() return safely(function() return ensure():pickUpBeacon(
 function M.ignoreBeacon() return safely(function() return ensure():ignoreBeacon() end) end
 function M.gpsToContract(contract) return safely(function() return ensure():gpsToContract(id(contract)) end) end
 function M.gpsToTown(place) return safely(function() return ensure():gpsToTown(id(place)) end) end
+function M.gpsToTownDepot() return safely(function() return ensure():gpsToTownDepot() end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
 -- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.
 function M.bookShippingTo(latitude, longitude)
@@ -3246,6 +3653,32 @@ function M.searchShipping(query)
 end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 -- edge: 'n', 'e', 's' or 'w'.
+-- The base thief: Chase, the EMP (MadMerick's EMP button can call earthFreight_core.empThief()), and a theft
+-- straight away: the Base tab's Get robbed button, or earthFreight_core.thiefTest() in the console (it needs a base).
+function M.thiefChase(index)
+  if index ~= nil and not parkedIndex(index) then return false end
+  return safely(function() return ensure():thiefChase(index) end)
+end
+function M.empThief() return safely(function() return ensure():empThief() end) end
+function M.empHotkey() return safely(function() return ensure():empHotkey() end) end
+function M.thiefLetGo() return safely(function() return ensure():thiefLetGo() end) end
+function M.thiefGoBack() return safely(function() return ensure():thiefGoBack() end) end
+function M.thiefTest() return safely(function() return ensure():startTheft(true) end) end
+function M.getRobbed() return safely(function() return ensure():startTheft(true) end) end
+-- The road robber: the Route tab's ROB ME button.
+function M.robMe() return safely(function() return ensure():robMe() end) end
+-- Its "Robbers and thieves" switch, single player only (true: on, false: off).
+function M.setRobbersOn(on)
+  if type(on) ~= 'boolean' then return false end
+  return safely(function() return ensure():setRobbersOn(on) end)
+end
+-- The admin robber (the server's admins only): Rob a player from the Route tab's list, his EMP, and Stop.
+function M.adminRob(id)
+  if type(id) ~= 'number' or id < 0 or id ~= math.floor(id) then return false end
+  return safely(function() return ensure():adminRob(id) end)
+end
+function M.adminStop() return safely(function() return ensure():adminStop() end) end
+function M.adminEmp() return safely(function() return ensure():adminEmp() end) end
 function M.maydayEdge(edge)
   if edge ~= 'n' and edge ~= 'e' and edge ~= 's' and edge ~= 'w' then return false end
   return safely(function() return ensure():maydayEdge(edge) end)
@@ -3281,6 +3714,7 @@ function M.onPursuitAction(vehicleId, action, data)
 end
 function M.payPartsBill(serial) return safely(function() return ensure():payPartsBill(serial) end) end
 function M.partsBillShown(serial) return safely(function() if active then active:partsBillShown(serial) end end) end
+function M.addHud(yes) return safely(function() return ensure():addHud(yes == true) end) end
 function M.uiMounted(on) return safely(function() ensure():mount(on == true) end) end
 function M.getState() return safely(function() return ensure():view() end) end
 function M.onClientStartMission() return M.reload() end
@@ -3304,6 +3738,8 @@ function M.openRadio() return safely(function() return ensure():openRadio() end)
 function M.onExtensionUnloaded()
   -- The web server lets go of its port, so the next load can open it again.
   if active and active.streetView then pcall(function() active.streetView:stop() end) end
+  -- The depots go too: a reload of the mod (or a new version of it) puts its own down.
+  if active and active.removeDepots then pcall(function() active:removeDepots() end) end
   active = nil
 end -- no implicit save on shutdown
 

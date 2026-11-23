@@ -12,6 +12,7 @@ local beacons = require('earthFreight/beacons')
 local places = require('earthFreight/places')
 local usedCars = require('earthFreight/usedCars')
 local mayday = require('earthFreight/mayday')
+local camera = require('earthFreight/camera')
 local M = {}
 
 -- Driving this far from where the parts were changed, without paying, puts the paid parts back.
@@ -49,11 +50,6 @@ M.SETTLE_SECONDS = 4
 M.LANDING_SETTLE_SECONDS = 15
 -- How long the HUD app has to show the parts bill box before a corner pop-up shows it instead.
 M.BILL_FALLBACK_SECONDS = 1.5
--- After the parts menu closes, the camera is checked at these times (seconds), as the game can turn
--- the free camera back on a moment after the menu has gone.
-M.CAMERA_CHECKS = { 0, 0.5, 1.5 }
--- A HUD rebuilt this soon after Buy parts was pressed is the menu opening, not closing.
-M.PARTS_MENU_MIN_SECONDS = 1
 -- How long a second-hand car has to spawn before its sale is dropped.
 M.USED_SPAWN_SECONDS = 5
 -- The Rust Bucket to Rig line on the start page: a car worth RUST_VALUE (the starter Burnside)
@@ -417,7 +413,7 @@ function M.attach(c)
       local fee = self:insuranceFee()
       local short = fee - math.min(fee, self.profile.progression.balance)
       self.repairFeedback = 'Press Confirm claim: your car is fixed and put back on the road for ' .. dollars(fee)
-        .. (self.load and ', but your job and its cargo are lost.' or '.')
+        .. ((self.load and not self:jobCarParked()) and ', but your job and its cargo are lost.' or '.')
         .. (short > 0 and (' You are ' .. dollars(short) .. ' short, so that is owed and comes out of your next deliveries.') or '')
       return false
     end
@@ -452,7 +448,8 @@ function M.attach(c)
     local short = fee - paid
     if short > 0 then self.profile.progression.insuranceOwed = self:insuranceOwed() + short end
     local lost = ''
-    if self.load then
+    -- A job held in the truck parked for a robber chase isn't in this car, so it isn't lost (thief.lua).
+    if self.load and not self:jobCarParked() then
       lost = ' Your job and its cargo are lost.'
       self.diag:event('job_lost', 'insurance:' .. self.load.good)
       self:finishJob()
@@ -476,7 +473,7 @@ function M.attach(c)
     if not self.insurancePending and not (self.garage and self.arrived and self:seriousCrash()) then return nil end
     local d = self.lastDamage
     return { fee = self:insuranceFee(), armed = self.insuranceArmed, pending = self.insurancePending ~= nil,
-      allowed = self:insuranceAllowed(), loseJob = self.load ~= nil,
+      allowed = self:insuranceAllowed(), loseJob = self.load ~= nil and not self:jobCarParked(),
       wealth = self:insuranceWealth(), topWealth = M.TOP_WEALTH,
       topPercent = math.floor(M.TOP_SHARE * 100 + 0.5), sharePercent = math.floor(M.TOP_SHARE * 100 * math.min(1, self:insuranceWealth() / M.TOP_WEALTH) + 0.5),
       short = math.max(0, self:insuranceFee() - (self.profile and self.profile.progression.balance or 0)),
@@ -628,6 +625,8 @@ function M.attach(c)
       return
     end
     self.partsCheckDue, self.respawned, self.wearDue = true, true, true
+    -- A respawn can put the camera back to the car's default, or on the free camera (camera.lua).
+    if self.cameraSettle and self:playerCar(vehicleId) then self:cameraSettle() end
     -- The new car drops onto its springs: see SETTLE_SECONDS.
     self:startSettle()
     -- Seen by a hire waiting for its vehicle, or for the car coming back: when the sightseeing car
@@ -645,6 +644,8 @@ function M.attach(c)
     if self.fuel and self.fuel.vehicleId == owned.id then self.fuel.restore = true end
     self.appliedWeight, self.respawned = nil, true
     self:startSettle()
+    -- Earth's teleport puts the car down with a reset, and can leave the free camera on (camera.lua).
+    if self.cameraSettle then self:cameraSettle(camera.LONG_CHECKS, true) end
   end
 
   -- Called every tick: when the car's damage drops with no repair or respawn of ours going on, the
@@ -818,44 +819,6 @@ function M.attach(c)
     local ok = self:buyParts()
     self:toast(ok and 'success' or 'warning', 'Parts bill', self.partsFeedback or 'Could not pay. Try again on the Garage tab.')
     return ok
-  end
-
-  -- Buy parts opens the game's parts menu, which switches to the free camera. Remembers whether the
-  -- player was on the free camera already, so closing the menu can put them back as they were.
-  function c:partsMenuOpening()
-    local free = false
-    if self.camera and self.camera.isFree then
-      local ok, value = pcall(self.camera.isFree)
-      free = ok and value == true
-    end
-    self.partsCamera = { free = free, at = self.clock }
-    self.partsCameraChecks = nil
-    return true
-  end
-
-  -- The parts menu closed: the game said so (fromGame), or the HUD was built again. Back on the
-  -- car's own camera, unless the player was on the free camera before pressing Buy parts.
-  function c:partsMenuClosed(fromGame)
-    local p = self.partsCamera
-    if not p then return false end
-    if not fromGame and self.clock - p.at < M.PARTS_MENU_MIN_SECONDS then return false end
-    self.partsCamera = nil
-    if p.free then return false end
-    self.partsCameraChecks = {}
-    for i, after in ipairs(M.CAMERA_CHECKS) do self.partsCameraChecks[i] = self.clock + after end
-    self:watchPartsCamera()
-    return true
-  end
-
-  -- Called every tick: the camera checks after the parts menu closed.
-  function c:watchPartsCamera()
-    local checks = self.partsCameraChecks
-    if not checks then return end
-    while checks[1] and self.clock >= checks[1] do
-      table.remove(checks, 1)
-      if self.camera and self.camera.backToCar then pcall(self.camera.backToCar) end
-    end
-    if not checks[1] then self.partsCameraChecks = nil end
   end
 
   -- The HUD app showed the parts bill box.
@@ -1200,6 +1163,17 @@ function M.attach(c)
       self.carFeedback = 'That car did not turn up. Try again in a moment.'
     end
     local vehicleId = self.lastSample and self.lastSample.valid and self.lastSample.vehicle and self.lastSample.vehicle.id
+    -- The player in their own trailer is not buying a car. When the mod has just respawned it (to fill its Load
+    -- Volume or put its parts back), the game may have put them in it: they go back to their car.
+    local out = self.trailerOut
+    if vehicleId ~= nil and out and vehicleId == out.id then
+      if out.returnDriverUntil and self.clock <= out.returnDriverUntil and self.ownedParts and self.garage.enter
+        and self.ownedParts.id ~= out.id and self.garage:enter(self.ownedParts.id) then
+        out.returnDriverUntil = nil
+        self.diag:event('back_from_trailer', tostring(out.id))
+      end
+      return
+    end
     local expected = self.pendingCar and self.pendingCar.id or (self.ownedParts and self.ownedParts.id)
     if vehicleId ~= nil and expected ~= nil and vehicleId ~= expected then self.partsCheckDue = true end
     if not self.ownedParts then self.partsCheckDue = true end
@@ -1248,9 +1222,16 @@ function M.attach(c)
 
   -- Whether the load on board still fits the space these parts give.
   function c:loadFits(snapshot)
-    if not self.load then return true end
+    -- The job's truck parked for a robber chase keeps the load (thief.lua): the chase car carries none of it.
+    if not self.load or self:jobCarParked() then return true end
     local space = cargo.capacity(snapshot)
     local good = goods.get(self.load.good)
+    -- The load went into the boxes (or tanks) the car has now. If those are still fitted, other parts (a turbo,
+    -- wheels) do not change its room: a tanker's built-in tank and a tank's real size come only from the car,
+    -- whose answer a part change's respawn clears, so the guess from part names would wrongly say no.
+    local owned = self.ownedParts and cargo.capacity(self.ownedParts)
+    local key = good and good.kind == 'fluid' and 'tankParts' or 'parts'
+    if owned and table.concat(owned[key], '\n') == table.concat(space[key], '\n') then return true end
     -- What is in the trailer does not need room in the car.
     local inTrailer = good and (self.load.trailerUnits or 0) or 0
     local slots = self.load.slots - inTrailer * (good and good.slots or 0)

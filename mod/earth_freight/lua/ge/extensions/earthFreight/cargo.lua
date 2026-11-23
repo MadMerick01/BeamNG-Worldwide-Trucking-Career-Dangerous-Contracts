@@ -228,14 +228,14 @@ if poured then
   local share = math.min(1, litres / capacity)
   local took = 0
   for i, c in ipairs(containers) do took = took + math.max(0, fill(c, c.size * share) - empty[i]) end
-  -- Only what the containers really took comes off the load: a tank whose expressions give no
-  -- weight (some trailers weigh their load by a tuning setting instead) must not make the fluid
-  -- weigh nothing. The rest goes over the tank's nodes, or the vehicle, below.
+  -- A tank whose expressions give no weight (a tanker weighed by a tuning setting instead) is
+  -- only logged: putting its fluid's weight anywhere else bent the MD tanker's tank into a spike
+  -- (MadMerick, 18 Nov: no safety net), so what the tank does not take is not added at all.
   local wanted = math.min(litres, capacity) * density
   if took < wanted * 0.9 and log then
     pcall(log, 'W', 'earthFreight', string.format('fluid_weight_short: tanks took %%.0f of %%.0f kg', took, wanted))
   end
-  extra = math.max(0, extra - math.min(wanted, took))
+  extra = math.max(0, extra - wanted)
 end
 report()
 if extra <= 0.001 then return end
@@ -259,16 +259,20 @@ end
 local function loadable(n)
   return type(n) == 'table' and n.cid ~= nil and not n.couplerTag and not n.tag and not coupled[n.name]
 end
-local list = {}
-for _, n in pairs(v.data.nodes) do if loadable(n) and parts[n.partOrigin] then list[#list + 1] = n end end
-if #list == 0 then for _, n in pairs(v.data.nodes) do if loadable(n) then list[#list + 1] = n end end end
-if #list == 0 then return end
-local weights = BALANCE(list) or {}
-local total = 0
-for i = 1, #list do weights[i] = weights[i] or 1; total = total + weights[i] end
-for i, n in ipairs(list) do
-  if base[n.cid] == nil then base[n.cid] = (obj.getNodeMass and obj:getNodeMass(n.cid)) or n.nodeWeight end
-  if type(base[n.cid]) == 'number' then obj:setNodeMass(n.cid, base[n.cid] + extra * weights[i] / total) end
+local added = {}
+if extra > 0.001 then
+  local list = {}
+  for _, n in pairs(v.data.nodes) do if loadable(n) and parts[n.partOrigin] then list[#list + 1] = n end end
+  if #list == 0 then for _, n in pairs(v.data.nodes) do if loadable(n) then list[#list + 1] = n end end end
+  local weights = #list > 0 and BALANCE(list) or {}
+  local total = 0
+  for i = 1, #list do weights[i] = weights[i] or 1; total = total + weights[i] end
+  for i, n in ipairs(list) do added[n.cid] = (added[n.cid] or 0) + extra * weights[i] / total end
+end
+for cid, kg in pairs(added) do
+  local m = base[cid]
+  if m == nil then m = (obj.getNodeMass and obj:getNodeMass(cid)); base[cid] = m end
+  if type(m) == 'number' then obj:setNodeMass(cid, m + kg) end
 end
 ]]
 

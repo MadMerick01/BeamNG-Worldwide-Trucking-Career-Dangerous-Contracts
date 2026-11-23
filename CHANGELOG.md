@@ -8,6 +8,208 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **You can now buy fuel anywhere, not just at a petrol station or in a town.** Stop the truck anywhere on the road and the **Refuel** button on the Garage tab works, at 20 times the pump price. For example, diesel in Europe costs $2.49 a litre at a pump, $12.45 in a town and $49.80 at the roadside. The Fuel section shows "roadside price" in red with both prices, so you know what you're paying before you press it, and afterwards it tells you what a pump would have cost.
 - Petrol station pumps and town prices are unchanged: the pump price at a pump, and 5 times that in a town. The fuel you haul on a fuel run stays in the tanker and is never used to refuel your truck. Your saves still work.
+## Build 273 · 23 Nov 2026
+
+- **The game now adds the trucking HUD for you.** If the HUD isn't on your screen, a pop-up asks "Add the trucking HUD?" and names the layout you're on, such as .Earth or BeamMP. Press **Add the HUD** and it appears straight away, in the same spot + Add to layout would put it. You can still move it with Esc > System > HUD Apps. Each layout has its own apps, so you're asked once for each layout you play on: once alone, and once the first time you join a server. Players who already have the HUD on screen never see the pop-up. Online it waits until your career has come in from the server, so joining isn't disturbed.
+- Press **Not now** and you get the usual steps instead. That reminder now keeps coming back every couple of minutes until the HUD is on screen, instead of giving up after three tries.
+- The HUD is now called **Worldwide Trucking HUD** in the HUD Apps list, which is easier to find, and every set of steps uses that name. The reminder now names layouts as the HUD Apps menu shows them, for example ".Earth multiplayer" instead of "beamngEarthMP". Nothing to delete, and your saves still work.
+- The HUD has a new picture in the HUD Apps list, from the Magnate update poster, so it's easy to spot.
+- **On a trucking server, the chat reminders about turning on the HUD now go only to players who don't have it on screen.** Your game tells the server when the HUD is missing, and the server reminds just you, now and then, until it's on screen. Everyone else stops seeing those reminders.
+
+## Build 272 · 22 Nov 2026
+
+- **You now keep your camera after buying parts or teleporting.** Leaving the parts menu, teleporting with BeamNG.Earth or the HUD's Teleport buttons, and coming back to your car from the helicopter or sightseeing could leave you on the free camera, or on the car's default view. You're now put back on the camera you last used in that car, such as the driver's seat or chase view. This works when you open the parts menu with Ctrl+W too, not only with Buy parts. If you switched to the free camera yourself before, you stay on it. Your saves still work.
+
+## Build 271 · 22 Nov 2026
+
+- **You can buy parts in the middle of a fuel run again.** With fuel in a tanker, every parts bill said "Your job would not fit with these parts", even for a turbo or new wheels, because the game forgot how big the tanker's tank was each time the parts menu changed the truck. Now only changes that really take away room for your load, such as removing the cargo tank or a cargo box the load is in, are blocked until you deliver. Your saves still work.
+
+## Build 270 · 22 Nov 2026
+
+- **Old depot sheds no longer stay behind.** If the mod was reloaded or updated while you were playing, the depots it had already put down were left standing in the world, often still with the bright orange walls of an older version, and nothing ever took them away. Leftover depots are now cleared as soon as the mod starts and every half minute after, and a reload or update takes its own depots down first. The depot for the town you're in stays put, and depots still come down once you're about 2.5 km away. Your saves still work.
+- **The "Turn on the trucking HUD" pop-up now names the layout you're actually using.** Each HUD layout has its own apps, so adding the HUD to the .Earth layout did nothing if your game had another layout up, such as BeamMP's, even playing alone, and the pop-up kept coming back. It now tells you which layout to edit, and says it stops as soon as the HUD is on screen.
+
+## Build 269 · 22 Nov 2026
+
+- **Depots now go in real car parks.** When a town has an open-air car park near its middle, the depot is now built there, with room to park your truck. Car parks on roofs or underground are skipped, and so are any where the ground doesn't check out. Towns with none, or a game with no internet, find a spot by the road as before.
+- **The depot computer no longer ends up on a rooftop.** In tightly packed towns with no room for a shed, the desk and computer could be put on a flat roof. They now always stand at street level, and if there's no open ground beside the road, they go right at the road's edge. Your saves still work.
+
+## Build 268 · 22 Nov 2026
+
+- **You can chase a base thief in one of your parked cars.** When a thief hits your base, the card now has a Chase in button for each parked car as well as Chase. It's free, even on a job. Your truck is parked in that car's slot with your job in it, and the chase car takes you to your base. When you press Back to your job, your truck is swapped back in at the spot you left and your trailer comes out behind it. The chase car goes back to its slot with any damage it picked up, and a crash in it never loses your job.
+- **A trailer now comes back loaded after a thief chase.** Before, the trailer that came out behind you after Back to your job had no cargo weight on it, so it towed light and a tanker trailer came back with no fuel in it. If the trailer can't come out behind you, bringing it out on the Garage tab is now free.
+- **Robbers no longer come during a Mayday Rescue run.** That includes the Get robbed and ROB ME test buttons. If a thief struck just before your run, their Chase button waits and their clock stops until the run is over.
+- Save now waits until you press Back to your job after a thief chase, so your save always has your truck, trailer and job together. Your saves still work.
+
+## Build 267 · 22 Nov 2026
+
+- **Town buildings no longer float on top of the depot.** BeamNG.Earth sometimes loads a building after the depot is already up, and it was setting that building down on the shed's roof. The shed, desk and computer are now scenery you can walk and drive through, so late buildings land on the ground. The depot then sees the building and moves to a clear spot as soon as you're not standing at it.
+- **The depot shed's walls are no longer bright orange.** The mod now loads the shed's metal textures itself. Your saves still work.
+
+## Build 266 · 22 Nov 2026
+
+- **Depot sheds no longer end up inside houses.** The depot now waits a few seconds for a town's buildings to load before picking its spot, checks the ground much more closely, keeps a gap around the shed, and checks the spot a second time before putting it down. If a building loads late where a depot already stands, the depot moves to a clear spot while you're out of sight, never while you're standing at it.
+- The computer's Use computer button now shows from a little further away, so it's easier to reach from either side of the desk. Your saves still work.
+
+## Build 265 · 22 Nov 2026
+
+- **An arrow now points you to the depot.** In town, the Town tab shows an arrow that turns as you drive, with how far the depot is and which way. Press GPS next to it for a route straight to the depot. With the HUD minimised, the strip shows the distance and direction to the depot while you have no job. Your saves still work.
+
+## Build 264 · 22 Nov 2026
+
+- **The depot's tin shed now has its metal walls.** Parts of it showed in bright orange because two of its textures only load on some of the game's own maps. The mod now brings them along, so the shed looks right on every map. Your saves still work.
+
+## Build 263 · 22 Nov 2026
+
+- **Every town now has a depot, and jobs are taken at its computer.** The depot is a tin shed with an office desk and computer in front of it, set back from a road near the middle of town. Park your truck within 30 m of the computer, get out and walk up to the desk. A Use computer button shows, and it opens a big computer screen with the town's jobs, the off-road drop and, at a fuel depot, the fuel runs. Your truck must still be within 30 m when you take a job, and the load goes on 2 seconds after you get back in.
+- The Town tab still lists the jobs and their pay, and says how far away the depot is, but its Take job buttons only work at the computer. Fuel depots have a computer too, and fuel runs are loaded there.
+- Deliveries haven't changed. Drive to the drop-off and press Deliver on the HUD as before.
+- The depot is checked for clear, flat ground so it doesn't sit inside a building, a tree or a road. Where a town has no clear spot, the depot is just the desk and computer by the road. Online, every player's game puts down its own depot in the same place, and nothing extra goes through the server.
+- Your saves still work.
+
+## Build 262 · 22 Nov 2026
+
+- **In single player you can now switch robbers off.** Untick Robbers and thieves on the Route tab (under ROB ME) and no road robber will ambush your deliveries and no thief will break into your base. Nothing is taken from your pay for it, and you can tick it again any time. Your choice is kept in your save. Online, the tick box isn't there and every trucker can still be robbed. ROB ME and Get robbed still work for testing. Your saves still work.
+
+## Build 261 · 21 Nov 2026
+
+- **Every job board now has a long haul in place of the dangerous contract.** It's a load of parts or bricks to a town 20 to 60 km away, marked LONG HAUL on the Town tab, and it pays more than the shorter runs. The other jobs and the off-road drop are the same as before.
+- Dangerous contracts are switched off for now while they get more work, so they no longer show on the job boards, the help page or the start page. If you were already on one, you can still finish it. Your saves still work, and the roads you've driven are kept for when contracts come back.
+
+## Build 260 · 21 Nov 2026
+
+- **The base thief now strikes about once every hour you play,** at a random moment in each hour, instead of once each time you load in. Only time spent playing counts, not time paused, and the count is kept in your save, so quitting and coming back doesn't skip a theft or bring an extra one. A theft that can't happen in its hour (you're near your base or short of money) is dropped, so thieves never pile up, and two thefts are always at least 20 minutes apart. Your saves still work.
+- Road robbers come a little more often on jobs of 5 km or more.
+
+## Build 259 · 21 Nov 2026
+
+- **Robbers and thieves now take more from a bigger job or a fuller bank,** instead of a flat $1,000, so a heavy, slow rig carrying a valuable load has the most to lose. Catch them with your EMP and you get it all back, plus a bigger trunk bonus than before. The pop-up and the chase card show exactly how much was taken and won back.
+- Road robbers come less often, and a delivery can only be robbed once, whether by the AI robber or a server admin.
+- **Everyone can be robbed now.** The "Robbers can rob me" tick box on the Route tab is gone, in single player and online, so nobody gets an edge by switching robbers off. If you had it unticked, your save still loads and robbers simply come for you too.
+- The ROB ME and Get robbed test buttons still work, but catching those robbers pays no trunk bonus.
+- On a server, the live feed now shows the real amounts taken and won back. Saves still work.
+
+## Build 258 · 21 Nov 2026
+
+- **New help page: press the ? at the top of the HUD** to open a big How to play window in the middle of the screen. It explains every part of the game in short sections: jobs and pay, fuel runs, your cars and trailers, repairs and towing, relocating, the heli, dangerous contracts, bases and turf, robbers and the EMP, Mayday Rescue, playing online, Street View and the radio. Its prices are always the game's real ones.
+- The ? glows gold until you open the help page for the first time. Close it with its ✕ or by clicking outside it.
+- The top of the help page has the **live server page** and the **Discord** invite, each with a Copy button to paste into your web browser, and an Open or Join button.
+- Sections that only work online, like Mayday Rescue and the land race, are marked "Online only" when you play single player.
+- **The HUD is shorter.** Long explanations on the Route, Town, Garage, Relocate, Heli, Base, Street View and Radio tabs are now one short line with a small **?** that opens the help page at the right section. Every button and feature is still there.
+- **Fuel runs are back on the Town tab,** under the job board, with their Teleport to the depot, GPS and Load buttons.
+- The start page has a new **Read the full guide** button under How to play.
+- Nothing to delete or reinstall, and your saves still work.
+
+## Build 257 · 20 Nov 2026
+
+- **The HUD now jumps back to the top when a new Mayday call, a thief at your base or a road robber's hit comes in,** so you see the alert card even if you were scrolled down a long tab. It happens once per alert, and you can scroll back down straight away. Saves still work.
+
+## Build 256 · 20 Nov 2026
+
+- **Money coming in now plays a cha-ching:** when you're paid for a delivery, catch a robber or thief, get a Mayday Rescue reward or your share of the tolls, or sell a car or trailer. Refunded fees stay quiet.
+- **Your EMP now beeps when it's fully charged,** so you know you can fire again without looking at the button. It works on the chase card and on the admin robber's EMP. Saves still work as before.
+- **Road robbers now come up from behind.** A robber appears on the road you just drove, about 100 m back and facing your way, so it no longer lands off the road or on a different road from yours. It speeds up to catch you, hits you with its EMP from behind, then overtakes and drives off ahead instead of turning round. Chase it down with your EMP as before. Saves still work.
+- **Catching a road robber now pays $5,000 from their trunk**, down from $20,000, on top of getting your $1,000 back.
+- A robber never appears closer than 70 m, in front of you, or facing you. If you've just turned round or are on a tight bend, it waits a moment and comes once there's clear road behind you.
+- **Driving the robber yourself** (server admins): you're now dropped in 100 m behind the player, on the road they just drove, and catch them up.
+
+## Build 255 · 20 Nov 2026
+
+- **The robber and thief cards now show the money in big letters:** "-$1,000 TAKEN" in red while a robbery is on, "+$21,000 WON BACK" in green when you catch them, or "-$1,000 GONE" when they get away. The card stays up after a catch, and for 20 seconds after a robber gets away, so you always see how it ended.
+- A road robber's hit now sounds the Mayday alarm, just like a thief at your base.
+- The admin robber's YOU ARE THE ROBBER card now looks like the other robbery cards and stays on screen with the HUD minimised, with its countdown and FIRE EMP button. Your saves still work.
+
+## Build 254 · 20 Nov 2026
+
+- **A road robber's EMP now jams your brakes for just half a second**, a jolt, instead of the full 10 seconds. Your engine is still dead for 10 seconds.
+- **Robbers and thieves no longer sit stuck off the road.** If a road robber's or base thief's car hasn't moved for 5 seconds and is off the road (in a ditch, a field or on rocks), it's put back on the nearest road and carries on. Your saves still work.
+
+## Build 253 · 20 Nov 2026
+
+- **Fleeing thieves and robbers are faster.** On a clear road they now drive at up to 130 km/h (was 90), and up to 85 km/h (was 62) with some traffic about. They still slow right down in heavy traffic. This makes the base thief and a fleeing road robber harder to catch.
+- **A road robber's EMP now slams your brakes on** as well as killing your engine, for the full 10 seconds. Watch out with a trailer at speed: a sudden stop can jackknife it. Your saves still work.
+
+## Build 252 · 20 Nov 2026
+
+- **A caught road robber now stays put for 30 seconds** (was 10) before their car disappears, and a road robber's EMP now kills your engine for 10 seconds (was 5). Your saves still work.
+- The admin robber can now rob anyone on a job of any length. Before, only jobs of 5 km or more were listed. The AI road robber still only goes after jobs of 5 km or more.
+- **Fixed: the first EMP of a session made no sound.** The EMP sound now loads as soon as the HUD starts, so you hear the very first one.
+
+## Build 251 · 20 Nov 2026
+
+- **A thief at your base now sounds the Mayday alert.** When a thief breaks into your base, you hear the same alarm as a new Mayday Rescue call, and the red THIEF AT YOUR BASE card pops up with Chase and Let them go, even with the HUD minimised. Your saves still work.
+
+## Build 250 · 20 Nov 2026
+
+- **The base thief gives the world longer to load.** After you press Chase and land at your base, the thief now waits 30 seconds (was 20) before turning up, and starts 50 m from you (was 100 m), so the chase begins close. Your saves still work.
+
+## Build 249 · 20 Nov 2026
+
+- **Taking a tanker job no longer swaps you out of your truck.** Filling a tanker trailer's load could put you in the driver's seat of the trailer instead of your truck, with a car bill for the tanker and a "Get my car back" button to press. You now stay in your truck. If you climb into your own trailer yourself, it is no longer billed as a car you are buying either. Your saves still work.
+
+## Build 248 · 20 Nov 2026
+
+- **Robberies now show on the server's live feed.** On a server, the feed on the server page posts a line when a road robber or a thief hits someone, and another when they're caught or get away, for example "A road robber hit Sam near Lithgow and took $1,000." Every road robber is just "a road robber" on the feed. Missed EMPs aren't posted. The server needs updating too. Your saves still work.
+
+## Build 247 · 20 Nov 2026
+
+- **A robber's EMP now drains yours.** When a road robber hits you, your EMP empties and takes the usual 20 seconds to charge before you can fire back, so you have to chase them for a while first. Your saves still work.
+- **EMPs now make a sound.** You hear a zap every time you fire your EMP, when a robber's EMP hits you, and when you fire it as the admin robber. Nothing to set up, and your saves still work.
+
+## Build 246 · 20 Nov 2026
+
+- **The road robber could now be MadMerick himself.** On MadMerick's server, an admin can take the robber's place in the same Moonhawk, dropped in 300 m ahead of you in your lane. He drives it himself and fires his EMP when he chooses, under the AI robber's rules: within 15 m it cuts your engine and takes $1,000, and your EMP within 15 m gets it back plus $20,000 from his trunk. You only find out it was him if you catch him. Only players on a delivery, fuel run or contract of 5 km or more, with "Robbers can rob me" ticked on the Route tab, can be picked. Untick it and nobody, AI or admin, will rob you. Your saves still work.
+
+## Build 245 · 20 Nov 2026
+
+- **Player name tags are now always off** while this mod is installed, on servers and everywhere else. Cars on a server no longer show who is driving them. If you turn name tags on in Options, the mod turns them off again within a couple of seconds. To get them back, remove the mod. Your saves still work.
+
+## Build 244 · 20 Nov 2026
+
+- **New: road robbers (first test build).** On a delivery, fuel run or dangerous contract of 5 km or more, there's a 50% chance a robber in a Moonhawk ambushes you on the road. It turns up about 300 m ahead in your lane, going your way, and slows down so you catch up. Turn off or drop back and it comes after you. When it gets within 15 m its EMP cuts your engine for 5 seconds (your brakes don't lock, so you coast), it takes $1,000 and flees. Catch it with your own EMP within 15 m and you get the $1,000 back plus $20,000 from its trunk, and its car disappears 10 seconds later. If it gets 450 m clear, it keeps the money. If it never reaches you within 4 minutes, or falls 500 m behind, it gives up and you lose nothing. Your job carries on the whole time, and delivering doesn't end the chase. Mayday Rescue runs and heli jobs are never robbed.
+- **ROB ME on the Route tab** sends a robber at you straight away, so anyone can try it. It doesn't change the 50% chance on your jobs.
+- **A "Robbers can rob me" tick box on the Route tab,** ticked by default. Untick it and neither road robbers nor the base thief will rob you. It's kept in your save, and your saves still work.
+- **The EMP now reaches 15 m (it was 5 m) and needs 20 seconds to charge after every press,** hit or miss. The EMP button fills up while it charges, then turns green with IN RANGE, or yellow with OUT OF RANGE and the distance. This is the same for the base thief, whose caught car now also disappears after 10 seconds instead of 20.
+- **The base thief's car now loads hidden while you wait at your base,** so it turns up without a stutter. It only appears once the ground ahead of you has loaded.
+- The robber's car loads hidden when you take the job, so you may notice a short stutter at the job board instead of on the road. On a server, each robber uses one of the server's car slots while you're on the job.
+
+## Build 243 · 20 Nov 2026
+
+- **Fixed: a Mayday Rescue run no longer just disappears when its call ends.** Each call stays open for 2 hours (the Mayday Rescue tab shows when it moves on). If it moved on, or someone else got to the scene first, while you were still driving, your run was cleared without a word and the tab looked as if you had never started. Now a MAYDAY RUN OVER pop-up tells you which it was, and the Mayday Rescue tab says so too. Your saves still work.
+
+## Build 242 · 20 Nov 2026
+
+- **Fixed: fuel and water in a tanker trailer no longer lose their weight partway through a job.** If the tanker respawned for any other reason while loaded, for example after you moved the **Load Volume** slider in Vehicle Config and pressed Apply, or after the game put its parts back as you bought them, the tank was left empty and the trailer drove light for the rest of the job. Now the mod fills it again with your load, so a loaded short 17,700 L or long 34,000 L tanker stays heavy until you deliver. While you carry a load the slider always follows it, so you can't set it by hand until the job is done. Your saves still work.
+
+## Build 241 · 20 Nov 2026
+
+- **New Let them go button on the thief card.** If you don't want to chase a thief, press it and the card goes away straight away instead of staying up for 10 minutes. The thief keeps the $1,000, just as if you had ignored it. Your saves still work.
+
+## Build 240 · 20 Nov 2026
+
+- **The base thief now strikes once each time you play.** Each time you load into a map or join a server, one thief robs your base at a random moment in your first 45 minutes. If you can't be robbed right then, for example because you're near your base, it happens as soon as you can. After that, no more thieves until your next session. The Get robbed button on the Base tab still works any time. Your saves still work.
+- **You can now fire the EMP with a key.** Go to Options > Controls > Bindings, find Fire EMP under Gameplay and give it any key or wheel button. It has no key until you set one. During a thief chase it works just like the EMP button. If you're too far away, a pop-up tells you how close to get, even with the HUD minimised. The chase card now has a tip about this. Your saves still work.
+
+## Build 239 · 20 Nov 2026
+
+- **The base thief now drives around traffic instead of through it.** It watches the road ahead, and when it comes up on slow or queued cars it backs off in steps, from 90 km/h on an open road down to 30 km/h right behind a jam, and keeps to its own lane. If it stays stuck in a queue it works out a new way out. Road traffic is halved during a chase and comes back once it's over. On an open road the thief tops out at 90 km/h, so it is a little easier to catch than before. Your saves still work.
+
+## Build 238 · 20 Nov 2026
+
+- **An arrow now points you to the thief.** During a base thief chase, the card shows a red arrow next to the distance. Straight up is the way your car is facing, so turn until it points up and drive. Your saves still work.
+
+## Build 237 · 20 Nov 2026
+
+- **Base thieves now strike on the trucking server too.** Everything works as in single player: the theft alert, **Chase**, the EMP, **Back to your job** and the **Get robbed** button on the **Base** tab. The money comes out of, and back into, your server career like any other. Other players can see the thief's car while you chase it. A Mayday Rescue run you were on is held while you chase, just like a delivery. Your saves still work.
+
+## Build 236 · 20 Nov 2026
+
+- **New (trial): thieves raid your base.** Once you own a base, a thief sometimes breaks in while you're at least 5 km away and takes $1,000. A red card on the HUD tells you, with a 10 minute countdown. Press **Chase** and you're relocated to your base for free (or the chase starts straight away if you're already there). Once you're really at your base, the game gives the world 20 seconds to load, then the thief's car turns up on the nearest road about 100 m from you and runs. Get within 5 m and press **EMP** to cut their engine: you get your $1,000 back plus $5,000 from their trunk. If they get 450 m clear of you, they escape with the money and their car disappears. For now the thief drives the Moonhawk sightseeing car, it only happens in single player (never on a server), and you can't press Chase with a garage bill waiting. **Chasing doesn't cost you your job:** your cargo and the distance you've driven are held, and your trailer waits at your base. When the chase is over, press **Back to your job** to be taken back, free, to the exact spot you left, with your trailer behind you. Until you go back, the job can't be delivered and the chase doesn't count as driving it. If you have MadMerick's smartAI mod installed the thief drives with it, and with Bolides – The Cut installed the EMP plays its full effect. To try it straight away, own a base and press **Get robbed** on the **Base** tab. Your saves still work.
+
+## Build 235 · 18 Nov 2026
+
+- **Fixed: a tanker truck's tank no longer bends into a huge spike when you load fuel or water.** In a truck whose own tank can't take the load's weight, such as the MD tanker, the weight was put on the tank's thin panels, which tore them apart. Instead, a tanker truck with a **Load Volume** setting on its Tuning page now has that setting filled with the litres you carry, the same way as a tanker trailer, so the game itself makes the tank heavy. The truck respawns where it stands to take the load, keeps its fuel, and any damage it had is still owed for repair. The setting goes back to 0 L when the job is done. Trucks without that setting carry no extra weight in the tank. Tanker trailers still get their full weight. Your saves still work. If your truck is already bent, a repair on the Garage tab puts it right.
+
 ## Build 234 · 18 Nov 2026
 
 - **Leaving the parts menu now puts you back on your car's camera.** After pressing **Buy parts** and closing the game's parts menu, you used to be left in the free camera and had to press Shift+C. Now you're back on the camera you were driving with, such as the driver or chase camera. If you were already in the free camera before pressing Buy parts, you stay in it. Your saves still work.
