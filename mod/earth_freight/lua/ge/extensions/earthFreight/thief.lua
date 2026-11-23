@@ -24,8 +24,8 @@ local M = {}
 local function round10(n) return math.floor(n / 10 + 0.5) * 10 end
 
 -- What the thief takes (MadMerick, 21 Nov): SHARE of the bank, at least MIN_TAKE (or what's there) and at most
--- MAX_TAKE. Catching them pays it back plus BOUNTY_SHARE of it again from their trunk; not for a theft the Get robbed
--- button started, which is a test.
+-- MAX_TAKE. Catching them pays it back plus BOUNTY_SHARE of it again from their trunk; not for a test theft (thiefTest
+-- in the console).
 M.SHARE = 0.03
 M.MIN_TAKE = 1000
 M.MAX_TAKE = 10000
@@ -88,7 +88,7 @@ function M.attach(c)
   --     car; swapAt: when Back to your job started bringing it out again. While the chase is on, it waits in
   --     self.thief.returnTo.
 
-  -- Why a theft can't happen now (forced: the Get robbed button, which skips the distance and the hourly plan), or nil.
+  -- Why a theft can't happen now (forced: a test theft, which skips the distance and the hourly plan), or nil.
   function c:theftProblem(forced)
     if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Not ready yet.' end
     if not self.property then return 'You need a base first.' end
@@ -300,7 +300,7 @@ function M.attach(c)
     if t.returnTo then self.thiefReturn, t.returnTo = t.returnTo, nil end
     self:showFlash('delivered', 'THIEF CAUGHT: +' .. dollars(paid), 'The EMP stopped them dead. You got your '
       .. dollars(t.amount) .. ' back' .. (bounty > 0 and (', and ' .. dollars(bounty) .. ' from their trunk.')
-      or '. Get robbed is a test, so there is no trunk bonus.'))
+      or '. This was a test theft, so there is no trunk bonus.'))
     if not self:awayFromJob() then self:autoSaveSoon('catching the thief') end
     self.diag:event('thief_caught', tostring(paid))
     self:robberyNews('thief', 'caught', t.amount, paid)
@@ -413,7 +413,8 @@ function M.attach(c)
     end
   end
 
-  -- The Base tab's Get robbed button, which starts a theft whenever the rules allow.
+  -- The Base tab's Base thief card. allowed and problem are what a test theft (thiefTest in the console) would say;
+  -- the Get robbed button is gone (MadMerick, 23 Nov).
   function c:robberyView()
     if not self.profile or self.error then return nil end
     local problem = self:theftProblem(true)

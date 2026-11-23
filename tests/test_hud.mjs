@@ -1498,12 +1498,10 @@ test('Base thief: the card shows while a theft is on, and Chase and EMP send fix
   assert.deepEqual(a.commands, [fixed('thiefChase(1)')], 'Chase in the allowed car only')
   assert.ok(html.includes('ng-click="thiefChaseIn(car)"'), 'a button for each parked car')
   a.commands.length = 0
-  a.state({ state: 'READY', arrived: true, robbery: { allowed: false, problem: 'You need a base first.', amount: 1000, bounty: 5000 } })
-  a.scope.getRobbed()
-  a.state({ state: 'READY', arrived: true, robbery: { allowed: true, amount: 1000, bounty: 5000 } })
-  a.scope.getRobbed()
-  assert.deepEqual(a.commands, [fixed('getRobbed()')], 'Get robbed only when allowed')
-  a.commands.length = 0
+  // No Get robbed or ROB ME button (MadMerick, 23 Nov): players farmed money with them.
+  assert.equal(a.scope.getRobbed, undefined, 'no Get robbed command')
+  assert.equal(a.scope.robMe, undefined, 'no ROB ME command')
+  for (const part of ['getRobbed()', 'robMe()', '>Get robbed<', '>ROB ME<']) assert.ok(!html.includes(part), 'no ' + part)
   a.state({ state: 'READY', arrived: true, thief: { phase: 'return', job: true, returnAllowed: false, problem: 'Get back in your car first.' } })
   a.scope.thiefGoBack()
   a.state({ state: 'READY', arrived: true, thief: { phase: 'return', job: true, returnAllowed: true } })
@@ -1511,7 +1509,7 @@ test('Base thief: the card shows while a theft is on, and Chase and EMP send fix
   a.scope.thiefGoBack()
   assert.deepEqual(a.commands, [fixed('thiefGoBack()')], 'Back to your job only when allowed')
   assert.ok(html.includes('ng-click="thiefGoBack()"'))
-  for (const part of ['ng-click="getRobbed()"', 'Base thief (trial)']) assert.ok(html.includes(part), part)
+  for (const part of ['Base thief (trial)', 'Robbers and thieves (single player only)']) assert.ok(html.includes(part), part)
   for (const part of ['arrowStyle(data.thief)', 'thiefTitle(data.thief)', 'ng-click="thiefChase()"', 'ng-click="empThief()"', 'escape with the money'])
     assert.ok(html.includes(part), part)
 })
