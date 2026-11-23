@@ -6,6 +6,12 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The game now adds the trucking HUD for you.** If the HUD isn't on your screen, a pop-up asks "Add the trucking HUD?" and names the layout you're on, such as .Earth or BeamMP. Press **Add the HUD** and it appears straight away, in the same spot + Add to layout would put it. You can still move it with Esc > System > HUD Apps. Each layout has its own apps, so you're asked once for each layout you play on: once alone, and once the first time you join a server. Players who already have the HUD on screen never see the pop-up. Online it waits until your career has come in from the server, so joining isn't disturbed.
+- Press **Not now** and you get the usual steps instead. That reminder now keeps coming back every couple of minutes until the HUD is on screen, instead of giving up after three tries.
+- The HUD is now called **Worldwide Trucking HUD** in the HUD Apps list, which is easier to find, and every set of steps uses that name. The reminder now names layouts as the HUD Apps menu shows them, for example ".Earth multiplayer" instead of "beamngEarthMP". Nothing to delete, and your saves still work.
+- The HUD has a new picture in the HUD Apps list, from the Magnate update poster, so it's easy to spot.
+- **On a trucking server, the chat reminders about turning on the HUD now go only to players who don't have it on screen.** Your game tells the server when the HUD is missing, and the server reminds just you, now and then, until it's on screen. Everyone else stops seeing those reminders.
+
 ## Build 272 · 22 Nov 2026
 
 - **You now keep your camera after buying parts or teleporting.** Leaving the parts menu, teleporting with BeamNG.Earth or the HUD's Teleport buttons, and coming back to your car from the helicopter or sightseeing could leave you on the free camera, or on the car's default view. You're now put back on the camera you last used in that car, such as the driver's seat or chase view. This works when you open the parts menu with Ctrl+W too, not only with Buy parts. If you switched to the free camera yourself before, you stay on it. Your saves still work.
