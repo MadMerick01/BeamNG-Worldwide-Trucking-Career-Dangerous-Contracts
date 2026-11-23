@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 282 · 23 Nov 2026
+
 - **The ROB ME button on the Route tab and the Get robbed button on the Base tab are gone.** They let you set off a robbery whenever you liked, over and over. Road robbers and base thieves still turn up on their own as before, and in single player you can still switch them off with the **Robbers and thieves** tick box on the Route tab. Your saves still work.
 
 ## Build 281 · 23 Nov 2026
