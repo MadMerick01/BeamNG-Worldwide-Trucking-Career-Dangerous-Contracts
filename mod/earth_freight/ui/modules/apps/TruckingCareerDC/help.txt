@@ -25,6 +25,9 @@ Every board also has a long haul of parts or bricks to a town {longHaulMinKm} to
 Too big for your car? Use the Load slider on a job to take part of it, for part of the pay.
 Rough roads and steep ground pay more. The number next to the town's name shows how much, such as ×2.7.
 Tap a job to see its details and press GPS to see the route before you take it.
+A distance with ~ is a guess. Press the job's GPS in town and the GPS measures the real road: the job then shows "km by road" and is paid for it. Winding roads pay much more.
+Measured roads are remembered, so the board shows the real distance next time too. A job you take without measuring is measured once the GPS plans its route.
+Pay only goes up when a road is measured: a job never pays less than the board showed.
 
 # depot | Depots and the computer
 Every town has a depot: a tin shed with a computer on a desk in front of it, near the middle of town. A fuel depot has one too.
