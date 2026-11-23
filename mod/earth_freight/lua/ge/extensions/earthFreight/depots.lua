@@ -1,7 +1,8 @@
 -- Depots: where jobs are taken. Every town has one, a small tin shed with a desk and computer in
 -- front of it, set back from a road on clear ground near the middle of town; a fuel depot found in
 -- OpenStreetMap gets one too. Town jobs, the off-road drop and fuel runs are only taken at its
--- computer: park the truck within TRUCK_METRES of it, get out, walk up to it and press Use computer.
+-- computer: park the truck within TRUCK_METRES of it and press Use computer, from the cab or after
+-- getting out and walking up to it.
 -- Deliveries are not: they stay a Deliver button on the HUD.
 --
 -- A depot's spot is worked out the same way every time, from the town, so online every player in a
@@ -579,21 +580,35 @@ function M.attach(c)
     end
   end
 
-  -- The depot the player is at: on foot within USE_METRES of its computer. With how far their truck
-  -- is from the computer (nil when it can't be found). Nil when at none.
+  -- The depot the player is at: on foot within USE_METRES of its computer, or in their own truck,
+  -- stopped within TRUCK_METRES of it (for players whose game won't let them get out). With how far
+  -- their truck is from the computer (nil when it can't be found), and true when they are in the cab.
+  -- Nil when at none.
   function c:computerHere()
-    if not self:depotsOn() or not self.onFoot or not self.depotsBuilt then return nil end
-    local me = self.depotWorld:where(nil)
-    if not me then return nil end
-    for _, built in pairs(self.depotsBuilt) do
-      local pc = built.pc
-      local d = math.sqrt((me.x - pc.x) ^ 2 + (me.y - pc.y) ^ 2)
-      if d <= M.USE_METRES then
-        local truck = self.ownedParts and self.depotWorld:where(self.ownedParts.id)
-        local away = truck and math.sqrt((truck.x - pc.x) ^ 2 + (truck.y - pc.y) ^ 2) or nil
-        return built, away
-      end
+    if not self:depotsOn() or not self.depotsBuilt then return nil end
+    local truck = self.ownedParts and self.depotWorld:where(self.ownedParts.id)
+    local function away(pc)
+      return truck and math.sqrt((truck.x - pc.x) ^ 2 + (truck.y - pc.y) ^ 2) or nil
     end
+    if self.onFoot then
+      local me = self.depotWorld:where(nil)
+      if not me then return nil end
+      for _, built in pairs(self.depotsBuilt) do
+        local pc = built.pc
+        if math.sqrt((me.x - pc.x) ^ 2 + (me.y - pc.y) ^ 2) <= M.USE_METRES then return built, away(pc) end
+      end
+      return nil
+    end
+    -- In the cab: their own truck, stopped, parked close enough to load.
+    local sample = self.lastSample
+    local inTruck = truck and sample and sample.valid and sample.vehicle and sample.vehicle.id == self.ownedParts.id
+    if not inTruck or not (self.odometer and self.odometer:stopped()) then return nil end
+    local best, bestAway
+    for _, built in pairs(self.depotsBuilt) do
+      local d = away(built.pc)
+      if d and d <= M.TRUCK_METRES and (not bestAway or d < bestAway) then best, bestAway = built, d end
+    end
+    if best then return best, bestAway, true end
     return nil
   end
 
@@ -622,7 +637,7 @@ function M.attach(c)
       local depot, metres = self:depotFor(townId, hubId)
       if not depot then return 'Finding a spot for the depot. Its shed and computer appear near the middle of town.' end
       return 'Take jobs at the depot computer, ' .. (metres and (math.floor(metres + 0.5) .. ' m away') or 'nearby')
-        .. ': park within ' .. M.TRUCK_METRES .. ' m of it, get out and walk up to it.'
+        .. ': park within ' .. M.TRUCK_METRES .. ' m of it and press Use computer, from the cab or on foot.'
     end
     if not truck then return 'Your truck could not be found. Get back in it and park within ' .. M.TRUCK_METRES .. ' m of the computer.' end
     if truck > M.TRUCK_METRES then
@@ -634,13 +649,14 @@ function M.attach(c)
   -- What the HUD shows about the computer: the Use computer button, and the window's header.
   function c:computerView()
     if not self:depotsOn() then return nil end
-    local built, truck = self:computerHere()
+    local built, truck, cab = self:computerHere()
     local out = { truckMetres = M.TRUCK_METRES, useMetres = M.USE_METRES, lots = self:depotLotsWanted() }
     if built then
       out.near = true
       out.name, out.town, out.fuel = built.name, built.town, built.fuel
       out.truckAway = truck and math.floor(truck + 0.5) or nil
       out.truckOk = truck ~= nil and truck <= M.TRUCK_METRES
+      out.cab = cab or nil
     end
     local here = self:here()
     local depot, metres, direction, bearing = self:depotFor(here and here.id, nil)
