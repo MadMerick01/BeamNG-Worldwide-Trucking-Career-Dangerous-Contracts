@@ -231,10 +231,29 @@
       <div ng-if="data.relocateHere.goingBack" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Going back. The terrain takes a few seconds to load.</div>
       <div ng-if="data.relocateHere.problem" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.relocateHere.problem}}</div>
       <div ng-if="data.relocateHere.feedback" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.relocateHere.feedback}}</div>
+      <div style="margin-top:6px;font-size:12px;color:#c9d6d2;">Where you left, if Go back doesn't work:</div>
+      <div style="display:flex;gap:6px;margin-top:2px;">
+        <input aria-label="Coordinates of where you left (latitude, longitude)" type="text" readonly ng-value="coordinates(data.relocateHere)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+        <button type="button" aria-label="Copy where you left" ng-click="copyCoordinates(data.relocateHere)">Copy</button>
+      </div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <button type="button" ng-click="payRelocation()" ng-disabled="!data.relocateHere.payAllowed" ng-style="{opacity: data.relocateHere.payAllowed ? 1 : 0.5}" style="flex:1;padding:8px 12px;font-size:16px;font-weight:bold;background:#f2c94c;color:#0c1318;border:1px solid #f2c94c;border-radius:6px;">Pay ${{data.relocateHere.fee | number:0}}</button>
         <button type="button" ng-click="goBackUnpaid()" ng-disabled="!data.relocateHere.backAllowed" ng-style="{opacity: data.relocateHere.backAllowed ? 1 : 0.5}" style="flex:1;padding:8px 12px;font-size:16px;border:1px solid #568d7a;border-radius:6px;">Go back (free)</button>
       </div>
+    </div>
+  </div>
+  <div class="ef-foot" ng-if="data.footAway && !data.relocateHere" style="position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:2147483645;pointer-events:auto;color:#f2f6f5;font:15px/1.45 sans-serif;">
+    <div role="dialog" aria-label="Back to your truck" style="width:430px;max-width:92vw;box-sizing:border-box;padding:14px 18px;background:rgba(12,19,24,.97);border:3px solid #eb5757;border-radius:12px;box-shadow:0 0 30px rgba(0,0,0,.8);">
+      <div style="font-size:11px;font-weight:bold;letter-spacing:3px;color:#eb5757;">YOUR TRUCK IS {{km(data.footAway.distanceMetres)}} KM AWAY</div>
+      <div style="margin-top:4px;font-size:14px;">You teleported on foot, so your truck stayed where you got out. Go back to it; to move it, get in and use the Relocate tab.</div>
+      <div ng-if="data.footAway.teleporting" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Going back. The terrain takes a few seconds to load.</div>
+      <div ng-if="data.footAway.feedback" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.footAway.feedback}}</div>
+      <div style="margin-top:6px;font-size:12px;color:#c9d6d2;">Your truck, to paste into the BeamNG.Earth map if the teleport doesn't work:</div>
+      <div style="display:flex;gap:6px;margin-top:2px;">
+        <input aria-label="Your truck's coordinates (latitude, longitude)" type="text" readonly ng-value="coordinates(data.footAway)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
+        <button type="button" aria-label="Copy your truck's coordinates" ng-click="copyCoordinates(data.footAway)">Copy</button>
+      </div>
+      <button type="button" ng-click="goBackToCar()" ng-disabled="!data.footAway.backAllowed" ng-style="{opacity: data.footAway.backAllowed ? 1 : 0.5}" style="margin-top:10px;width:100%;padding:8px 12px;font-size:16px;font-weight:bold;background:#a7e5c9;color:#0c1318;border:1px solid #a7e5c9;border-radius:6px;">Teleport back to my truck</button>
     </div>
   </div>
   <div class="ef-pc" style="color:#f2f6f5;font:15px/1.45 sans-serif;">
@@ -1044,6 +1063,13 @@
               <button type="button" ng-click="openBigMap()" ng-disabled="!data.shipping.mapAllowed" style="padding:4px 8px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Open the big map</button>
             </div>
             <div style="font-size:12px;color:#c9d6d2;margin-top:2px;">Right-click any spot and press Teleport here. A pop-up then asks you to pay for the relocation, or to go back for free.</div>
+            <div style="margin-top:6px;font-size:12px;color:#c9d6d2;">If the big map doesn't work, paste coordinates here:</div>
+            <form ng-submit="relocateTo()" style="display:flex;gap:6px;margin-top:2px;">
+              <input aria-label="Coordinates to relocate to (latitude, longitude)" type="text" ng-model="ship.coords" ng-focus="typing(true)" ng-blur="typing(false)" placeholder="-16.19, -67.73" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
+              <button type="button" aria-label="Copy these coordinates" ng-click="copyPasted()" style="padding:4px 8px;">Copy</button>
+              <button type="submit" ng-disabled="!data.shipping.mapAllowed" style="padding:4px 8px;">Teleport</button>
+            </form>
+            <div ng-if="ship.error" style="color:#f2c94c;">{{ship.error}}</div>
           </div>
           <div ng-if="data.shipping.feedback" style="margin-top:4px;color:#c9d6d2;">{{data.shipping.feedback}}</div>
         </div>

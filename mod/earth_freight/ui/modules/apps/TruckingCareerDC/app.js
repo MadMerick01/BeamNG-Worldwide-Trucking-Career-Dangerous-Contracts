@@ -4,7 +4,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   // closes, so this is kept out here and the new app carries on where the old one was.
   var kept = {
     tab: 'route', introShown: false, intro: { open: false, name: '', steps: false }, shares: {},
-    last: null, hud: null,
+    ship: { coords: '', error: null }, last: null, hud: null,
     // The multiplayer server's status for Play online: 'checking', 'online', 'offline' or 'unknown' (not reachable).
     server: { status: 'checking', at: null },
     // Towns already looked up for a real business this game, so each is only asked once.
@@ -845,6 +845,26 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       scope.payRelocation = function () { if (scope.data.relocateHere && scope.data.relocateHere.payAllowed) core('payRelocation()') }
       scope.goBackUnpaid = function () { if (scope.data.relocateHere && scope.data.relocateHere.backAllowed) core('goBackUnpaid()') }
+      scope.goBackToCar = function () { if (scope.data.footAway && scope.data.footAway.backAllowed) core('goBackToCar()') }
+      // The backup to the big map: coordinates pasted on the Relocate tab, teleported to or copied.
+      scope.ship = kept.ship
+      scope.parseCoordinates = function (text) {
+        var m = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(String(text || ''))
+        if (!m) return null
+        var lat = parseFloat(m[1]), lon = parseFloat(m[2])
+        if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) return null
+        return { latitude: lat, longitude: lon }
+      }
+      scope.relocateTo = function () {
+        var p = scope.parseCoordinates(scope.ship.coords)
+        scope.ship.error = p ? null : 'Paste latitude, longitude, like -16.19, -67.73.'
+        if (p && scope.data.shipping && scope.data.shipping.mapAllowed) core('relocateTo(' + p.latitude + ', ' + p.longitude + ')')
+      }
+      scope.copyPasted = function () {
+        var p = scope.parseCoordinates(scope.ship.coords)
+        scope.ship.error = p ? null : 'Paste latitude, longitude, like -16.19, -67.73.'
+        if (p) scope.copyCoordinates(p)
+      }
       scope.bookOffer = function () { if (scope.data.shipping && scope.data.shipping.offer && scope.data.shipping.offer.allowed) core('bookOffer()') }
       scope.clock = function (seconds) {
         if (typeof seconds !== 'number' || !isFinite(seconds)) return ''

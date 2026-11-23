@@ -458,7 +458,7 @@ test('typing in a text box turns the game keys off, so it does not drive the car
   assert.equal(a.commands.length, count, 'sent once')
   a.handlers.$destroy()
   assert.ok(a.commands.includes('if setCEFTyping then setCEFTyping(false) end'), 'keys back on when the HUD closes')
-  for (const box of ['intro.name']) {
+  for (const box of ['intro.name', 'ship.coords']) {
     assert.match(html, new RegExp(`ng-model="${box.replace('.', '\\.')}" [^>]*ng-focus="typing\\(true\\)" ng-blur="typing\\(false\\)"`), box)
   }
 })
@@ -1699,4 +1699,22 @@ test('Relocate: the big map opens only when allowed, and the pop-up pays or goes
   const relocate = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`), html.indexOf(`ng-if="tab === 'home'"`))
   assert.ok(!relocate.includes('data.shipping.destinations') && !relocate.includes('searchShipping'), 'no list of places, no search')
   assert.ok(html.includes('ng-if="data.relocateHere"') && html.includes('ng-click="payRelocation()"') && html.includes('ng-click="goBackUnpaid()"'), 'the pop-up')
+})
+test('Relocate backup: pasted coordinates teleport or copy, and the on-foot pop-up only calls Lua when allowed', () => {
+  const a = app()
+  a.state({ state: 'READY', shipping: { mapAllowed: true } })
+  a.scope.ship.coords = 'nonsense'; let count = a.commands.length
+  a.scope.relocateTo(); a.scope.copyPasted()
+  assert.equal(a.commands.length, count, 'nothing sent for text that is not coordinates'); assert.ok(a.scope.ship.error)
+  a.scope.ship.coords = '-16.19, -67.73'
+  a.scope.relocateTo(); assert.equal(a.commands.at(-1), fixed('relocateTo(-16.19, -67.73)'))
+  a.scope.copyPasted(); assert.match(a.commands.at(-1), /setClipboard\("-16\.19000000, -67\.73000000"\)/)
+  a.state({ state: 'READY', shipping: { mapAllowed: false } }); count = a.commands.length
+  a.scope.relocateTo(); assert.equal(a.commands.length, count, 'not while relocating is barred')
+  a.state({ state: 'READY', footAway: { backAllowed: false } }); a.scope.goBackToCar()
+  assert.equal(a.commands.length, count, 'not while already going back')
+  a.state({ state: 'READY', footAway: { backAllowed: true } }); a.scope.goBackToCar()
+  assert.equal(a.commands.at(-1), fixed('goBackToCar()'))
+  assert.ok(html.includes('ng-if="data.footAway && !data.relocateHere"') && html.includes('copyCoordinates(data.footAway)'), 'the on-foot pop-up with Copy')
+  assert.ok(html.includes('copyCoordinates(data.relocateHere)'), 'the pay pop-up shows where you left, with Copy')
 })

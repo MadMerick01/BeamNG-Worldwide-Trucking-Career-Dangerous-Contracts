@@ -67,6 +67,8 @@ M.LANDING_GRACE_SECONDS = 120
 -- After a teleport by the big map, the pop-up waits this long for the car to stop moving about before Pay works,
 -- as Earth can read the car somewhere on the way while the terrain loads.
 M.PAY_WAIT_SECONDS = 3
+-- On foot this far from the car after a teleport, the player is taken back to it.
+M.FOOT_FAR_METRES = 2000
 -- A job taken on foot at a depot computer loads the truck this long after the player gets back in.
 M.LOAD_AFTER_SECONDS = 2
 -- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
@@ -970,10 +972,15 @@ function M.new(deps)
     -- Which way the car is going, for the drop arrow when Earth does not say which way it points.
     if before and not jump and (location.distance(before, sample) or 0) > 0.5 then self.heading = location.bearing(before, sample) end
     -- Flying a hired helicopter, or on foot, nothing counts: not the distance, nor the teleport back to the car.
-    if self.hire or self.onFoot then return end
+    if self.hire then return end
     if fresh and before then
       local gap = location.distance(before, sample)
       if gap and gap > odometer.SHORT_HOP_METRES then jump = gap end
+    end
+    -- On foot, a teleport (the big map's Teleport here) moves only the walker: back to the car it goes.
+    if self.onFoot then
+      if jump and jump > odometer.SHORT_HOP_METRES then self:walkedAway(sample) end
+      return
     end
     if jump then
       -- The insurance claim's or tow's move back to the road is not a teleport.
@@ -1266,6 +1273,64 @@ function M.new(deps)
     self.goingBackAt = ok and self.clock or nil
     self.shippingFeedback = not ok and ('BeamNG.Earth did not take the teleport. Paste ' .. coordinates(from)
       .. ' into its map to go back.') or nil
+    return ok == true
+  end
+
+  -- On foot, a teleport takes only the walker: the car stays where it was left, so the player is taken back to it
+  -- (nobody relocates on foot). The pop-up shows the car's coordinates and Copy, in case Earth's teleport fails.
+  function c:walkedAway(sample)
+    local car = self.footCar
+    local away = car and location.distance(sample, car)
+    if not away or away <= M.FOOT_FAR_METRES then return end
+    self.footJumped = true
+    self.diag:event('walked_away', coordinates(car) .. ' -> ' .. coordinates(sample), 'W')
+    -- Already on the way back: Earth is still loading.
+    if self.footBackAt and self.clock - self.footBackAt < TELEPORT_WAIT_SECONDS then return end
+    self:showFlash('cancelled', 'BACK TO YOUR TRUCK', 'Teleporting on foot leaves your truck behind, so you are going back to it.'
+      .. ' To move your truck, get in it and use the Relocate tab.')
+    self:goBackToCar()
+  end
+
+  -- Back to my truck: Earth teleports the walker to the car. Free.
+  function c:goBackToCar()
+    local car = self.footCar
+    if not car or not self.onFoot then return false end
+    local ok, why, detail = false, 'teleport_missing', nil
+    if self.adapter.teleport then ok, why, detail = self.adapter:teleport(car, 'Worldwide Trucking: your truck') end
+    self.diag:event('back_to_car', ok and coordinates(car) or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
+    self.footBackAt = ok and self.clock or nil
+    self.footFeedback = not ok and 'BeamNG.Earth did not take the teleport. Copy your truck\'s coordinates and paste them into its map.' or nil
+    return ok == true
+  end
+
+  -- The pop-up while on foot far from the car, or nil.
+  function c:footAwayView(current)
+    local car = self.footCar
+    local away = self.onFoot and car and current and location.distance(current, car)
+    if not away or away <= M.FOOT_FAR_METRES then return nil end
+    local teleporting = self.footBackAt ~= nil and self.clock - self.footBackAt < TELEPORT_WAIT_SECONDS
+    return { latitude = car.latitude, longitude = car.longitude, distanceMetres = away, teleporting = teleporting or nil,
+      backAllowed = not teleporting and self.adapter.teleport ~= nil, feedback = self.footFeedback }
+  end
+
+  -- The backup to the big map: teleport to coordinates pasted on the Relocate tab. Landing there is like the big
+  -- map's Teleport here: the pop-up asks to pay (relocateHereView).
+  function c:relocateTo(latitude, longitude)
+    local point = { latitude = latitude, longitude = longitude }
+    local problem = self:shippingProblem()
+    if not problem and not location.valid(point) then problem = 'Those are not coordinates. Paste latitude, longitude, like -16.19, -67.73.' end
+    local here = self.lastSample
+    local d = not problem and here and here.valid and location.distance(here, point)
+    if not problem and d and d <= odometer.SHORT_HOP_METRES then problem = 'That spot is less than 2 km away. Drive there.' end
+    if not problem and not self.adapter.teleport then problem = 'BeamNG.Earth cannot teleport right now. Copy the coordinates and paste them into its map.' end
+    if problem then
+      self.shippingFeedback = problem
+      return false
+    end
+    local ok, why, detail = self.adapter:teleport(point, 'Worldwide Trucking: relocation')
+    self.diag:event('relocate_to', ok and coordinates(point) or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
+    self.shippingFeedback = ok and 'Teleporting. Once the terrain loads, pay for the relocation in the pop-up.'
+      or 'BeamNG.Earth did not take the teleport. Copy the coordinates and paste them into its map.'
     return ok == true
   end
 
@@ -2650,6 +2715,15 @@ function M.new(deps)
     -- A job taken at a depot's computer, on foot, puts its weight on the truck LOAD_AFTER_SECONDS
     -- after the player is back in it, once the game has really put them in the driver's seat.
     if wasOnFoot and not self.onFoot and self.load then self.loadWeightAt = self.clock + M.LOAD_AFTER_SECONDS end
+    -- Getting out: where the car stands, to take the player back to it after a teleport on foot (walkedAway).
+    if self.onFoot and not wasOnFoot then
+      local s = self.lastSample
+      self.footCar = s and s.valid and location.valid(s) and location.copy(s) or nil
+    elseif wasOnFoot and not self.onFoot then
+      -- Back in the car after the walker teleported: the car never moved, so the step from the walker to it is no teleport.
+      if self.footJumped then self.odometer:reset(); self.lastDriven = nil end
+      self.footCar, self.footBackAt, self.footFeedback, self.footJumped = nil, nil, nil, nil
+    end
     if self.onFoot then self.loadWeightAt = nil end
     if self.loadWeightAt and self.clock >= self.loadWeightAt then
       self.loadWeightAt = nil
@@ -3203,6 +3277,7 @@ function M.new(deps)
       repairAtHome = self:homeSpot() ~= nil and self:atHome() or nil,
       rockets = self.rockets or nil,
       relocateHere = self:relocateHereView(current),
+      footAway = self:footAwayView(current),
       stranded = self.stranded and current and {
         latitude = self.stranded.latitude, longitude = self.stranded.longitude,
         distanceMetres = location.distance(current, self.stranded),
@@ -3842,6 +3917,12 @@ function M.bookShipping(destination) return safely(function() return ensure():bo
 -- After a teleport by the big map: pay for the relocation there, or go back where you left, free.
 function M.payRelocation() return safely(function() return ensure():payRelocation() end) end
 function M.goBackUnpaid() return safely(function() return ensure():goBackUnpaid() end) end
+function M.goBackToCar() return safely(function() return ensure():goBackToCar() end) end
+-- latitude and longitude are numbers.
+function M.relocateTo(latitude, longitude)
+  if type(latitude) ~= 'number' or type(longitude) ~= 'number' then return false end
+  return safely(function() return ensure():relocateTo(latitude, longitude) end)
+end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 -- edge: 'n', 'e', 's' or 'w'.
 -- The base thief: Chase, the EMP (MadMerick's EMP button can call earthFreight_core.empThief()), and a theft
