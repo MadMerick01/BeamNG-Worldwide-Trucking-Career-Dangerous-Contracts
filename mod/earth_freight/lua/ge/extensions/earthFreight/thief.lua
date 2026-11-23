@@ -143,7 +143,7 @@ function M.attach(c)
     if self.hire then return self:awayText() end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     if self.booking then return 'You already have a relocation booked to ' .. self.booking.name .. '. Cancel it on the Relocate tab first.' end
-    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from first.' end
+    if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back first.' end
     return nil
   end
 

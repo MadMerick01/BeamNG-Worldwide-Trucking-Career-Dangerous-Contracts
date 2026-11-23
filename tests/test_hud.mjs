@@ -360,7 +360,7 @@ test('the Tips tab is gone and shipping has its own Relocate tab', () => {
   assert.ok(!html.includes(`tab === 'tips'`), 'no Tips tab')
   const garage = html.slice(html.indexOf(`ng-if="tab === 'garage'"`), html.indexOf(`ng-if="tab === 'relocate'"`))
   const shipping = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`))
-  for (const card of ['Relocation paid:', 'Book relocation', 'bookOffer()', 'bookShipping(d.id)', 'cancelShipping()']) {
+  for (const card of ['Relocation paid:', 'Book relocation', 'bookOffer()', 'openBigMap()', 'cancelShipping()']) {
     assert.ok(shipping.includes(card), card); assert.ok(!garage.includes(card), card + ' not on the Garage tab')
   }
   a.state({ state: 'READY', arrived: true, shipping: { booking: { name: 'La Paz' } } })
@@ -458,7 +458,7 @@ test('typing in a text box turns the game keys off, so it does not drive the car
   assert.equal(a.commands.length, count, 'sent once')
   a.handlers.$destroy()
   assert.ok(a.commands.includes('if setCEFTyping then setCEFTyping(false) end'), 'keys back on when the HUD closes')
-  for (const box of ['intro.name', 'ship.query', 'ship.coords']) {
+  for (const box of ['intro.name']) {
     assert.match(html, new RegExp(`ng-model="${box.replace('.', '\\.')}" [^>]*ng-focus="typing\\(true\\)" ng-blur="typing\\(false\\)"`), box)
   }
 })
@@ -1351,7 +1351,6 @@ test('every list of rows with a button keeps its rows between updates', () => {
     if (/ng-click|ng-model/.test(row) && !/\btrack by\b/.test(m[2])) missing.push(m[2])
   }
   assert.deepEqual(missing, [])
-  assert.ok(html.includes('ng-repeat="d in data.shipping.destinations track by d.id"'))
 })
 
 test('Land Race and Leaderboard tab: copies the live page address, shows the race online, and only join steps in single player', () => {
@@ -1683,4 +1682,21 @@ test('Depot car parks: the HUD asks OpenStreetMap once for open car parks and se
   assert.ok(asked[0].includes('around:400,46.020000,7.750000') && asked[0].includes('amenity=parking'))
   assert.match(b.commands.at(-1), /^if earthFreight_core then earthFreight_core\.setDepotLots\("town:zermatt_1","46\.\d{6},7\.\d{6};46\.\d{6},7\.\d{6};46\.\d{6},7\.\d{6}"\) end$/)
   assert.equal(b.scope.lookUpLots({ ...want, key: 'bad key"' }), null, 'odd keys ignored')
+})
+test('Relocate: the big map opens only when allowed, and the pop-up pays or goes back only when Lua allows it', () => {
+  const a = app()
+  let count = a.commands.length
+  a.state({ state: 'READY', shipping: { mapAllowed: false } }); a.scope.openBigMap()
+  assert.equal(a.commands.length, count, 'no map while relocating is barred')
+  a.state({ state: 'READY', shipping: { mapAllowed: true } }); a.scope.openBigMap()
+  assert.match(a.commands.at(-1), /freeroam_bigMapMode/, 'the big map opens')
+  count = a.commands.length
+  a.state({ state: 'READY', relocateHere: { payAllowed: false, backAllowed: false } }); a.scope.payRelocation(); a.scope.goBackUnpaid()
+  assert.equal(a.commands.length, count, 'refused while landing or going back')
+  a.state({ state: 'READY', relocateHere: { payAllowed: true, backAllowed: true } })
+  a.scope.payRelocation(); assert.equal(a.commands.at(-1), fixed('payRelocation()'))
+  a.scope.goBackUnpaid(); assert.equal(a.commands.at(-1), fixed('goBackUnpaid()'))
+  const relocate = html.slice(html.indexOf(`ng-if="tab === 'relocate'"`), html.indexOf(`ng-if="tab === 'home'"`))
+  assert.ok(!relocate.includes('data.shipping.destinations') && !relocate.includes('searchShipping'), 'no list of places, no search')
+  assert.ok(html.includes('ng-if="data.relocateHere"') && html.includes('ng-click="payRelocation()"') && html.includes('ng-click="goBackUnpaid()"'), 'the pop-up')
 })

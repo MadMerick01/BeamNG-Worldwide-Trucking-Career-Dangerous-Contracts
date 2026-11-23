@@ -303,7 +303,7 @@ function M.attach(c)
     end
     if self.hire then return self:awayText() end
     if self.onFoot then return 'Get back in your car first.' end
-    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from first.' end
+    if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back first.' end
     if self.booking then return 'Teleport to your relocation booking, or cancel it, first.' end
     if self.pendingCar or self.pendingParts then return 'Pay for or undo the bill above first.' end
     local vehicle = self.lastSample and self.lastSample.valid and self.lastSample.vehicle

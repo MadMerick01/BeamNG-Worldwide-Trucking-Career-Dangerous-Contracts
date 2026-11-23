@@ -4,7 +4,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
   // closes, so this is kept out here and the new app carries on where the old one was.
   var kept = {
     tab: 'route', introShown: false, intro: { open: false, name: '', steps: false }, shares: {},
-    ship: { query: '', coords: '', error: null }, last: null, hud: null,
+    last: null, hud: null,
     // The multiplayer server's status for Play online: 'checking', 'online', 'offline' or 'unknown' (not reachable).
     server: { status: 'checking', at: null },
     // Towns already looked up for a real business this game, so each is only asked once.
@@ -185,6 +185,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         if (typeof bngApi !== 'undefined' && bngApi.engineLua) bngApi.engineLua(command)
       }
       var core = function (body) { call('if earthFreight_core then earthFreight_core.' + body + ' end') }
+      // Opens the game's big map (as M does), which BeamNG.Earth's level replaces with its own world map.
+      var openBigMap = function () {
+        call('if freeroam_bigMapMode then if freeroam_bigMapMode.enterBigMap then pcall(freeroam_bigMapMode.enterBigMap, {instant = true}) ' +
+          'elseif freeroam_bigMapMode.toggleBigMap then pcall(freeroam_bigMapMode.toggleBigMap) end end')
+      }
       var mount = function (on) { core('uiMounted(' + (on ? 'true' : 'false') + ')') }
       // Each part of the HUD sits on its own tab so the app stays short.
       scope.tabs = [{ id: 'route', label: 'Route' }, { id: 'town', label: 'Town' }, { id: 'garage', label: 'Garage' },
@@ -556,8 +561,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // does) opens Earth's. Guarded, so a game without it only closes the page.
       scope.openMap = function () {
         scope.closeIntro()
-        call('if freeroam_bigMapMode then if freeroam_bigMapMode.enterBigMap then pcall(freeroam_bigMapMode.enterBigMap, {instant = true}) ' +
-          'elseif freeroam_bigMapMode.toggleBigMap then pcall(freeroam_bigMapMode.toggleBigMap) end end')
+        openBigMap()
       }
       // The Rust Bucket to Rig line: where the car's marker sits, and what it says under it.
       scope.climbAt = function (share) { return Math.round(Math.max(0, Math.min(1, Number(share) || 0)) * 100) + '%' }
@@ -834,24 +838,13 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.bookShipping = function (destination) {
         if (scope.data.shipping && !scope.data.shipping.booking && plainId(destination)) core("bookShipping('" + destination + "')")
       }
-      // Shipping anywhere: a town by name, or coordinates pasted from a map.
-      scope.ship = kept.ship
-      scope.searchShipping = function () {
-        var q = String(scope.ship.query || '').replace(/[^A-Za-z0-9 .-]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)
-        if (scope.data.shipping && q.length >= 2) core("searchShipping('" + q + "')")
+      // Relocating anywhere else: the big map (BeamNG.Earth's, on its level) opens, the player right-clicks a spot and
+      // presses Teleport here, and a pop-up asks them to pay for it, or to go back for free.
+      scope.openBigMap = function () {
+        if (scope.data.shipping && scope.data.shipping.mapAllowed) openBigMap()
       }
-      scope.parseCoordinates = function (text) {
-        var m = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(String(text || ''))
-        if (!m) return null
-        var lat = parseFloat(m[1]), lon = parseFloat(m[2])
-        if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) return null
-        return { latitude: lat, longitude: lon }
-      }
-      scope.bookCoordinates = function () {
-        var p = scope.parseCoordinates(scope.ship.coords)
-        scope.ship.error = p ? null : 'Paste latitude, longitude, like -16.19, -67.73.'
-        if (p && scope.data.shipping && !scope.data.shipping.booking) core('bookShippingTo(' + p.latitude + ', ' + p.longitude + ')')
-      }
+      scope.payRelocation = function () { if (scope.data.relocateHere && scope.data.relocateHere.payAllowed) core('payRelocation()') }
+      scope.goBackUnpaid = function () { if (scope.data.relocateHere && scope.data.relocateHere.backAllowed) core('goBackUnpaid()') }
       scope.bookOffer = function () { if (scope.data.shipping && scope.data.shipping.offer && scope.data.shipping.offer.allowed) core('bookOffer()') }
       scope.clock = function (seconds) {
         if (typeof seconds !== 'number' || !isFinite(seconds)) return ''
