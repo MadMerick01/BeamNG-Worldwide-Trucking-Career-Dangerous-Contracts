@@ -8,6 +8,15 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **You can now buy fuel anywhere, not just at a petrol station or in a town.** Stop the truck anywhere on the road and the **Refuel** button on the Garage tab works, at 20 times the pump price. For example, diesel in Europe costs $2.49 a litre at a pump, $12.45 in a town and $49.80 at the roadside. The Fuel section shows "roadside price" in red with both prices, so you know what you're paying before you press it, and afterwards it tells you what a pump would have cost.
 - Petrol station pumps and town prices are unchanged: the pump price at a pump, and 5 times that in a town. The fuel you haul on a fuel run stays in the tanker and is never used to refuel your truck. Your saves still work.
+## Build 275 · 23 Nov 2026
+
+- **On the server, your truck no longer turns into your tanker trailer.** Taking a fuel or water job with a tanker trailer, or joining the server with one hooked up, filled the trailer's tank in a way that BeamMP applied to the truck you were driving instead, so the truck became a second tanker. The same could happen when the game put a trailer's parts back as you bought them. Now only the trailer changes, and you stay in your truck. Single player was never affected. Your saves still work: if your truck turned into a tanker, press **Get my car back** on the Garage tab, or leave and join again without saving.
+
+## Build 274 · 23 Nov 2026
+
+- **Joining the server with the mod already installed now just works.** If you have your own copy of the mod, from GitHub or BeamNG.Earth's Add-ons page, the game now switches to the server's copy as you join. Before, your own copy kept running, and if it was older than the server's you were sent off as "out of date". This works from this build on, so if your copy is older than this build, update it once.
+- **Your own copy is turned back on when you leave a server.** BeamMP turns it off while you play online and used to leave it off, so the mod was missing in single player until you turned it on again in the Mod Manager. Now it comes back by itself. Your saves still work.
+
 ## Build 273 · 23 Nov 2026
 
 - **The game now adds the trucking HUD for you.** If the HUD isn't on your screen, a pop-up asks "Add the trucking HUD?" and names the layout you're on, such as .Earth or BeamMP. Press **Add the HUD** and it appears straight away, in the same spot + Add to layout would put it. You can still move it with Esc > System > HUD Apps. Each layout has its own apps, so you're asked once for each layout you play on: once alone, and once the first time you join a server. Players who already have the HUD on screen never see the pop-up. Online it waits until your career has come in from the server, so joining isn't disturbed.

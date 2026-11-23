@@ -3,6 +3,7 @@
 local location = require('earthFreight/location')
 local config = require('earthFreight/config')
 local persistence = require('earthFreight/persistence')
+local modswap = require('earthFreight/modswap')
 local diagnostics = require('earthFreight/diagnostics')
 local browser = require('earthFreight/browser')
 local hud = require('earthFreight/hud')
@@ -3492,7 +3493,17 @@ local function id(value)
 end
 
 function M.onExtensionLoaded()
+  -- The copy this code came from, so another copy mounted later (a BeamMP server's) takes over (modswap.lua).
+  pcall(modswap.remember)
+  pcall(modswap.rememberOwnMod)
   return safely(function() local c = ensure(); c.diag:event('extension_loaded', 'Earth Freight') end)
+end
+-- A mod turned on or off: BeamMP swapping the player's own copy for a server's, or back. The player's own copy turned
+-- off in a session is turned back on when it ends, and the copy mounted now runs its own code (modswap.lua).
+function M.onModActivated() pcall(modswap.check, 'a mod turned on', true) end
+function M.onModDeactivated(mod)
+  pcall(modswap.onModDeactivated, mod)
+  pcall(modswap.check, 'a mod turned off', true)
 end
 function M.onPreRender(dtReal)
   return safely(function() ensure():tick(dtReal) end)
