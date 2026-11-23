@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The ROB ME button on the Route tab and the Get robbed button on the Base tab are gone.** They let you set off a robbery whenever you liked, over and over. Road robbers and base thieves still turn up on their own as before, and in single player you can still switch them off with the **Robbers and thieves** tick box on the Route tab. Your saves still work.
+
 ## Build 281 · 23 Nov 2026
 
 - **Teleporting on foot no longer loses your truck.** Using the big map's Teleport here while out of your truck moved only you and left the truck behind. Now the game takes you straight back to your truck, and a pop-up shows its coordinates with a **Copy** button in case that teleport fails. If you got back in by switching vehicles, you are no longer asked to pay for a relocation you never made. To move your truck, get in it first.

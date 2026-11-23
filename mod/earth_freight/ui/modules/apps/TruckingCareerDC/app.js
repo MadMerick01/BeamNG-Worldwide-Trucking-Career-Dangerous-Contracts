@@ -334,13 +334,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         if (!t || !t.chaseAllowed || !car || !car.allowed || car.index !== Math.floor(car.index) || car.index < 1) return
         core('thiefChase(' + car.index + ')')
       }
-      scope.getRobbed = function () { if (scope.data && scope.data.robbery && scope.data.robbery.allowed) core('getRobbed()') }
       scope.thiefGoBack = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'return' && scope.data.thief.returnAllowed) core('thiefGoBack()') }
       scope.thiefLetGo = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'stolen') core('thiefLetGo()') }
       scope.empThief = function () { if (scope.data && scope.data.thief && scope.data.thief.phase === 'chasing') core('empThief()') }
-      // The road robber: ROB ME on the Route tab.
-      scope.robMe = function () { if (scope.data && scope.data.robMe && scope.data.robMe.allowed) core('robMe()') }
-      // Its "Robbers and thieves" switch, offered in single player only.
+      // The road robber's "Robbers and thieves" switch, offered in single player only. There is no ROB ME or Get robbed
+      // button any more (MadMerick, 23 Nov): players pressed them over and over to farm money.
       scope.setRobbersOn = function (on) { if (scope.data && scope.data.robMe && scope.data.robMe.canSwitch) core('setRobbersOn(' + (on ? 'true' : 'false') + ')') }
       // The admin robber (the server's admins only): Rob a player from the list, and Stop.
       scope.adminRob = function (p) { if (p && p.allowed && typeof p.id === 'number') core('adminRob(' + Math.floor(p.id) + ')') }

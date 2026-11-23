@@ -19,7 +19,7 @@
 -- Online, every player can be robbed (MadMerick, 21 Nov: the old "Robbers can rob me" opt-out was too big an
 -- advantage; an old save's noRobbers is ignored). In single player only (MadMerick, 22 Nov), the Route tab's "Robbers
 -- and thieves" switch turns off road robbers and the base thief, saved as robbersOff, with no cost to the player. On a
--- BeamMP server the switch isn't shown and a saved robbersOff is ignored (robbersOff below). ROB ME on the Route tab starts one straight away for testing, and doesn't count as the
+-- BeamMP server the switch isn't shown and a saved robbersOff is ignored (robbersOff below). c:robMe starts one straight away for the tests (the Route tab's ROB ME button is gone: MadMerick, 23 Nov), and doesn't count as the
 -- job's robbery. Never on Mayday Rescue runs, heli flights or the heli's package jobs. Pure Lua: the car is
 -- handled by c.thiefCar, which may be missing. An admin on the server can drive a robber himself (adminRobber.lua):
 -- self.robber then has admin = true.
@@ -153,7 +153,7 @@ function M.attach(c)
     return true
   end
 
-  -- ROB ME on the Route tab: a robber on the road behind straight away, for testing. Returns true when one is coming.
+  -- ROB ME: a robber on the road behind straight away, for the tests only (no button any more). Returns true when one is coming.
   function c:robMe()
     local problem = self:robberProblem(true)
     if problem then
@@ -398,7 +398,8 @@ function M.attach(c)
     return true
   end
 
-  -- The Route tab's ROB ME button, and the switch (only offered in single player).
+  -- The Route tab's Road robbers card and its switch (only offered in single player). allowed and problem are what
+  -- ROB ME would say; the HUD no longer has that button.
   function c:robMeView()
     if not self.profile or self.error then return nil end
     local problem = self:robberProblem(true)

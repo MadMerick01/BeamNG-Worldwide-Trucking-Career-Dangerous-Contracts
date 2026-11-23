@@ -3926,7 +3926,8 @@ end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 -- edge: 'n', 'e', 's' or 'w'.
 -- The base thief: Chase, the EMP (MadMerick's EMP button can call earthFreight_core.empThief()), and a theft
--- straight away: the Base tab's Get robbed button, or earthFreight_core.thiefTest() in the console (it needs a base).
+-- straight away for testing: earthFreight_core.thiefTest() in the console (it needs a base). The Base tab's Get robbed
+-- button and the Route tab's ROB ME button are gone (MadMerick, 23 Nov): players pressed them over and over to farm money.
 function M.thiefChase(index)
   if index ~= nil and not parkedIndex(index) then return false end
   return safely(function() return ensure():thiefChase(index) end)
@@ -3936,10 +3937,7 @@ function M.empHotkey() return safely(function() return ensure():empHotkey() end)
 function M.thiefLetGo() return safely(function() return ensure():thiefLetGo() end) end
 function M.thiefGoBack() return safely(function() return ensure():thiefGoBack() end) end
 function M.thiefTest() return safely(function() return ensure():startTheft(true) end) end
-function M.getRobbed() return safely(function() return ensure():startTheft(true) end) end
--- The road robber: the Route tab's ROB ME button.
-function M.robMe() return safely(function() return ensure():robMe() end) end
--- Its "Robbers and thieves" switch, single player only (true: on, false: off).
+-- The road robber's "Robbers and thieves" switch, single player only (true: on, false: off).
 function M.setRobbersOn(on)
   if type(on) ~= 'boolean' then return false end
   return safely(function() return ensure():setRobbersOn(on) end)
