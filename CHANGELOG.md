@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **A town's jobs no longer stay locked behind "Finding a spot for the depot".** In some towns the depot kept looking for a spot for minutes on end, with Take job greyed out the whole time, because part of the ground it wanted to check never finished loading, or no spot passed its checks. Now a spot whose ground won't load is skipped, and if no spot is found within 45 seconds of reaching town the desk and computer go down beside the nearest road anyway.
+- **A depot with no room for its shed now puts its desk and computer right beside the road**, at road height, instead of a few metres back. Before, it could end up out of sight in the trees or down in a creek, which the depot can't tell apart from open ground. Your saves still work.
+
 ## Build 275 · 23 Nov 2026
 
 - **On the server, your truck no longer turns into your tanker trailer.** Taking a fuel or water job with a tanker trailer, or joining the server with one hooked up, filled the trailer's tank in a way that BeamMP applied to the truck you were driving instead, so the truck became a second tanker. The same could happen when the game put a trailer's parts back as you bought them. Now only the trailer changes, and you stay in your truck. Single player was never affected. Your saves still work: if your truck turned into a tanker, press **Get my car back** on the Garage tab, or leave and join again without saving.

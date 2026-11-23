@@ -240,6 +240,49 @@ do
   end
 end
 
+-- Ground that never loads (water, a gap in Earth's tiles) where the first spots are: they are passed
+-- over and the depot still goes down, well before the search gives up.
+do
+  local w = F.depotWorld()
+  w.hole = function(_, y) return y > 0 end
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, math.ceil(depots.GIVE_UP_SECONDS / 0.6) - 2 do c:tick(0.6) end
+  local built = c.depotsBuilt[next(c.depotsBuilt)]
+  T.check(built ~= nil, 'put down on the side of the road that loaded')
+  T.eq(w:count(), 4, 'with its shed')
+  T.check(built.spot.y < 0, 'on the loaded side')
+end
+
+-- Nothing ever loads: the search gives up and puts the desk and computer at the road nearest the
+-- middle of town, so the town's jobs are never locked.
+do
+  local w = F.depotWorld()
+  w.unloaded = true
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, math.ceil(depots.GIVE_UP_SECONDS / 0.6) - 5 do c:tick(0.6) end
+  T.eq(w:count(), 0, 'still looking before it gives up')
+  T.check(c:view().town.takeProblem:find('Finding a spot'), 'and the board says so')
+  for _ = 1, 12 do c:tick(0.6) end
+  T.eq(w:count(), 3, 'then the desk, computer and screen go down')
+  for _, o in pairs(w.objects) do
+    T.check(math.abs(o.y) <= w.roadRadius + depots.EDGE_METRES + 2, o.shape .. ' beside the road')
+  end
+  T.check(not c:view().town.takeProblem:find('Finding a spot'), 'and jobs point to the computer')
+end
+
+-- No shed fits, but there is flat ground set back from the road (it could be a creek or the trees,
+-- which the checks can't see): the desk still goes right beside the road.
+do
+  local w = F.depotWorld()
+  w.boxes = { { -1000, -1000, 1000, -0.5, 4 }, { -1000, 9.5, 1000, 1000, 4 } }
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, 200 do c:tick(0.6) end
+  for _, o in pairs(w.objects) do
+    T.check(math.abs(o.y) <= w.roadRadius + depots.EDGE_METRES + 2, o.shape .. ' beside the road, not set back')
+    T.eq(o.z, 0, o.shape .. ' at the height of the road')
+  end
+end
+
 -- The game can't put objects down: depots are off and jobs are taken on the HUD, as before.
 do
   local w = F.depotWorld()
