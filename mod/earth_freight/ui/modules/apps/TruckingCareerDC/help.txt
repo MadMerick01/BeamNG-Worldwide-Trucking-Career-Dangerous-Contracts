@@ -118,6 +118,7 @@ Any teleport, the heli or changing cars ends your run, but you can start again f
 
 # online | Playing online and the land race | online
 Online, everyone trucks on the same Earth. Your single player career stays on this PC.
+The server gives you its own copy of the mod. Your copy steps aside while you're on, and is turned back on when you leave.
 Each HUD layout has its own apps, and a server usually shows a different layout from single player. The first time the HUD is missing, a pop-up offers to add it: press Add the HUD.
 Bases grow into turf, and the first corp to cover enough of Earth's land wins the season. Then everyone starts again.
 The season leaderboard ranks everyone by what they're worth.

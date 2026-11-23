@@ -6,10 +6,13 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Joining the server with the mod already installed now just works.** If you have your own copy of the mod, from GitHub or BeamNG.Earth's Add-ons page, the game now switches to the server's copy as you join. Before, your own copy kept running, and if it was older than the server's you were sent off as "out of date". This works from this build on, so if your copy is older than this build, update it once.
+- **Your own copy is turned back on when you leave a server.** BeamMP turns it off while you play online and used to leave it off, so the mod was missing in single player until you turned it on again in the Mod Manager. Now it comes back by itself. Your saves still work.
 - **Jobs now pay for the real road, not a guess.** Town job distances used to be the straight line plus 30%, so a winding mountain road that's 20 km to drive was paid as about 8 km. Press a job's GPS button in town and the GPS measures the actual road: after a few seconds the job shows "km by road" and its real price, before you take it. Distances that haven't been measured yet show a ~ in front.
 - Measured roads are remembered, so the next time that town shows up on a board, it already shows the real distance and price.
 - A job taken without pressing GPS first is measured as soon as the GPS plans its route. If the road is longer than the estimate, your pay goes up and a message tells you by how much.
 - Pay only ever goes up: a job never pays less than the board showed, even if the road turns out shorter. If BeamNG.Earth can't plan a road (its app is offline, auto-GPS is off, or the route is far longer than any sensible road), the job keeps its board price. Off-road drops and fuel runs are paid as before. Your saves still work.
+
 ## Build 273 · 23 Nov 2026
 
 - **The game now adds the trucking HUD for you.** If the HUD isn't on your screen, a pop-up asks "Add the trucking HUD?" and names the layout you're on, such as .Earth or BeamMP. Press **Add the HUD** and it appears straight away, in the same spot + Add to layout would put it. You can still move it with Esc > System > HUD Apps. Each layout has its own apps, so you're asked once for each layout you play on: once alone, and once the first time you join a server. Players who already have the HUD on screen never see the pop-up. Online it waits until your career has come in from the server, so joining isn't disturbed.
