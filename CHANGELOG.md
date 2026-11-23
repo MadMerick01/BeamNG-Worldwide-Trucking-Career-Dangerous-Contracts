@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 273 · 23 Nov 2026
+
 - **The game now adds the trucking HUD for you.** If the HUD isn't on your screen, a pop-up asks "Add the trucking HUD?" and names the layout you're on, such as .Earth or BeamMP. Press **Add the HUD** and it appears straight away, in the same spot + Add to layout would put it. You can still move it with Esc > System > HUD Apps. Each layout has its own apps, so you're asked once for each layout you play on: once alone, and once the first time you join a server. Players who already have the HUD on screen never see the pop-up. Online it waits until your career has come in from the server, so joining isn't disturbed.
 - Press **Not now** and you get the usual steps instead. That reminder now keeps coming back every couple of minutes until the HUD is on screen, instead of giving up after three tries.
 - The HUD is now called **Worldwide Trucking HUD** in the HUD Apps list, which is easier to find, and every set of steps uses that name. The reminder now names layouts as the HUD Apps menu shows them, for example ".Earth multiplayer" instead of "beamngEarthMP". Nothing to delete, and your saves still work.
