@@ -63,6 +63,9 @@ local TELEPORT_WAIT_SECONDS = 30
 -- (back where it left, or off a little) before it settles. For this long, any jump that ends near the
 -- booked place is that settling, not a teleport, and being near it frees a player stranded meanwhile.
 M.LANDING_GRACE_SECONDS = 120
+-- After a teleport by the big map, the pop-up waits this long for the car to stop moving about before Pay works,
+-- as Earth can read the car somewhere on the way while the terrain loads.
+M.PAY_WAIT_SECONDS = 3
 -- A job taken on foot at a depot computer loads the truck this long after the player gets back in.
 M.LOAD_AFTER_SECONDS = 2
 -- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
@@ -242,7 +245,6 @@ function M.new(deps)
     -- Shipping booked and not yet used, and where an unbooked teleport left from. Neither is saved:
     -- Save waits until both are settled.
     self.booking, self.stranded, self.shippingFeedback, self.lastDriven, self.landing = nil, nil, nil, nil, nil
-    self.shippingSearch = nil
     -- A puncture not yet repaired; a reload respawns the car, so its tyre repair is owed instead.
     self.punctureDamage, self.offRoad, self.offRoadCheckedAt = 0, nil, nil
     self.fuel, self.fuelReadAt, self.refuelPending, self.appliedWeight, self.tankReading = nil, nil, nil, nil, nil
@@ -1000,7 +1002,7 @@ function M.new(deps)
   end
 
   function c:unstrand()
-    self.stranded = nil
+    self.stranded, self.strandedAt, self.goingBackAt = nil, nil, nil
     self:showFlash('delivered', 'BACK ON THE ROAD', 'You are back where you teleported from. Deliveries and driving count again.')
     self.diag:event('unstranded', '')
   end
@@ -1057,8 +1059,10 @@ function M.new(deps)
       -- read the car for a moment on the way in.
       local landed = self:recentLanding()
       self.stranded = self.stranded or (landed and location.copy(landed)) or from
-      self:showFlash('cancelled', 'RELOCATION NOT BOOKED', 'Deliveries and driving do not count until you go back to '
-        .. coordinates(self.stranded) .. ' (copy them on the Route tab), or book a relocation on the Relocate tab.' .. lost)
+      -- The pop-up asks to pay for the relocation here, once the car has stopped moving about (relocateHereView).
+      self.strandedAt = self.clock
+      self:showFlash('cancelled', 'RELOCATE HERE?', 'Pay the relocation fee in the pop-up, or press Go back.'
+        .. ' Deliveries and driving do not count until you do.' .. lost)
       self.diag:event('stranded', coordinates(self.stranded) .. ' (' .. coordinates(from) .. ' -> ' .. coordinates(to) .. ')', 'W')
     end
   end
@@ -1076,7 +1080,7 @@ function M.new(deps)
 
   function c:landAtBooking(lost)
     local b = self.booking
-    self.booking, self.stranded, self.bookingTeleportAt = nil, nil, nil
+    self.booking, self.stranded, self.bookingTeleportAt, self.strandedAt, self.goingBackAt = nil, nil, nil, nil, nil
     self.landing = { latitude = b.latitude, longitude = b.longitude, at = self.clock, name = b.name, region = b.region }
     if b.thiefReturn then
       self:thiefReturned()
@@ -1113,7 +1117,7 @@ function M.new(deps)
   -- A stranding while Earth settled the car in at the booking it just landed at is undone.
   function c:settled(point)
     local l = self.landing
-    self.stranded = nil
+    self.stranded, self.strandedAt, self.goingBackAt = nil, nil, nil
     self:showFlash('delivered', 'RELOCATED TO ' .. l.name:upper(), 'Welcome to ' .. l.region .. '. Find a load in town.')
     self:autoSaveSoon('your relocation')
     self.diag:event('landing_settled', coordinates(point))
@@ -1133,30 +1137,12 @@ function M.new(deps)
     return nil
   end
 
-  -- A place as a shipping destination.
-  local function placeDestination(place)
-    return place and { id = place.id, name = place.name, region = place.region,
-      latitude = place.latitude, longitude = place.longitude } or nil
-  end
-
-  -- Books shipping to one of the listed regions or any place by its id.
+  -- Books the relocation to the base: the one place booked from the Relocate tab. Anywhere else is
+  -- reached with the big map's Teleport here, and paid for in the pop-up after (payRelocation).
   function c:bookShipping(destinationId)
     if destinationId == 'home' then return self:book(self:homeDestination()) end
-    return self:book(shipping.get(destinationId) or placeDestination(places.get(destinationId)))
-  end
-
-  -- Books shipping to any coordinates; the region is the nearest place's.
-  function c:bookShippingTo(latitude, longitude)
-    local point = { latitude = latitude, longitude = longitude }
-    if not location.valid(point) then
-      self.shippingFeedback = 'Those are not coordinates. Use latitude, longitude, like -16.19, -67.73.'
-      return false
-    end
-    places.ensure(point)
-    local near = places.nearest(point, 1)[1]
-    return self:book({ id = 'coordinates', name = string.format('%.5f, %.5f', latitude, longitude),
-      region = near and (near.metres < 50000 and ('near ' .. near.place.name .. ', ' .. near.place.region) or near.place.region) or 'somewhere remote',
-      latitude = latitude, longitude = longitude })
+    self.shippingFeedback = 'Open the big map to go anywhere else.'
+    return false
   end
 
   -- The paid-shipping offer showing now, and the seconds until the next one.
@@ -1176,15 +1162,6 @@ function M.new(deps)
     self.booking.offer = true
     self.shippingFeedback = self.shippingFeedback .. ' ' .. offer.name .. ' pays it back when you deliver there.'
     return true
-  end
-
-  -- Finds places by name to ship to.
-  function c:searchShipping(query)
-    local found = places.search(query, shipping.SEARCH_RESULTS)
-    self.shippingSearch = { query = query, results = {} }
-    for _, place in ipairs(found) do self.shippingSearch.results[#self.shippingSearch.results + 1] = placeDestination(place) end
-    self.shippingFeedback = #found == 0 and ('No town called ' .. tostring(query) .. '. Try the start of its name, or paste coordinates.') or nil
-    return #found > 0
   end
 
   -- Books shipping to a destination: pay the fee, then teleport there with the coordinates.
@@ -1209,6 +1186,102 @@ function M.new(deps)
     return true
   end
 
+
+  -- ===== Relocating with the big map ===============================================================================
+  -- The player opens the big map (BeamNG.Earth's world map), right-clicks anywhere and presses Teleport here. That
+  -- teleport strands them as any unbooked one does (teleported), and a pop-up asks them to pay the relocation fee for
+  -- it, worked out from where they left, as a booking would have cost. Pay makes it a relocation like any other:
+  -- the stranding is lifted and the car settles in (landing). Go back takes them back where they left, free.
+
+  -- Why the relocation here can't be paid for now, or nil when it can.
+  function c:payHereProblem(here, fee)
+    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Relocation is unavailable right now.' end
+    if self.hire then return self:awayText() end
+    if self.onFoot then return ON_FOOT end
+    if self.load then return 'Cargo cannot be relocated. Go back to deliver it.' end
+    if self.pendingParts or self.pendingCar then return 'Settle your garage bill on the Garage tab first.' end
+    local barred = self:maydayBars({ latitude = here.latitude, longitude = here.longitude })
+    if barred then return barred end
+    if not self:canAfford(fee) then
+      return 'Not enough money: relocating here costs ' .. dollars(fee) .. '. You need '
+        .. dollars(fee - self.profile.progression.balance) .. ' more, so go back.'
+    end
+    return nil
+  end
+
+  -- The place a spot is in, for the pop-up and the welcome: the nearest town, or its region when far from one.
+  local function spotName(point)
+    places.ensure(point)
+    local near = places.nearest(point, 1)[1]
+    if not near then return 'somewhere remote', 'somewhere remote' end
+    if near.metres < 50000 then return near.place.name, near.place.region end
+    return near.place.region, near.place.region
+  end
+
+  -- Pay: the fee from where the player left to where the car is now.
+  function c:payRelocation()
+    local from, here = self.stranded, self.lastSample
+    if not from or self.booking or not (here and here.valid and location.valid(here)) then return false end
+    if self.strandedAt and self.clock - self.strandedAt < M.PAY_WAIT_SECONDS then return false end
+    local fee = shipping.fee(from, here)
+    local problem = self:payHereProblem(here, fee)
+    if not problem and not self:spend(fee, 'shipping') then problem = 'Not enough money: relocating here costs ' .. dollars(fee) .. '.' end
+    if problem then
+      self.shippingFeedback = problem
+      return false
+    end
+    local name, region = spotName(here)
+    self.stranded, self.strandedAt, self.goingBackAt, self.shippingFeedback = nil, nil, nil, nil
+    self.landing = { latitude = here.latitude, longitude = here.longitude, at = self.clock, name = name, region = region }
+    -- Within reach of the town paying relocations back: this one is paid back too, by a delivery near it.
+    local paid = ''
+    local offer = self:currentOffer()
+    if offer and shipping.offerPays(here, offer) then
+      self.offer = { latitude = offer.latitude, longitude = offer.longitude, name = offer.name, fee = fee }
+      paid = ' ' .. offer.name .. ' pays back your ' .. dollars(fee) .. ' relocation when you deliver within '
+        .. math.floor(shipping.OFFER_RADIUS_METRES / 1000) .. ' km of it.'
+    end
+    self:showFlash('delivered', 'RELOCATED TO ' .. name:upper(), 'You paid ' .. dollars(fee) .. '. Welcome to ' .. region
+      .. '. Find a load in town.' .. paid)
+    self:autoSaveSoon('your relocation')
+    self.diag:event('shipped', 'map:' .. fee .. ' at ' .. coordinates(here))
+    return true
+  end
+
+  -- Go back: Earth teleports the car back where it left, free. Back there, the stranding is lifted (unstrand).
+  function c:goBackUnpaid()
+    local from = self.stranded
+    if not from or self.booking or self.error then return false end
+    if self.onFoot then
+      self.shippingFeedback = ON_FOOT
+      return false
+    end
+    local ok, why, detail = false, 'teleport_missing', nil
+    if self.adapter.teleport then ok, why, detail = self.adapter:teleport(from, 'Worldwide Trucking: where you left') end
+    self.diag:event('go_back_unpaid', ok and coordinates(from) or (tostring(why) .. ':' .. tostring(detail or '')), ok and 'I' or 'W')
+    self.goingBackAt = ok and self.clock or nil
+    self.shippingFeedback = not ok and ('BeamNG.Earth did not take the teleport. Paste ' .. coordinates(from)
+      .. ' into its map to go back.') or nil
+    return ok == true
+  end
+
+  -- The pop-up while stranded, or nil.
+  function c:relocateHereView(current)
+    local from = self.stranded
+    if not from or self.booking or not current or self.hire or self.state ~= 'READY' or not self.arrived then return nil end
+    local goingBack = self.goingBackAt ~= nil and self.clock - self.goingBackAt < TELEPORT_WAIT_SECONDS
+    local fee = shipping.fee(from, current)
+    local landing = self.strandedAt ~= nil and self.clock - self.strandedAt < M.PAY_WAIT_SECONDS
+    local problem = not landing and self:payHereProblem(current, fee) or nil
+    local name, region = spotName(current)
+    return {
+      name = name, region = region, fee = fee, distanceMetres = location.distance(current, from),
+      latitude = from.latitude, longitude = from.longitude,
+      landing = landing or nil, problem = problem, payAllowed = not landing and not goingBack and problem == nil,
+      goingBack = goingBack or nil, backAllowed = not goingBack and self.adapter.teleport ~= nil,
+      feedback = self.shippingFeedback,
+    }
+  end
 
   -- ===== Mayday Rescue (multiplayer): see mayday.lua ==============================================================
   -- The call out now, while this game's career is the server's.
@@ -1687,7 +1760,7 @@ function M.new(deps)
     if not place then return 'Drive into a town to find a job.' end
     if not self.odometer:stopped() then return 'Stop the car to take or deliver a job.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+    if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back to where you left from.' end
     return nil
   end
 
@@ -1700,7 +1773,7 @@ function M.new(deps)
     if self.hire then return self:awayText() end
     if not place then return 'Drive into a town to find a job.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+    if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back to where you left from.' end
     return self:computerProblem(place.id, nil)
   end
 
@@ -1883,7 +1956,7 @@ function M.new(deps)
     if not away or away > business.RADIUS then
       return 'Drive to ' .. load.business.name .. ' and stop within ' .. business.RADIUS .. ' m of it.'
     end
-    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+    if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back to where you left from.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     local trailerProblem = self:trailerDeliveryProblem()
     if trailerProblem then return trailerProblem end
@@ -2007,7 +2080,7 @@ function M.new(deps)
     if not away or away > radius then
       return 'Drive to the drop spot and stop within ' .. radius .. ' m of it.'
     end
-    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+    if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back to where you left from.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     local trailerProblem = self:trailerDeliveryProblem()
     if trailerProblem then return trailerProblem end
@@ -2167,7 +2240,7 @@ function M.new(deps)
     if self.rockets then return rockets.TAKE_PROBLEM end
     local away = location.distance(sample, b.pickup)
     if not away or away > beacons.RADIUS then return 'Drive to the beacon and stop within ' .. beacons.RADIUS .. ' m of it.' end
-    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from, or book a relocation on the Relocate tab.' end
+    if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back to where you left from.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     if not self.odometer:stopped() then return 'Stop the car to pick it up.' end
     return nil
@@ -2827,23 +2900,11 @@ function M.new(deps)
   function c:shippingView(current)
     if not current or self.state ~= 'READY' or not self.arrived then return nil end
     local problem = self:shippingProblem()
-    local list = {}
-    for _, d in ipairs(shipping.DESTINATIONS) do
-      local here, fee = shipping.arrived(current, d), shipping.fee(current, d)
-      list[#list + 1] = { id = d.id, name = d.name, region = d.region, fee = fee, here = here,
-        allowed = problem == nil and not here and self:canAfford(fee) }
-    end
     -- Home, at the usual fee.
     local homeSpot, homeView = self:homeDestination(), nil
     if homeSpot then
       local here, fee = shipping.arrived(current, homeSpot), shipping.fee(current, homeSpot)
       homeView = { id = 'home', name = homeSpot.name, region = homeSpot.region, fee = fee, here = here,
-        allowed = problem == nil and not here and self:canAfford(fee) }
-    end
-    local found = {}
-    for _, d in ipairs(self.shippingSearch and self.shippingSearch.results or {}) do
-      local here, fee = shipping.arrived(current, d), shipping.fee(current, d)
-      found[#found + 1] = { id = d.id, name = d.name, region = d.region, fee = fee, here = here,
         allowed = problem == nil and not here and self:canAfford(fee) }
     end
     local offer, left = self:currentOffer()
@@ -2858,7 +2919,7 @@ function M.new(deps)
     -- Teleport there rests while Earth carries out the last press.
     local teleporting = self.bookingTeleportAt ~= nil and self.clock - self.bookingTeleportAt < TELEPORT_WAIT_SECONDS
     return {
-      offer = offerView, home = homeView, destinations = list, players = playersView, found = found, query = self.shippingSearch and self.shippingSearch.query or nil,
+      offer = offerView, home = homeView, players = playersView, mapAllowed = problem == nil,
       problem = problem, feedback = self.shippingFeedback,
       pending = self.offer and { name = self.offer.name, fee = self.offer.fee, radiusKm = shipping.OFFER_RADIUS_METRES / 1000,
         distanceMetres = location.distance(current, self.offer) } or nil,
@@ -3011,6 +3072,7 @@ function M.new(deps)
       fleet = self:fleetView(),
       repairAtHome = self:homeSpot() ~= nil and self:atHome() or nil,
       rockets = self.rockets or nil,
+      relocateHere = self:relocateHereView(current),
       stranded = self.stranded and current and {
         latitude = self.stranded.latitude, longitude = self.stranded.longitude,
         distanceMetres = location.distance(current, self.stranded),
@@ -3040,7 +3102,8 @@ function M.new(deps)
       abandonFee = dollars(jobs.ABANDON_FEE), longHaulMinKm = jobs.LONG_HAUL[1], longHaulMaxKm = jobs.LONG_HAUL[2],
       heliFee = dollars(heli.HIRE_FEE), heliCrash = dollars(heli.CRASH_FEE),
       beaconPay = dollars(beacons.PAY), beaconInsurance = dollars(beacons.INSURANCE_FEE),
-      contractFee = dollars(contracts.FEE),
+      contractFee = dollars(contracts.FEE), relocateBase = dollars(shipping.BASE_FEE),
+      relocatePerKm = string.format('$%.2f', shipping.FEE_PER_KM), offerKm = math.floor(shipping.OFFER_RADIUS_METRES / 1000),
       fuelRunMinKm = fuelruns.MIN_KM, fuelRunMaxKm = fuelruns.MAX_KM, townFuelTimes = fuel.TOWN_PRICE_TIMES,
       toll = percent(magnate.TOLL),
       depotTruckMetres = depots.TRUCK_METRES, depotGiveUpSeconds = depots.GIVE_UP_SECONDS, depotFarKm = depots.FAR_METRES / 1000,
@@ -3089,7 +3152,7 @@ function M.new(deps)
     -- Until the player reaches the resume point they are not in their own car, so a Save would
     -- replace the saved car and location with the stand-in vehicle and wherever it is.
     if self.stranded or self.booking then
-      self.feedback = self.stranded and 'Go back to where you teleported from, or book a relocation, before saving.'
+      self.feedback = self.stranded and 'Pay for the relocation in the pop-up, or go back to where you teleported from, before saving.'
         or 'Teleport to your relocation booking, or cancel it, before saving.'
       self.diag:event('manual_save_rejected', self.stranded and 'stranded' or 'booking', 'W')
       return false
@@ -3646,15 +3709,9 @@ function M.gpsToContract(contract) return safely(function() return ensure():gpsT
 function M.gpsToTown(place) return safely(function() return ensure():gpsToTown(id(place)) end) end
 function M.gpsToTownDepot() return safely(function() return ensure():gpsToTownDepot() end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
--- latitude and longitude are numbers; the query is letters, digits, spaces, dots and hyphens.
-function M.bookShippingTo(latitude, longitude)
-  if type(latitude) ~= 'number' or type(longitude) ~= 'number' then return false end
-  return safely(function() return ensure():bookShippingTo(latitude, longitude) end)
-end
-function M.searchShipping(query)
-  if type(query) ~= 'string' or #query > 60 or query:find('[^%w %.%-]') then return false end
-  return safely(function() return ensure():searchShipping(query) end)
-end
+-- After a teleport by the big map: pay for the relocation there, or go back where you left, free.
+function M.payRelocation() return safely(function() return ensure():payRelocation() end) end
+function M.goBackUnpaid() return safely(function() return ensure():goBackUnpaid() end) end
 function M.bookOffer() return safely(function() return ensure():bookOffer() end) end
 -- edge: 'n', 'e', 's' or 'w'.
 -- The base thief: Chase, the EMP (MadMerick's EMP button can call earthFreight_core.empThief()), and a theft

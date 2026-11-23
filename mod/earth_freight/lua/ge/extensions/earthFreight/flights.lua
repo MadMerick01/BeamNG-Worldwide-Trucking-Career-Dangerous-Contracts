@@ -48,7 +48,7 @@ function M.attach(c)
 
   -- Why the player cannot leave their car for a helicopter or the sightseeing car, or nil.
   function c:leaveCarProblem(doing)
-    if self.stranded then return 'You teleported without booking a relocation. Go back to where you left from first.' end
+    if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back first.' end
     if self.booking then return 'Teleport to your relocation booking, or cancel it, first.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
     if self.insurancePending then return 'Wait for your car to reach the road first.' end

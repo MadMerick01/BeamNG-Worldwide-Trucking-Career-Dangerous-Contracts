@@ -44,7 +44,7 @@ A depot is taken down once you're about {depotFarKm} km away, and put back when 
 The GPS is set when you take a job. If it goes missing, copy the drop-off coordinates on the Route tab into the BeamNG.Earth map.
 Nearby on the Route tab lists the closest towns. Their dots show what each one pays well for, and GPS takes you there.
 Some jobs have no road at the end: follow the arrow on the Route tab and stop close to the spot.
-Abandoning a job costs {abandonFee}. Teleporting without a booking cancels your job for the same fee.
+Abandoning a job costs {abandonFee}. Teleporting with a job on board cancels it for the same fee.
 
 # fuel | Fuel runs and tankers
 Fuel runs are long hauls of fuel, {fuelRunMinKm} to {fuelRunMaxKm} km, from a depot in a quiet regional town out to a country petrol station. The further you go, the more they pay.
@@ -74,9 +74,12 @@ If you're short, what you owe comes out of your next deliveries, {debtShare} of 
 Fuel is cheapest at a petrol station: drive slowly up to a pump. Refuelling anywhere else costs {townFuelTimes} times the pump price.
 
 # relocate | Relocate
-Move your empty car anywhere in the world. Pick a region, find a town or paste coordinates, pay, then press Teleport.
-Your car goes with you; cargo can't. Teleporting without a booking cancels your job for {abandonFee}, and pay stops until you go back.
-Now and then a town in a tough region offers to pay your relocation back if you come and deliver there.
+Move your empty car anywhere in the world. To go to your base, press Book next to Base, then Teleport.
+To go anywhere else, press Open the big map, right-click any spot and press Teleport here.
+A pop-up then asks you to pay for the relocation: {relocateBase} plus {relocatePerKm} a km from where you left. Or press Go back to return for free.
+Until you pay or go back, deliveries and driving don't count, and the game doesn't save.
+Your car goes with you; cargo can't. Teleporting with a job on board cancels it for {abandonFee}.
+Now and then a town in a tough region offers to pay your relocation back if you come and deliver there. Relocating to within {offerKm} km of it with the big map counts too.
 
 # heli | Heli and beacons
 Hire a Bell 407 for {heliFee} to fly anywhere and scout towns and their jobs. The hire lasts until you go back to your car.
