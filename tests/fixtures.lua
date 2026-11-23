@@ -8,6 +8,13 @@ end
 function F.position(lat, lon) return { latitude = lat == nil and 0 or lat, longitude = lon == nil and 0 or lon } end
 -- Penrith, where a new game starts, and St Clair, its nearest neighbour in the place list.
 F.PENRITH = { latitude = -33.75, longitude = 150.7 }
+-- Far-off places to relocate to in tests (the Relocate tab once listed them).
+F.PLACES = {
+  coroico = { id = 'coroico', name = 'Coroico', region = 'Death Road, Yungas, Bolivia', latitude = -16.1939, longitude = -67.73 },
+  bormio = { id = 'bormio', name = 'Bormio', region = 'Stelvio Pass, Italy', latitude = 46.4672, longitude = 10.3701 },
+  leh = { id = 'leh', name = 'Leh', region = 'Ladakh, India', latitude = 34.165, longitude = 77.584 },
+  penrith = { id = 'penrith', name = 'Penrith', region = 'Sydney, Australia', latitude = -33.75, longitude = 150.7 },
+}
 F.CONFIG = '/settings/earthFreight/config.json'
 function F.config(base) return { base = F.copy(base or F.PENRITH), resumeRadiusMetres = 50 } end
 function F.save(generation, lat, lon)

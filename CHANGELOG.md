@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Relocating is simpler: pick any spot on the big map.** The Relocate tab now only lists your Base. To go anywhere else, press **Open the big map**, right-click any spot and press **Teleport here**. A pop-up then asks you to pay the relocation fee, the same price as before, or to **Go back** where you left for free. Until you choose, deliveries and driving don't count. The list of towns (Penrith, Katoomba, La Paz and the rest), the town search and the coordinates box are gone.
+- Relocating to within 50 km of the town that pays relocations back still gets your fee back when you deliver there, whether you use its **Book** button or the big map. Your saves still work.
+- No other changes in the game. A test that sometimes failed by chance now passes every time.
+
 ## Build 275 · 23 Nov 2026
 
 - **On the server, your truck no longer turns into your tanker trailer.** Taking a fuel or water job with a tanker trailer, or joining the server with one hooked up, filled the trailer's tank in a way that BeamMP applied to the truck you were driving instead, so the truck became a second tanker. The same could happen when the game put a trailer's parts back as you bought them. Now only the trailer changes, and you stay in your truck. Single player was never affected. Your saves still work: if your truck turned into a tanker, press **Get my car back** on the Garage tab, or leave and join again without saving.
