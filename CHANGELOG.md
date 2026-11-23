@@ -10,6 +10,31 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - Measured roads are remembered, so the next time that town shows up on a board, it already shows the real distance and price.
 - A job taken without pressing GPS first is measured as soon as the GPS plans its route. If the road is longer than the estimate, your pay goes up and a message tells you by how much.
 - Pay only ever goes up: a job never pays less than the board showed, even if the road turns out shorter. If BeamNG.Earth can't plan a road (its app is offline, auto-GPS is off, or the route is far longer than any sensible road), the job keeps its board price. Off-road drops and fuel runs are paid as before. Your saves still work.
+## Build 273 · 23 Nov 2026
+
+- **The game now adds the trucking HUD for you.** If the HUD isn't on your screen, a pop-up asks "Add the trucking HUD?" and names the layout you're on, such as .Earth or BeamMP. Press **Add the HUD** and it appears straight away, in the same spot + Add to layout would put it. You can still move it with Esc > System > HUD Apps. Each layout has its own apps, so you're asked once for each layout you play on: once alone, and once the first time you join a server. Players who already have the HUD on screen never see the pop-up. Online it waits until your career has come in from the server, so joining isn't disturbed.
+- Press **Not now** and you get the usual steps instead. That reminder now keeps coming back every couple of minutes until the HUD is on screen, instead of giving up after three tries.
+- The HUD is now called **Worldwide Trucking HUD** in the HUD Apps list, which is easier to find, and every set of steps uses that name. The reminder now names layouts as the HUD Apps menu shows them, for example ".Earth multiplayer" instead of "beamngEarthMP". Nothing to delete, and your saves still work.
+- The HUD has a new picture in the HUD Apps list, from the Magnate update poster, so it's easy to spot.
+- **On a trucking server, the chat reminders about turning on the HUD now go only to players who don't have it on screen.** Your game tells the server when the HUD is missing, and the server reminds just you, now and then, until it's on screen. Everyone else stops seeing those reminders.
+
+## Build 272 · 22 Nov 2026
+
+- **You now keep your camera after buying parts or teleporting.** Leaving the parts menu, teleporting with BeamNG.Earth or the HUD's Teleport buttons, and coming back to your car from the helicopter or sightseeing could leave you on the free camera, or on the car's default view. You're now put back on the camera you last used in that car, such as the driver's seat or chase view. This works when you open the parts menu with Ctrl+W too, not only with Buy parts. If you switched to the free camera yourself before, you stay on it. Your saves still work.
+
+## Build 271 · 22 Nov 2026
+
+- **You can buy parts in the middle of a fuel run again.** With fuel in a tanker, every parts bill said "Your job would not fit with these parts", even for a turbo or new wheels, because the game forgot how big the tanker's tank was each time the parts menu changed the truck. Now only changes that really take away room for your load, such as removing the cargo tank or a cargo box the load is in, are blocked until you deliver. Your saves still work.
+
+## Build 270 · 22 Nov 2026
+
+- **Old depot sheds no longer stay behind.** If the mod was reloaded or updated while you were playing, the depots it had already put down were left standing in the world, often still with the bright orange walls of an older version, and nothing ever took them away. Leftover depots are now cleared as soon as the mod starts and every half minute after, and a reload or update takes its own depots down first. The depot for the town you're in stays put, and depots still come down once you're about 2.5 km away. Your saves still work.
+- **The "Turn on the trucking HUD" pop-up now names the layout you're actually using.** Each HUD layout has its own apps, so adding the HUD to the .Earth layout did nothing if your game had another layout up, such as BeamMP's, even playing alone, and the pop-up kept coming back. It now tells you which layout to edit, and says it stops as soon as the HUD is on screen.
+
+## Build 269 · 22 Nov 2026
+
+- **Depots now go in real car parks.** When a town has an open-air car park near its middle, the depot is now built there, with room to park your truck. Car parks on roofs or underground are skipped, and so are any where the ground doesn't check out. Towns with none, or a game with no internet, find a spot by the road as before.
+- **The depot computer no longer ends up on a rooftop.** In tightly packed towns with no room for a shed, the desk and computer could be put on a flat roof. They now always stand at street level, and if there's no open ground beside the road, they go right at the road's edge. Your saves still work.
 
 ## Build 268 · 22 Nov 2026
 

@@ -271,7 +271,7 @@ function F.controller(options)
   local c = Core.new({ io = io, adapter = adapter, garage = garage, paused = options.paused, random = options.random,
     punctures = options.punctures, cargo = cargo, fuel = fuel, aircraft = options.aircraft,
     streetView = options.streetView, openUrl = options.openUrl, multiplayer = options.multiplayer,
-    nametagsOff = options.nametagsOff, depotWorld = options.depotWorld,
+    nametagsOff = options.nametagsOff, depotWorld = options.depotWorld, layout = options.layout, layouts = options.layouts,
     trigger = function(name, view) events[#events + 1] = { name = name, data = F.copy(view) } end,
     log = function(level, tag, message) logs[#logs + 1] = message end })
   -- Damage set in a test is a crash, not the car settling after a spawn: no settle time unless asked for.
@@ -315,6 +315,20 @@ function F.depotWorld()
   end
   function w:forward(id) local o = self.objects[id]; return o and { x = o.fx, y = o.fy } or nil end
   function w:remove(id) self.objects[id] = nil; return true end
+  -- Takes away every piece not kept, as the game side does with pieces a reload left behind.
+  function w:sweep(keep)
+    local gone = 0
+    for id in pairs(self.objects) do
+      if not keep[id] then self.objects[id] = nil; gone = gone + 1 end
+    end
+    return gone
+  end
+  -- A piece an earlier load of the mod put down and lost track of.
+  function w:leftover(shape)
+    self.made = self.made + 1
+    self.objects[self.made] = { shape = shape or 'shed', x = 900, y = 900, z = 0, fx = 1, fy = 0 }
+    return self.made
+  end
   function w:count()
     local n = 0
     for _ in pairs(self.objects) do n = n + 1 end

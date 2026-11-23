@@ -1651,3 +1651,36 @@ test('Depot arrow: the Town tab points to the depot with a GPS button, and the m
   a.state({ state: 'READY', town: { id: 'gn1', jobs: [] }, load: { to: 'Blaxland' }, computer: { truckMetres: 30, depot } })
   assert.equal(a.scope.depotStrip(a.scope.data), null, 'not while on a job')
 })
+
+test('Depot car parks: the HUD asks OpenStreetMap once for open car parks and sends the best to the game', async () => {
+  const lat = 46.02, lon = 7.75
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540
+  // A square way of side metres, its middle dx, dy metres from the town's middle.
+  const square = (id, dx, dy, side, tags) => {
+    const h = side / 2, c = [[-h, -h], [h, -h], [h, h], [-h, h], [-h, -h]]
+    return { type: 'way', id, tags, geometry: c.map(([x, y]) => ({ lat: lat + (dy + y) / ky, lon: lon + (dx + x) / kx })) }
+  }
+  const lots = [
+    square(1, 200, 0, 40, { amenity: 'parking', parking: 'surface' }),
+    square(2, 50, 0, 40, { amenity: 'parking', parking: 'multi-storey' }),
+    square(3, 30, 0, 40, { leisure: 'pitch' }),
+    square(4, 100, 0, 40, { amenity: 'parking' }),
+    square(5, 20, 0, 10, { amenity: 'parking' }),
+    square(6, 60, 0, 40, { amenity: 'parking', layer: '-1' })
+  ]
+  const a = app()
+  const best = a.scope.depotLots(lots, lat, lon)
+  assert.deepEqual([...best.map(l => l.id)], ['way/4', 'way/1', 'way/3'], 'open car parks nearest first, then the pitch; none on a roof, under ground or too small')
+  assert.ok(Math.abs((best[0].lon - lon) * kx - 100) < 1, 'at the middle of the car park')
+  const asked = []
+  const fetch = (url, opts) => { asked.push(decodeURIComponent(opts.body.slice(5))); return Promise.resolve({ ok: true, json: () => Promise.resolve({ elements: lots }) }) }
+  const b = app(null, null, { fetch, Promise })
+  const want = { key: 'town:zermatt_1', latitude: lat, longitude: lon, metres: 400 }
+  b.state({ state: 'READY', computer: { lots: want } })
+  b.state({ state: 'READY', computer: { lots: want } })
+  await new Promise(r => setTimeout(r, 10))
+  assert.equal(asked.length, 1, 'asked once')
+  assert.ok(asked[0].includes('around:400,46.020000,7.750000') && asked[0].includes('amenity=parking'))
+  assert.match(b.commands.at(-1), /^if earthFreight_core then earthFreight_core\.setDepotLots\("town:zermatt_1","46\.\d{6},7\.\d{6};46\.\d{6},7\.\d{6};46\.\d{6},7\.\d{6}"\) end$/)
+  assert.equal(b.scope.lookUpLots({ ...want, key: 'bad key"' }), null, 'odd keys ignored')
+})

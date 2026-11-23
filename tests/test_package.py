@@ -42,7 +42,15 @@ class PackageTest(unittest.TestCase):
             manifest = json.loads(archive.read(prefix + 'app.json'))
             config = json.loads(archive.read('config.example.json'))
             self.assertEqual(manifest['appName'], 'TruckingCareerDC')
-            self.assertEqual(manifest['name'], 'BeamNG Worldwide Trucking Career: Dangerous Contracts')
+            # The name players pick in the HUD Apps menu, the one every set of steps uses.
+            self.assertEqual(manifest['name'], 'Worldwide Trucking HUD')
+            core = archive.read('lua/ge/extensions/earthFreight/core.lua').decode('utf-8')
+            self.assertIn("M.HUD_APP_NAME = 'Worldwide Trucking HUD'", core)
+            self.assertIn("M.HUD_APP = '" + manifest['appName'] + "'", core)
+            # Add the HUD puts it where + Add to layout does: app.json's css.
+            css = manifest['css']
+            self.assertIn("M.HUD_PLACEMENT = { top = '%s', left = '%s', width = '%s', height = '%s' }"
+                          % (css['top'], css['left'], css['width'], css['height']), core)
             self.assertEqual(manifest['directive'], 'earthFreightHud')
             self.assertIn('earth-freight-hud', manifest['domElement'])
             self.assertEqual(config['base'], {'latitude': -33.75, 'longitude': 150.7})

@@ -186,6 +186,35 @@ do
   T.eq(depots.stillClear(w, spot, 0), 'wait', 'unloaded ground: no answer yet')
 end
 
+-- Car parks from OpenStreetMap are tried first; the HUD is asked once per town.
+do
+  local w = F.depotWorld()
+  local c = F.controller({ depotWorld = w })
+  c:tick(0.6); c:tick(0.6)
+  local want = c:view().computer.lots
+  T.check(want and want.key and want.latitude and want.metres == depots.LOT_METRES, 'the HUD is asked for car parks round the town')
+  for _ = 1, 10 do c:tick(0.6) end
+  T.eq(w:count(), 0, 'the depot waits for the answer')
+  T.check(not c:setDepotLots('town:nowhere', {}), 'an answer for a town not wanted is refused')
+  local d = c:depotsWanted()[1]
+  local lot = location.destination(d, 90, 250)
+  local far = location.destination(d, 0, 5000)
+  T.check(c:setDepotLots(want.key, { lot, far }), 'the answer is taken')
+  T.eq(#c.depotLots[want.key], 1, 'a car park far from town is left out')
+  local again = c:view().computer.lots
+  T.check(not again or again.key ~= want.key, 'and not asked again')
+  for _ = 1, 20 do c:tick(0.6) end
+  local built = c.depotsBuilt[want.key]
+  T.check(built and built.spot.lot, 'the depot is in the car park')
+  T.check(location.distance(lot, built.pcGeo) < 30, 'next to it')
+  -- No answer from the HUD: after a while the roads are searched as before.
+  local w2 = F.depotWorld()
+  local c2 = F.controller({ depotWorld = w2 })
+  for _ = 1, 40 do c2:tick(0.6) end
+  local built2 = c2.depotsBuilt[next(c2.depotsBuilt)]
+  T.check(built2 and not built2.spot.lot, 'without car parks the depot still goes down')
+end
+
 -- No clear ground anywhere: just the desk and computer, at the flattest try.
 do
   local w = F.depotWorld()
@@ -197,12 +226,26 @@ do
   T.check(built ~= nil, 'and it is a depot with a computer')
 end
 
+-- A packed town: flat roofs right up to the road. The desk goes at the road's edge, at road height,
+-- never on a roof.
+do
+  local w = F.depotWorld()
+  w.boxes = { { -1000, -1000, 1000, -3.5, 8 }, { -1000, 3.5, 1000, 1000, 8 } }
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, 200 do c:tick(0.6) end
+  T.eq(w:count(), 3, 'just the desk, computer and screen')
+  for _, o in pairs(w.objects) do
+    T.eq(o.z, 0, o.shape .. ' at the height of the road, not the roofs')
+    T.check(math.abs(o.y) <= 3 + depots.EDGE_METRES + 0.01, o.shape .. ' at the edge of the road')
+  end
+end
+
 -- The game can't put objects down: depots are off and jobs are taken on the HUD, as before.
 do
   local w = F.depotWorld()
   w.placeFails = true
   local c = F.controller({ depotWorld = w })
-  for _ = 1, 20 do c:tick(0.6) end
+  for _ = 1, 40 do c:tick(0.6) end
   T.check(not c:depotsOn(), 'depots off')
   T.eq(c:view().town.takeProblem, nil, 'no depot message')
   T.eq(c:view().computer, nil, 'no computer')
@@ -249,6 +292,67 @@ do
   T.eq(objects[1].collisionType, 'None', 'the shed is not solid')
   T.eq(objects[2].collisionType, 'None', 'nor the desk')
   T.eq(loads, 1, 'the tin materials are loaded once, before the first piece')
+end
+
+-- Pieces left behind by an earlier load of the mod (a reload, or an older version) are taken away
+-- when the mod starts and every little while after, and the depots built now are kept.
+do
+  local w = F.depotWorld()
+  local old = { w:leftover('shed'), w:leftover('desk') }
+  local c, _, a = F.controller({ depotWorld = w })
+  w.follow, w.origin = a, F.copy(F.PENRITH)
+  c.now = function() return 50000 end
+  w.cars[1] = { x = 0, y = 0, z = 0 }
+  c:tick(0.6)
+  T.eq(w.objects[old[1]], nil, 'a shed left behind is taken away at the start')
+  T.eq(w.objects[old[2]], nil, 'and its desk')
+  for _ = 1, 40 do c:tick(0.6) end
+  T.eq(w:count(), 4, 'the depot of this town is put down')
+  local another = w:leftover('shed')
+  for _ = 1, math.ceil(depots.SWEEP_SECONDS / 0.6) + 1 do c:tick(0.6) end
+  T.eq(w.objects[another], nil, 'one that turns up later goes too')
+  T.eq(w:count(), 4, 'and the depot built now stays')
+  c:removeDepots()
+  T.eq(w:count(), 0, 'a reload of the mod takes its depots away')
+end
+
+-- The game side finds the pieces by name, put down by this load or any earlier one.
+do
+  local depotWorld = require('earthFreight/depotWorld')
+  local objects, names = {}, {}
+  local env = {
+    create = function()
+      local o = { id = #objects + 1 }
+      function o:setField() end
+      function o:setPosition() end
+      function o:setPosRot() end
+      function o:registerObject(name) names[self.id] = name end
+      function o:getID() return self.id end
+      function o:delete() objects[self.id] = nil end
+      objects[#objects + 1] = o
+      return o
+    end,
+    objectById = function(id) return objects[id] end,
+    point = function(x, y, z) return { x = x, y = y, z = z } end,
+    upright = function() return { x = 0, y = 0, z = 0, w = 1 } end,
+    group = function() return nil end,
+    named = function(prefix)
+      local ids = {}
+      for id, name in pairs(names) do
+        if objects[id] and name:sub(1, #prefix) == prefix then ids[#ids + 1] = id end
+      end
+      table.sort(ids)
+      return ids
+    end,
+  }
+  local w = depotWorld.new(env)
+  local kept = w:place('shed', 0, 0, 0, 1, 0)
+  local lost = w:place('desk', 0, 0, 0, 1, 0)
+  T.check(names[kept]:sub(1, #depotWorld.PREFIX) == depotWorld.PREFIX, 'named so it can be found again')
+  T.check(names[kept] ~= names[lost], 'every piece has its own name')
+  T.eq(w:sweep({ [kept] = true }), 1, 'one piece not kept is taken away')
+  T.check(objects[kept] ~= nil and objects[lost] == nil, 'the kept one stays')
+  T.eq(depotWorld.new({ named = function() error('no scenetree') end }):sweep({}), 0, 'a game without the call takes nothing')
 end
 
 T.done('depots')

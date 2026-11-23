@@ -36,9 +36,11 @@ In town, an arrow on the Town tab points to the depot and says how far it is. Pr
 Park within {depotTruckMetres} m of the computer, get out and walk up to it. Press Use computer when it shows, pick a job and take it.
 Your truck must still be within {depotTruckMetres} m when you take the job, or it won't load.
 Deliveries haven't changed: drive to the drop-off and press Deliver on the HUD.
-If there's no clear ground for a shed, the depot is just the desk and computer by the road.
+Depots go in a real open car park near the middle of town where OpenStreetMap shows one, or else on clear ground beside a road.
+If there's no clear ground for a shed, the depot is just the desk and computer, at street level by the road.
 The depot appears a few seconds after you reach a town, once its buildings have loaded. If a building loads late where the depot stands, the depot moves to a clear spot as soon as you're not standing at it.
 The shed, desk and computer are scenery only: you can walk and drive through them.
+A depot is taken down once you're about {depotFarKm} km away, and put back when you return. A depot left over from an earlier version of the mod is cleared away on its own.
 
 # route | On the road
 The GPS is set when you take a job. If it goes missing, copy the drop-off coordinates on the Route tab into the BeamNG.Earth map.
@@ -54,7 +56,9 @@ They need a tank. Fit a Cargo Load fluid tank with Buy parts, or tow a tanker tr
 # car | Your car, parts and cargo
 Buy parts, Buy new car and Second hand all work the same way: change what you like, then the bill shows on the Garage tab. Nothing is paid until you press Pay, and you can undo it.
 Your cargo space is counted in slots and kg. More Cargo Load boxes carry bigger loads, and bigger loads pay more.
+You can change parts with a job on board, even on a fuel run. Only taking off the cargo boxes or tank your load is in waits until you deliver.
 Second hand cars look worn but drive like new, and cost less.
+After the parts menu, a teleport or coming back from the helicopter, you're put back on the camera you last used in that car. If you were on the free camera yourself, you stay on it.
 
 # cars | Your cars and trailers
 You start with {startSlots} car slots. A base or a corp gives you {baseSlots}, and then you can buy a {boughtSlots}th for {slotPrice}.
@@ -114,6 +118,7 @@ Any teleport, the heli or changing cars ends your run, but you can start again f
 
 # online | Playing online and the land race | online
 Online, everyone trucks on the same Earth. Your single player career stays on this PC.
+Each HUD layout has its own apps, and a server usually shows a different layout from single player. The first time the HUD is missing, a pop-up offers to add it: press Add the HUD.
 Bases grow into turf, and the first corp to cover enough of Earth's land wins the season. Then everyone starts again.
 The season leaderboard ranks everyone by what they're worth.
 Follow the race on the live server page, on your phone or a second screen. Its address is at the top of this page.
