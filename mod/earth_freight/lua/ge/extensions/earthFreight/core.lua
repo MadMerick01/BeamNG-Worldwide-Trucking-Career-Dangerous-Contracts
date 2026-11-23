@@ -42,6 +42,7 @@ local adminRobber = require('earthFreight/adminRobber')
 local heli = require('earthFreight/heli')
 local depots = require('earthFreight/depots')
 local depotWorld = require('earthFreight/depotWorld')
+local roadLengths = require('earthFreight/roadLengths')
 local M = {}
 -- Money a new game starts with.
 local STARTING_MONEY = 6000 -- the radiator the starter car needs, fuel, and room for a few cargo boxes
@@ -78,6 +79,9 @@ local TIMED_SAVE_SECONDS = 5 * 60
 local STREET_VIEW_FILE = '/settings/earthFreight/streetview.json'
 -- The real businesses found for towns, so each town is only looked up once (see business.lua).
 local BUSINESS_FILE = '/settings/earthFreight/businesses.json'
+-- The road lengths measured between towns by Earth's GPS (see roadLengths.lua).
+local ROADS_FILE = '/settings/earthFreight/roads.json'
+M.ROADS_FILE = ROADS_FILE
 M.AUTOSAVE_SECONDS, M.TIMED_SAVE_SECONDS = AUTOSAVE_SECONDS, TIMED_SAVE_SECONDS
 -- A puncture's tyre repair, as damage points, so every repair quote and bill includes it. Like
 -- other damage it is priced by the car's Value: TYRE_REPAIR_COST on a REFERENCE_CAR_VALUE car.
@@ -1791,8 +1795,27 @@ function M.new(deps)
     return true
   end
 
+  -- The road km measured between a town job's two towns, or nil: not measured yet, or not a town job
+  -- (an off-road drop has no road, a fuel run goes by a depot, a contract is its own road).
+  function c:jobRoadKm(job)
+    if job.drop or job.contract or job.fuelRun then return nil end
+    return roadLengths.lookup(self:roadList(), job.from, job.to)
+  end
+
+  -- The job as it is paid: by the measured road where there is one, never less than the estimate.
+  function c:pricedJob(job)
+    local road = self:jobRoadKm(job)
+    if not road or road <= job.km then return job, road end
+    local out = {}
+    for k, v in pairs(job) do out[k] = v end
+    out.km = road
+    return out, road
+  end
+
   -- What a job on the board pays the player's car now: how many units of its good fit, and the pay.
   function c:jobQuote(job)
+    local road
+    job, road = self:pricedJob(job)
     local good = goods.get(job.good)
     -- A hitched trailer adds its room to the car's. A dangerous contract only loads the car: its
     -- teleport to the start leaves the trailer behind.
@@ -1801,6 +1824,7 @@ function M.new(deps)
     local quote = job.fuelRun and fuelruns.quote(job, units, self:baseShareFunction())
       or jobs.quote(job, units, self.needs, self.now(), self:baseShareFunction())
     quote.units, quote.slots, quote.kg, quote.trailerUnits = units, slots, kg, inTrailer
+    quote.roadKm = road
     -- Delivering in someone else's turf pays them the toll: at the drop-off town, or for an off-road drop the town it
     -- was taken in (what the server checks). Dangerous contracts pay none.
     if not job.contract then
@@ -1843,6 +1867,10 @@ function M.new(deps)
     quote.units, quote.slots, quote.kg, quote.pay = units, units * good.slots, units * good.kg, pay
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
       from = place.id, to = destination.id, drivenKm = 0, drop = location.copy(job.drop), toll = quote.toll }
+    -- A town job is paid by its measured road; one not measured yet is measured once the GPS plans it.
+    if not job.drop and not job.contract and not job.fuelRun then
+      if quote.roadKm then self.load.roadKm = quote.roadKm else self.load.estimateKm = job.km end
+    end
     -- Split between the car and the trailer, each loaded to the same share of its room.
     local inTrailer = trailers.split(units, full, quote.trailerUnits)
     if inTrailer > 0 then self.load.trailerUnits = inTrailer end
@@ -1877,11 +1905,97 @@ function M.new(deps)
     local spot = load.business or town
     local name = load.business and (load.business.name .. ', ' .. town.name) or town.name
     local ok, why = self.adapter:setDestination(spot, name)
+    if ok and load.estimateKm then self:measureRoad(load.from, load.to, spot) end
     self.gpsTown, self.gpsContract, self.gpsFeedback = ok and not load.business and town.id or nil, nil, nil
     self.gpsTownDepot = nil
     if not ok then self.tradeFeedback = 'Set the GPS yourself: copy the drop-off coordinates on the Route tab.' end
     self.diag:event('gps', ok and (load.business and ('business:' .. town.id) or town.id) or tostring(why), ok and 'I' or 'W')
     return ok == true
+  end
+
+  -- The road lengths measured so far, read from their file the first time.
+  function c:roadList()
+    if not self.roadPairs then
+      local saved
+      if deps.io then
+        local ok, value = pcall(function() return deps.io.exists(ROADS_FILE) and deps.io.read(ROADS_FILE) end)
+        saved = ok and value or nil
+      end
+      self.roadPairs = roadLengths.clean(saved)
+    end
+    return self.roadPairs
+  end
+
+  function c:rememberRoad(from, to, km)
+    if not roadLengths.remember(self:roadList(), from, to, km, self.now()) or not deps.io then return end
+    pcall(function()
+      deps.io.mkdir('/settings/earthFreight')
+      deps.io.write(ROADS_FILE, { pairs = self.roadPairs })
+    end)
+  end
+
+  -- Starts measuring the road from town fromId to town toId, whose GPS point is point: watchRoad reads
+  -- the route Earth plans. Only with an Earth that can say (the adapter's gpsRouteLength).
+  function c:measureRoad(fromId, toId, point)
+    self.roadMeasure = nil
+    local sample = self.lastSample
+    if not self.adapter.gpsRouteLength or not roadLengths.key(fromId, toId) or not location.valid(point)
+        or not sample or not sample.valid or not location.valid(sample) then return false end
+    self.roadMeasure = { from = fromId, to = toId, point = location.copy(point), start = location.copy(sample),
+      at = self.clock, checked = -math.huge }
+    return true
+  end
+
+  -- Reads the road length of the route being measured, once a second, and remembers it. A job taken
+  -- before its road was measured is paid more if the road is longer than the estimate, never less.
+  -- Gives up quietly when Earth plans nothing in time, the GPS goes elsewhere or the route is odd.
+  function c:watchRoad()
+    local m = self.roadMeasure
+    if not m then return end
+    if self.clock - m.checked < roadLengths.CHECK_SECONDS then return end
+    m.checked = self.clock
+    local ok, metres, why = pcall(self.adapter.gpsRouteLength, self.adapter, m.point)
+    if not ok then metres, why = nil, 'error' end
+    if not metres then
+      if why == 'other' or why == 'none' or why == 'error' or self.clock - m.at > roadLengths.WAIT_SECONDS then
+        self.roadMeasure = nil
+        self.diag:event('road_measure', tostring(why) .. ':' .. m.from .. '>' .. m.to, 'W')
+      end
+      return
+    end
+    self.roadMeasure = nil
+    local km = roadLengths.accept(metres, location.distance(m.start, m.point))
+    self.diag:event('road_measure', string.format('%s>%s %.0f m%s', m.from, m.to, metres, km and '' or ' refused'), km and 'I' or 'W')
+    if not km then return end
+    self:rememberRoad(m.from, m.to, km)
+    self:repriceLoad(m.from, m.to, km)
+  end
+
+  -- A town job taken before its road was measured, now that it has been: paid by the road where it is
+  -- longer than the estimate, never less. The turf toll grows with it.
+  function c:repriceLoad(from, to, km)
+    local load = self.load
+    if not load or not load.estimateKm or load.drop or roadLengths.key(load.from, load.to) ~= roadLengths.key(from, to) then
+      return false
+    end
+    local estimate = load.estimateKm
+    load.estimateKm, load.roadKm = nil, km
+    local town = places.get(load.to)
+    local name = town and town.name or 'the drop-off'
+    if km <= estimate or (load.pay or 0) <= 0 then
+      self.tradeFeedback = string.format('The road to %s is %.1f km. Your pay stays %s.', name, km, dollars(load.pay or 0))
+      self:saveNowOrSoon('your job')
+      return true
+    end
+    local ratio = jobs.distanceFactor(km) / math.max(1e-9, jobs.distanceFactor(estimate))
+    local before = load.pay
+    load.pay = math.max(before, math.floor(before * ratio / 10 + 0.5) * 10)
+    if load.toll and load.toll.amount then load.toll.amount = math.floor(load.toll.amount * ratio + 0.5) end
+    self.tradeFeedback = string.format('The road to %s is %.1f km, longer than the %.1f km estimate. Your pay went up from %s to %s.',
+      name, km, estimate, dollars(before), dollars(load.pay))
+    self.diag:event('job_repriced', string.format('%s %.1f>%.1f km %d>%d', load.to, estimate, km, before, load.pay))
+    self:saveNowOrSoon('your new pay')
+    return true
   end
 
   -- The businesses found so far, read from their file the first time.
@@ -1997,6 +2111,10 @@ function M.new(deps)
     end
     local ok, why = self.adapter:setDestination(place, place.name)
     self.diag:event('gps', ok and ('town:' .. place.id) or tostring(why), ok and 'I' or 'W')
+    -- From a town, the route Earth plans measures the road between the two towns (roadLengths.lua).
+    local here = ok and self:here()
+    if here and here.id ~= place.id then self:measureRoad(here.id, place.id, place)
+    elseif ok then self.roadMeasure = nil end
     self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = ok and place.id or nil, nil, nil, nil
     self.gpsTownDepot = nil
     self.gpsFeedback = ok and ('The GPS is set to ' .. place.name .. '.')
@@ -2568,6 +2686,7 @@ function M.new(deps)
     self:watchFuel()
     self:watchStations()
     self:watchDepots()
+    self:watchRoad()
     self:watchInsurance()
     self:watchTow()
     self:watchTimedSave()
@@ -2627,7 +2746,11 @@ function M.new(deps)
         contract = section and { id = section.id, name = section.name, region = section.region, summary = section.summary,
           fee = contracts.FEE, pays = section.pay } or nil,
         direction = job.drop and not section and location.compassPoint(location.bearing(place, job.drop)) or nil,
-        distanceMetres = job.km * 1000, pay = q.pay, base = jobs.quote(job, q.units, nil, 0).base, level = q.level,
+        -- The measured road where there is one (byRoad), else the estimate; measuring while Earth plans it.
+        distanceMetres = (q.roadKm or job.km) * 1000, byRoad = q.roadKm ~= nil or nil,
+        measuring = not q.roadKm and self.roadMeasure ~= nil and roadLengths.key(self.roadMeasure.from, self.roadMeasure.to)
+          == roadLengths.key(job.from, job.to) or nil,
+        pay = q.pay, base = jobs.quote(self:pricedJob(job), q.units, nil, 0).base, level = q.level,
         units = q.units, kg = q.kg, unitSlots = good.slots, unitKg = good.kg,
         fluid = good.kind == 'fluid' or nil, unitLitres = good.litres, litres = good.litres and q.units * good.litres or nil,
         shortage = q.shortage or nil, jackpot = q.jackpot, road = q.road - (q.baseBonus or 0) > 1.005 and q.road - (q.baseBonus or 0) or nil,

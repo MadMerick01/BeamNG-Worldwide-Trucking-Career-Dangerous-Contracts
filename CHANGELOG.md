@@ -6,6 +6,11 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Jobs now pay for the real road, not a guess.** Town job distances used to be the straight line plus 30%, so a winding mountain road that's 20 km to drive was paid as about 8 km. Press a job's GPS button in town and the GPS measures the actual road: after a few seconds the job shows "km by road" and its real price, before you take it. Distances that haven't been measured yet show a ~ in front.
+- Measured roads are remembered, so the next time that town shows up on a board, it already shows the real distance and price.
+- A job taken without pressing GPS first is measured as soon as the GPS plans its route. If the road is longer than the estimate, your pay goes up and a message tells you by how much.
+- Pay only ever goes up: a job never pays less than the board showed, even if the road turns out shorter. If BeamNG.Earth can't plan a road (its app is offline, auto-GPS is off, or the route is far longer than any sensible road), the job keeps its board price. Off-road drops and fuel runs are paid as before. Your saves still work.
+
 ## Build 276 · 23 Nov 2026
 
 - **Relocating is simpler: pick any spot on the big map.** The Relocate tab now only lists your Base. To go anywhere else, press **Open the big map**, right-click any spot and press **Teleport here**. A pop-up then asks you to pay the relocation fee, the same price as before, or to **Go back** where you left for free. Until you choose, deliveries and driving don't count. The list of towns (Penrith, Katoomba, La Paz and the rest), the town search and the coordinates box are gone.

@@ -62,6 +62,16 @@ function F.adapter(pose)
     self.gps[#self.gps + 1] = { latitude = point.latitude, longitude = point.longitude, name = name }
     return true
   end
+  -- The road route Earth's GPS planned: routeMetres (a test sets it; nil while planning) when the
+  -- last GPS destination is point, else nil and 'other'.
+  function a:gpsRouteLength(point)
+    local last = self.gps[#self.gps]
+    if not last then return nil, 'none' end
+    if math.abs(last.latitude - point.latitude) > 1e-6 or math.abs(last.longitude - point.longitude) > 1e-6 then return nil, 'other' end
+    if self.routeError then error(self.routeError) end
+    if not self.routeMetres then return nil, 'planning' end
+    return self.routeMetres
+  end
   -- Earth's status bar names: nil unless a test sets them.
   function a:placeNames() return self.names end
   function a:teleport(point, name)
