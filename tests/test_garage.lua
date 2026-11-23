@@ -338,4 +338,36 @@ do
   T.check(not ok and why == 'vehicle_required', 'no such vehicle')
 end
 
+-- On a BeamMP server, BeamMP's replaceVehicle drops the vehicle it is given and replaces the one the player is in,
+-- which turned the player's truck into their tanker. There the trailer itself is respawned, and the game's
+-- replaceVehicle is never asked for another vehicle.
+do
+  local tanker = { getID = function() return 60 end, getJBeamFilename = function() return 'tanker' end }
+  local data = { config = { model = 'tanker', parts = { tank = 'x' }, vars = { ['$load_volume'] = 0 } },
+    vdata = { variables = { ['$load_volume'] = { name = '$load_volume', title = 'Load Volume', unit = 'L', max = 34000 } } } }
+  local respawned
+  replaced = nil
+  local tg = G.new(env({ objectById = function(id) return id == 60 and tanker or nil end,
+    manager = function() return { getVehicleData = function(id) return (id == 60 or id == 7) and data or nil end } end,
+    replacesPlayerOnly = function() return true end,
+    respawnInPlace = function(veh, config) respawned = { veh = veh, config = config } end,
+    read = function(path) return path == 'vehicles/tanker/empty.pc' and { format = 2, model = 'tanker', parts = { tank = 'y' } } or nil end }))
+  T.check(tg:setLoadVolume(60, '$load_volume', 12000), 'online: respawn asked')
+  T.eq(replaced, nil, 'online: the game\'s replaceVehicle (BeamMP\'s, which takes the truck) is not used')
+  T.eq(respawned and respawned.veh:getID(), 60, 'online: the tanker itself respawned')
+  T.eq(respawned.config.vars['$load_volume'], 12000, 'online: filled to 12,000 L')
+  T.eq(respawned.config.parts.tank, 'x', 'online: its parts kept')
+  T.eq(data.config.vars['$load_volume'], 0, 'online: the game data itself is not changed')
+  respawned = nil
+  T.check(tg:repair('vehicles/tanker/empty.pc', 60), 'online: trailer parts put back')
+  T.eq(replaced, nil, 'online: not through replaceVehicle')
+  T.eq(respawned.veh:getID(), 60, 'online: the tanker itself'); T.eq(respawned.config.parts.tank, 'y', 'online: as its .pc file sets it up')
+  T.eq(respawned.config.partConfigFilename, 'vehicles/tanker/empty.pc', 'online: and knows its .pc file')
+  T.eq(select(2, tg:repair('vehicles/tanker/missing.pc', 60)), 'repair_failed', 'online: an unreadable .pc is refused')
+  -- The player's own truck is still respawned by the game (it is the vehicle BeamMP replaces).
+  respawned = nil
+  T.check(tg:repair(), 'online: the truck repaired')
+  T.eq(respawned, nil, 'online: the truck is not respawned in place'); T.eq(replaced.veh:getID(), 7, 'online: the truck through replaceVehicle')
+end
+
 T.done('garage')
