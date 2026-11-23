@@ -8,6 +8,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **Relocating is simpler: pick any spot on the big map.** The Relocate tab now only lists your Base. To go anywhere else, press **Open the big map**, right-click any spot and press **Teleport here**. A pop-up then asks you to pay the relocation fee, the same price as before, or to **Go back** where you left for free. Until you choose, deliveries and driving don't count. The list of towns (Penrith, Katoomba, La Paz and the rest), the town search and the coordinates box are gone.
 - Relocating to within 50 km of the town that pays relocations back still gets your fee back when you deliver there, whether you use its **Book** button or the big map. Your saves still work.
+- No other changes in the game. A test that sometimes failed by chance now passes every time.
 
 ## Build 275 · 23 Nov 2026
 
