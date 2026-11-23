@@ -10,6 +10,9 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - **When a depot moves, its old shed and desk now go away.** If a building loaded late where a depot stood, the depot moved to a new spot but left a copy of its shed and desk behind, with a computer that did nothing, while the Town tab pointed to the real one. Old sheds left over from before this update are cleared away within 30 seconds.
 - **Depots can now be put in real car parks again.** The game blocks the HUD from looking up car parks online, so every depot was put beside a road instead. Now the car parks come from BeamNG.Earth's own map data. Multi-storey and underground car parks are left out.
 - **A depot with no room for its shed now puts its desk and computer right beside the road**, at road height, instead of a few metres back. Before, it could end up out of sight in the trees or down in a creek, which the depot can't tell apart from open ground. Your saves still work.
+
+## Build 277 · 23 Nov 2026
+
 - **Jobs now pay for the real road, not a guess.** Town job distances used to be the straight line plus 30%, so a winding mountain road that's 20 km to drive was paid as about 8 km. Press a job's GPS button in town and the GPS measures the actual road: after a few seconds the job shows "km by road" and its real price, before you take it. Distances that haven't been measured yet show a ~ in front.
 - Measured roads are remembered, so the next time that town shows up on a board, it already shows the real distance and price.
 - A job taken without pressing GPS first is measured as soon as the GPS plans its route. If the road is longer than the estimate, your pay goes up and a message tells you by how much.
