@@ -221,6 +221,22 @@
       </div>
     </div>
   </div>
+  <div class="ef-relocate" ng-if="data.relocateHere" style="position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:2147483645;pointer-events:auto;color:#f2f6f5;font:15px/1.45 sans-serif;">
+    <div role="dialog" aria-label="Pay for this relocation" style="width:430px;max-width:92vw;box-sizing:border-box;padding:14px 18px;background:rgba(12,19,24,.97);border:3px solid #f2c94c;border-radius:12px;box-shadow:0 0 30px rgba(0,0,0,.8);">
+      <div style="font-size:11px;font-weight:bold;letter-spacing:3px;color:#f2c94c;">RELOCATE HERE?</div>
+      <div style="font-size:22px;font-weight:900;line-height:1.15;">{{data.relocateHere.name}}</div>
+      <div ng-if="data.relocateHere.region !== data.relocateHere.name" style="font-size:13px;color:#c9d6d2;">{{data.relocateHere.region}}</div>
+      <div style="margin-top:6px;font-size:14px;"><span ng-if="data.relocateHere.distanceMetres != null">{{km(data.relocateHere.distanceMetres)}} km from where you left. </span>Pay <b style="color:#f2c94c;">${{data.relocateHere.fee | number:0}}</b> to relocate here, or go back for free. Deliveries and driving don't count until you choose.</div>
+      <div ng-if="data.relocateHere.landing" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Landing. The terrain takes a few seconds to load.</div>
+      <div ng-if="data.relocateHere.goingBack" role="status" style="margin-top:4px;font-size:13px;color:#c9d6d2;">Going back. The terrain takes a few seconds to load.</div>
+      <div ng-if="data.relocateHere.problem" style="margin-top:4px;font-size:13px;color:#f2c94c;">{{data.relocateHere.problem}}</div>
+      <div ng-if="data.relocateHere.feedback" style="margin-top:4px;font-size:13px;color:#c9d6d2;">{{data.relocateHere.feedback}}</div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button type="button" ng-click="payRelocation()" ng-disabled="!data.relocateHere.payAllowed" ng-style="{opacity: data.relocateHere.payAllowed ? 1 : 0.5}" style="flex:1;padding:8px 12px;font-size:16px;font-weight:bold;background:#f2c94c;color:#0c1318;border:1px solid #f2c94c;border-radius:6px;">Pay ${{data.relocateHere.fee | number:0}}</button>
+        <button type="button" ng-click="goBackUnpaid()" ng-disabled="!data.relocateHere.backAllowed" ng-style="{opacity: data.relocateHere.backAllowed ? 1 : 0.5}" style="flex:1;padding:8px 12px;font-size:16px;border:1px solid #568d7a;border-radius:6px;">Go back (free)</button>
+      </div>
+    </div>
+  </div>
   <div class="ef-pc" style="color:#f2f6f5;font:15px/1.45 sans-serif;">
     <div ng-if="data.computer.near && !pc.open" style="position:fixed;left:50%;bottom:16%;transform:translateX(-50%);z-index:2147483645;pointer-events:auto;text-align:center;">
       <button type="button" ng-click="useComputer()" style="padding:10px 22px;font-size:18px;font-weight:bold;background:#a7e5c9;color:#0c1318;border:2px solid #0c1318;border-radius:8px;box-shadow:0 0 18px rgba(0,0,0,.7);">&#128187; Use computer</button>
@@ -494,8 +510,8 @@
       <div ng-if="tab === 'route'">
         <div ng-if="data.heli.hired" style="margin:0 0 8px;padding:6px 10px;border:1px solid #f2c94c;border-radius:6px;color:#f2c94c;"><b>Heli hired.</b> Your car waits<span ng-if="data.heli.hired.car.distanceMetres != null && !data.heli.hired.car.near"> {{km(data.heli.hired.car.distanceMetres)}} km {{data.heli.hired.car.direction}}</span>. Back to my car is on the Heli tab.</div>
         <div ng-if="data.stranded" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">
-          <div style="font-weight:bold;color:#eb5757;">Teleported without relocating</div>
-          <div style="font-size:13px;">Deliveries and driving do not count until you go back to where you left from, or book a relocation on the Relocate tab.</div>
+          <div style="font-weight:bold;color:#eb5757;">Relocation not paid</div>
+          <div style="font-size:13px;">Deliveries and driving do not count until you pay for this relocation in the pop-up, or go back to where you left from.</div>
           <div style="display:flex;gap:6px;margin-top:4px;">
             <input aria-label="Coordinates to go back to (latitude, longitude)" type="text" readonly ng-value="coordinates(data.stranded)" style="box-sizing:border-box;width:100%;min-width:0;flex:1;user-select:text;" />
             <button type="button" aria-label="Copy coordinates to go back to" ng-click="copyCoordinates(data.stranded)">Copy</button>
@@ -1023,28 +1039,11 @@
               <div ng-if="!data.shipping.home.here">${{data.shipping.home.fee | number:0}}</div>
               <button type="button" ng-click="bookShipping('home')" ng-disabled="!data.shipping.home.allowed" style="padding:4px 8px;">Book</button>
             </div>
-            <div ng-repeat="d in data.shipping.destinations track by d.id" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
-              <div style="flex:1;min-width:0;">{{d.name}} <span style="color:#7d8b88;font-size:12px;">{{d.region}}</span></div>
-              <div ng-if="d.here" style="color:#7d8b88;font-size:12px;">You are here</div>
-              <div ng-if="!d.here">${{d.fee | number:0}}</div>
-              <button type="button" ng-click="bookShipping(d.id)" ng-disabled="!d.allowed" style="padding:4px 8px;">Book</button>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0 0;">
+              <div style="flex:1;min-width:0;"><b>Anywhere else</b> <span ng-if="data.rules" style="color:#7d8b88;font-size:12px;">{{data.rules.relocateBase}} plus {{data.rules.relocatePerKm}} a km</span></div>
+              <button type="button" ng-click="openBigMap()" ng-disabled="!data.shipping.mapAllowed" style="padding:4px 8px;background:#a7e5c9;color:#0c1318;font-weight:bold;border:1px solid #a7e5c9;border-radius:4px;">Open the big map</button>
             </div>
-            <div style="margin-top:8px;font-weight:bold;color:#a7e5c9;font-size:13px;">Anywhere else</div>
-            <form ng-submit="searchShipping()" style="display:flex;gap:6px;margin-top:4px;">
-              <input aria-label="Town to relocate to" type="text" ng-model="ship.query" ng-focus="typing(true)" ng-blur="typing(false)" placeholder="Town name, like Chamonix" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
-              <button type="submit" style="padding:4px 8px;">Find</button>
-            </form>
-            <div ng-repeat="d in data.shipping.found track by $index" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(86,141,122,.3);">
-              <div style="flex:1;min-width:0;">{{d.name}} <span style="color:#7d8b88;font-size:12px;">{{d.region}}</span></div>
-              <div ng-if="d.here" style="color:#7d8b88;font-size:12px;">You are here</div>
-              <div ng-if="!d.here">${{d.fee | number:0}}</div>
-              <button type="button" ng-click="bookShipping(d.id)" ng-disabled="!d.allowed" style="padding:4px 8px;">Book</button>
-            </div>
-            <form ng-submit="bookCoordinates()" style="display:flex;gap:6px;margin-top:6px;">
-              <input aria-label="Coordinates to relocate to (latitude, longitude)" type="text" ng-model="ship.coords" ng-focus="typing(true)" ng-blur="typing(false)" placeholder="Or coordinates: -16.19, -67.73" style="box-sizing:border-box;width:100%;min-width:0;flex:1;" />
-              <button type="submit" ng-disabled="!!data.shipping.problem" style="padding:4px 8px;">Book</button>
-            </form>
-            <div ng-if="ship.error" style="color:#f2c94c;">{{ship.error}}</div>
+            <div style="font-size:12px;color:#c9d6d2;margin-top:2px;">Right-click any spot and press Teleport here. A pop-up then asks you to pay for the relocation, or to go back for free.</div>
           </div>
           <div ng-if="data.shipping.feedback" style="margin-top:4px;color:#c9d6d2;">{{data.shipping.feedback}}</div>
         </div>
