@@ -35,8 +35,9 @@ M.MAX_RISE, M.ROAD_CLEAR = 2, 3
 -- ground no more than MAX_RISE above the road, or else EDGE_METRES past the road's edge, at the road's
 -- height, so it is never put on a roof.
 M.EDGE_METRES = 1
--- Real open car parks (then sports pitches) from OpenStreetMap, found by the HUD within LOT_METRES of
--- a depot's middle, are tried before the roads. The search waits up to LOT_WAIT_SECONDS for them.
+-- Real open car parks within LOT_METRES of a depot's middle are tried before the roads: from
+-- BeamNG.Earth's own map data where it has it, else from OpenStreetMap through the HUD (open car parks,
+-- then sports pitches). The search waits up to LOT_WAIT_SECONDS for them.
 M.LOT_METRES, M.LOT_WAIT_SECONDS, M.MAX_LOTS = 400, 10, 6
 -- Every CHECK_SECONDS the depots near the player are looked after; TRIES_PER_CHECK spots are tried
 -- each time, so the search never holds up a frame. Ground that Earth has not loaded yet is tried
@@ -442,6 +443,39 @@ function M.attach(c)
     return nil
   end
 
+  -- Whether BeamNG.Earth can be asked for car parks itself (the HUD's web lookups can be blocked).
+  local function earthLots(self)
+    return self.adapter ~= nil and self.adapter.findParking ~= nil and self.adapter.canFindStations ~= nil
+      and self.adapter:canFindStations() == true
+  end
+
+  -- Asks BeamNG.Earth for the car parks round each depot wanted that has none yet, once per town.
+  local function askEarthLots(self, wanted)
+    if not earthLots(self) then return end
+    self.depotLots = self.depotLots or {}
+    self.depotLotAsks = self.depotLotAsks or {}
+    for key, d in pairs(wanted) do
+      if self.depotLots[key] == nil and not self.depotLotAsks[key] and not self.depotsBuilt[key]
+          and not (self.depotSpots and self.depotSpots[key]) then
+        self.depotLotAsks[key] = true
+        self.adapter:findParking(d, M.LOT_METRES, function(found, done, failed)
+          if failed then
+            self.diag:event('depot', key .. ' car parks failed: ' .. tostring(failed), 'W')
+            if self.depotLots[key] == nil then self:setDepotLots(key, {}) end
+            return
+          end
+          if self.depotLots[key] ~= nil and #self.depotLots[key] > 0 then return end
+          if #found == 0 and not done then return end
+          local lots = {}
+          for _, p in ipairs(found) do
+            if type(p) == 'table' then lots[#lots + 1] = { latitude = tonumber(p.lat), longitude = tonumber(p.lon) } end
+          end
+          self:setDepotLots(key, lots)
+        end)
+      end
+    end
+  end
+
   -- Looks after the depots near the player: finds and puts down the ones wanted, and takes away
   -- the ones left behind. Called every frame; does its work every CHECK_SECONDS.
   function c:watchDepots()
@@ -476,6 +510,7 @@ function M.attach(c)
       end
     end
     if not f then return end
+    askEarthLots(self, wanted)
     self.depotMoves = self.depotMoves or {}
     for key in pairs(self.depotMoves) do
       if not self.depotsBuilt[key] and not wanted[key] then self.depotMoves[key] = nil end
@@ -639,9 +674,10 @@ function M.attach(c)
     return ok == true
   end
 
-  -- The town the HUD should ask OpenStreetMap about for car parks, or nil.
+  -- The town the HUD should ask OpenStreetMap about for car parks, or nil. Not when BeamNG.Earth is
+  -- asked instead.
   function c:depotLotsWanted()
-    if not self:depotsOn() or not self.depotsBuilt then return nil end
+    if not self:depotsOn() or not self.depotsBuilt or earthLots(self) then return nil end
     self.depotLots = self.depotLots or {}
     for _, d in ipairs(self:depotsWanted()) do
       if self.depotLots[d.key] == nil and not self.depotsBuilt[d.key] and not (self.depotSpots and self.depotSpots[d.key]) then

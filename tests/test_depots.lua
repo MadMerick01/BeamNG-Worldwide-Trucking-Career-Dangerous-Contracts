@@ -215,6 +215,51 @@ do
   T.check(built2 and not built2.spot.lot, 'without car parks the depot still goes down')
 end
 
+-- With BeamNG.Earth's own map data, the game asks Earth for the car parks itself (the HUD's web
+-- lookup can be blocked by the game), and the HUD is not asked.
+do
+  local w = F.depotWorld()
+  local c, _, a = F.controller({ depotWorld = w })
+  a.asks = {}
+  function a:canFindStations() return true end
+  function a:findParking(point, metres, done) self.asks[#self.asks + 1] = { point = point, metres = metres, done = done }; return true end
+  c:tick(0.6); c:tick(0.6)
+  T.eq(#a.asks, 1, 'Earth is asked once for the car parks round the town')
+  T.eq(a.asks[1].metres, depots.LOT_METRES, 'as far out as the HUD would look')
+  T.eq(c:view().computer.lots, nil, 'and the HUD is not asked')
+  c:tick(0.6)
+  T.eq(#a.asks, 1, 'not again')
+  local d = c:depotsWanted()[1]
+  local lot = location.destination(d, 90, 250)
+  a.asks[1].done({}, false, nil)
+  T.eq(c.depotLots[d.key], nil, 'an empty first answer while Earth is still looking is not the end')
+  a.asks[1].done({ { name = 'Car park', category = 'parking', lat = lot.latitude, lon = lot.longitude } }, true, nil)
+  for _ = 1, 30 do c:tick(0.6) end
+  local built = c.depotsBuilt[d.key]
+  T.check(built and built.spot.lot, 'the depot is in the car park Earth knows')
+  T.check(location.distance(lot, built.pcGeo) < 30, 'next to it')
+end
+
+-- Earth leaves out multi-storey and underground car parks.
+do
+  local earthAdapter = require('earthFreight/earthAdapter')
+  local asked
+  local api = {
+    has = function(name) return name == 'places' end,
+    places = function(lat, lon, opts, cb) asked = opts; cb({ places = {
+      { name = 'Town Square', category = 'parking', lat = 1, lon = 2 },
+      { name = 'Mall', category = 'parking_garage', lat = 1, lon = 2 },
+      { name = 'Underground Car Park', category = 'parking', lat = 1, lon = 2 },
+    } }); return 1 end,
+  }
+  local g = earthAdapter.new({ core = function() return nil end, api = function() return api end, module = function() end })
+  local got
+  T.check(g:findParking({ latitude = 1, longitude = 2 }, 400, function(list, done) got = { list = list, done = done } end), 'asked')
+  T.eq(asked.categories[1], 'parking*', 'for car parks')
+  T.eq(#got.list, 1, 'only the open one'); T.eq(got.list[1].name, 'Town Square', 'the town square')
+  T.check(got.done, 'and that is all')
+end
+
 -- No clear ground anywhere: just the desk and computer, at the flattest try.
 do
   local w = F.depotWorld()
