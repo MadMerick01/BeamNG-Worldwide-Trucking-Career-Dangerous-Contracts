@@ -8,6 +8,18 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **You can now buy fuel anywhere, not just at a petrol station or in a town.** Stop the truck anywhere on the road and the **Refuel** button on the Garage tab works, at 20 times the pump price. For example, diesel in Europe costs $2.49 a litre at a pump, $12.45 in a town and $49.80 at the roadside. The Fuel section shows "roadside price" in red with both prices, so you know what you're paying before you press it, and afterwards it tells you what a pump would have cost.
 - Petrol station pumps and town prices are unchanged: the pump price at a pump, and 5 times that in a town. The fuel you haul on a fuel run stays in the tanker and is never used to refuel your truck. Your saves still work.
+- **A town's jobs no longer stay locked behind "Finding a spot for the depot".** In some towns the depot kept looking for a spot for minutes on end, with Take job greyed out the whole time, because part of the ground it wanted to check never finished loading, or no spot passed its checks. Now a spot whose ground won't load is skipped, and if no spot is found within 45 seconds of reaching town the desk and computer go down beside the nearest road anyway.
+- **When a depot moves, its old shed and desk now go away.** If a building loaded late where a depot stood, the depot moved to a new spot but left a copy of its shed and desk behind, with a computer that did nothing, while the Town tab pointed to the real one. Old sheds left over from before this update are cleared away within 30 seconds.
+- **Depots can now be put in real car parks again.** The game blocks the HUD from looking up car parks online, so every depot was put beside a road instead. Now the car parks come from BeamNG.Earth's own map data. Multi-storey and underground car parks are left out.
+- **A depot with no room for its shed now puts its desk and computer right beside the road**, at road height, instead of a few metres back. Before, it could end up out of sight in the trees or down in a creek, which the depot can't tell apart from open ground. Your saves still work.
+
+## Build 277 · 23 Nov 2026
+
+- **Jobs now pay for the real road, not a guess.** Town job distances used to be the straight line plus 30%, so a winding mountain road that's 20 km to drive was paid as about 8 km. Press a job's GPS button in town and the GPS measures the actual road: after a few seconds the job shows "km by road" and its real price, before you take it. Distances that haven't been measured yet show a ~ in front.
+- Measured roads are remembered, so the next time that town shows up on a board, it already shows the real distance and price.
+- A job taken without pressing GPS first is measured as soon as the GPS plans its route. If the road is longer than the estimate, your pay goes up and a message tells you by how much.
+- Pay only ever goes up: a job never pays less than the board showed, even if the road turns out shorter. If BeamNG.Earth can't plan a road (its app is offline, auto-GPS is off, or the route is far longer than any sensible road), the job keeps its board price. Off-road drops and fuel runs are paid as before. Your saves still work.
+
 ## Build 276 · 23 Nov 2026
 
 - **Relocating is simpler: pick any spot on the big map.** The Relocate tab now only lists your Base. To go anywhere else, press **Open the big map**, right-click any spot and press **Teleport here**. A pop-up then asks you to pay the relocation fee, the same price as before, or to **Go back** where you left for free. Until you choose, deliveries and driving don't count. The list of towns (Penrith, Katoomba, La Paz and the rest), the town search and the coordinates box are gone.

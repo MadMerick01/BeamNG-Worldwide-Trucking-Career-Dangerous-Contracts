@@ -35,13 +35,18 @@ M.MAX_RISE, M.ROAD_CLEAR = 2, 3
 -- ground no more than MAX_RISE above the road, or else EDGE_METRES past the road's edge, at the road's
 -- height, so it is never put on a roof.
 M.EDGE_METRES = 1
--- Real open car parks (then sports pitches) from OpenStreetMap, found by the HUD within LOT_METRES of
--- a depot's middle, are tried before the roads. The search waits up to LOT_WAIT_SECONDS for them.
+-- Real open car parks within LOT_METRES of a depot's middle are tried before the roads: from
+-- BeamNG.Earth's own map data where it has it, else from OpenStreetMap through the HUD (open car parks,
+-- then sports pitches). The search waits up to LOT_WAIT_SECONDS for them.
 M.LOT_METRES, M.LOT_WAIT_SECONDS, M.MAX_LOTS = 400, 10, 6
 -- Every CHECK_SECONDS the depots near the player are looked after; TRIES_PER_CHECK spots are tried
 -- each time, so the search never holds up a frame. Ground that Earth has not loaded yet is tried
 -- again after WAIT_SECONDS.
 M.CHECK_SECONDS, M.TRIES_PER_CHECK, M.WAIT_SECONDS = 0.5, 2, 2
+-- A spot whose ground is still not loaded after MAX_WAITS waits is passed over, and a search that has
+-- not found a spot GIVE_UP_SECONDS after it began puts the desk and computer down at the best it has
+-- seen, so a town's jobs are never locked behind a depot that can't be placed.
+M.MAX_WAITS, M.GIVE_UP_SECONDS = 3, 45
 -- Earth brings the buildings in a few seconds after the ground. A town is first looked at
 -- SETTLE_SECONDS after the player comes near, and a spot that is clear is checked again
 -- SETTLE_SECONDS later before the depot goes down there.
@@ -230,6 +235,15 @@ function M.attach(c)
   end
 
   -- The player's position in the world and on Earth, to turn one into the other near them.
+  -- Takes a depot's pieces away; says in the log when the game would not let one go.
+  local function takeDown(self, key, built)
+    local stuck = 0
+    for _, id in ipairs(built.ids) do
+      if not self.depotWorld:remove(id) then stuck = stuck + 1 end
+    end
+    if stuck > 0 then self.diag:event('depot', key .. ' ' .. stuck .. ' pieces could not be taken away', 'W') end
+  end
+
   local function frame(self)
     local sample = self.lastSample
     if not sample or not sample.valid then return nil end
@@ -309,15 +323,51 @@ function M.attach(c)
     return { ids = ids, pc = { x = px, y = py, z = (deskZ or f.z) + M.PC.z } }
   end
 
+  -- The desk and computer alone, at the edge of a try's road (EDGE_METRES past it, at the road's
+  -- height), so it is always beside a road, never off in a creek or the trees.
+  local function edgeOf(spot)
+    local r = spot.road
+    local out = r.radius + M.EDGE_METRES
+    return { x = r.x + spot.nx * out, y = r.y + spot.ny * out, nx = spot.nx, ny = spot.ny, small = true,
+      edge = true, roadZ = r.z, frontRise = spot.frontRise }
+  end
+
+  -- When no shed fits: the desk and computer at the road's edge where the ground in front is flattest,
+  -- or with no road map, on the flattest ground seen; nil when nothing has been measured.
+  local function fallback(s)
+    if s.edge then return s.edge end
+    if s.best then
+      s.best.small = true
+      return s.best
+    end
+    return s.any
+  end
+
   -- Looks for a depot's spot a few tries at a time. A depot with no clear spot anywhere gets just
-  -- its desk and computer, at the try with the flattest ground in front.
+  -- its desk and computer, beside the road where the ground is flattest. A search never runs past
+  -- GIVE_UP_SECONDS: then it takes the best it has, or the road nearest the middle of town.
   local function search(self, f, d, cx, cy)
     local s = self.depotSearch[d.key]
     if not s then
       -- The first look waits for the town's buildings to come in.
       s = { next = 1, tries = M.tries(d.key), waitUntil = self.clock + M.SETTLE_SECONDS,
-        lotsBy = self.clock + M.LOT_WAIT_SECONDS }
+        lotsBy = self.clock + M.LOT_WAIT_SECONDS, giveUpAt = self.clock + M.GIVE_UP_SECONDS, waits = 0 }
       self.depotSearch[d.key] = s
+    end
+    if self.clock >= s.giveUpAt then
+      local spot = s.pendingSpot or fallback(s)
+      if not spot then
+        local road = self.depotWorld:road(cx, cy, f.z)
+        if road then
+          local nx, ny = -road.dy, road.dx
+          spot = edgeOf({ road = road, nx = nx, ny = ny })
+        else
+          spot = { x = cx, y = cy, nx = 0, ny = 1, small = true }
+        end
+      end
+      self.diag:event('depot', d.key .. ' search gave up after ' .. M.GIVE_UP_SECONDS .. ' s at try ' .. s.next
+        .. ' of ' .. #s.tries .. ', ' .. (s.skipped or 0) .. ' not loaded', 'W')
+      return spot
     end
     if s.waitUntil and self.clock < s.waitUntil then return nil end
     -- The car parks OpenStreetMap knows go first, once the HUD has said (or after waiting for it).
@@ -339,21 +389,24 @@ function M.attach(c)
       -- A clear spot, checked again a little later before it is taken.
       local again = M.check(self.depotWorld, cx, cy, f.z, s.pending)
       if again == 'wait' then
+        s.waits = s.waits + 1
+        -- Its ground has gone (the player drove off): it was clear, so take it.
+        if s.waits > M.MAX_WAITS then
+          local spot = s.pendingSpot
+          s.pending, s.pendingSpot, s.waits = nil, nil, 0
+          return spot
+        end
         s.waitUntil = self.clock + M.WAIT_SECONDS
         return nil
       end
-      s.pending = nil
+      s.pending, s.pendingSpot, s.waits = nil, nil, 0
       if again then return again end
     end
     for _ = 1, M.TRIES_PER_CHECK do
       local try = s.tries[s.next]
       if not try then
-        if s.best then
-          s.best.small = true
-          return s.best
-        end
-        -- Nowhere flat at road level: the desk at the edge of the road.
-        if s.edge then return s.edge end
+        local spot = fallback(s)
+        if spot then return spot end
         -- Nothing loaded anywhere yet: start again.
         s.next = 1
         s.waitUntil = self.clock + M.WAIT_SECONDS
@@ -361,25 +414,66 @@ function M.attach(c)
       end
       local spot, near = M.check(self.depotWorld, cx, cy, f.z, try)
       if spot == 'wait' then
-        s.waitUntil = self.clock + M.WAIT_SECONDS
-        return nil
+        s.waits = s.waits + 1
+        if s.waits <= M.MAX_WAITS then
+          s.waitUntil = self.clock + M.WAIT_SECONDS
+          return nil
+        end
+        -- Ground that never loads (over water, or a gap in Earth's tiles): passed over.
+        s.skipped = (s.skipped or 0) + 1
+        spot = false
       end
-      s.next = s.next + 1
+      s.next, s.waits = s.next + 1, 0
       if spot then
-        s.pending, s.waitUntil = try, self.clock + M.SETTLE_SECONDS
+        s.pending, s.pendingSpot, s.waitUntil = try, spot, self.clock + M.SETTLE_SECONDS
         return nil
       end
-      if near and near.frontRise and near.frontRise <= M.MAX_RISE and (not s.best or near.frontRise < s.best.frontRise) then
-        s.best = near
-      end
-      if near and near.road and not s.edge then
-        local r = near.road
-        local out = r.radius + M.EDGE_METRES
-        s.edge = { x = r.x + near.nx * out, y = r.y + near.ny * out, nx = near.nx, ny = near.ny, small = true,
-          edge = true, roadZ = r.z }
+      if near and near.frontRise then
+        if not s.any or near.frontRise < s.any.frontRise then
+          s.any = near
+          near.small = true
+        end
+        if near.road then
+          if not s.edge or near.frontRise < s.edge.frontRise then s.edge = edgeOf(near) end
+        elseif near.frontRise <= M.MAX_RISE and (not s.best or near.frontRise < s.best.frontRise) then
+          s.best = near
+        end
       end
     end
     return nil
+  end
+
+  -- Whether BeamNG.Earth can be asked for car parks itself (the HUD's web lookups can be blocked).
+  local function earthLots(self)
+    return self.adapter ~= nil and self.adapter.findParking ~= nil and self.adapter.canFindStations ~= nil
+      and self.adapter:canFindStations() == true
+  end
+
+  -- Asks BeamNG.Earth for the car parks round each depot wanted that has none yet, once per town.
+  local function askEarthLots(self, wanted)
+    if not earthLots(self) then return end
+    self.depotLots = self.depotLots or {}
+    self.depotLotAsks = self.depotLotAsks or {}
+    for key, d in pairs(wanted) do
+      if self.depotLots[key] == nil and not self.depotLotAsks[key] and not self.depotsBuilt[key]
+          and not (self.depotSpots and self.depotSpots[key]) then
+        self.depotLotAsks[key] = true
+        self.adapter:findParking(d, M.LOT_METRES, function(found, done, failed)
+          if failed then
+            self.diag:event('depot', key .. ' car parks failed: ' .. tostring(failed), 'W')
+            if self.depotLots[key] == nil then self:setDepotLots(key, {}) end
+            return
+          end
+          if self.depotLots[key] ~= nil and #self.depotLots[key] > 0 then return end
+          if #found == 0 and not done then return end
+          local lots = {}
+          for _, p in ipairs(found) do
+            if type(p) == 'table' then lots[#lots + 1] = { latitude = tonumber(p.lat), longitude = tonumber(p.lon) } end
+          end
+          self:setDepotLots(key, lots)
+        end)
+      end
+    end
   end
 
   -- Looks after the depots near the player: finds and puts down the ones wanted, and takes away
@@ -409,13 +503,14 @@ function M.attach(c)
       local d = wanted[key]
       local far = not f or not built.geo or (location.distance(f.geo, built.geo) or math.huge) > M.FAR_METRES
       if not d and far then
-        for _, id in ipairs(built.ids) do self.depotWorld:remove(id) end
+        takeDown(self, key, built)
         self.depotsBuilt[key] = nil
       elseif d then
         built.name, built.town, built.fuel = d.name, d.town, d.fuel
       end
     end
     if not f then return end
+    askEarthLots(self, wanted)
     self.depotMoves = self.depotMoves or {}
     for key in pairs(self.depotMoves) do
       if not self.depotsBuilt[key] and not wanted[key] then self.depotMoves[key] = nil end
@@ -428,7 +523,7 @@ function M.attach(c)
           and self.clock - (built.checkedAt or 0) >= M.RECHECK_SECONDS then
         built.checkedAt = self.clock
         if M.stillClear(self.depotWorld, spot, f.z) == false then
-          for _, id in ipairs(built.ids) do self.depotWorld:remove(id) end
+          takeDown(self, key, built)
           self.depotsBuilt[key], self.depotSpots[key] = nil, nil
           self.depotMoves[key] = (self.depotMoves[key] or 0) + 1
           -- The GPS follows it to its new spot.
@@ -579,9 +674,10 @@ function M.attach(c)
     return ok == true
   end
 
-  -- The town the HUD should ask OpenStreetMap about for car parks, or nil.
+  -- The town the HUD should ask OpenStreetMap about for car parks, or nil. Not when BeamNG.Earth is
+  -- asked instead.
   function c:depotLotsWanted()
-    if not self:depotsOn() or not self.depotsBuilt then return nil end
+    if not self:depotsOn() or not self.depotsBuilt or earthLots(self) then return nil end
     self.depotLots = self.depotLots or {}
     for _, d in ipairs(self:depotsWanted()) do
       if self.depotLots[d.key] == nil and not self.depotsBuilt[d.key] and not (self.depotSpots and self.depotSpots[d.key]) then

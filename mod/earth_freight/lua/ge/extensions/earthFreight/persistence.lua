@@ -109,6 +109,11 @@ local function drop(d)
   return { latitude = d.latitude, longitude = d.longitude }
 end
 
+-- A positive km, or nil.
+local function km(v)
+  if type(v) == 'number' and v == v and v > 0 and v < 100000 then return v end
+end
+
 local function load(l)
   if type(l) ~= 'table' or type(l.good) ~= 'string' or not optionalString(l.good) or not integer(l.slots, 1)
       or not amount(l.kg) or type(l.from) ~= 'string' or not optionalString(l.from)
@@ -149,7 +154,9 @@ local function load(l)
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
     pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop, ship = container,
     -- JATO rockets were fitted on this job online (rockets.lua): it pays nothing.
-    toll = toll, fuelRun = l.fuelRun, rockets = l.rockets == true or nil }
+    toll = toll, fuelRun = l.fuelRun, rockets = l.rockets == true or nil,
+    -- A town job's measured road km, or the estimate it was taken at while its road is still to be measured.
+    roadKm = km(l.roadKm), estimateKm = not km(l.roadKm) and km(l.estimateKm) or nil }
 end
 
 -- A "don't ask questions" job found and not yet picked up: its pickup and drop spots, which line

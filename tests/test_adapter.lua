@@ -232,4 +232,39 @@ do
   T.check(not g:setRoute(stops), 'a changed route call is contained')
 end
 
+-- The length of the road route Earth's GPS planned (API gps, and gpsRoute from 1.6), only for the
+-- destination asked about and only once a road route is planned.
+do
+  local features, status, route = {}, nil, nil
+  local api = {
+    version = function() return 1, 8 end,
+    has = function(name) return features[name] == true end,
+    gps = function() return status end,
+    gpsRoute = function() return route end,
+  }
+  local g = Adapter.new({ core = function() return nil end, api = function() return api end, module = function() end })
+  local town = { latitude = -33.7, longitude = 150.8 }
+  local m, why = g:gpsRouteLength(town)
+  T.check(m == nil and why == 'none', 'no GPS destination')
+  status = { lat = -33.8, lon = 150.8, planning = false, routeVersion = 1, remaining = 9000 }
+  m, why = g:gpsRouteLength(town)
+  T.check(m == nil and why == 'other', 'the GPS goes somewhere else')
+  status = { lat = -33.7, lon = 150.8, planning = true, routeVersion = 0, remaining = 4000 }
+  m, why = g:gpsRouteLength(town)
+  T.check(m == nil and why == 'planning', 'still planning: the straight line it shows meanwhile is not a road')
+  status.planning = false
+  m, why = g:gpsRouteLength(town)
+  T.check(m == nil and why == 'planning', 'no road route planned (offline)')
+  status.routeVersion = 3; status.remaining = 18500
+  T.eq(g:gpsRouteLength(town), 18500, 'an older Earth: the distance left on the planned route')
+  features.routeGeometry = true
+  route = { version = 3, dist = 19600 }
+  T.eq(g:gpsRouteLength(town), 19600, 'the planned route\'s whole length')
+  route.version = 2
+  T.eq(g:gpsRouteLength(town), 18500, 'not an old plan\'s')
+  api.gps = function() error('changed') end
+  m, why = g:gpsRouteLength(town)
+  T.check(m == nil and why == 'none', 'a changed GPS call is contained')
+end
+
 T.done('Earth adapter (mocked engine)')

@@ -215,6 +215,51 @@ do
   T.check(built2 and not built2.spot.lot, 'without car parks the depot still goes down')
 end
 
+-- With BeamNG.Earth's own map data, the game asks Earth for the car parks itself (the HUD's web
+-- lookup can be blocked by the game), and the HUD is not asked.
+do
+  local w = F.depotWorld()
+  local c, _, a = F.controller({ depotWorld = w })
+  a.asks = {}
+  function a:canFindStations() return true end
+  function a:findParking(point, metres, done) self.asks[#self.asks + 1] = { point = point, metres = metres, done = done }; return true end
+  c:tick(0.6); c:tick(0.6)
+  T.eq(#a.asks, 1, 'Earth is asked once for the car parks round the town')
+  T.eq(a.asks[1].metres, depots.LOT_METRES, 'as far out as the HUD would look')
+  T.eq(c:view().computer.lots, nil, 'and the HUD is not asked')
+  c:tick(0.6)
+  T.eq(#a.asks, 1, 'not again')
+  local d = c:depotsWanted()[1]
+  local lot = location.destination(d, 90, 250)
+  a.asks[1].done({}, false, nil)
+  T.eq(c.depotLots[d.key], nil, 'an empty first answer while Earth is still looking is not the end')
+  a.asks[1].done({ { name = 'Car park', category = 'parking', lat = lot.latitude, lon = lot.longitude } }, true, nil)
+  for _ = 1, 30 do c:tick(0.6) end
+  local built = c.depotsBuilt[d.key]
+  T.check(built and built.spot.lot, 'the depot is in the car park Earth knows')
+  T.check(location.distance(lot, built.pcGeo) < 30, 'next to it')
+end
+
+-- Earth leaves out multi-storey and underground car parks.
+do
+  local earthAdapter = require('earthFreight/earthAdapter')
+  local asked
+  local api = {
+    has = function(name) return name == 'places' end,
+    places = function(lat, lon, opts, cb) asked = opts; cb({ places = {
+      { name = 'Town Square', category = 'parking', lat = 1, lon = 2 },
+      { name = 'Mall', category = 'parking_garage', lat = 1, lon = 2 },
+      { name = 'Underground Car Park', category = 'parking', lat = 1, lon = 2 },
+    } }); return 1 end,
+  }
+  local g = earthAdapter.new({ core = function() return nil end, api = function() return api end, module = function() end })
+  local got
+  T.check(g:findParking({ latitude = 1, longitude = 2 }, 400, function(list, done) got = { list = list, done = done } end), 'asked')
+  T.eq(asked.categories[1], 'parking*', 'for car parks')
+  T.eq(#got.list, 1, 'only the open one'); T.eq(got.list[1].name, 'Town Square', 'the town square')
+  T.check(got.done, 'and that is all')
+end
+
 -- No clear ground anywhere: just the desk and computer, at the flattest try.
 do
   local w = F.depotWorld()
@@ -237,6 +282,49 @@ do
   for _, o in pairs(w.objects) do
     T.eq(o.z, 0, o.shape .. ' at the height of the road, not the roofs')
     T.check(math.abs(o.y) <= 3 + depots.EDGE_METRES + 0.01, o.shape .. ' at the edge of the road')
+  end
+end
+
+-- Ground that never loads (water, a gap in Earth's tiles) where the first spots are: they are passed
+-- over and the depot still goes down, well before the search gives up.
+do
+  local w = F.depotWorld()
+  w.hole = function(_, y) return y > 0 end
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, math.ceil(depots.GIVE_UP_SECONDS / 0.6) - 2 do c:tick(0.6) end
+  local built = c.depotsBuilt[next(c.depotsBuilt)]
+  T.check(built ~= nil, 'put down on the side of the road that loaded')
+  T.eq(w:count(), 4, 'with its shed')
+  T.check(built.spot.y < 0, 'on the loaded side')
+end
+
+-- Nothing ever loads: the search gives up and puts the desk and computer at the road nearest the
+-- middle of town, so the town's jobs are never locked.
+do
+  local w = F.depotWorld()
+  w.unloaded = true
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, math.ceil(depots.GIVE_UP_SECONDS / 0.6) - 5 do c:tick(0.6) end
+  T.eq(w:count(), 0, 'still looking before it gives up')
+  T.check(c:view().town.takeProblem:find('Finding a spot'), 'and the board says so')
+  for _ = 1, 12 do c:tick(0.6) end
+  T.eq(w:count(), 3, 'then the desk, computer and screen go down')
+  for _, o in pairs(w.objects) do
+    T.check(math.abs(o.y) <= w.roadRadius + depots.EDGE_METRES + 2, o.shape .. ' beside the road')
+  end
+  T.check(not c:view().town.takeProblem:find('Finding a spot'), 'and jobs point to the computer')
+end
+
+-- No shed fits, but there is flat ground set back from the road (it could be a creek or the trees,
+-- which the checks can't see): the desk still goes right beside the road.
+do
+  local w = F.depotWorld()
+  w.boxes = { { -1000, -1000, 1000, -0.5, 4 }, { -1000, 9.5, 1000, 1000, 4 } }
+  local c = F.controller({ depotWorld = w })
+  for _ = 1, 200 do c:tick(0.6) end
+  for _, o in pairs(w.objects) do
+    T.check(math.abs(o.y) <= w.roadRadius + depots.EDGE_METRES + 2, o.shape .. ' beside the road, not set back')
+    T.eq(o.z, 0, o.shape .. ' at the height of the road')
   end
 end
 
@@ -353,6 +441,35 @@ do
   T.eq(w:sweep({ [kept] = true }), 1, 'one piece not kept is taken away')
   T.check(objects[kept] ~= nil and objects[lost] == nil, 'the kept one stays')
   T.eq(depotWorld.new({ named = function() error('no scenetree') end }):sweep({}), 0, 'a game without the call takes nothing')
+end
+
+-- The game's lookup by id only knows vehicles: a piece put down can still be taken away, so a
+-- depot that moves never leaves its old shed and desk behind.
+do
+  local depotWorld = require('earthFreight/depotWorld')
+  local objects = {}
+  local env = {
+    create = function()
+      local o = { id = #objects + 1 }
+      function o:setField() end
+      function o:setPosition() end
+      function o:setPosRot() end
+      function o:registerObject() end
+      function o:getID() return self.id end
+      function o:delete() objects[self.id] = nil end
+      objects[#objects + 1] = o
+      return o
+    end,
+    objectById = function() return nil end,
+    point = function(x, y, z) return { x = x, y = y, z = z } end,
+    upright = function() return { x = 0, y = 0, z = 0, w = 1 } end,
+    group = function() return nil end,
+  }
+  local w = depotWorld.new(env)
+  local id = w:place('shed', 0, 0, 0, 1, 0)
+  T.check(w:remove(id), 'taken away')
+  T.eq(objects[id], nil, 'and gone from the world')
+  T.check(not w:remove(id), 'not twice')
 end
 
 T.done('depots')

@@ -8,6 +8,8 @@
 -- missing or changed one is skipped, so Earth updates only break Earth Freight if every way changes.
 local location = require('earthFreight/location')
 local M = {}
+-- Earth's GPS destination counts as the one asked for within this many metres.
+M.GPS_MATCH_METRES = 100
 
 local function findCore()
   local core = rawget(_G, 'beamngEarth_core')
@@ -209,6 +211,27 @@ function M.new(environment)
     return ok and yes == true
   end
 
+  -- The length in metres of the road route Earth's GPS has planned to point (within GPS_MATCH_METRES
+  -- of it), read from what Earth already has: its planned route's length (API 1.6, routeGeometry), or
+  -- else the distance left on a planned route. Returns metres, or nil and why: 'none' (no GPS
+  -- destination, or no API), 'other' (the GPS goes somewhere else now), 'planning' (no road route
+  -- yet: still planning, or Earth's app is offline and it only points the way).
+  function a:gpsRouteLength(point)
+    if not location.valid(point) then return nil, 'none' end
+    local ok, g = call('gps')
+    if not ok or type(g) ~= 'table' then return nil, 'none' end
+    local target = position(tonumber(g.lat), tonumber(g.lon))
+    if not target or (location.distance(target, point) or math.huge) > M.GPS_MATCH_METRES then return nil, 'other' end
+    if g.planning == true or not location.finite(g.routeVersion) or g.routeVersion <= 0 then return nil, 'planning' end
+    if has('routeGeometry') then
+      local okRoute, r = call('gpsRoute')
+      if okRoute and type(r) == 'table' and location.finite(r.dist) and r.dist > 0
+          and (r.version == nil or r.version == g.routeVersion) then return r.dist end
+    end
+    if location.finite(g.remaining) and g.remaining > 0 then return g.remaining end
+    return nil, 'planning'
+  end
+
   -- GPS through several stops (API 1.2, gpsSetRoute): stops is a list of { point, name }, the last one
   -- the destination. Each is sent as { lat, lon, name } by position and by name. Returns true, or
   -- false and why; on an older Earth, false and 'route_missing', so the caller sets one destination.
@@ -229,6 +252,28 @@ function M.new(environment)
 
   -- Whether Earth can be asked for the places round a point (API 1.4, places).
   function a:canFindStations() return has('places') end
+
+  -- Asks Earth for the car parks within metres of a point, as findStations does for petrol stations:
+  -- done(list, finished, failed), each { name, category, lat, lon, ... }, nearest first. Earth's map
+  -- data has car parks as points, so multi-storey and underground ones are left out by their kind.
+  function a:findParking(point, metres, done)
+    if not location.valid(point) or type(done) ~= 'function' or not has('places') then return false end
+    local opts = { radius = math.min(3000, metres or 1000), categories = { 'parking*' }, limit = 20 }
+    local ok, sent = call('places', point.latitude, point.longitude, opts, function(result)
+      if type(result) ~= 'table' then return done({}, false, 'no_answer') end
+      if result.error ~= nil and result.error ~= false and result.error ~= '' then return done({}, false, tostring(result.error)) end
+      local list = {}
+      for _, p in ipairs(type(result.places) == 'table' and result.places or {}) do
+        local kind = string.lower(tostring(p.category or '') .. ' ' .. tostring(p.name or ''))
+        if not (kind:find('garage') or kind:find('structure') or kind:find('underground') or kind:find('multi')
+            or kind:find('storey') or kind:find('story') or kind:find('rooftop')) then
+          list[#list + 1] = p
+        end
+      end
+      done(list, result.pending ~= true, nil)
+    end)
+    return ok and sent ~= nil and sent ~= false
+  end
 
   -- Asks Earth for the petrol stations within metres of a point. done(list, finished, failed) is
   -- called with the stations as Earth gives them ({ name, lat, lon, open, ... }, nearest first),

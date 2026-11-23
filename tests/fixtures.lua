@@ -62,6 +62,16 @@ function F.adapter(pose)
     self.gps[#self.gps + 1] = { latitude = point.latitude, longitude = point.longitude, name = name }
     return true
   end
+  -- The road route Earth's GPS planned: routeMetres (a test sets it; nil while planning) when the
+  -- last GPS destination is point, else nil and 'other'.
+  function a:gpsRouteLength(point)
+    local last = self.gps[#self.gps]
+    if not last then return nil, 'none' end
+    if math.abs(last.latitude - point.latitude) > 1e-6 or math.abs(last.longitude - point.longitude) > 1e-6 then return nil, 'other' end
+    if self.routeError then error(self.routeError) end
+    if not self.routeMetres then return nil, 'planning' end
+    return self.routeMetres
+  end
   -- Earth's status bar names: nil unless a test sets them.
   function a:placeNames() return self.names end
   function a:teleport(point, name)
@@ -277,7 +287,8 @@ function F.controller(options)
 end
 -- Stand-in for the depots' game side (depotWorld.lua): flat ground at height 0 everywhere, one
 -- straight road along y = 0, the player at me and cars by id. A test can add boxes (x0, y0, x1, y1,
--- height: a building), mark the ground not loaded yet (unloaded), or make placing fail.
+-- height: a building), mark the ground not loaded yet (unloaded, or hole(x, y) where it never loads),
+-- or make placing fail.
 function F.depotWorld()
   local w = { me = { x = 0, y = 0, z = 0 }, cars = {}, objects = {}, boxes = {}, made = 0, roadRadius = 3 }
   function w:available() return true end
@@ -294,7 +305,7 @@ function F.depotWorld()
     return self.cars[id] and F.copy(self.cars[id]) or nil
   end
   function w:ground(x, y)
-    if self.unloaded then return nil end
+    if self.unloaded or (self.hole and self.hole(x, y)) then return nil end
     for _, b in ipairs(self.boxes) do
       if x >= b[1] and x <= b[3] and y >= b[2] and y <= b[4] then return b[5] end
     end
