@@ -253,6 +253,28 @@ function M.new(environment)
   -- Whether Earth can be asked for the places round a point (API 1.4, places).
   function a:canFindStations() return has('places') end
 
+  -- Asks Earth for the car parks within metres of a point, as findStations does for petrol stations:
+  -- done(list, finished, failed), each { name, category, lat, lon, ... }, nearest first. Earth's map
+  -- data has car parks as points, so multi-storey and underground ones are left out by their kind.
+  function a:findParking(point, metres, done)
+    if not location.valid(point) or type(done) ~= 'function' or not has('places') then return false end
+    local opts = { radius = math.min(3000, metres or 1000), categories = { 'parking*' }, limit = 20 }
+    local ok, sent = call('places', point.latitude, point.longitude, opts, function(result)
+      if type(result) ~= 'table' then return done({}, false, 'no_answer') end
+      if result.error ~= nil and result.error ~= false and result.error ~= '' then return done({}, false, tostring(result.error)) end
+      local list = {}
+      for _, p in ipairs(type(result.places) == 'table' and result.places or {}) do
+        local kind = string.lower(tostring(p.category or '') .. ' ' .. tostring(p.name or ''))
+        if not (kind:find('garage') or kind:find('structure') or kind:find('underground') or kind:find('multi')
+            or kind:find('storey') or kind:find('story') or kind:find('rooftop')) then
+          list[#list + 1] = p
+        end
+      end
+      done(list, result.pending ~= true, nil)
+    end)
+    return ok and sent ~= nil and sent ~= false
+  end
+
   -- Asks Earth for the petrol stations within metres of a point. done(list, finished, failed) is
   -- called with the stations as Earth gives them ({ name, lat, lon, open, ... }, nearest first),
   -- whether Earth has all it will find (more may come in a second answer while its map cells

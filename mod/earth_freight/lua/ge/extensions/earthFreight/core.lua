@@ -3229,7 +3229,7 @@ function M.new(deps)
       relocatePerKm = string.format('$%.2f', shipping.FEE_PER_KM), offerKm = math.floor(shipping.OFFER_RADIUS_METRES / 1000),
       fuelRunMinKm = fuelruns.MIN_KM, fuelRunMaxKm = fuelruns.MAX_KM, townFuelTimes = fuel.TOWN_PRICE_TIMES,
       toll = percent(magnate.TOLL),
-      depotTruckMetres = depots.TRUCK_METRES, depotFarKm = depots.FAR_METRES / 1000,
+      depotTruckMetres = depots.TRUCK_METRES, depotGiveUpSeconds = depots.GIVE_UP_SECONDS, depotFarKm = depots.FAR_METRES / 1000,
     }
   end
 

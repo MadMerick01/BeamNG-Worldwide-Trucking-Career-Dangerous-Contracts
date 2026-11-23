@@ -287,7 +287,8 @@ function F.controller(options)
 end
 -- Stand-in for the depots' game side (depotWorld.lua): flat ground at height 0 everywhere, one
 -- straight road along y = 0, the player at me and cars by id. A test can add boxes (x0, y0, x1, y1,
--- height: a building), mark the ground not loaded yet (unloaded), or make placing fail.
+-- height: a building), mark the ground not loaded yet (unloaded, or hole(x, y) where it never loads),
+-- or make placing fail.
 function F.depotWorld()
   local w = { me = { x = 0, y = 0, z = 0 }, cars = {}, objects = {}, boxes = {}, made = 0, roadRadius = 3 }
   function w:available() return true end
@@ -304,7 +305,7 @@ function F.depotWorld()
     return self.cars[id] and F.copy(self.cars[id]) or nil
   end
   function w:ground(x, y)
-    if self.unloaded then return nil end
+    if self.unloaded or (self.hole and self.hole(x, y)) then return nil end
     for _, b in ipairs(self.boxes) do
       if x >= b[1] and x <= b[3] and y >= b[2] and y <= b[4] then return b[5] end
     end

@@ -16,7 +16,16 @@ M.SHAPES = {
 local function defaults()
   return {
     vehicle = function() return getPlayerVehicle(0) end,
-    objectById = function(id) return getObjectByID(id) end,
+    -- getObjectByID only knows vehicles, so the depot's pieces (scene objects) are looked up in the
+    -- scene tree first; without that they could never be taken away again.
+    objectById = function(id)
+      local tree = rawget(_G, 'scenetree')
+      local find = tree and tree.findObjectById
+      local o = type(find) == 'function' and find(id) or nil
+      if o then return o end
+      local byId = rawget(_G, 'getObjectByID')
+      return type(byId) == 'function' and byId(id) or nil
+    end,
     map = function() return rawget(_G, 'map') end,
     point = function(x, y, z) return vec3(x, y, z) end,
     -- How far down from a point the ground (or anything solid standing on it) is, or nil.
@@ -84,11 +93,14 @@ function M.new(environment)
     return ok and yes == true
   end
 
+  -- The pieces this load put down, by id, so they can always be found again to take away.
+  local pieces = {}
   local function object(id)
     if id == nil then
       local ok, vehicle = pcall(env.vehicle)
       return ok and vehicle or nil
     end
+    if pieces[id] then return pieces[id] end
     local ok, found = pcall(env.objectById, id)
     return ok and found or nil
   end
@@ -173,7 +185,9 @@ function M.new(environment)
         o:setField('rotation', 0, string.format('0 0 1 %.3f', math.deg(math.atan2(-fx, fy))))
         o:setPosition(env.point(x, y, z))
       end
-      return o:getID()
+      local id = o:getID()
+      if id ~= nil then pieces[id] = o end
+      return id
     end)
     return ok and id or nil
   end
@@ -193,7 +207,9 @@ function M.new(environment)
   function w:remove(id)
     local o = object(id)
     if not o then return false end
-    return (pcall(function() o:delete() end))
+    local ok = pcall(function() o:delete() end)
+    if ok then pieces[id] = nil end
+    return ok
   end
 
   -- Takes away every depot piece in the world that is not in keep (ids as keys): ones a reload of
