@@ -126,7 +126,8 @@ do
   inSession = false
   T.check(not S.restoreStep(s), 'the session is over: turned on')
   T.eq(activated, 1, 'once')
-  s.clock = function() return s.since + S.RESTORE_GAP_S end
+  -- A little past the gap: since + gap - since can come out just under the gap in floating point.
+  s.clock = function() return s.since + S.RESTORE_GAP_S + 0.01 end
   T.check(S.restoreStep(s), 'on and staying on: done')
   restore()
 end
