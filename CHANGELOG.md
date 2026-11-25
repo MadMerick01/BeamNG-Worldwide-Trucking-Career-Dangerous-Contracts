@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 284 · 25 Nov 2026
+
 - **Base thieves are switched off for now.** Nobody breaks into your base and steals your money any more, and the Base thief box is gone from the **Base** tab. Road robbers on deliveries still turn up as before, and the tick box on the **Route** tab that switches them off in single player is now called **Road robbers**. The help page no longer talks about base thieves. Your saves still work, and there's nothing you need to do.
 
 ## Build 283 · 25 Nov 2026
