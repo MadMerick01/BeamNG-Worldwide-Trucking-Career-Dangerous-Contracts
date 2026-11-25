@@ -21,6 +21,11 @@ local emp = require('earthFreight/emp')
 local location = require('earthFreight/location')
 local M = {}
 
+-- Base thieves are off for now (MadMerick, 25 Nov): no theft comes on its own and the Base tab doesn't show the Base
+-- thief card. Everything else is kept, so setting ON back to true (and putting the help page's lines back) brings them
+-- back. A test theft (thiefTest in the console) still works. Road robbers (roadRobber.lua) aren't affected.
+M.ON = false
+
 local function round10(n) return math.floor(n / 10 + 0.5) * 10 end
 
 -- What the thief takes (MadMerick, 21 Nov): SHARE of the bank, at least MIN_TAKE (or what's there) and at most
@@ -98,6 +103,7 @@ function M.attach(c)
     if not self:canAfford(M.MIN_TAKE) then return 'Less than ' .. dollars(M.MIN_TAKE) .. ' in the bank.' end
     if self.maydayRun then return 'Not during a Mayday Rescue run.' end
     if forced then return nil end
+    if not M.ON then return 'Base thieves are off for now.' end
     if self:robbersOff() then return 'Robbers are switched off.' end
     if self.thiefReturn or self.hire or self.onFoot or self.booking or self.stranded then return 'Busy.' end
     local away = self:homeDistance()
@@ -339,8 +345,9 @@ function M.attach(c)
     if r and r.swapAt and (self:carArrived() or self.clock - r.swapAt > M.SWAP_SECONDS) then backOnTheRoad(self, r) end
     if not t then
       local k = self.thiefClock
-      -- Robbers switched off (single player): the hour's theft is dropped, so switching back on doesn't bring it.
-      if k and k.due and k.played >= k.due and self:robbersOff() then k.due = nil end
+      -- Robbers switched off (single player), or base thieves off for now: the hour's theft is dropped, so switching
+      -- back on doesn't bring it.
+      if k and k.due and k.played >= k.due and (self:robbersOff() or not M.ON) then k.due = nil end
       if k and k.due and k.played >= k.due and (not k.last or k.played - k.last >= M.GAP_MINUTES * 60)
           and not self:theftProblem(false) and self:startTheft(false) then
         k.due, k.last = nil, k.played
@@ -416,7 +423,7 @@ function M.attach(c)
   -- The Base tab's Base thief card. allowed and problem are what a test theft (thiefTest in the console) would say;
   -- the Get robbed button is gone (MadMerick, 23 Nov).
   function c:robberyView()
-    if not self.profile or self.error then return nil end
+    if not M.ON or not self.profile or self.error then return nil end
     local problem = self:theftProblem(true)
     if problem == 'Not ready yet.' then problem = 'Get in your car first.' end
     -- What a thief takes is never shown here (MadMerick): only the amount, once it happens.

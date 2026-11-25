@@ -28,6 +28,24 @@ local function ready(options)
   return c, a, car
 end
 
+-- Base thieves are off for now (MadMerick, 25 Nov): none comes on its own and the Base tab shows no card, though the
+-- test command still works.
+do
+  T.eq(thief.ON, false, 'off for now')
+  local c, a = ready({ random = function() return 0 end })
+  T.check(c:buyBase(F.copy(a.pose)), 'a base')
+  a.pose = location.destination(a.pose, 90, thief.MIN_AWAY_METRES + 1000); F.advance(c, 1); c.stranded = nil
+  T.eq(c:theftProblem(false), 'Base thieves are off for now.', 'no theft')
+  T.eq(c:view().robbery, nil, 'no Base thief card')
+  c.thiefClock = { played = 100, hour = 0, due = 50 }
+  F.advance(c, 0.5)
+  T.eq(c.thief, nil, 'the hour passes with no theft'); T.eq(c.thiefClock.due, nil, 'and its theft is dropped')
+  T.check(c:startTheft(true), 'the test command still works')
+end
+
+-- The rest of these test the base thief switched on.
+thief.ON = true
+
 -- No base, no theft; the test command needs a base too.
 do
   local c, a = ready({ random = function() return 0 end })

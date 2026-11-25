@@ -229,6 +229,7 @@ end
 
 -- The base thief stays away too, and the hour's theft is dropped rather than kept for later.
 do
+  thief.ON = true
   local c, a = ready()
   T.check(c:setRobbersOn(false), 'switched off')
   T.check(c:buyBase(F.copy(a.pose)), 'a base')
