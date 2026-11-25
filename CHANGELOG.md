@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Base thieves are switched off for now.** Nobody breaks into your base and steals your money any more, and the Base thief box is gone from the **Base** tab. Road robbers on deliveries still turn up as before, and the tick box on the **Route** tab that switches them off in single player is now called **Road robbers**. The help page no longer talks about base thieves. Your saves still work, and there's nothing you need to do.
+
 ## Build 283 · 25 Nov 2026
 
 - **Depots are gone: every town now has a pickup point instead.** There is no more tin shed, desk or **Use computer** button. Drive to the town's pickup point near its middle, stop within 50 m of it and take jobs straight from the **Town** tab. A needle on the Town tab points the way and says how far it is, its **GPS** button gives you a route, and the minimised HUD shows the distance. The point sits on the nearest road and is the same for everyone online, and it no longer jumps around when buildings load late.
