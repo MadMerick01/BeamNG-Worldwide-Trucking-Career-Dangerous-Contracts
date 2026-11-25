@@ -85,11 +85,11 @@ do
   T.check(v.fuelRuns ~= nil and v.fuelRuns.hub ~= nil, 'the Fuel runs card shows a depot from Penrith')
   local hub = places.get(v.fuelRuns.hub.id)
   T.check(fuelruns.isHub(hub), 'a quiet regional town: ' .. hub.name)
-  T.check(not v.fuelRuns.atDepot and v.fuelRuns.problem:find('Drive into') ~= nil, 'told to drive to the depot town')
+  T.check(not v.fuelRuns.atDepot and v.fuelRuns.problem:find('pickup point in ' .. hub.name, 1, true) ~= nil, 'told to drive to the depot town\'s pickup point')
   T.check(#v.fuelRuns.runs > 0, 'runs on offer'); T.check(not v.fuelRuns.runs[1].allowed, 'not loadable from here')
   T.eq(v.fuelRuns.runs[1].units, 0, 'the starter car has no tank')
   T.check(v.fuelRuns.lookup and v.fuelRuns.lookup.good == 'fuelhub', 'the HUD is asked to find the depot')
-  T.check(c:gpsToDepot(), 'GPS to the depot'); T.eq(a.gps[#a.gps].name, hub.name, 'the depot town until one is found')
+  T.check(c:gpsToDepot(), 'GPS to the depot'); T.eq(a.gps[#a.gps].name, hub.name .. ' pickup point', 'the depot town\'s pickup point until one is found')
   T.check(c:view().fuelRuns.gps, 'the GPS button lights')
   -- The HUD finds a fuel terminal on the edge of town.
   local spot = location.destination(hub, 90, 1500)
@@ -183,7 +183,7 @@ do
   local run = v.fuelRuns.runs[1]
   T.check(c:gpsToRun(run.id), 'GPS on the run')
   local route = a.routes[#a.routes]
-  T.eq(#route, 2, 'two stops'); T.eq(route[1].name, hub.name, 'the depot first')
+  T.eq(#route, 2, 'two stops'); T.eq(route[1].name, hub.name .. ' pickup point', 'the depot first')
   T.check(route[2].name:find(run.station, 1, true) == 1, 'then the station')
   T.check(c:view().fuelRuns.runs[1].gps, 'the run\'s GPS button lights')
   a.noRoute = true

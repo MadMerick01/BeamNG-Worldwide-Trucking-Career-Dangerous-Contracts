@@ -8,11 +8,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     // The multiplayer server's status for Play online: 'checking', 'online', 'offline' or 'unknown' (not reachable).
     server: { status: 'checking', at: null },
     // Towns already looked up for a real business this game, so each is only asked once.
-    businessAsked: {},
-    // Towns already asked about for car parks to put a depot in.
-    lotsAsked: {},
-    // The depot computer's window: open from Use computer until the player walks away or takes a job.
-    pc: { open: false }
+    businessAsked: {}
   }
   // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
   var STORE = 'earthFreight.hudMinimised'
@@ -475,8 +471,6 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         // A bill, an insurance offer or being stranded needs the HUD, so the start page makes way.
         if (scope.intro.open && urgent(next) && !urgent(previous)) scope.closeIntro()
         if (kept.help.at && urgent(next) && !urgent(previous)) scope.closeHelp()
-        // The computer's window closes once the player walks away from it, or has taken a job.
-        if (kept.pc.open && (!next.computer || !next.computer.near || (next.load && !previous.load) || urgent(next))) kept.pc.open = false
         for (var i = 0; i < autoOpen.length; i++) {
           if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) {
             scope.setTab(autoOpen[i][0])
@@ -500,33 +494,14 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // The help page is moved onto the page body the same way, so it can fill the middle of the screen.
       var helpPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-help') : null
       if (helpPage && typeof document !== 'undefined' && document.body) document.body.appendChild(helpPage)
-      // The depot computer: its Use computer button low in the middle of the screen, and its window, a big
-      // one in the middle like the start page, are moved onto the page body the same way.
-      var pcPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-pc') : null
-      if (pcPage && typeof document !== 'undefined' && document.body) document.body.appendChild(pcPage)
-      scope.pc = kept.pc
-      scope.useComputer = function () {
-        var c = scope.data && scope.data.computer
-        if (c && c.near) kept.pc.open = true
+      // The pickup point of the town the player is in, while they have no job and aren't at it.
+      scope.pickupStrip = function (d) {
+        var p = d && d.town && d.town.pickup
+        return p && !p.inZone && !d.load && p.distanceMetres != null ? p : null
       }
-      scope.closeComputer = function () { kept.pc.open = false }
-      // The depot of the town the player is in, while they have no job and aren't at its computer.
-      scope.depotStrip = function (d) {
-        var c = d && d.computer
-        return c && c.depot && !c.near && !d.load && c.depot.distanceMetres != null ? c.depot : null
-      }
-      scope.gpsToTownDepot = function () {
-        var c = scope.data && scope.data.computer
-        if (c && c.depot && c.depot.gpsAllowed) core('gpsToTownDepot()')
-      }
-      // The town's jobs and the fuel runs this computer offers.
-      scope.pcTown = function () {
-        var d = scope.data || {}, c = d.computer
-        return !!(c && c.near && c.town && d.town && d.town.id === c.town)
-      }
-      scope.pcFuel = function () {
-        var d = scope.data || {}, c = d.computer
-        return !!(c && c.near && c.fuel && d.fuelRuns && d.fuelRuns.hub && d.fuelRuns.hub.id === c.fuel && !d.load)
+      scope.gpsToPickup = function () {
+        var p = scope.data && scope.data.town && scope.data.town.pickup
+        if (p && p.gpsAllowed) core('gpsToPickup()')
       }
       fit()
       scope.openIntro = function (d) {
@@ -577,8 +552,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         'Choose where you start: open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
         'Then fit cargo boxes: the starter car only has its boot, which takes 2 slots. In Buy parts, put Cargo Load boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.',
-        'Drive to a town\'s depot, a tin shed with a computer on a desk in front. Park close to the computer and press Use computer. It works from the cab, or get out and walk up to it. Pick a job and press Take job: it fills your car.',
-        'Follow the GPS to the drop-off, stop in the town and press Deliver to get paid in full.',
+        'Drive to a town\'s pickup point near its middle: the needle on the Town tab points the way. Stop within {pickupMetres} m of it, pick a job and press Take job: it fills your car.',
+        'Follow the GPS to the drop-off, stop there and press Deliver to get paid in full.',
         'The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.'
       ]
       scope.introSteps = FALLBACK_STEPS
@@ -705,7 +680,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       // as Angular watches it by reference.
       var trip = {}
       // Close to a business the distance is exact, straight to the spot outside it.
-      scope.atShop = function (d) { return !!(d && d.load && d.load.business && d.load.business.near) }
+      scope.atShop = function (d) { return !!(d && d.load && ((d.load.business && d.load.business.near) || (d.load.point && d.load.point.near))) }
       scope.trip = function (d) {
         var l = d && d.load
         if (!l) return null
@@ -713,7 +688,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var drop = l.drop && started ? l.drop : null
         var shop = l.business
         trip.to = l.contract ? l.contract.name + (started ? '' : ' start') : (l.drop || l.beacon ? 'off-road drop' : shop ? shop.name + ', ' + l.to : l.to)
-        trip.metres = drop ? drop.distanceMetres : scope.atShop(d) ? shop.distanceMetres : (started ? l.distanceMetres : null)
+        trip.metres = drop ? drop.distanceMetres : scope.atShop(d) ? (shop || l.point).distanceMetres : (started ? l.distanceMetres : null)
         trip.letters = LETTERS[l.direction] || ''
         trip.pay = l.pay
         trip.danger = !!(l.contract || l.beacon)
@@ -1246,50 +1221,6 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           } else core('noBusiness("' + want.key + '")')
         }, function () { /* No answer from the web: the town's usual drop-off stays for this game. */ })
       }
-      // Depots in real car parks: when the game is about to place a town's depot it asks (computer.lots),
-      // and the HUD asks Overpass once for the open car parks round the town (none on a roof or under
-      // ground), then sports pitches. The game tries them first, nearest the middle first, and still
-      // checks the ground at each; with no answer it looks along the roads as before.
-      var LOT_MIN_M2 = 600, LOTS_SENT = 6
-      var lotQuery = function (lat, lon, metres) {
-        var at = '(around:' + Math.round(metres) + ',' + lat.toFixed(6) + ',' + lon.toFixed(6) + ')'
-        return '[out:json][timeout:15];(way' + at + '[amenity=parking];way' + at + '[leisure=pitch];);out geom 200;'
-      }
-      // The lots worth trying, best first: open car parks, then pitches, each nearest the middle first.
-      scope.depotLots = function (elements, lat, lon) {
-        var kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540
-        var out = []
-        ;(elements || []).forEach(function (e) {
-          var t = (e && e.tags) || {}, g = (e && e.geometry) || []
-          var rank = t.amenity === 'parking' ? 0 : (t.leisure === 'pitch' ? 1 : -1)
-          if (rank < 0 || g.length < 4) return
-          if (/^(multi-storey|underground|rooftop|sheds|carports|garage_boxes)$/.test(t.parking) || t.building || t.indoor === 'yes' ||
-              (t.layer && Number(t.layer) !== 0) || t.location === 'underground' || t.location === 'rooftop') return
-          var area = 0, cx = 0, cy = 0, n = 0
-          for (var i = 0; i < g.length; i++) {
-            var p = g[i], q = g[(i + 1) % g.length]
-            if (typeof p.lat !== 'number' || typeof p.lon !== 'number' || typeof q.lat !== 'number' || typeof q.lon !== 'number') return
-            var px = (p.lon - lon) * kx, py = (p.lat - lat) * ky, qx = (q.lon - lon) * kx, qy = (q.lat - lat) * ky
-            area += px * qy - qx * py
-            if (i < g.length - 1 || p.lat !== g[0].lat || p.lon !== g[0].lon) { cx += px; cy += py; n++ }
-          }
-          area = Math.abs(area) / 2
-          if (area < LOT_MIN_M2 || !n) return
-          cx /= n; cy /= n
-          out.push({ id: e.type + '/' + e.id, rank: rank, d: Math.sqrt(cx * cx + cy * cy), lat: lat + cy / ky, lon: lon + cx / kx })
-        })
-        out.sort(function (a, b) { return a.rank - b.rank || a.d - b.d || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) })
-        return out.slice(0, LOTS_SENT)
-      }
-      scope.lookUpLots = function (want) {
-        if (!want || !/^[a-z0-9_]+:[a-z0-9_-]+$/i.test(String(want.key)) || kept.lotsAsked[want.key]) return null
-        if (typeof want.latitude !== 'number' || typeof want.longitude !== 'number') return null
-        kept.lotsAsked[want.key] = true
-        return overpass(lotQuery(want.latitude, want.longitude, want.metres || 400)).then(function (elements) {
-          var lots = scope.depotLots(elements, want.latitude, want.longitude)
-          core('setDepotLots("' + want.key + '","' + lots.map(function (l) { return l.lat.toFixed(6) + ',' + l.lon.toFixed(6) }).join(';') + '")')
-        }, function () { /* No answer from the web: the depot is found along the roads. */ })
-      }
       scope.$on('EarthFreightState', function (event, data) {
         if (disposed || !data || typeof data.state !== 'string') return
         lastMessage = Date.now()
@@ -1302,7 +1233,6 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
           scope.data = data
           if (data.load && data.load.lookup) scope.lookUpBusiness(data.load.lookup)
           if (data.fuelRuns && data.fuelRuns.lookup) scope.lookUpBusiness(data.fuelRuns.lookup)
-          if (data.computer && data.computer.lots) scope.lookUpLots(data.computer.lots)
         })
       })
       mount(true)
@@ -1325,7 +1255,6 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         fitBox(false)
         if (startPage && startPage.parentNode) startPage.parentNode.removeChild(startPage)
         if (helpPage && helpPage.parentNode) helpPage.parentNode.removeChild(helpPage)
-        if (pcPage && pcPage.parentNode) pcPage.parentNode.removeChild(pcPage)
         scope.typing(false)
         clearInterval(heartbeat)
         mount(false)
