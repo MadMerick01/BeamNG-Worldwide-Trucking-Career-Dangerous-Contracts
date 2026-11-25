@@ -1605,82 +1605,37 @@ test('Fuel runs sit on the Town tab, not the Route tab', () => {
   for (const part of ['ng-click="teleportToDepot()"', 'ng-click="gpsToDepot()"', 'ng-click="takeFuelRun(r)"', 'ng-click="gpsToRun(r)"']) assert.ok(town.includes(part), part + ' on Town')
 })
 
-test('Depot computer: Use computer shows at the desk, opens the computer, and it closes on walking away or taking a job', () => {
-  assert.match(html, /class="ef-pc"/)
-  assert.match(html, /ng-click="useComputer\(\)"/)
-  assert.match(html, /ng-if="pcTown\(\)"/)
+test('Pickup point: the Town tab points to it with a needle and a GPS button, and the minimised strip shows how far', () => {
+  assert.match(html, /ng-style="arrowStyle\(data\.town\.pickup\)"/)
+  assert.match(html, /ng-click="gpsToPickup\(\)"/)
+  assert.match(html, /pickupStrip\(data\)/)
+  assert.ok(!html.includes('useComputer'), 'no depot computer')
   const a = app()
-  const town = { id: 'gn1', name: 'Penrith', jobs: [{ id: 'parts_gn2', good: 'Parts', to: 'St Clair', units: 4, allowed: true }] }
-  a.state({ state: 'READY', town, computer: { truckMetres: 30 } })
-  a.scope.useComputer()
-  assert.equal(a.scope.pc.open, false, 'not away from the computer')
-  a.state({ state: 'READY', town, computer: { near: true, name: 'Penrith', town: 'gn1', truckAway: 12, truckOk: true, truckMetres: 30 } })
-  assert.equal(a.scope.pcTown(), true, 'this computer has the town jobs')
-  assert.equal(a.scope.pcFuel(), false, 'and no fuel runs')
-  a.scope.useComputer()
-  assert.equal(a.scope.pc.open, true, 'opens at the desk')
-  a.scope.takeJob(town.jobs[0])
-  assert.equal(a.commands.at(-1), fixed("takeJob('parts_gn2', 100)"), 'Take job sends the job')
-  a.state({ state: 'READY', town, load: { good: 'Parts', to: 'St Clair', pay: 900 }, computer: { near: true, name: 'Penrith', town: 'gn1', truckOk: true } })
-  assert.equal(a.scope.pc.open, false, 'closes once the job is taken')
-  a.scope.useComputer()
-  a.state({ state: 'READY', town, computer: { truckMetres: 30 } })
-  assert.equal(a.scope.pc.open, false, 'closes on walking away')
-  const element = [{ querySelector: sel => sel === '.ef-pc' ? { tag: 'pc' } : null }]
-  const b = app(null, element)
-  assert.equal(b.document.body.children.some(c => c.tag === 'pc'), true, 'the computer is moved onto the page, to fill the middle of the screen')
-})
-
-test('Depot arrow: the Town tab points to the depot with a GPS button, and the minimised strip shows how far', () => {
-  assert.match(html, /ng-style="arrowStyle\(data\.computer\.depot\)"/)
-  assert.match(html, /ng-click="gpsToTownDepot\(\)"/)
-  assert.match(html, /depotStrip\(data\)/)
-  const a = app()
-  const depot = { name: 'Penrith', distanceMetres: 180, direction: 'north-east', letters: 'NE', arrow: 45, gpsAllowed: false }
-  a.state({ state: 'READY', town: { id: 'gn1', jobs: [] }, computer: { truckMetres: 30, depot } })
-  assert.equal(a.scope.depotStrip(a.scope.data).letters, 'NE', 'the strip shows the depot')
+  const pickup = { name: 'Penrith', distanceMetres: 180, direction: 'north-east', letters: 'NE', arrow: 45, radiusMetres: 50, gpsAllowed: false }
+  a.state({ state: 'READY', town: { id: 'gn1', jobs: [], pickup } })
+  assert.equal(a.scope.pickupStrip(a.scope.data).letters, 'NE', 'the strip shows the pickup point')
+  assert.equal(a.scope.arrowStyle(pickup).transform, 'rotate(45deg)', 'the needle turns')
   let count = a.commands.length
-  a.scope.gpsToTownDepot()
+  a.scope.gpsToPickup()
   assert.equal(a.commands.length, count, 'no GPS unless Lua allows it')
-  a.state({ state: 'READY', town: { id: 'gn1', jobs: [] }, computer: { truckMetres: 30, depot: { ...depot, gpsAllowed: true } } })
-  a.scope.gpsToTownDepot()
-  assert.equal(a.commands.at(-1), fixed('gpsToTownDepot()'))
-  a.state({ state: 'READY', town: { id: 'gn1', jobs: [] }, load: { to: 'Blaxland' }, computer: { truckMetres: 30, depot } })
-  assert.equal(a.scope.depotStrip(a.scope.data), null, 'not while on a job')
+  a.state({ state: 'READY', town: { id: 'gn1', jobs: [], pickup: { ...pickup, gpsAllowed: true } } })
+  a.scope.gpsToPickup()
+  assert.equal(a.commands.at(-1), fixed('gpsToPickup()'))
+  a.state({ state: 'READY', town: { id: 'gn1', jobs: [], pickup: { ...pickup, inZone: true } } })
+  assert.equal(a.scope.pickupStrip(a.scope.data), null, 'not once you are there')
+  a.state({ state: 'READY', town: { id: 'gn1', jobs: [], pickup }, load: { to: 'Blaxland' } })
+  assert.equal(a.scope.pickupStrip(a.scope.data), null, 'not while on a job')
 })
 
-test('Depot car parks: the HUD asks OpenStreetMap once for open car parks and sends the best to the game', async () => {
-  const lat = 46.02, lon = 7.75
-  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540
-  // A square way of side metres, its middle dx, dy metres from the town's middle.
-  const square = (id, dx, dy, side, tags) => {
-    const h = side / 2, c = [[-h, -h], [h, -h], [h, h], [-h, h], [-h, -h]]
-    return { type: 'way', id, tags, geometry: c.map(([x, y]) => ({ lat: lat + (dy + y) / ky, lon: lon + (dx + x) / kx })) }
-  }
-  const lots = [
-    square(1, 200, 0, 40, { amenity: 'parking', parking: 'surface' }),
-    square(2, 50, 0, 40, { amenity: 'parking', parking: 'multi-storey' }),
-    square(3, 30, 0, 40, { leisure: 'pitch' }),
-    square(4, 100, 0, 40, { amenity: 'parking' }),
-    square(5, 20, 0, 10, { amenity: 'parking' }),
-    square(6, 60, 0, 40, { amenity: 'parking', layer: '-1' })
-  ]
+test('Drop-off point: close to it, the job card and the strip count the exact metres down, with a needle', () => {
+  assert.match(html, /ng-style="arrowStyle\(data\.load\.point\)"/)
   const a = app()
-  const best = a.scope.depotLots(lots, lat, lon)
-  assert.deepEqual([...best.map(l => l.id)], ['way/4', 'way/1', 'way/3'], 'open car parks nearest first, then the pitch; none on a roof, under ground or too small')
-  assert.ok(Math.abs((best[0].lon - lon) * kx - 100) < 1, 'at the middle of the car park')
-  const asked = []
-  const fetch = (url, opts) => { asked.push(decodeURIComponent(opts.body.slice(5))); return Promise.resolve({ ok: true, json: () => Promise.resolve({ elements: lots }) }) }
-  const b = app(null, null, { fetch, Promise })
-  const want = { key: 'town:zermatt_1', latitude: lat, longitude: lon, metres: 400 }
-  b.state({ state: 'READY', computer: { lots: want } })
-  b.state({ state: 'READY', computer: { lots: want } })
-  await new Promise(r => setTimeout(r, 10))
-  assert.equal(asked.length, 1, 'asked once')
-  assert.ok(asked[0].includes('around:400,46.020000,7.750000') && asked[0].includes('amenity=parking'))
-  assert.match(b.commands.at(-1), /^if earthFreight_core then earthFreight_core\.setDepotLots\("town:zermatt_1","46\.\d{6},7\.\d{6};46\.\d{6},7\.\d{6};46\.\d{6},7\.\d{6}"\) end$/)
-  assert.equal(b.scope.lookUpLots({ ...want, key: 'bad key"' }), null, 'odd keys ignored')
+  a.state({ state: 'READY', load: { to: 'St Clair', pay: 900, distanceMetres: 4000, direction: 'north', point: { near: false, distanceMetres: 3000 } } })
+  assert.equal(a.scope.trip(a.scope.data).metres, 4000, 'far off: the road estimate')
+  a.state({ state: 'READY', load: { to: 'St Clair', pay: 900, distanceMetres: 400, direction: 'north', point: { near: true, distanceMetres: 310, arrow: 10 } } })
+  assert.equal(a.scope.trip(a.scope.data).metres, 310, 'close: straight to the point')
 })
+
 test('Relocate: the big map opens only when allowed, and the pop-up pays or goes back only when Lua allows it', () => {
   const a = app()
   let count = a.commands.length

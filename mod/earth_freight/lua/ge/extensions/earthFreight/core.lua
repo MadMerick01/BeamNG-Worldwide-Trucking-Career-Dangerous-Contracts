@@ -40,8 +40,8 @@ local emp = require('earthFreight/emp')
 local roadRobber = require('earthFreight/roadRobber')
 local adminRobber = require('earthFreight/adminRobber')
 local heli = require('earthFreight/heli')
-local depots = require('earthFreight/depots')
-local depotWorld = require('earthFreight/depotWorld')
+local pickups = require('earthFreight/pickups')
+local pickupWorld = require('earthFreight/pickupWorld')
 local roadLengths = require('earthFreight/roadLengths')
 local M = {}
 -- Money a new game starts with.
@@ -69,7 +69,7 @@ M.LANDING_GRACE_SECONDS = 120
 M.PAY_WAIT_SECONDS = 3
 -- On foot this far from the car after a teleport, the player is taken back to it.
 M.FOOT_FAR_METRES = 2000
--- A job taken on foot at a depot computer loads the truck this long after the player gets back in.
+-- A job's weight goes back on the truck this long after the player gets back in from walking.
 M.LOAD_AFTER_SECONDS = 2
 -- After a delivery, a purchase, a repair or a relocation, the game saves itself once the car has
 -- been stopped this long and nothing else is going on.
@@ -175,9 +175,9 @@ function M.new(deps)
     aircraft = deps.aircraft,
     -- The base thief's car (thiefCar.lua); without it a thief can't be chased.
     thiefCar = deps.thiefCar,
-    -- Puts the depots' sheds and computers down in the world (depotWorld.lua); without it there are
-    -- no depots, and jobs are taken on the HUD.
-    depotWorld = deps.depotWorld,
+    -- Finds the road nearest a town's pickup point (pickupWorld.lua); without it each town's pickup
+    -- point stays at the town's own point.
+    pickupWorld = deps.pickupWorld,
     odometer = odometer.new(),
     -- Sends game UI events, such as the pop-ups that show over the game's own menus.
     trigger = deps.trigger,
@@ -207,7 +207,7 @@ function M.new(deps)
   emp.attach(c)
   roadRobber.attach(c)
   adminRobber.attach(c)
-  depots.attach(c)
+  pickups.attach(c)
 
   function c:transition(nextState, reason)
     if self.state == nextState and self.reason == reason then return end
@@ -732,8 +732,7 @@ function M.new(deps)
     -- A road robber's car went with the level (roadRobber.lua). The hourly base thief's count is in the save (thief.lua).
     self.robber, self.robberJob, self.robberAtKm, self.empFiredAt = nil, nil, nil, nil
     self.adminDrive, self.adminFeedback = nil, nil
-    -- The depots went with the level; their spots are kept, by where they are on Earth.
-    self.depotsBuilt, self.depotSearch = nil, nil
+    -- The pickup points are kept, by where they are on Earth.
     self:interrupt('earth_level_required')
     self.adapter:invalidate()
   end
@@ -1833,17 +1832,12 @@ function M.new(deps)
     return nil
   end
 
-  -- Why taking a job at this place is not possible now, or nil when it is. With depots, jobs are
-  -- taken on foot at the town's depot computer, the truck parked close by (depots.lua); without
-  -- them, in the car, stopped in town.
+  -- Why taking a job at this place is not possible now, or nil when it is: in the car, stopped
+  -- within pickups.RADIUS of the town's pickup point (pickups.lua).
   function c:takeProblem(place)
-    if not self:depotsOn() then return self:tradeProblem(place) end
-    if not self.profile or self.error or self.state ~= 'READY' or not self.arrived then return 'Jobs are unavailable right now.' end
-    if self.hire then return self:awayText() end
-    if not place then return 'Drive into a town to find a job.' end
-    if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-    if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back to where you left from.' end
-    return self:computerProblem(place.id, nil)
+    local problem = self:tradeProblem(place)
+    if problem then return problem end
+    return self:pickupProblem(place, false)
   end
 
   -- The job board of a place: its jobs, seeded by how many jobs the player has done, in the band
@@ -1962,17 +1956,17 @@ function M.new(deps)
     return true
   end
 
-  -- Sets the GPS to the job's drop-off: its business when it has one, else the middle of its town.
+  -- Sets the GPS to the job's drop-off: its business when it has one, else its town's pickup point.
   function c:gpsToJob()
     local load = self.load
     if not load or load.drop or not self.configuration.autoGps or not self.adapter.setDestination then return false end
     local town = places.get(load.to)
-    local spot = load.business or town
+    local spot = load.business or self:pickupSpot(town)
     local name = load.business and (load.business.name .. ', ' .. town.name) or town.name
     local ok, why = self.adapter:setDestination(spot, name)
     if ok and load.estimateKm then self:measureRoad(load.from, load.to, spot) end
     self.gpsTown, self.gpsContract, self.gpsFeedback = ok and not load.business and town.id or nil, nil, nil
-    self.gpsTownDepot = nil
+    self.gpsPickup = nil
     if not ok then self.tradeFeedback = 'Set the GPS yourself: copy the drop-off coordinates on the Route tab.' end
     self.diag:event('gps', ok and (load.business and ('business:' .. town.id) or town.id) or tostring(why), ok and 'I' or 'W')
     return ok == true
@@ -2166,22 +2160,23 @@ function M.new(deps)
     return true
   end
 
-  -- GPS on the Route tab's Nearby list: sets BeamNG.Earth's GPS to the middle of a town, where
-  -- it counts as being in town. A job's own GPS is set again with the button on its own row.
+  -- GPS on the Route tab's Nearby list: sets BeamNG.Earth's GPS to a town's pickup point, where
+  -- its jobs are taken. A job's own GPS is set again with the button on its own row.
   function c:gpsToTown(placeId)
     local place = placeId and places.get(placeId)
     if not place or not self.adapter.setDestination or self.state ~= 'READY' or not self.arrived or self.hire then
       self.gpsFeedback = 'The GPS cannot be set right now.'
       return false
     end
-    local ok, why = self.adapter:setDestination(place, place.name)
+    local spot = self:pickupSpot(place)
+    local ok, why = self.adapter:setDestination(spot, place.name)
     self.diag:event('gps', ok and ('town:' .. place.id) or tostring(why), ok and 'I' or 'W')
     -- From a town, the route Earth plans measures the road between the two towns (roadLengths.lua).
     local here = ok and self:here()
-    if here and here.id ~= place.id then self:measureRoad(here.id, place.id, place)
+    if here and here.id ~= place.id then self:measureRoad(here.id, place.id, spot)
     elseif ok then self.roadMeasure = nil end
     self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = ok and place.id or nil, nil, nil, nil
-    self.gpsTownDepot = nil
+    self.gpsPickup = nil
     self.gpsFeedback = ok and ('The GPS is set to ' .. place.name .. '.')
       or ('Could not set the GPS. Paste ' .. coordinates(place) .. ' into the BeamNG.Earth map instead.')
     return ok == true
@@ -2198,7 +2193,7 @@ function M.new(deps)
     local ok, why = self.adapter:setDestination(section.start, section.name .. ' start')
     self.diag:event('gps', ok and ('contract_start:' .. section.id) or tostring(why), ok and 'I' or 'W')
     self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = nil, ok and section.id or nil, nil, nil
-    self.gpsTownDepot = nil
+    self.gpsPickup = nil
     self.gpsFeedback = ok and ('The GPS is set to the start of ' .. section.name .. ', ' .. section.region .. '.')
       or ('Could not set the GPS. Paste ' .. coordinates(section.start) .. ' into the BeamNG.Earth map instead.')
     return ok == true
@@ -2235,6 +2230,8 @@ function M.new(deps)
     if not self.load or not place then return 'You have no job to deliver.' end
     if place.id ~= self.load.to then return nil end
     if self.load.business then return self:businessProblem() end
+    local pickupProblem = self:pickupProblem(place, true)
+    if pickupProblem then return pickupProblem end
     local trailerProblem = self:trailerDeliveryProblem()
     if trailerProblem then return trailerProblem end
     local needed = jobs.drivenNeeded(places.get(self.load.from), place)
@@ -2712,8 +2709,8 @@ function M.new(deps)
     -- On foot, in the game's walking mode, the car waits where it was left.
     local wasOnFoot = self.onFoot
     self.onFoot = self.garage ~= nil and self.garage.onFoot ~= nil and self.garage:onFoot() or false
-    -- A job taken at a depot's computer, on foot, puts its weight on the truck LOAD_AFTER_SECONDS
-    -- after the player is back in it, once the game has really put them in the driver's seat.
+    -- Back from walking, the job's weight goes back on the truck LOAD_AFTER_SECONDS after the player
+    -- is in it, once the game has really put them in the driver's seat.
     if wasOnFoot and not self.onFoot and self.load then self.loadWeightAt = self.clock + M.LOAD_AFTER_SECONDS end
     -- Getting out: where the car stands, to take the player back to it after a teleport on foot (walkedAway).
     if self.onFoot and not wasOnFoot then
@@ -2766,7 +2763,7 @@ function M.new(deps)
     self:afterRespawn()
     self:watchFuel()
     self:watchStations()
-    self:watchDepots()
+    self:watchPickups()
     self:watchRoad()
     self:watchInsurance()
     self:watchTow()
@@ -3028,8 +3025,9 @@ function M.new(deps)
         id = place.id, name = place.name, size = place.size, stopped = self.odometer:stopped(), problem = problem,
         region = place.region, boost = jobs.roadBonusFor(places.boost(place)), character = characterText[kind],
         jobs = self:boardView(place, takeProblem == nil and not self.load), distance = self.jobDistance or 'any',
-        -- With depots, why the jobs can't be taken here (on the Town tab: at the depot computer).
-        takeProblem = self:depotsOn() and takeProblem or nil,
+        -- Why the jobs can't be taken here, such as not being at the pickup point.
+        takeProblem = takeProblem,
+        pickup = self:pickupView(place, current),
         delivery = delivery,
         refuel = refuel and { litres = refuel.litres, cost = refuel.cost, full = refuel.full } or nil,
         refuelAllowed = self:refuelProblem() == nil and self.fuelTank ~= nil and refuel ~= nil and not refuel.full and refuel.litres > 0
@@ -3072,10 +3070,12 @@ function M.new(deps)
         kg = self.load.kg, pay = self.load.pay, drivenKm = self.load.drivenKm, fuelRun = self:fuelRunLoadView(),
         -- A fluid load's slots are its litres.
         litres = good.kind == 'fluid' and self.load.slots or nil,
-        from = from.name, to = to.name, destination = location.copy(self.load.business or to),
-        distanceMetres = current and places.roadEstimate(current, self.load.business or to) or nil,
-        direction = current and location.compassPoint(location.bearing(current, self.load.business or to)) or nil,
+        from = from.name, to = to.name, destination = location.copy(self.load.business or self:pickupSpot(to)),
+        distanceMetres = current and places.roadEstimate(current, self.load.business or self:pickupSpot(to)) or nil,
+        direction = current and location.compassPoint(location.bearing(current, self.load.business or self:pickupSpot(to))) or nil,
         lookup = self:businessWanted(),
+        -- With no business, its town's drop-off point and the needle to it.
+        point = self:dropPointView(current),
       }
       local b = self.load.business
       if b then
@@ -3234,7 +3234,6 @@ function M.new(deps)
       insuranceDebt = self:insuranceOwed() > 0 and { owed = self:insuranceOwed(), payAllowed = self:payInsuranceAllowed(),
         sharePercent = math.floor(workshop.DEBT_SHARE * 100 + 0.5) } or nil,
       onFoot = self.onFoot == true,
-      computer = self:computerView(),
       -- Why Buy parts, Buy new car and Buy second hand are off, or nil when they are on.
       garageLocked = self.onFoot and 'Get back in your car to change parts or cars.' or self:towDebtProblem(),
       partsChange = self.pendingParts and {
@@ -3311,7 +3310,7 @@ function M.new(deps)
       relocatePerKm = string.format('$%.2f', shipping.FEE_PER_KM), offerKm = math.floor(shipping.OFFER_RADIUS_METRES / 1000),
       fuelRunMinKm = fuelruns.MIN_KM, fuelRunMaxKm = fuelruns.MAX_KM, townFuelTimes = fuel.TOWN_PRICE_TIMES,
       toll = percent(magnate.TOLL),
-      depotTruckMetres = depots.TRUCK_METRES, depotGiveUpSeconds = depots.GIVE_UP_SECONDS, depotFarKm = depots.FAR_METRES / 1000,
+      pickupMetres = pickups.RADIUS,
     }
   end
 
@@ -3716,7 +3715,7 @@ end
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
-      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(), depotWorld = depotWorld.new(),
+      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(), pickupWorld = pickupWorld.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
       streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(), nametagsOff = gameNametagsOff, layout = gameLayout,
       layouts = gameLayouts(),
@@ -3883,15 +3882,6 @@ function M.setBusiness(key, name, kind, latitude, longitude)
       or not location.finite(latitude) or not location.finite(longitude) then return false end
   return safely(function() return ensure():setBusiness(key, name, kind, latitude, longitude) end)
 end
--- The HUD's car parks for a depot: "lat,lon;lat,lon", best first, or "" for none.
-function M.setDepotLots(key, list)
-  if not businessKey(key) or type(list) ~= 'string' or #list > 600 or list:find('[^%d%.,;%-]') then return false end
-  local lots = {}
-  for lat, lon in list:gmatch('(%-?[%d%.]+),(%-?[%d%.]+)') do
-    lots[#lots + 1] = { latitude = tonumber(lat), longitude = tonumber(lon) }
-  end
-  return safely(function() return ensure():setDepotLots(key, lots) end)
-end
 function M.noBusiness(key)
   if not businessKey(key) then return false end
   return safely(function() return ensure():noBusiness(key) end)
@@ -3912,7 +3902,7 @@ function M.pickUpBeacon() return safely(function() return ensure():pickUpBeacon(
 function M.ignoreBeacon() return safely(function() return ensure():ignoreBeacon() end) end
 function M.gpsToContract(contract) return safely(function() return ensure():gpsToContract(id(contract)) end) end
 function M.gpsToTown(place) return safely(function() return ensure():gpsToTown(id(place)) end) end
-function M.gpsToTownDepot() return safely(function() return ensure():gpsToTownDepot() end) end
+function M.gpsToPickup() return safely(function() return ensure():gpsToPickup() end) end
 function M.bookShipping(destination) return safely(function() return ensure():bookShipping(id(destination)) end) end
 -- After a teleport by the big map: pay for the relocation there, or go back where you left, free.
 function M.payRelocation() return safely(function() return ensure():payRelocation() end) end
@@ -4008,8 +3998,6 @@ function M.openRadio() return safely(function() return ensure():openRadio() end)
 function M.onExtensionUnloaded()
   -- The web server lets go of its port, so the next load can open it again.
   if active and active.streetView then pcall(function() active.streetView:stop() end) end
-  -- The depots go too: a reload of the mod (or a new version of it) puts its own down.
-  if active and active.removeDepots then pcall(function() active:removeDepots() end) end
   active = nil
 end -- no implicit save on shutdown
 

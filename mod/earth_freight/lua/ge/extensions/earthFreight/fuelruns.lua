@@ -14,6 +14,7 @@ local jobs = require('earthFreight/jobs')
 local business = require('earthFreight/business')
 local trailers = require('earthFreight/trailers')
 local rockets = require('earthFreight/rockets')
+local pickups = require('earthFreight/pickups')
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
@@ -42,7 +43,7 @@ M.QUIET_KM, M.HUB_NEIGHBOURS, M.HUB_REACH_KM = 10, 1, 100
 M.BANDS = { { 60, 120 }, { 120, 200 } }
 M.PICK_FROM = 6
 -- Loaded stopped within DEPOT_RADIUS metres of the depot's spot (a real fuel terminal, depot or
--- truck stop the HUD found in OpenStreetMap), or anywhere in the town when it has none.
+-- truck stop the HUD found in OpenStreetMap), or at the town's pickup point when it has none.
 M.DEPOT_RADIUS = 40
 -- A depot town stays the card's once the truck is within KEEP_HUB_KM of it, so a closer town over
 -- the hill doesn't take its place while the player is driving in to load.
@@ -254,15 +255,20 @@ function M.attach(c)
     return true
   end
 
-  -- Whether the truck is where it loads: at the depot's spot, or in the town when it has none.
+  -- Whether the truck is where it loads: at the depot's spot, or at the town's pickup point when it
+  -- has none.
   function c:atFuelDepot(current, hub, depot)
     if not current or not hub then return false end
     if depot then
       local d = location.distance(current, depot)
       return d ~= nil and d <= M.DEPOT_RADIUS
     end
-    local here = places.at(current)
-    return here ~= nil and here.id == hub.id
+    return (self:atPickup(hub, current))
+  end
+
+  -- Where a run loads: the depot, or the town's pickup point.
+  function c:fuelDepotSpot(hub, depot)
+    return depot or self:pickupSpot(hub)
   end
 
   -- Whether Earth's places can be asked for stations; without them, runs go to any town in the pool.
@@ -333,21 +339,10 @@ function M.attach(c)
     if self.rockets then return rockets.TAKE_PROBLEM end
     if not hub then return 'There is no fuel depot within ' .. M.HUB_REACH_KM .. ' km.' end
     if self.hire then return self:awayText() end
-    -- With depots, a run is loaded on foot at the fuel depot's computer, the truck parked close by.
-    if self.depotsOn and self:depotsOn() then
-      if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
-      if self.stranded then return 'You teleported without paying for a relocation. Pay in the pop-up, or go back to where you left from.' end
-      local at = self:computerHere()
-      if not (at and at.fuel == hub.id) and not self:depotFor(nil, hub.id) then
-        return depot and ('Drive to ' .. depot.name .. ' in ' .. hub.name .. ' and use the computer at its depot to load.')
-          or ('Drive into ' .. hub.name .. ' and use the computer at its depot to load.')
-      end
-      return self:computerProblem(nil, hub.id)
-    end
     if self.onFoot then return ON_FOOT end
     if not self:atFuelDepot(current, hub, depot) then
       return depot and ('Drive to ' .. depot.name .. ' in ' .. hub.name .. ' and stop within ' .. M.DEPOT_RADIUS .. ' m to load.')
-        or ('Drive into ' .. hub.name .. ' and stop to load.')
+        or ('Drive to the pickup point in ' .. hub.name .. ' and stop within ' .. pickups.RADIUS .. ' m of it to load.')
     end
     if not self.odometer:stopped() then return 'Stop the truck to load.' end
     if self.pendingParts or self.pendingCar then return 'Settle your garage bill first.' end
@@ -370,7 +365,7 @@ function M.attach(c)
     local hub = self:fuelHub(current)
     if not hub then return out end
     local depot = self:fuelDepot(hub)
-    local spot = depot or hub
+    local spot = self:fuelDepotSpot(hub, depot)
     local away = location.distance(current, spot)
     local problem = self:fuelRunProblem(current, hub, depot)
     out.hub = { id = hub.id, name = hub.name, region = hub.region }
@@ -403,7 +398,7 @@ function M.attach(c)
     return out
   end
 
-  -- Sets the GPS to the depot on the card, or the middle of its town.
+  -- Sets the GPS to the depot on the card, or its town's pickup point.
   function c:gpsToDepot()
     local current = self.lastSample and self.lastSample.valid and self.lastSample or nil
     local hub = current and self:fuelHub(current)
@@ -412,12 +407,12 @@ function M.attach(c)
       return false
     end
     local depot = self:fuelDepot(hub)
-    local spot = depot or hub
-    local name = depot and (depot.name .. ', ' .. hub.name) or hub.name
+    local spot = self:fuelDepotSpot(hub, depot)
+    local name = depot and (depot.name .. ', ' .. hub.name) or (hub.name .. ' pickup point')
     local ok, why = self.adapter:setDestination(spot, name)
     self.diag:event('gps', ok and ('fuel_depot:' .. hub.id) or tostring(why), ok and 'I' or 'W')
     self.gpsTown, self.gpsContract, self.gpsDepot = nil, nil, ok and hub.id or nil
-    self.gpsTownDepot = nil
+    self.gpsPickup = nil
     self.gpsFeedback = ok and ('The GPS is set to ' .. name .. '.')
       or ('Could not set the GPS. Paste ' .. string.format('%.5f, %.5f', spot.latitude, spot.longitude) .. ' into the BeamNG.Earth map instead.')
     return ok == true
@@ -442,9 +437,9 @@ function M.attach(c)
     end
     local town = places.get(job.to)
     local depot = self:fuelDepot(hub)
-    local start, stop = depot or hub, self:station(town) or town
-    local startName = depot and (depot.name .. ', ' .. hub.name) or hub.name
-    local stopName = stop ~= town and (stop.name .. ', ' .. town.name) or town.name
+    local start, stop = self:fuelDepotSpot(hub, depot), self:station(town) or self:pickupSpot(town)
+    local startName = depot and (depot.name .. ', ' .. hub.name) or (hub.name .. ' pickup point')
+    local stopName = stop.name and (stop.name .. ', ' .. town.name) or town.name
     local ok, why, both
     if self.adapter.setRoute then
       ok, why = self.adapter:setRoute({ { point = start, name = startName }, { point = stop, name = stopName } })
@@ -453,7 +448,7 @@ function M.attach(c)
     if not ok then ok, why = self.adapter:setDestination(stop, stopName) end
     self.diag:event('gps', ok and ('fuel_run:' .. job.id .. (both and ':route' or '')) or tostring(why), ok and 'I' or 'W')
     self.gpsTown, self.gpsContract, self.gpsDepot, self.gpsRun = nil, nil, nil, ok and job.id or nil
-    self.gpsTownDepot = nil
+    self.gpsPickup = nil
     self.gpsFeedback = ok and (both and ('The GPS shows the whole run: ' .. startName .. ', then ' .. stopName .. '.')
       or ('The GPS is set to ' .. stopName .. '.')) or 'Could not set the GPS.'
     return ok == true
@@ -476,7 +471,7 @@ function M.attach(c)
     local problem = self:depotTripProblem(current, hub)
     if not problem and not self.booking then
       local depot = self:fuelDepot(hub)
-      local spot = depot or hub
+      local spot = self:fuelDepotSpot(hub, depot)
       if not self:book({ id = 'depot', name = depot and (depot.name .. ', ' .. hub.name) or hub.name, region = hub.region,
         latitude = spot.latitude, longitude = spot.longitude }, true) then problem = self.shippingFeedback end
     end
