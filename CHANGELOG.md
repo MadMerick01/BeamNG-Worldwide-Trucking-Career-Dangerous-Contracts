@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 283 · 25 Nov 2026
+
 - **Depots are gone: every town now has a pickup point instead.** There is no more tin shed, desk or **Use computer** button. Drive to the town's pickup point near its middle, stop within 50 m of it and take jobs straight from the **Town** tab. A needle on the Town tab points the way and says how far it is, its **GPS** button gives you a route, and the minimised HUD shows the distance. The point sits on the nearest road and is the same for everyone online, and it no longer jumps around when buildings load late.
 - **Jobs with no real business to go to are now delivered at the destination town's pickup point**, not anywhere in town. Stop within 50 m of it and press **Deliver**. Close to it, the job card counts down the exact metres and shows a needle. Jobs to a real shop, yard or warehouse are still delivered there, and fuel runs still end at a real petrol station.
 - **Fuel runs load at the fuel terminal as before.** Where a depot town has no terminal, you now load at its pickup point instead of anywhere in town.
