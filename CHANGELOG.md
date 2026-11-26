@@ -7,6 +7,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **Trailers no longer bounce on the hitch and run up a huge repair bill after you resume.** When your trailer comes out behind your truck (after loading a save, Bring out or a new trailer), it now waits until your truck has settled where it stays. The drop onto its legs, bumps while you back up to it and the jolt as it hitches are no longer added to the trailer's repair. If the trailer still gets bent and bounces on the hitch, it is fixed where it stands, for free, and hitches again. Damage it had before stays owed, and crashes once it is hitched are still charged. Saves still work.
+
+## Build 288 · 26 Nov 2026
+
 - **Still hidden while MadMerick tests it: you can now shoot back at the Raiders on the special delivery.** Without VR, press **Draw revolver** on the HUD (or set a key for "Draw or holster the revolver" in the game's Controls). Aim with the mouse and click to fire. The revolver holds 6 rounds, and **Reload** refills it from your spare rounds. They run out, so open those boots. Four hits stop a Raider, and a shot through its driver stops it at once. In VR, MadMerick's own VR revolver mod (a separate download) does the shooting with the same rounds, and gets its usual unlimited rounds back when the run ends. Saves still work.
 
 ## Build 287 · 26 Nov 2026
