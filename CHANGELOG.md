@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Still hidden while MadMerick tests it: you can now shoot back at the Raiders on the special delivery.** Without VR, press **Draw revolver** on the HUD (or set a key for "Draw or holster the revolver" in the game's Controls). Aim with the mouse and click to fire. The revolver holds 6 rounds, and **Reload** refills it from your spare rounds. They run out, so open those boots. Four hits stop a Raider, and a shot through its driver stops it at once. In VR, MadMerick's own VR revolver mod (a separate download) does the shooting with the same rounds, and gets its usual unlimited rounds back when the run ends. Saves still work.
+
 ## Build 287 · 26 Nov 2026
 
 - **Still hidden while MadMerick tests it: Raiders now come for you on the special delivery.** About half a minute after you reach the start in the Rub' al Khali, rival clans' Raiders in rusty and fast Barstows start turning up out of sight behind you. They circle you, swipe at your corners, go for your back wheel and work together to box you in. Up to 4 are out at once, and a new one comes whenever one gets stuck, is stopped or falls 500 m behind. Your revolver starts the run with 60 rounds, shown with the Raiders on the HUD. Get out and walk to the boot of a stopped Raider, and an **Open boot** button finds you anywhere from 0 to 20 more rounds. The revolver to fire them comes in the next build. Saves still work.

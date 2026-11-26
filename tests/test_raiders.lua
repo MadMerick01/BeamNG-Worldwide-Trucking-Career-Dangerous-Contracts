@@ -164,4 +164,23 @@ T.near(b.y, 7.5, 0.01, 'its boot is at its back')
 rc:removeAll()
 T.eq(cars[id], nil, 'its cars deleted when the run is over')
 
+-- The revolver: the run's rounds, six in the cylinder, and they run out.
+local Rev = require('earthFreight/revolver')
+T.eq(Rev.INFINITE, false, 'the rounds run out')
+local g = Rev.new(8)
+T.eq(g.loaded, 6, 'six in the cylinder'); T.eq(g.spare, 2, 'two spare')
+T.eq(g:fire(0), false, 'holstered: no shot')
+g:setDrawn(true)
+for i = 1, 6 do T.check(g:fire(i), 'shot ' .. i) end
+local ok, why = g:fire(7)
+T.eq(ok, false, 'empty'); T.eq(why, 'empty', 'clicks')
+T.check(g:reloading(), 'and reloads by itself')
+g:step(7 + Rev.RELOAD_SECONDS)
+T.eq(g.loaded, 2, 'the last two rounds'); T.eq(g.spare, 0, 'none spare')
+T.eq(g:rounds(), 2, 'two left')
+g:fire(20); g:fire(21)
+ok, why = g:fire(22)
+T.eq(why, 'empty', 'out of rounds'); T.check(not g:reloading(), 'nothing to reload')
+T.eq(Rev.new(3).loaded, 3, 'fewer than six: all in the cylinder')
+
 T.done('Raiders')
