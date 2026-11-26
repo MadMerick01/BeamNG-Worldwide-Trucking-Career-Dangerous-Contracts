@@ -2269,6 +2269,7 @@ do
   -- base it goes to the depot, for the depot's fee.
   T.check(c:takeJob(F.offer(c, penrith, 'parts')), 'another job'); T.check(c.load.trailerUnits > 0, 'in the trailer')
   local before = c:view().balance
+  F.advance(c, TR.SETTLE_SECONDS + 0.2) -- past the jolt of hitching
   g.trailers[id].damage = 4000; F.advance(c, 1.2)
   T.check(not c:view().trailer.parkAllowed and not c:view().trailer.sendAllowed, 'no base to park it at')
   T.check(not c:storeTrailer('base'), 'not to a base it does not have'); T.check(c.trailerFeedback:find('base of operations'), 'told why')

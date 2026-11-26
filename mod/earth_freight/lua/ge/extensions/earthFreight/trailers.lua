@@ -29,6 +29,17 @@ M.CHECK_SECONDS = 1
 M.SPAWN_SECONDS = 5
 -- After the mod respawns the trailer, for this long a player the game put in it is put back in their car.
 M.RETURN_DRIVER_SECONDS = 10
+-- Settling, as for the car (workshop.SETTLE_SECONDS): a trailer put in the world drops onto its
+-- legs, and the hitch jolts it as it couples. Damage it picks up while it settles is not billed.
+-- From coming out (or a respawn) until it first hitches, up to HITCH_GRACE_SECONDS, it is settling;
+-- each time it hitches it settles for SETTLE_SECONDS more.
+M.SETTLE_SECONDS = 4
+M.HITCH_GRACE_SECONDS = 90
+-- A trailer that is bent more than this while it settles (a hard drop, or bouncing on the hitch)
+-- is mended where it stands, so a bent coupler cannot stop it hitching; at most MENDS times each
+-- time it comes out.
+M.MEND_DAMAGE = 500
+M.MENDS = 2
 -- A haulier taking the trailer to the base, or bringing it out from there, away from the base: a
 -- flat fee plus a little per km between the player and the base (the same as Shipping).
 M.HAUL_FEE, M.HAUL_PER_KM = 100, 0.02
@@ -209,7 +220,8 @@ end
 function M.attach(c)
   -- The controller keeps:
   --   self.trailer: the trailer owned, as saved: { model, config, name, paid, damage, stored }
-  --   self.trailerOut: { id, at, spawned, hitched, damage, space } while it is in the world
+  --   self.trailerOut: { id, at, spawned, hitched, damage, space } while it is in the world, and
+  --     while it settles: settleUntil, settleFrom, settleCarried, baseline, awaitingHitch, mends
   --   self.foreignTrailer: the id of a trailer the player towed that is not theirs
 
   -- The trailers for sale, read once.
@@ -330,6 +342,9 @@ function M.attach(c)
       return false
     end
     self.trailerOut = { id = id, at = self.clock, spawned = true, hitched = false, damage = 0 }
+    -- It drops onto its legs, then the player backs up and it couples: settling until it hitches.
+    self.trailerOut.awaitingHitch = true
+    self:settleTrailer(self.trailerOut, M.HITCH_GRACE_SECONDS)
     self:readTrailerSpace()
     t.stored, t.at = false, nil
     self.appliedWeight = nil
@@ -346,6 +361,58 @@ function M.attach(c)
     self.appliedWeight = nil
   end
 
+  -- Starts (or extends) the trailer's settling for seconds (SETTLE_SECONDS by default). With keep
+  -- (it hitched), the damage billed now stays as it is; without (it came out or respawned), it
+  -- starts from none, as the game shows a new trailer.
+  function c:settleTrailer(out, seconds, keep)
+    local now = self.clock or 0
+    local untilAt = now + (seconds or M.SETTLE_SECONDS)
+    out.settleUntil = math.max(untilAt, out.settleUntil or untilAt)
+    out.settleFrom = now
+    out.settleCarried = keep and (out.damage or 0) or 0
+  end
+
+  -- Puts the game's damage reading of the trailer into out.damage. While it settles, the damage
+  -- on top of what it carried in is taken as how it stands (out.baseline), not as damage.
+  function c:readTrailerDamage(out, raw)
+    if not finite(raw) then return end
+    if out.settleUntil and (self.clock or 0) < out.settleUntil then
+      out.baseline = math.max(0, raw - (out.settleCarried or 0))
+    end
+    out.damage = math.max(0, raw - (out.baseline or 0))
+  end
+
+  -- A trailer bent while settling (dropped hard, or bounced on the hitch) can have a bent coupler
+  -- that will not hold, and it bounces on the hitch picking up more damage. Once it has settled
+  -- (or, while waiting to hitch, once it has dropped onto its legs) and the car is standing still,
+  -- it is mended where it stands, for free, and asked to hitch again. Returns true once mended.
+  function c:mendTrailer(out)
+    local t = self.trailer
+    if not t or not out or (out.baseline or 0) <= M.MEND_DAMAGE or (out.mends or 0) >= M.MENDS then return false end
+    local now = self.clock or 0
+    local settled = out.settleUntil == nil or now >= out.settleUntil
+    if not settled and not (out.awaitingHitch and now - (out.settleFrom or now) >= M.SETTLE_SECONDS) then return false end
+    if self.hire or self.onFoot or not self.garage.repair then return false end
+    if self.odometer and self.odometer.stopped and not self.odometer:stopped() then return false end
+    out.mends = (out.mends or 0) + 1
+    -- What it is billed for stays owed; the respawn keeps its parts and its load's setting.
+    t.damage = self:trailerDamage()
+    if t.damage <= 0 then t.damage = nil end
+    out.damage = 0
+    local ok, why, detail = self.garage:repair(nil, out.id)
+    if not ok then
+      self.diag:event('trailer_mend_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
+      return false
+    end
+    self.diag:event('trailer_mended', string.format('#%s %.0f damage', tostring(out.id), out.baseline or 0))
+    out.baseline = nil
+    self:settleTrailer(out, out.awaitingHitch and M.HITCH_GRACE_SECONDS or M.SETTLE_SECONDS)
+    out.returnDriverUntil = now + M.RETURN_DRIVER_SECONDS
+    if self.ownedParts and self.garage.enter then self.garage:enter(self.ownedParts.id) end
+    if self.garage.hitch then self.garage:hitch(out.id) end
+    return true
+  end
+
   -- Trailer parts cannot be changed: a trailer is sold with its cargo boxes or tanks fitted, and
   -- other parts make it handle and load wrongly. The game's own parts menu can still respawn it
   -- with other parts (the player can switch into it), so after any respawn we did not ask for, its
@@ -359,8 +426,16 @@ function M.attach(c)
   -- After a respawn of the trailer: one the mod did not ask for to fill its Load Volume (the
   -- game's Vehicle Config, the parts put back below) can leave that setting at another amount, so
   -- it is asked for again, and the load's weight is put back on.
+  -- A respawn leaves it as new: the damage it was billed for stays owed, and it settles again.
   local function trailerRespawned(self, out)
     if out.loadVolumeRespawn then out.loadVolumeRespawn = nil else out.loadVolumeAsked = nil end
+    local t = self.trailer
+    if t and (out.damage or 0) > 0 then
+      t.damage = self:trailerDamage()
+      if t.damage <= 0 then t.damage = nil end
+    end
+    out.damage, out.baseline = 0, nil
+    self:settleTrailer(out)
     if self.load then self:applyWeight(true) end
   end
 
@@ -717,6 +792,11 @@ function M.attach(c)
       if out.hitched ~= attached then
         out.hitched = attached
         self.appliedWeight = nil
+        -- The hitch jolts it as it couples: it settles from here, keeping the damage it has.
+        if attached then
+          if out.awaitingHitch then out.awaitingHitch, out.settleUntil = nil, nil end
+          self:settleTrailer(out, M.SETTLE_SECONDS, true)
+        end
         if attached then self.trailerFeedback = nil end
         self.diag:event(attached and 'trailer_hitched' or 'trailer_unhitched', tostring(other))
       end
@@ -737,6 +817,9 @@ function M.attach(c)
         or self.respawned or self.partsCheckDue or self.hire or self.onFoot then return end
       local vehicle = self.lastSample and self.lastSample.valid and self.lastSample.vehicle
       if not vehicle or vehicle.id ~= self.ownedParts.id then return end
+      -- Not while the car is still settling in (dropping onto its springs, or Earth putting it
+      -- down as the terrain loads): the trailer comes out behind it once it stands where it stays.
+      if self.settleUntil and (self.clock or 0) < self.settleUntil then return end
       -- A trailer saved out comes back behind the car, once; if it cannot, it is stored.
       self.trailerRestored = true
       if self:spawnTrailer() then self:applyWeight()
@@ -760,7 +843,8 @@ function M.attach(c)
       return
     end
     local inspected = self.garage:inspect(out.id)
-    if inspected and finite(inspected.damage) then out.damage = inspected.damage end
+    if inspected then self:readTrailerDamage(out, inspected.damage) end
+    self:mendTrailer(out)
   end
 
   -- A teleport leaves the trailer behind, so it is taken to the base (or the depot), for free.
@@ -812,7 +896,7 @@ function M.attach(c)
     if not self.garage.setLoadVolume then return false end
     local t = self.trailer
     local inspected = self.garage.inspect and self.garage:inspect(out.id)
-    if inspected and finite(inspected.damage) then out.damage = inspected.damage end
+    if inspected then self:readTrailerDamage(out, inspected.damage) end
     local ok, why, detail = self.garage:setLoadVolume(out.id, setting.name, litres)
     if not ok then
       self.diag:event('trailer_load_volume_failed', tostring(why) .. (detail and (': ' .. detail) or ''), 'W')
@@ -822,7 +906,9 @@ function M.attach(c)
       t.damage = self:trailerDamage()
       if t.damage <= 0 then t.damage = nil end
     end
-    out.damage, out.loadVolumeAsked, out.loadVolumeRespawn = 0, litres, true
+    out.damage, out.baseline, out.loadVolumeAsked, out.loadVolumeRespawn = 0, nil, litres, true
+    -- The respawned trailer, with its load, drops onto its legs and couples again: it settles.
+    self:settleTrailer(out)
     out.returnDriverUntil = (self.clock or 0) + M.RETURN_DRIVER_SECONDS
     if self.ownedParts and self.garage.enter then self.garage:enter(self.ownedParts.id) end
     if self.garage.hitch then self.garage:hitch(out.id) end
