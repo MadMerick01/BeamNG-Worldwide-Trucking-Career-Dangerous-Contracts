@@ -132,6 +132,8 @@ local function load(l)
   if l.cost ~= nil and (l.contract == nil or not integer(l.cost, 0)) then return nil end
   if l.back ~= nil and (l.contract == nil or not drop(l.back)) then return nil end
   if l.fuelled ~= nil and l.fuelled ~= true then return nil end
+  -- Its revolver's rounds (desertRun.lua).
+  if l.ammo ~= nil and (l.cost == nil or not integer(l.ammo, 0)) then return nil end
   -- A Ship Day container from before Mayday Rescue replaced it: which ship and which container on it.
   local container
   if l.ship ~= nil then
@@ -157,7 +159,7 @@ local function load(l)
   return { good = l.good, units = l.units, slots = l.slots, kg = l.kg or 0, pay = l.pay, paid = l.paid,
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
-    cost = l.cost, back = l.back and drop(l.back) or nil, fuelled = l.fuelled,
+    cost = l.cost, back = l.back and drop(l.back) or nil, fuelled = l.fuelled, ammo = l.ammo,
     pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop, ship = container,
     -- JATO rockets were fitted on this job online (rockets.lua): it pays nothing.
     toll = toll, fuelRun = l.fuelRun, rockets = l.rockets == true or nil,

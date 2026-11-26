@@ -643,6 +643,14 @@
           </div>
         </div>
         <p role="status" ng-if="data.gpsFeedback" style="margin:6px 0;">{{data.gpsFeedback}}</p>
+        <div ng-if="data.desert" style="margin:8px 0;padding:8px 10px;border:1px solid #f2c94c;border-radius:6px;font-size:13px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;min-width:0;"><b style="color:#f2c94c;">Raiders</b> <span style="color:#c9d6d2;">{{data.desert.up}} of {{data.desert.max}} out</span></div>
+            <div><b>{{data.desert.rounds}}</b> <span style="color:#c9d6d2;">{{data.desert.rounds == 1 ? 'round' : 'rounds'}}</span></div>
+          </div>
+          <div role="status" ng-if="data.desert.line" style="margin-top:4px;">{{data.desert.line}}</div>
+          <button type="button" ng-if="data.desert.boot" ng-click="openBoot()" style="margin-top:6px;padding:5px 10px;">Open boot</button>
+        </div>
         <div ng-if="data.abandonAllowed && data.giveUp" class="ef-sec">
           <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('abandon')" aria-expanded="{{isOpen('abandon', data.abandonArmed)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('abandon', data.abandonArmed) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t" style="color:#c9d6d2;">Give up</div><span class="ef-sum">{{data.giveUp.started ? 'lose the load' : 'get your money back'}}</span></div></div>
           <div ng-if="isOpen('abandon', data.abandonArmed)" class="ef-sb">
