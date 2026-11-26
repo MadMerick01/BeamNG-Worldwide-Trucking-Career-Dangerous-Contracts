@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 289 · 26 Nov 2026
+
 - **Still hidden while MadMerick tests it: the special delivery's money is now checked by MadMerick's server.** Online, the server only accepts a special delivery from its admins while the mission is hidden. It pays at most 6 times what the load cost, and it refuses a payout that comes too soon to have driven the 30 km. Without VR, the revolver now only ever hits Raiders, never another player's car or traffic in the way. Saves still work.
 
 ## Build 288 · 26 Nov 2026
