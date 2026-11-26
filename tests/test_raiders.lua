@@ -183,4 +183,31 @@ ok, why = g:fire(22)
 T.eq(why, 'empty', 'out of rounds'); T.check(not g:reloading(), 'nothing to reload')
 T.eq(Rev.new(3).loaded, 3, 'fewer than six: all in the cylinder')
 
+-- The flat-screen shot hits only a Raider, never another player's car in the way (MadMerick's hard rule online).
+local A = require('earthFreight/aim')
+local V = {}
+V.__index = V
+local function v3(x, y, z) return setmetatable({ x = x, y = y, z = z }, V) end
+V.__sub = function(a, b) return v3(a.x - b.x, a.y - b.y, a.z - b.z) end
+function V:dot(o) return self.x * o.x + self.y * o.y + self.z * o.z end
+local function boxCar(id, y)
+  local c = { id = id, commands = {} }
+  function c:getID() return self.id end
+  function c:getSpawnWorldOOBB()
+    return { getHalfExtents = function() return { x = 1, y = 2, z = 1 } end, getCenter = function() return v3(0, y, 0) end,
+      getAxis = function(_, i) return i == 0 and v3(1, 0, 0) or i == 1 and v3(0, 1, 0) or v3(0, 0, 1) end }
+  end
+  function c:queueLuaCommand(cmd) self.commands[#self.commands + 1] = cmd end
+  return c
+end
+_G.vec3 = function(x, y, z) if type(x) == 'table' then return v3(x.x, x.y, x.z) end return v3(x, y, z) end
+local someone, raider = boxCar(8, 20), boxCar(9, 40)
+local gun = A.new({ vehicles = function() return { someone, raider } end, player = function() return nil end,
+  wall = function(_, _, range) return range end, vrPistol = function() return nil end })
+gun:shoot({ origin = v3(0, 0, 0), dir = v3(0, 1, 0) }, function(veh) return veh:getID() == 9 end)
+T.eq(#someone.commands, 0, 'the other player\'s car in the way is not hit')
+T.eq(#raider.commands, 1, 'the Raider behind it is')
+T.check(raider.commands[1]:find('earthFreightHit', 1, true) ~= nil, 'with this mod\'s own shot')
+_G.vec3 = nil
+
 T.done('Raiders')

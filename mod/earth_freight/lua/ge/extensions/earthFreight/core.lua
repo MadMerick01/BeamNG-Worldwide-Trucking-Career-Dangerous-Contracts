@@ -443,7 +443,10 @@ function M.new(deps)
     end
     if event == 'wwtcSaveNow' then self:saveForRestart() end
     if event == 'wwtcSaved' and self.mp.saveError then
-      self.feedback = 'The server did not keep your last save (' .. self.mp.saveError .. '). Press Save to try again.'
+      -- The server's checks on the special delivery (special.lua) say what was wrong in words.
+      local why = contracts.special.REFUSED[self.mp.saveError]
+      self.feedback = why and ('The server did not keep your last save: ' .. why .. '.')
+        or ('The server did not keep your last save (' .. self.mp.saveError .. '). Press Save to try again.')
       self.diag:event('multiplayer_save_refused', self.mp.saveError, 'W')
     end
   end

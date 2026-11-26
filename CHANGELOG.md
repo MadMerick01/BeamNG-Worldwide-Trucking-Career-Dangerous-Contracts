@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Still hidden while MadMerick tests it: the special delivery's money is now checked by MadMerick's server.** Online, the server only accepts a special delivery from its admins while the mission is hidden. It pays at most 6 times what the load cost, and it refuses a payout that comes too soon to have driven the 30 km. Without VR, the revolver now only ever hits Raiders, never another player's car or traffic in the way. Saves still work.
+
 - **Still hidden while MadMerick tests it: you can now shoot back at the Raiders on the special delivery.** Without VR, press **Draw revolver** on the HUD (or set a key for "Draw or holster the revolver" in the game's Controls). Aim with the mouse and click to fire. The revolver holds 6 rounds, and **Reload** refills it from your spare rounds. They run out, so open those boots. Four hits stop a Raider, and a shot through its driver stops it at once. In VR, MadMerick's own VR revolver mod (a separate download) does the shooting with the same rounds, and gets its usual unlimited rounds back when the run ends. Saves still work.
 
 ## Build 287 · 26 Nov 2026
