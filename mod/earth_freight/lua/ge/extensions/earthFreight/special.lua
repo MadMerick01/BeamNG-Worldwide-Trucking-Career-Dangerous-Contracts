@@ -32,6 +32,15 @@ M.START_ROUNDS = 60
 -- The two loads, as goods (goods.lua): solid and fluid.
 M.GOODS = { 'precursors', 'precursors_fluid' }
 
+-- Online, MadMerick's server checks the special delivery's money in every save (the private trucking-server repo):
+-- why it refused one, in words for the HUD.
+M.REFUSED = {
+  special_hidden = 'the special delivery is only open to the server\'s admins for now',
+  special_price = 'the precursors cost less than the sheikh\'s price',
+  special_pay = 'it was paid more than ' .. M.PAY_TIMES .. ' times what the load cost',
+  special_too_fast = 'the load reached the shed too soon to have driven the ' .. M.KM .. ' km',
+}
+
 M.SECTION = {
   id = 'shed_in_the_desert', name = 'the Shed in the Desert', region = "Rub' al Khali, the Empty Quarter",
   km = M.KM, special = true,

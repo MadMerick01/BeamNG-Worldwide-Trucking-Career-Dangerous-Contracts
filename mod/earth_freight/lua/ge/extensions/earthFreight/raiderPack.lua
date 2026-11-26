@@ -696,6 +696,12 @@ function M.new(car, random)
     return h.boot or 0
   end
 
+  -- Whether car id is one of the Raiders' (up or down): the only cars the revolver can hit.
+  function p:isRaider(id)
+    for _, h in ipairs(self.raiders) do if h.id == id then return true end end
+    return false
+  end
+
   -- The distance to the nearest Raider still up, or nil.
   function p:nearest()
     local best

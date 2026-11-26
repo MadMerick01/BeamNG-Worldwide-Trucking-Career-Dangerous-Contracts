@@ -242,7 +242,11 @@ function M.attach(c)
     end
     -- The hit, if any, comes back from the car a moment later (raiderHit).
     self.shotAt = self.clock
-    self.aim:shoot(shot)
+    local pack = self.raiders
+    self.aim:shoot(shot, function(veh)
+      local ok, id = pcall(function() return veh:getID() end)
+      return ok and pack ~= nil and pack:isRaider(id)
+    end)
   end
 
   -- A hit from either revolver, the VR one or the flat-screen one: they send the same events.
