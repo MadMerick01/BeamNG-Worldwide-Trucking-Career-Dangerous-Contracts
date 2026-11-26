@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 285 · 26 Nov 2026
+
 - **Jobs are taken on the big jobs board again.** Stop within 50 m of a town's pickup point and an Open jobs board button shows low in the middle of the screen, where Use computer used to be. Press it to open the big jobs board with the town's jobs, Load sliders and GPS, and press Take job. It only opens when you press the button, and closes when you take a job or drive off.
 - **Fuel runs are loaded on the same jobs board.** Stop at the fuel terminal, or at the town's pickup point where there is no terminal, and press Open jobs board.
 - The Town tab still lists every town's jobs and fuel runs, so you can see what each town has and wants, but it no longer has Take job or Load buttons. Your saves still work.
