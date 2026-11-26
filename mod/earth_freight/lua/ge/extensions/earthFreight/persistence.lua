@@ -127,6 +127,11 @@ local function load(l)
   if l.trailerUnits ~= nil and (not integer(l.trailerUnits, 1) or not integer(l.units, 1) or l.trailerUnits > l.units) then return nil end
   if l.contract ~= nil and (type(l.contract) ~= 'string' or not optionalString(l.contract) or l.drop == nil
       or (l.started ~= nil and type(l.started) ~= 'boolean') or (l.fee ~= nil and not integer(l.fee, 0))) then return nil end
+  -- The special delivery (special.lua), a contract too: what its load cost, where it was taken (Give up goes back
+  -- there) and whether its free full tank has gone in.
+  if l.cost ~= nil and (l.contract == nil or not integer(l.cost, 0)) then return nil end
+  if l.back ~= nil and (l.contract == nil or not drop(l.back)) then return nil end
+  if l.fuelled ~= nil and l.fuelled ~= true then return nil end
   -- A Ship Day container from before Mayday Rescue replaced it: which ship and which container on it.
   local container
   if l.ship ~= nil then
@@ -152,6 +157,7 @@ local function load(l)
   return { good = l.good, units = l.units, slots = l.slots, kg = l.kg or 0, pay = l.pay, paid = l.paid,
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
+    cost = l.cost, back = l.back and drop(l.back) or nil, fuelled = l.fuelled,
     pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop, ship = container,
     -- JATO rockets were fitted on this job online (rockets.lua): it pays nothing.
     toll = toll, fuelRun = l.fuelRun, rockets = l.rockets == true or nil,

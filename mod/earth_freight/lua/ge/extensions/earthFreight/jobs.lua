@@ -7,6 +7,7 @@ local location = require('earthFreight/location')
 local places = require('earthFreight/places')
 local goods = require('earthFreight/goods')
 local contracts = require('earthFreight/contracts')
+local special = require('earthFreight/special')
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
@@ -212,6 +213,12 @@ end
 -- the quote's baseBonus is how much it added to road.
 function M.quote(job, units, needs, now, shareAt)
   local good, from, to = goods.get(job.good), places.get(job.from), places.get(job.to)
+  -- The special delivery pays special.PAY_TIMES what its load cost (special.lua).
+  if job.contract and contracts.get(job.contract).special then
+    local cost = special.cost(good, units)
+    return { pay = special.pay(cost), cost = cost, base = special.pay(cost), factor = special.PAY_TIMES, need = 1, road = 1,
+      shortage = false, level = 'sweet' }
+  end
   if job.contract then
     local base, times = M.basePay(good, units, M.BASE_KM), contracts.get(job.contract).pay
     return { pay = units > 0 and math.max(10, round10(base * times)) or 0, base = round10(base),

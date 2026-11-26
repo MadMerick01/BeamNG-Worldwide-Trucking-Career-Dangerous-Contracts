@@ -801,7 +801,7 @@ test('each town job and dangerous contract has a GPS button to see where it goes
   assert.equal(a.commands.filter(c => c.includes('takeJob')).length, 0, 'without taking the job')
   a.scope.gpsToContract('death_road')
   assert.ok(a.commands.includes(fixed("gpsToContract('death_road')")), 'a dangerous contract sends its road')
-  assert.ok(html.includes('ng-click="j.contract ? gpsToContract(j.contract.id) : gpsToTown(j.toId)"') && html.includes('ng-if="!j.drop" aria-label="Set the GPS'), 'no button on off-road drops')
+  assert.ok(html.includes('ng-click="j.contract ? gpsToContract(j.contract.id) : gpsToTown(j.toId)"') && html.includes('ng-if="!j.drop && !(j.contract && j.contract.special)" aria-label="Set the GPS'), 'no button on off-road drops or the special delivery')
 })
 
 test('folding sections remember how the player left them, and open by themselves when they need the player', () => {

@@ -2910,6 +2910,99 @@ do
   T.eq(rules.online, false, 'single player is not online')
 end
 
+-- The special delivery (special.lua): hidden unless shown, bought with the player's own money, moved to the
+-- Rub' al Khali with a free full tank, paid PAY_TIMES the cost at the shed. Give up loses the lot and goes back.
+do
+  local special = require('earthFreight/special')
+  local function specialRows(c)
+    local out = {}
+    for _, j in ipairs(c:view().town.jobs) do if j.contract and j.contract.special then out[#out + 1] = j end end
+    return out
+  end
+  T.eq(special.OPEN, false, 'hidden from players while it is tested')
+  T.near(location.distance(special.START, special.FINISH), 30000, 1, 'the shed is 30 km from the start')
+  T.near((location.bearing(special.START, special.FINISH) + 180) % 360 - 180, 0, 1e-6, 'due north')
+  T.check(special.visible(true, true, false) and not special.visible(true, false, true), 'online: admins only, the switch does not count')
+  T.check(special.visible(false, false, true) and not special.visible(false, false, false), 'single player: the switch')
+  for _, g in ipairs(goods.carried()) do T.check(not g.special, g.id .. ': precursors are never posted on a board') end
+
+  -- Hidden: no cards on the board.
+  local h = F.controller(); h:tick(0.1); h:tick(0.6); h:tick(0.6)
+  T.eq(#specialRows(h), 0, 'not on the board without the switch')
+
+  -- Shown with the switch in config.json.
+  local cfg = F.config(); cfg.specialDelivery = true
+  local io = F.io({ [F.CONFIG] = cfg })
+  local c, _, a, _, _, f = F.controller({ io = io })
+  c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  c.profile.progression.balance = 1000000
+  local rows = specialRows(c)
+  T.eq(#rows, 2, 'solid and fluid cards'); T.eq(rows[1].goodId, 'precursors', 'solid first')
+  local row = rows[1]
+  T.check(row.units > 0 and row.allowed, 'the car can carry crates')
+  local unit = special.unitPrice(goods.get('precursors'))
+  T.eq(row.contract.unitPrice, unit, 'the price of a unit'); T.eq(row.contract.cost, unit * row.units, 'and of a full load')
+  T.eq(row.pay, row.contract.cost * special.PAY_TIMES, 'pays 6 times the cost'); T.eq(row.contract.fee, nil, 'no relocation fee')
+  T.check(c:takeJob(row.id), 'bought'); local cost = c.load.cost
+  T.eq(cost, unit * c.load.units, 'what the load cost'); T.eq(c.load.pay, cost * special.PAY_TIMES, 'pays 6 times that')
+  T.eq(c:view().balance, 1000000 - cost, 'paid for with the player\'s own money')
+  T.near(a.teleports[#a.teleports].latitude, special.START.latitude, 1e-9, 'Earth takes the car to the start')
+  T.check(c.load.back ~= nil, 'remembers where it was taken')
+  T.check(c:view().giveUp ~= nil and not c:view().giveUp.started, 'Give up instead of Abandon')
+  -- Kept in the save.
+  T.check(c:manualSave(), 'saved')
+  local r = F.controller({ io = io })
+  T.eq(r.load.cost, cost, 'a reload keeps the cost'); T.check(r.load.back ~= nil, 'and where to go back to')
+  -- At the start: started, no GPS, and the tank is filled once the car reports it.
+  local gpsBefore = #a.gps
+  a.pose = F.copy(special.START); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.check(c.load and c.load.started, 'started'); T.eq(#a.gps, gpsBefore, 'no GPS: there are no roads')
+  T.check(c:view().flash.title:find('SPECIAL DELIVERY'), 'told so')
+  c:fuelReading(1, 12, 80)
+  T.eq(f.sets[#f.sets].litres, 80, 'the tank is filled'); T.eq(c:view().balance, 1000000 - cost, 'for free')
+  c:fuelReading(1, 12, 80); c:fuelReading(1, 80, 80)
+  T.eq(f.sets[#f.sets].litres, 80, 'the fill is not undone as a reset')
+  T.eq(c.fuel.litres, 80, 'full')
+  -- Driven to the shed and stopped: paid 6 times.
+  F.drive(c, a, special.FINISH)
+  T.check(c:view().load.drop.inZone and c:view().load.drop.delivery.allowed, 'at the shed and stopped')
+  T.check(c:deliver(), 'delivered'); T.eq(c:view().balance, 1000000 - cost + cost * special.PAY_TIMES, 'paid 6 times the cost')
+  T.check(c:view().flash.text:find('sheikh', 1, true), 'the sheikh paid')
+  T.eq(c.profile.progression.contractsDone, nil, 'not counted as a dangerous contract')
+
+  -- Cancelled before the start: the cost is paid back.
+  local d, _, da = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  d:tick(0.1); d:tick(0.6); d:tick(0.6)
+  d.profile.progression.balance = 500000
+  T.check(d:takeJob(specialRows(d)[1].id, 50), 'half a load bought')
+  local paid = d.load.cost
+  T.eq(paid, unit * d.load.units, 'half the cost')
+  T.check(not d:abandonJob(), 'asks first'); T.check(d:view().tradeFeedback:find('paid back'), 'says it is paid back')
+  T.check(d:abandonJob(), 'cancelled'); T.eq(d:view().balance, 500000, 'all paid back, no abandon fee')
+
+  -- Given up in the desert: the lot is lost and Earth takes the player back.
+  T.check(d:takeJob(specialRows(d)[1].id), 'bought again'); paid = d.load.cost
+  local back = F.copy(d.load.back)
+  da.pose = F.copy(special.START); d:tick(0.1); d:tick(0.6); d:tick(0.6)
+  T.check(d.load.started, 'in the desert')
+  T.check(not d:abandonJob(), 'asks first'); T.check(d:view().tradeFeedback:find('lose the load'), 'says the load is lost')
+  local teleports = #da.teleports
+  T.check(d:abandonJob(), 'given up'); T.eq(d.load, nil, 'no load'); T.eq(d:view().balance, 500000 - paid, 'the cost is lost, no fee')
+  T.eq(#da.teleports, teleports + 1, 'Earth takes the player back'); T.near(da.teleports[#da.teleports].latitude, back.latitude, 1e-9, 'to where it was taken')
+  da.pose = F.copy(back); d:tick(0.1); d:tick(0.6); d:tick(0.6)
+  T.eq(d.stranded, nil, 'the trip back is not an unpaid relocation')
+
+  -- Not enough money for the load.
+  local e = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  e:tick(0.1); e:tick(0.6); e:tick(0.6)
+  e.profile.progression.balance = unit - 1
+  T.check(not specialRows(e)[1].allowed, 'not even one unit')
+  e.profile.progression.balance = unit
+  T.check(not e:takeJob(specialRows(e)[1].id), 'a full load is too dear'); T.check(e:view().tradeFeedback:find('Load slider'), 'told to take less')
+  T.check(e:takeJob(specialRows(e)[1].id, 10), 'a smaller load')
+end
+
+
 T.done('Earth Freight controller')
 
 -- On foot, a teleport takes only the walker: the player is taken back to the car, and getting back in is no teleport.

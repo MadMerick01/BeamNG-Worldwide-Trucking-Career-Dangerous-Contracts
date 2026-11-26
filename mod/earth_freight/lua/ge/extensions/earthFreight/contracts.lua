@@ -3,6 +3,7 @@
 -- every job. Taking it pays FEE to be relocated to the section's start; the load is delivered
 -- stopped within the finish circle, once the section has been driven. Pure data and maths.
 local location = require('earthFreight/location')
+local special = require('earthFreight/special')
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
@@ -49,6 +50,9 @@ M.LIST = {
 
 local byId = {}
 for _, s in ipairs(M.LIST) do byId[s.id] = s end
+-- The special delivery (special.lua) is a section too, found by get but never picked for a board.
+byId[special.SECTION.id] = special.SECTION
+M.special = special
 
 function M.get(id) return byId[id] end
 
