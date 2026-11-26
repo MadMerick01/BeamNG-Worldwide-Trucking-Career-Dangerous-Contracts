@@ -2963,12 +2963,54 @@ do
   c:fuelReading(1, 12, 80); c:fuelReading(1, 80, 80)
   T.eq(f.sets[#f.sets].litres, 80, 'the fill is not undone as a reset')
   T.eq(c.fuel.litres, 80, 'full')
+  -- The Raiders (desertRun.lua): a pretend game's cars, all at the truck.
+  T.eq(c.load.ammo, special.START_ROUNDS, 'the revolver starts with 60 rounds')
+  T.eq(c:view().desert.rounds, 60, 'shown on the HUD')
+  local desertRun = require('earthFreight/desertRun')
+  local raiderPack = require('earthFreight/raiderPack')
+  local rcar = { cars = {}, next = 500, preloaded = 0 }
+  function rcar:walker() return { id = 1, x = 0, y = 0, z = 0, dx = 0, dy = 1, speed = 0 } end
+  function rcar:player() return { id = 1, x = 0, y = 0, z = 0, dx = 0, dy = 1, speed = 0 } end
+  function rcar:preload(n) self.preloaded = n; return n end
+  function rcar:take() self.next = self.next + 1; return self.next, 'own' end
+  function rcar:place(id, x, y) self.cars[id] = { x = x, y = y, z = 0, speed = 10 }; return true end
+  function rcar:goTo() return true end
+  function rcar:ground() return 0 end
+  function rcar:state(id) return self.cars[id] end
+  function rcar:calm() end
+  function rcar:boot(id) return { x = 0, y = 1, z = 0 } end
+  function rcar:release(id) self.cars[id] = nil end
+  function rcar:removeAll() self.removed = true end
+  c.raiderCar = rcar
+  c:tick(0.1)
+  T.eq(rcar.preloaded, raiderPack.MAX, 'four cars loaded at the start, so none hitch the drive')
+  T.eq(c:view().desert.up, 0, 'no Raider straight away')
+  for _ = 1, math.ceil((desertRun.FIRST_SECONDS + desertRun.GAP_SECONDS * 4) / 0.5) do c:tick(0.5) end
+  T.eq(c:view().desert.up, raiderPack.MAX, 'then they keep coming, four at most')
+  local downed = c.raiders.raiders[1]
+  c.raiders:driverShot(downed.id)
+  downed.boot = 17
+  T.eq(c:view().desert.up, 3, 'one down')
+  T.eq(c:view().desert.boot, nil, 'no Open boot from the driver\'s seat')
+  T.eq(c:openBoot(), nil, 'and it does nothing')
+  local garage = c.garage
+  garage.walking = true; c:tick(0.1)
+  T.check(c:view().desert.boot, 'walking to its boot: Open boot')
+  T.eq(c:openBoot(), 17, 'the rounds in it')
+  T.eq(c.load.ammo, 77, 'go with the load')
+  T.check(c:view().desert.line:find('17 rounds', 1, true), 'told so')
+  T.eq(c:view().desert.boot, nil, 'a boot is opened once')
+  garage.walking = false; c:tick(0.1)
+  T.check(c:manualSave(), 'saved with the rounds')
+  T.eq(F.controller({ io = io }).load.ammo, 77, 'a reload keeps the rounds')
   -- Driven to the shed and stopped: paid 6 times.
   F.drive(c, a, special.FINISH)
   T.check(c:view().load.drop.inZone and c:view().load.drop.delivery.allowed, 'at the shed and stopped')
   T.check(c:deliver(), 'delivered'); T.eq(c:view().balance, 1000000 - cost + cost * special.PAY_TIMES, 'paid 6 times the cost')
   T.check(c:view().flash.text:find('sheikh', 1, true), 'the sheikh paid')
   T.eq(c.profile.progression.contractsDone, nil, 'not counted as a dangerous contract')
+  c:tick(0.1); T.eq(c.raiders, nil, 'the Raiders go'); T.check(rcar.removed, 'and their cars are deleted')
+  T.eq(c:view().desert, nil, 'the panel with them')
 
   -- Cancelled before the start: the cost is paid back.
   local d, _, da = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })

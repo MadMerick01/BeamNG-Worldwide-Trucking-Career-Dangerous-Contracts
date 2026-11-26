@@ -53,6 +53,8 @@ for _, s in ipairs(M.LIST) do byId[s.id] = s end
 -- The special delivery (special.lua) is a section too, found by get but never picked for a board.
 byId[special.SECTION.id] = special.SECTION
 M.special = special
+-- The Raiders on the special delivery (desertRun.lua), attached to the game from here: core.lua is at LuaJIT's limit.
+M.desertRun = require('earthFreight/desertRun')
 
 function M.get(id) return byId[id] end
 
