@@ -822,6 +822,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.abandonJob = function () { if (scope.data.abandonAllowed) core('abandonJob()') }
       // The special delivery: the rounds in a downed Raider's boot.
       scope.openBoot = function () { if (scope.data.desert && scope.data.desert.boot) core('openBoot()') }
+      scope.toggleRevolver = function () { if (scope.data.desert && scope.data.desert.revolverAllowed) core('toggleRevolver()') }
+      scope.reloadRevolver = function () { if (scope.data.desert && scope.data.desert.reloadAllowed) core('reloadRevolver()') }
+      // A click on the HUD is never a shot from the revolver.
+      scope.hover = function (on) { core('hudHover(' + (on ? 'true' : 'false') + ')') }
       // Heli flights: hire asks Lua to confirm, and so does Back to my car.
       scope.hireHeli = function () { if (scope.data.heli && scope.data.heli.hireAllowed) core('hireHeli()') }
       scope.backToCar = function () {

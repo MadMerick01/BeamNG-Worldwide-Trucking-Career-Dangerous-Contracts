@@ -3001,8 +3001,53 @@ do
   T.check(c:view().desert.line:find('17 rounds', 1, true), 'told so')
   T.eq(c:view().desert.boot, nil, 'a boot is opened once')
   garage.walking = false; c:tick(0.1)
+  -- The flat-screen revolver (revolver.lua, aim.lua): a pretend mouse.
+  local vrOn, clicking, shots, pistol = false, false, 0, nil
+  c.aim = { vr = function() return vrOn end, pistol = function() return pistol end,
+    aim = function() return { origin = {}, dir = {} } end, draw = function() end,
+    clicked = function() return clicking end, shoot = function() shots = shots + 1; return true end }
+  c:tick(0.1)
+  local dv = c:view().desert
+  T.eq(dv.loaded, 6, 'six in the gun'); T.eq(dv.spare, 71, 'the rest spare')
+  T.check(dv.revolverAllowed and not dv.drawn, 'Draw revolver')
+  c:followAim(); T.eq(shots, 0, 'holstered, a click is no shot')
+  T.check(c:toggleRevolver(), 'drawn')
+  clicking = true
+  c.hudHover = true; c:followAim(); T.eq(shots, 0, 'a click on the HUD is no shot')
+  c.hudHover = false; c:followAim(); T.eq(shots, 1, 'fired')
+  T.eq(c.load.ammo, 76, 'a round used')
+  c.clock = c.clock + 1; c:followAim()
+  T.eq(c.load.ammo, 75, 'and another')
+  clicking = false
+  T.check(c:view().desert.reloadAllowed, 'Reload with spare rounds')
+  T.check(c:reloadRevolver(), 'reloading')
+  for _ = 1, 4 do c:tick(0.5) end
+  T.eq(c:view().desert.loaded, 6, 'the cylinder filled'); T.eq(c.load.ammo, 75, 'from the spare rounds')
+  -- Hits from either revolver: four stop a Raider, the driver at once.
+  local target
+  for _, r in ipairs(c.raiders.raiders) do if r.state ~= 'DOWN' then target = r break end end
+  for _ = 1, 3 do c:raiderHit(target.id, false) end
+  T.check(target.state ~= 'DOWN', 'three hits and it keeps going')
+  c:raiderHit(target.id, false)
+  T.eq(target.state, 'DOWN', 'four hits stop a Raider')
+  for _, r in ipairs(c.raiders.raiders) do if r.state ~= 'DOWN' then target = r break end end
+  c:raiderHit(target.id, true)
+  T.eq(target.state, 'DOWN', 'a shot through the driver stops it at once')
+  -- In VR: MadMerick's VR revolver gets the run's rounds and gives them back as it fires.
+  local set = {}
+  pistol = { setAmmo = function(n, spare) set[#set + 1] = { n = n, spare = spare } end,
+    getAmmo = function() return 2, 6, 50 end, getConfig = function() return { cylinderSize = 6 } end }
+  vrOn = true; c:tick(0.1)
+  T.eq(set[1].n, 6, 'the VR revolver loaded'); T.eq(set[1].spare, 69, 'with the run\'s spare rounds')
+  T.eq(c:view().desert.drawn, nil, 'no flat-screen revolver in VR'); T.check(c:view().desert.vr, 'the VR one instead')
+  c:tick(0.1)
+  T.eq(c.load.ammo, 52, 'its rounds read back as it fires')
+  T.eq(c:toggleRevolver(), false, 'Draw revolver does nothing in VR')
+  vrOn = false; c:tick(0.1)
+  T.eq(set[#set].spare, nil, 'out of VR, the VR revolver gets its own unlimited rounds back')
+  T.eq(c.load.ammo, 52, 'and the run keeps what was left')
   T.check(c:manualSave(), 'saved with the rounds')
-  T.eq(F.controller({ io = io }).load.ammo, 77, 'a reload keeps the rounds')
+  T.eq(F.controller({ io = io }).load.ammo, 52, 'a reload keeps the rounds')
   -- Driven to the shed and stopped: paid 6 times.
   F.drive(c, a, special.FINISH)
   T.check(c:view().load.drop.inZone and c:view().load.drop.delivery.allowed, 'at the shed and stopped')
