@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 287 · 26 Nov 2026
+
 - **Still hidden while MadMerick tests it: Raiders now come for you on the special delivery.** About half a minute after you reach the start in the Rub' al Khali, rival clans' Raiders in rusty and fast Barstows start turning up out of sight behind you. They circle you, swipe at your corners, go for your back wheel and work together to box you in. Up to 4 are out at once, and a new one comes whenever one gets stuck, is stopped or falls 500 m behind. Your revolver starts the run with 60 rounds, shown with the Raiders on the HUD. Get out and walk to the boot of a stopped Raider, and an **Open boot** button finds you anywhere from 0 to 20 more rounds. The revolver to fire them comes in the next build. Saves still work.
 
 ## Build 286 · 26 Nov 2026
