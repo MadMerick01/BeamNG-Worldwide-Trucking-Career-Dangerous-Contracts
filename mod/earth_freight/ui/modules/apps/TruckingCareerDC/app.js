@@ -8,7 +8,9 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
     // The multiplayer server's status for Play online: 'checking', 'online', 'offline' or 'unknown' (not reachable).
     server: { status: 'checking', at: null },
     // Towns already looked up for a real business this game, so each is only asked once.
-    businessAsked: {}
+    businessAsked: {},
+    // The jobs board's big window: open from Open jobs board until the player drives off or takes a job.
+    board: { open: false }
   }
   // Minimised to one button, kept in the browser's storage so it lasts across game restarts.
   var STORE = 'earthFreight.hudMinimised'
@@ -471,6 +473,8 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         // A bill, an insurance offer or being stranded needs the HUD, so the start page makes way.
         if (scope.intro.open && urgent(next) && !urgent(previous)) scope.closeIntro()
         if (kept.help.at && urgent(next) && !urgent(previous)) scope.closeHelp()
+        // The jobs board closes once the player drives off, takes a job or something urgent comes up.
+        if (kept.board.open && (!scope.boardButton(next) || (next.load && !previous.load))) kept.board.open = false
         for (var i = 0; i < autoOpen.length; i++) {
           if (autoOpen[i][1](next) && !autoOpen[i][1](previous)) {
             scope.setTab(autoOpen[i][0])
@@ -499,6 +503,34 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var p = d && d.town && d.town.pickup
         return p && !p.inZone && !d.load && p.distanceMetres != null ? p : null
       }
+      // The jobs board: Open jobs board shows low in the middle of the screen while the player is at a
+      // town's pickup point or a fuel depot with no job on, and opens a big window in the middle like
+      // the start page. It is the only place jobs and fuel runs are taken; the Town tab just lists them.
+      // Both are moved onto the page body the same way.
+      var boardPage = element && element[0] && element[0].querySelector ? element[0].querySelector('.ef-board') : null
+      if (boardPage && typeof document !== 'undefined' && document.body) document.body.appendChild(boardPage)
+      scope.board = kept.board
+      scope.boardTown = function (d) {
+        var p = d && d.town && d.town.pickup
+        return !!(p && p.inZone && !d.load && d.town.jobs)
+      }
+      scope.boardFuel = function (d) {
+        var f = d && d.fuelRuns
+        return !!(f && f.hub && f.atDepot && !d.load && f.runs)
+      }
+      scope.boardButton = function (d) {
+        return !!d && d.state === 'READY' && !urgent(d) && (scope.boardTown(d) || scope.boardFuel(d))
+      }
+      // The board's name: the town, or the fuel depot when the player is only there.
+      scope.boardName = function (d) {
+        if (scope.boardTown(d)) return d.town.name
+        var f = d && d.fuelRuns
+        if (!f || !f.hub) return ''
+        return f.depot ? f.depot.name + ', ' + f.hub.name : f.hub.name + ' fuel depot'
+      }
+      scope.openBoard = function () { if (scope.boardButton(scope.data)) kept.board.open = true }
+      scope.closeBoard = function () { kept.board.open = false }
+      scope.boardBackdrop = function (event) { if (event && event.target === event.currentTarget) scope.closeBoard() }
       scope.gpsToPickup = function () {
         var p = scope.data && scope.data.town && scope.data.town.pickup
         if (p && p.gpsAllowed) core('gpsToPickup()')
@@ -552,7 +584,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         'Choose where you start: open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.',
         'Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.',
         'Then fit cargo boxes: the starter car only has its boot, which takes 2 slots. In Buy parts, put Cargo Load boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.',
-        'Drive to a town\'s pickup point near its middle: the needle on the Town tab points the way. Stop within {pickupMetres} m of it, pick a job and press Take job: it fills your car.',
+        'Drive to a town\'s pickup point near its middle: the needle on the Town tab points the way. Stop within {pickupMetres} m of it and press Open jobs board in the middle of the screen. Pick a job and press Take job: it fills your car.',
         'Follow the GPS to the drop-off, stop there and press Deliver to get paid in full.',
         'The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.'
       ]
@@ -1255,6 +1287,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         fitBox(false)
         if (startPage && startPage.parentNode) startPage.parentNode.removeChild(startPage)
         if (helpPage && helpPage.parentNode) helpPage.parentNode.removeChild(helpPage)
+        if (boardPage && boardPage.parentNode) boardPage.parentNode.removeChild(boardPage)
         scope.typing(false)
         clearInterval(heartbeat)
         mount(false)

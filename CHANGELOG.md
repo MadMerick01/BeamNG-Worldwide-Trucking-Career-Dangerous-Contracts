@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Jobs are taken on the big jobs board again.** Stop within 50 m of a town's pickup point and an Open jobs board button shows low in the middle of the screen, where Use computer used to be. Press it to open the big jobs board with the town's jobs, Load sliders and GPS, and press Take job. It only opens when you press the button, and closes when you take a job or drive off.
+- **Fuel runs are loaded on the same jobs board.** Stop at the fuel terminal, or at the town's pickup point where there is no terminal, and press Open jobs board.
+- The Town tab still lists every town's jobs and fuel runs, so you can see what each town has and wants, but it no longer has Take job or Load buttons. Your saves still work.
+
 ## Build 284 · 25 Nov 2026
 
 - **Base thieves are switched off for now.** Nobody breaks into your base and steals your money any more, and the Base thief box is gone from the **Base** tab. Road robbers on deliveries still turn up as before, and the tick box on the **Route** tab that switches them off in single player is now called **Road robbers**. The help page no longer talks about base thieves. Your saves still work, and there's nothing you need to do.
