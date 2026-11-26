@@ -4,8 +4,8 @@
 -- the VR revolver's own (BeamngVRcontrollerPoses), so a hit is exactly the same as in VR: the
 -- bullet must pass within 0.3 m of the car's body, walls stop it, it shoves and dents the car,
 -- flattens a tyre it hits near the hub, and a shot through the driver switches the car's AI off.
--- With the VR revolver mod installed its vrPistol.shoot is called; without it this mod's copy of the
--- same code runs (lua/vehicle/extensions/earthFreightHit.lua in the car). Every game call is guarded: a missing or changed one
+-- This mod's copy of that code always does the shot (lua/vehicle/extensions/earthFreightHit.lua in the car), so only
+-- a Raider can be hit, never another player's car (the VR revolver's own shot hits any car). Every game call is guarded: a missing or changed one
 -- means no shot, never an error.
 local M = {}
 
@@ -132,22 +132,21 @@ function M.new(environment)
     return type(p) == 'table' and p or nil
   end
 
-  -- Fires along the aim: the VR revolver's shot and sound when that mod is there, or this mod's copy
-  -- of the same shot. The hit comes back later, through onVrPistolHit and onVrPistolDriverHit.
-  function a:shoot(shot)
+  -- Fires along the aim, this mod's copy of the VR revolver's shot (with the VR revolver's sound when that mod is
+  -- there). Only cars isTarget(car) says yes to can be hit: the Raiders, never another player's car or traffic
+  -- (MadMerick's one hard rule online). The hit comes back later, through onVrPistolHit and onVrPistolDriverHit.
+  function a:shoot(shot, isTarget)
     if not (shot and shot.origin and shot.dir) then return false end
     local pistol = vrPistol()
-    if pistol then
-      local ok = pcall(pistol.shoot, shot.origin, shot.dir)
-      if type(pistol.testSound) == 'function' then pcall(pistol.testSound, 'shot') end
-      return ok
-    end
+    if pistol and type(pistol.testSound) == 'function' then pcall(pistol.testSound, 'shot') end
     local origin, dir = shot.origin, shot.dir
     local wall = call('wall', origin, dir, M.RANGE_METRES) or M.RANGE_METRES
     local player = call('player')
     local nearest, nearestT
     for _, veh in ipairs(call('vehicles') or {}) do
-      if veh and veh ~= player then
+      local okTarget, target = true, true
+      if isTarget then okTarget, target = pcall(isTarget, veh) end
+      if veh and veh ~= player and okTarget and target then
         local center, axes, half = vehicleBox(veh)
         local t = center and rayBox(origin, dir, center, axes, half, wall)
         if t and (not nearestT or t < nearestT) then nearest, nearestT = veh, t end

@@ -7,6 +7,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **Trailers no longer bounce on the hitch and run up a huge repair bill after you resume.** When your trailer comes out behind your truck (after loading a save, Bring out or a new trailer), it now waits until your truck has settled where it stays. The drop onto its legs, bumps while you back up to it and the jolt as it hitches are no longer added to the trailer's repair. If the trailer still gets bent and bounces on the hitch, it is fixed where it stands, for free, and hitches again. Damage it had before stays owed, and crashes once it is hitched are still charged. Saves still work.
+- **Still hidden while MadMerick tests it: the special delivery's money is now checked by MadMerick's server.** Online, the server only accepts a special delivery from its admins while the mission is hidden. It pays at most 6 times what the load cost, and it refuses a payout that comes too soon to have driven the 30 km. Without VR, the revolver now only ever hits Raiders, never another player's car or traffic in the way. Saves still work.
 
 ## Build 288 · 26 Nov 2026
 
