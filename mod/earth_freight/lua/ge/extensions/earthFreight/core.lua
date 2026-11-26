@@ -1026,6 +1026,16 @@ function M.new(deps)
     if self.startSettle then self:startSettle(true, workshop.LANDING_SETTLE_SECONDS) end
     -- And can leave the free camera on: the car's own camera back (camera.lua).
     self:cameraSettle(camera.LONG_CHECKS, true)
+    -- Back from the desert after giving up a special delivery (abandonJob): where the job was taken, not a teleport.
+    local back = self.specialReturn
+    if back then
+      self.specialReturn = nil
+      local away = location.distance(to, back)
+      if away and away <= contracts.START_RADIUS then
+        self.diag:event('special_returned', coordinates(to))
+        return
+      end
+    end
     -- To the base to chase a thief, or back again: the job and any Mayday Rescue run are held, not lost (thief.lua).
     local b = self.booking
     if b and (b.thief or b.thiefReturn) then
@@ -1047,6 +1057,16 @@ function M.new(deps)
     if section and contracts.atStart(to, section) then
       self.load.started, self.load.drivenKm, self.stranded = true, 0, nil
       self.contractTeleportAt = nil
+      -- The special delivery: no roads and no GPS, just the arrow north to the shed. The tank is filled once the car
+      -- reports it (fuelReading).
+      if section.special then
+        self:showFlash('delivered', 'SPECIAL DELIVERY: THE SHED IN THE DESERT', section.summary
+          .. ' No roads: follow the arrow on the Route tab and stop within ' .. contracts.FINISH_RADIUS
+          .. ' m of the shed. Your tank is filled. Fail to make the drop and you lose the lot.')
+        self.diag:event('special_started', section.id)
+        self:saveNowOrSoon('the special delivery')
+        return
+      end
       local gps = self:gpsToFinish(section)
       self:showFlash('delivered', 'DANGEROUS CONTRACT: ' .. section.name:upper(), section.summary
         .. (gps and ' The GPS is set to the finish.' or ' Follow the arrow on the Route tab to the finish.')
@@ -1844,7 +1864,20 @@ function M.new(deps)
   -- picked on the Distance filter.
   function c:board(place)
     local progression = self.profile and self.profile.progression
-    return jobs.board(place, progression and progression.jobsDone or 0, self.needs, self.now(), self.jobDistance)
+    local list = jobs.board(place, progression and progression.jobsDone or 0, self.needs, self.now(), self.jobDistance)
+    -- The special delivery's two cards (special.lua), while it is shown to this player.
+    if place and self:specialShown() then
+      for _, job in ipairs(contracts.special.jobs(place)) do list[#list + 1] = job end
+    end
+    return list
+  end
+
+  -- Whether the special delivery is shown: to the server's admins online, or with its switch in config.json in single
+  -- player, until contracts.special.OPEN shows it to everyone.
+  function c:specialShown()
+    local online = self.mp ~= nil
+    return contracts.special.visible(online, online and self.mp.state == 'server' and self.mp.admin ~= nil,
+      self.configuration and self.configuration.specialDelivery)
   end
 
   -- The Distance filter: 'short', 'medium' or 'long' sends every town job that far; anything else
@@ -1913,7 +1946,7 @@ function M.new(deps)
       problem = 'Not enough cargo space or payload for ' .. good.name:lower() .. ': one unit takes ' .. good.slots
         .. (good.slots == 1 and ' slot' or ' slots') .. ' and ' .. string.format('%g', good.kg) .. ' kg. Fit a cargo box in the parts menu.'
     end
-    if not problem and job.contract and not self:canAfford(contracts.FEE) then
+    if not problem and job.contract and not job.special and not self:canAfford(contracts.FEE) then
       problem = 'Not enough money. The relocation to the start of a dangerous contract costs ' .. dollars(contracts.FEE) .. '.'
     end
     if problem then
@@ -1923,6 +1956,16 @@ function M.new(deps)
     local destination = places.get(job.to)
     local full = quote.units
     local units, pay = jobs.share(quote.units, quote.pay, share)
+    -- The special delivery's load is bought here: paid for in full, and the shed pays its multiple of that.
+    if job.special then
+      quote.cost = contracts.special.cost(good, units)
+      pay = contracts.special.pay(quote.cost)
+      if not self:canAfford(quote.cost) then
+        self.tradeFeedback = 'Not enough money: that much ' .. good.name:lower() .. ' costs ' .. dollars(quote.cost)
+          .. '. Take less with the Load slider.'
+        return false
+      end
+    end
     quote.units, quote.slots, quote.kg, quote.pay = units, units * good.slots, units * good.kg, pay
     self.load = { good = good.id, units = quote.units, slots = quote.slots, kg = quote.kg, pay = quote.pay,
       from = place.id, to = destination.id, drivenKm = 0, drop = location.copy(job.drop), toll = quote.toll }
@@ -2145,8 +2188,16 @@ function M.new(deps)
   -- Takes a dangerous contract: pays the relocation and asks Earth to teleport the car to the start.
   function c:takeContract(job, good, quote)
     local section = contracts.get(job.contract)
-    self:spend(contracts.FEE, 'contract')
-    self.load.contract, self.load.started, self.load.fee = section.id, false, contracts.FEE
+    if section.special then
+      -- The special delivery: the load is bought with the player's own money, and Give up brings them back here.
+      local sample = self.lastSample
+      self:spend(quote.cost, 'special')
+      self.load.contract, self.load.started, self.load.cost = section.id, false, quote.cost
+      self.load.back = sample and location.valid(sample) and { latitude = sample.latitude, longitude = sample.longitude } or nil
+    else
+      self:spend(contracts.FEE, 'contract')
+      self.load.contract, self.load.started, self.load.fee = section.id, false, contracts.FEE
+    end
     self:applyWeight()
     self.diag:event('job_taken', string.format('%s x%d %s -> contract %s for %d', good.id, quote.units, job.from, section.id, quote.pay))
     -- Saved before the teleport starts, while the car is still in town: the fee is paid, so the job must be kept.
@@ -2253,6 +2304,9 @@ function M.new(deps)
     local section = load.contract and contracts.get(load.contract)
     if section and not load.started then return 'Teleport to the start of ' .. section.name .. ' first.' end
     local away = location.distance(sample, load.drop)
+    if section and section.special and (not away or away > contracts.FINISH_RADIUS) then
+      return 'Follow the arrow to the shed and stop within ' .. contracts.FINISH_RADIUS .. ' m of it.'
+    end
     if section and (not away or away > contracts.FINISH_RADIUS) then
       return 'Drive to the finish and stop within ' .. contracts.FINISH_RADIUS .. ' m of it.'
     end
@@ -2286,7 +2340,8 @@ function M.new(deps)
     self:addMoney(load.pay)
     self:cashSound()
     -- A delivered dangerous contract's road is counted for the career page (it stays on the boards).
-    if load.contract then
+    local specialLoad = load.cost ~= nil and load.contract ~= nil
+    if load.contract and not specialLoad then
       local progression = self.profile.progression
       progression.contractsDone = progression.contractsDone or {}
       local listed = false
@@ -2305,6 +2360,16 @@ function M.new(deps)
     local section = load.contract and contracts.get(load.contract)
     -- An off-road drop counts for the turf of the town it was taken in, at both ends.
     local town = not load.beacon and not section and places.get(load.from) or nil
+    if specialLoad then
+      -- Kept off the server's feed while the special delivery is hidden (contracts.special.OPEN).
+      if contracts.special.OPEN then self:reportDelivery('special', good, load.units, nil, section.name, load.pay, nil, nil, load.rockets) end
+      self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' dropped at '
+        .. section.name .. '. The sheikh paid ' .. contracts.special.PAY_TIMES .. ' times the ' .. dollars(load.cost) .. ' it cost you.' .. refund)
+      self.tradeFeedback = nil
+      self:saveNowOrSoon('your delivery')
+      self.diag:event('job_delivered', 'special for ' .. load.pay)
+      return true
+    end
     self:reportDelivery(load.beacon and 'beacon' or (section and 'contract' or 'drop'), not load.beacon and good or nil,
       load.units, nil, section and section.name or nil, load.pay, townEnds(town, town), load.toll, load.rockets)
     if load.beacon then
@@ -2384,6 +2449,14 @@ function M.new(deps)
   -- A dangerous contract abandoned before its start gives back the relocation fee first.
   function c:dropJob(why)
     local load = self.load
+    -- The special delivery: given up or lost on the way, the load and its cost are gone, with no abandon fee on top.
+    -- Before its start (still where it was bought) the cost is paid back.
+    if load.cost and load.contract then
+      if not load.started then self:addMoney(load.cost) end
+      self.diag:event('job_abandoned', tostring(why) .. ':special:' .. load.good .. ':' .. (load.started and load.cost or 0))
+      self:finishJob()
+      return 0
+    end
     if why == 'abandoned' and load.contract and not load.started and (load.fee or 0) > 0 then self:addMoney(load.fee) end
     local fee = math.min(jobs.ABANDON_FEE, self.profile.progression.balance)
     if fee > 0 then self:spend(fee, 'abandon') end
@@ -2395,6 +2468,8 @@ function M.new(deps)
   -- Abandons the job anywhere, for the abandon fee. Asks once first.
   function c:abandonJob()
     if not self.load or not self.profile or self.error then return false end
+    local load = self.load
+    if load.cost and load.contract then return self:giveUpSpecial() end
     if not self.abandonArmed then
       self.abandonArmed = true
       local refund = self.load.contract and not self.load.started and (self.load.fee or 0) > 0
@@ -2404,6 +2479,37 @@ function M.new(deps)
     end
     local fee = self:dropJob('abandoned')
     self.tradeFeedback = 'Job abandoned' .. (fee > 0 and (' for ' .. dollars(fee)) or '') .. '.'
+    return true
+  end
+
+  -- Give up on the special delivery: the load and what it cost are lost, and the player is taken back to where they
+  -- took it. Asks once first. Before the start, the cost is paid back instead.
+  function c:giveUpSpecial()
+    local load = self.load
+    if not self.abandonArmed then
+      self.abandonArmed = true
+      self.tradeFeedback = load.started
+        and ('Press Confirm give up to give up the special delivery. You lose the load and the ' .. dollars(load.cost)
+          .. ' you paid for it, and you are taken back to where you took it.')
+        or ('Press Confirm give up to cancel the special delivery. Your ' .. dollars(load.cost) .. ' is paid back.')
+      return false
+    end
+    self:dropJob('abandoned')
+    if not load.started then
+      self.tradeFeedback = 'Special delivery cancelled. Your ' .. dollars(load.cost) .. ' is paid back.'
+      self:saveNowOrSoon('the cancelled special delivery')
+      return true
+    end
+    self.tradeFeedback = 'You gave up the special delivery and lost the load.'
+    if load.back and self.adapter.teleport and not self.hire then
+      local ok, why = self.adapter:teleport(load.back, 'Worldwide Trucking: back from the desert')
+      self.diag:event('special_return', ok and coordinates(load.back) or tostring(why), ok and 'I' or 'W')
+      if ok then
+        self.specialReturn = location.copy(load.back)
+        self.tradeFeedback = self.tradeFeedback .. ' Taking you back to where you took it.'
+      end
+    end
+    self:saveNowOrSoon('the special delivery')
     return true
   end
 
@@ -2566,6 +2672,16 @@ function M.new(deps)
     -- A reading taken before a respawn's restore has gone in would undo it.
     if self.fuel and self.fuel.restore then return end
     litres = math.min(litres, capacity)
+    -- The special delivery starts with a full tank (special.lua), free, once.
+    local load = self.load
+    if load and load.cost and load.started and not load.fuelled and self.fuelTank then
+      load.fuelled = true
+      if litres < capacity - fuel.FULL_MARGIN_LITRES then
+        local ok, why = self.fuelTank:set(capacity, 0)
+        self.specialFuelAt = ok and self.clock or nil
+        self.diag:event('special_fuelled', ok and string.format('%.1f L to %.1f L', litres, capacity) or tostring(why), ok and 'I' or 'W')
+      end
+    end
     local before = self.fuel
     -- A Refuel the car answered before its tanks showed the change: charged once a reading shows it.
     local pending = self.refuelPending
@@ -2576,7 +2692,8 @@ function M.new(deps)
         and litres > before.litres + fuel.PUMP_MARGIN_LITRES then
       if self.pump then
         litres = self:chargePumpFill(vehicleId, before.litres, litres)
-      elseif not self.pendingCar and self.ownedParts and self.ownedParts.id == vehicleId then
+      elseif not self.pendingCar and self.ownedParts and self.ownedParts.id == vehicleId
+          and not (self.specialFuelAt and self.clock - self.specialFuelAt < contracts.special.FILL_SECONDS) then
         -- Away from a pump the tank only rises when the game resets the car (a relocation, a tow,
         -- Insert or the recovery menu), which fills it: put back, free and quietly, as the damage is.
         local ok, why = self.fuelTank:set(before.litres, 0)
@@ -2822,7 +2939,10 @@ function M.new(deps)
         gps = (section and self.gpsContract == section.id or not job.drop and not section and self.gpsTown == to.id) or nil,
         size = not job.drop and to.size or nil, drop = job.drop ~= nil and not section or nil,
         contract = section and { id = section.id, name = section.name, region = section.region, summary = section.summary,
-          fee = contracts.FEE, pays = section.pay } or nil,
+          fee = not section.special and contracts.FEE or nil, pays = section.pay,
+          -- The special delivery: what a unit of its load costs, and the multiple the shed pays.
+          special = section.special or nil, unitPrice = section.special and contracts.special.unitPrice(good) or nil,
+          times = section.special and contracts.special.PAY_TIMES or nil, cost = section.special and q.cost or nil } or nil,
         direction = job.drop and not section and location.compassPoint(location.bearing(place, job.drop)) or nil,
         -- The measured road where there is one (byRoad), else the estimate; measuring while Earth plans it.
         distanceMetres = (q.roadKm or job.km) * 1000, byRoad = q.roadKm ~= nil or nil,
@@ -2835,7 +2955,7 @@ function M.new(deps)
         -- What the player's base adds, as a percentage of the pay without it.
         basePercent = q.baseBonus and math.floor(q.baseBonus / (q.road - q.baseBonus) * 100 + 0.5) or nil, outside = job.outside, long = job.long,
         tollTo = q.toll and q.toll.owner or nil, tollPercent = q.toll and math.floor(magnate.TOLL * 100 + 0.5) or nil,
-        allowed = allowed and q.units > 0 and (not section or self:canAfford(contracts.FEE)) }
+        allowed = allowed and q.units > 0 and (not section or self:canAfford(section.special and contracts.special.unitPrice(good) or contracts.FEE)) }
     end
     return out
   end
@@ -3050,6 +3170,7 @@ function M.new(deps)
         to = section and section.name or 'off-road drop', beacon = self.load.beacon or nil,
         insurance = self.load.beacon and beacons.INSURANCE_FEE or nil,
         contract = section and { name = section.name, region = section.region, summary = section.summary,
+          special = section.special or nil, cost = self.load.cost,
           started = self.load.started == true, start = location.copy(section.start),
           startMetres = current and location.distance(current, section.start) or nil,
           teleportAllowed = not self.load.started and self.adapter.teleport ~= nil and not teleporting,
@@ -3098,6 +3219,8 @@ function M.new(deps)
       shortages = anchor and self:shortagesNear(anchor, now) or {},
       fuelRuns = self:fuelRunsView(current),
       abandonAllowed = self.load ~= nil, abandonArmed = self.abandonArmed, abandonFee = jobs.ABANDON_FEE,
+      -- The special delivery is given up instead: its load and cost are lost, with no fee.
+      giveUp = self.load and self.load.cost and self.load.contract and { started = self.load.started == true, cost = self.load.cost } or nil,
     }
   end
 
@@ -3220,7 +3343,7 @@ function M.new(deps)
       sightseeing = self:sightseeingView(current),
       gpsAllowed = self.adapter.setDestination ~= nil and self.state == 'READY' and self.arrived and not self.hire,
       gpsFeedback = self.gpsFeedback,
-      abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee,
+      abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee, giveUp = trade.giveUp,
       tradeFeedback = self.tradeFeedback,
       fuelFeedback = self.fuelFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,

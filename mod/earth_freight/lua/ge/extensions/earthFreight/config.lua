@@ -21,7 +21,10 @@ function M.validate(data)
   local radius = data.resumeRadiusMetres == nil and 50 or data.resumeRadiusMetres
   if not location.finite(radius) or radius < 1 or radius > 1000 then return nil, 'verification_radius' end
   if data.autoGps ~= nil and type(data.autoGps) ~= 'boolean' then return nil, 'auto_gps' end
-  return { base = data.base and location.copy(data.base), resumeRadiusMetres = radius, autoGps = data.autoGps ~= false }
+  if data.specialDelivery ~= nil and type(data.specialDelivery) ~= 'boolean' then return nil, 'special_delivery' end
+  -- specialDelivery: true shows the special delivery (special.lua) in single player while it is hidden.
+  return { base = data.base and location.copy(data.base), resumeRadiusMetres = radius, autoGps = data.autoGps ~= false,
+    specialDelivery = data.specialDelivery == true or nil }
 end
 
 function M.load(io)

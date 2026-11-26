@@ -28,6 +28,10 @@ M.list = {
   { id = 'fuel', name = 'Fuel', kind = 'fluid', litres = 10, slots = 10, kg = 10, payKg = 7.5, rate = 1 },
   -- What a "don't ask questions" job carries (beacons.lua): never posted on a board, and no weight.
   { id = 'package', name = 'Package', kind = 'package', slots = 1, kg = 0 },
+  -- The special delivery's precursor chemicals (special.lua), solid in cargo boxes or fluid in a tank: only on its
+  -- own card, never posted on a board. A unit of crates is heavy for its slot, so an XL box fills by weight.
+  { id = 'precursors', name = 'Precursor chemicals', kind = 'parcel', slots = 1, kg = 25, rate = 1, special = true },
+  { id = 'precursors_fluid', name = 'Liquid precursor chemicals', kind = 'fluid', litres = 10, slots = 10, kg = 10, rate = 1, special = true },
   -- Ship Day's container cargo, from before Mayday Rescue replaced it: kept so a container still on board delivers.
   { id = 'container', name = 'Container cargo', kind = 'parcel', slots = 2, kg = 30, rate = 2, retired = true },
 }
@@ -46,7 +50,7 @@ function M.get(id) return byId[id] end
 -- The goods jobs are posted for, in list order.
 function M.carried()
   local out = {}
-  for _, good in ipairs(M.list) do if M.CARRIED[good.kind] and not good.retired then out[#out + 1] = good end end
+  for _, good in ipairs(M.list) do if M.CARRIED[good.kind] and not good.retired and not good.special then out[#out + 1] = good end end
   return out
 end
 

@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **No change for players yet: the special delivery is hidden while MadMerick tests it.** Admins on the server, or anyone in single player with `"specialDelivery": true` in `settings/earthFreight/config.json`, see two Special delivery cards on the jobs board. You buy precursor chemicals with your own money (crates or liquid, as much as your car carries), are moved to the Rub' al Khali with a full tank, and follow the arrow 30 km north across the dunes to the Shed in the Desert, which pays 6 times what you paid. Give up loses the lot and takes you back to where you took it. Raiders and the revolver come in a later build. Saves still work.
+
 ## Build 285 · 26 Nov 2026
 
 - **Jobs are taken on the big jobs board again.** Stop within 50 m of a town's pickup point and an Open jobs board button shows low in the middle of the screen, where Use computer used to be. Press it to open the big jobs board with the town's jobs, Load sliders and GPS, and press Take job. It only opens when you press the button, and closes when you take a job or drive off.
