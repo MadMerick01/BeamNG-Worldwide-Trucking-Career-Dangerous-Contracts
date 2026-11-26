@@ -13,24 +13,27 @@
 Choose where you start: open the BeamNG.Earth map, find anywhere on Earth, such as your home town, and teleport there. Then press Start here: your starter car is waiting.
 Fit a radiator first: the starter car needs one. Press Buy parts on the Garage tab, fit one and pay there.
 Then fit cargo boxes: the starter car only has its boot, which takes 2 slots. In Buy parts, put Cargo Load boxes in the rear seat slot to start. More boxes carry bigger loads, and bigger loads pay more.
-Drive to a town's pickup point near its middle: the needle on the Town tab points the way. Stop within {pickupMetres} m of it, pick a job and press Take job: it fills your car.
+Drive to a town's pickup point near its middle: the needle on the Town tab points the way. Stop within {pickupMetres} m of it and press Open jobs board in the middle of the screen. Pick a job and press Take job: it fills your car.
 Follow the GPS to the drop-off, stop there and press Deliver to get paid in full.
 The game saves itself when you stop after a delivery, a purchase, a repair or a relocation. Press Save to keep anything else.
 
 # jobs | Jobs and pay
-Every town's jobs are on its Town tab, and you take them stopped at its pickup point. Each job shows where it goes, how far and what it pays.
+Every town's jobs are listed on its Town tab, so you can see what each town has and wants. You take them on the jobs board at its pickup point. Each job shows where it goes, how far and what it pays.
 Green pay is better than usual, red is worse. A shortage pays double, and a jackpot pays even more.
 Short jobs are up to 8 km, medium 8 to 13 km and long 13 to 300 km. Pick one with the buttons next to Jobs.
 Every board also has a long haul of parts or bricks to a town {longHaulMinKm} to {longHaulMaxKm} km away, for bigger pay.
-Too big for your car? Use the Load slider on a job to take part of it, for part of the pay.
+Too big for your car? Use the Load slider on the jobs board to take part of a job, for part of the pay.
 Rough roads and steep ground pay more. The number next to the town's name shows how much, such as ×2.7.
 Tap a job to see its details and press GPS to see the route before you take it.
 A distance with ~ is a guess. Press the job's GPS in town and the GPS measures the real road: the job then shows "km by road" and is paid for it. Winding roads pay much more.
 Measured roads are remembered, so the board shows the real distance next time too. A job you take without measuring is measured once the GPS plans its route.
 Pay only goes up when a road is measured: a job never pays less than the board showed.
 
-# depot | Pickup points
-Every town has a pickup point near its middle, on the nearest road. Stop your truck within {pickupMetres} m of it to take a job, an off-road drop or a fuel run.
+# depot | Pickup points and the jobs board
+Every town has a pickup point near its middle, on the nearest road. Stop your truck within {pickupMetres} m of it and an Open jobs board button shows in the middle of the screen.
+Press it to open the jobs board: the town's jobs, off-road drops and dangerous contracts, with a Load slider and GPS on each. Press Take job and the board closes. It never opens by itself.
+The jobs board is the only place to take a job. The Town tab still lists every town's jobs, so you can see what each one has and wants before you drive there.
+The button goes away when you drive off or take a job. Online it's all on your own screen, like the Town tab.
 In town, a needle on the Town tab points to the pickup point and says how far it is. Press GPS next to it for a route there. The minimised HUD shows the distance too.
 A job with no real business to go to is delivered at its town's pickup point: stop within {pickupMetres} m and press Deliver. The job card counts down the metres and shows a needle when you're close.
 Jobs that go to a real shop, yard or warehouse are delivered there, as before. Fuel runs still end at a real petrol station.
@@ -44,7 +47,7 @@ Abandoning a job costs {abandonFee}. Teleporting with a job on board cancels it 
 
 # fuel | Fuel runs and tankers
 Fuel runs are long hauls of fuel, {fuelRunMinKm} to {fuelRunMaxKm} km, from a depot in a quiet regional town out to a country petrol station. The further you go, the more they pay.
-You'll find them on the Town tab. Teleport takes you to the depot for free. Load them stopped at the fuel terminal, or at the town's pickup point where there is no terminal.
+You'll find them on the Town tab. Teleport takes you to the depot for free. Stop at the fuel terminal, or at the town's pickup point where there is no terminal, and press Open jobs board to load one. The Town tab lists them so you can see where they go.
 They need a tank. Fit a Cargo Load fluid tank with Buy parts, or tow a tanker trailer. A tank also lets you take water jobs.
 
 # car | Your car, parts and cargo

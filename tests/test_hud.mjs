@@ -825,14 +825,15 @@ test('folding sections remember how the player left them, and open by themselves
   }
   assert.ok(html.includes("isOpen('repair', data.repairOwed > 0 || data.puncture)"), 'a repair owed or a puncture opens Repair')
 })
-test('one town job at a time opens to show its load slider and GPS', () => {
+test('one town job at a time opens to show its details and GPS', () => {
   const a = app()
   assert.equal(a.scope.jobOpen('bricks_gn1'), false)
   a.scope.toggleJob('bricks_gn1'); assert.equal(a.scope.jobOpen('bricks_gn1'), true)
   a.scope.toggleJob('parts_gn1'); assert.equal(a.scope.jobOpen('bricks_gn1'), false, 'opening another closes it')
   a.scope.toggleJob('parts_gn1'); assert.equal(a.scope.jobOpen('parts_gn1'), false, 'a second press closes it')
   const town = html.slice(html.indexOf("tab === 'town'"), html.indexOf("tab === 'garage'"))
-  assert.ok(town.indexOf('ng-click="takeJob(j)"') < town.indexOf('ng-if="jobOpen(j.id)"'), 'Take job is on the row, not hidden')
+  assert.ok(town.includes('ng-if="jobOpen(j.id)"'), 'a job opens on the Town tab')
+  assert.ok(!town.includes('takeJob(') && !town.includes('type="range"'), 'but is taken on the jobs board, not here')
 })
 test('the minimised strip shows money, the job and where you are', () => {
   const a = app()
@@ -1602,7 +1603,51 @@ test('Fuel runs sit on the Town tab, not the Route tab', () => {
   const route = html.slice(html.indexOf("tab === 'route'"), html.indexOf("tab === 'town'"))
   const town = html.slice(html.indexOf("tab === 'town'"), html.indexOf("tab === 'garage'"))
   assert.ok(!route.includes('data.fuelRuns'), 'not on Route')
-  for (const part of ['ng-click="teleportToDepot()"', 'ng-click="gpsToDepot()"', 'ng-click="takeFuelRun(r)"', 'ng-click="gpsToRun(r)"']) assert.ok(town.includes(part), part + ' on Town')
+  for (const part of ['ng-click="teleportToDepot()"', 'ng-click="gpsToDepot()"', 'ng-click="gpsToRun(r)"']) assert.ok(town.includes(part), part + ' on Town')
+  assert.ok(!town.includes('takeFuelRun('), 'loaded on the jobs board, not the Town tab')
+})
+
+test('Open jobs board shows on the screen at a pickup point or fuel depot, and opens the big jobs board only when pressed', () => {
+  const board = html.slice(html.indexOf('class="ef-board"'), html.indexOf('class="ef-help"'))
+  for (const part of ['ng-click="openBoard()"', 'Open jobs board', 'ng-click="takeJob(j)"', 'ng-click="takeFuelRun(r)"', 'ng-click="closeBoard()"',
+    'type="range"', 'gpsToContract(j.contract.id)', 'ng-click="gpsToRun(r)"', 'data.town.takeProblem', 'data.fuelRuns.problem']) {
+    assert.ok(board.includes(part), part + ' on the jobs board')
+  }
+  const a = app()
+  const town = { id: 'gn1', name: 'Penrith', jobs: [{ id: 'food_gn1', allowed: true }], pickup: { inZone: false, distanceMetres: 120 } }
+  a.state({ state: 'READY', arrived: true, town })
+  assert.equal(a.scope.boardButton(a.scope.data), false, 'not away from the pickup point')
+  a.scope.openBoard(); assert.equal(a.scope.board.open, false, 'and it does not open')
+  const at = { ...town, pickup: { inZone: true, distanceMetres: 10 } }
+  a.state({ state: 'READY', arrived: true, town: at })
+  assert.equal(a.scope.boardButton(a.scope.data), true, 'at the pickup point')
+  assert.equal(a.scope.board.open, false, 'it never opens by itself')
+  assert.equal(a.scope.boardName(a.scope.data), 'Penrith')
+  a.scope.openBoard(); assert.equal(a.scope.board.open, true, 'pressed: the board opens')
+  a.scope.closeBoard(); assert.equal(a.scope.board.open, false, 'and closes')
+  a.scope.openBoard()
+  a.state({ state: 'READY', arrived: true, town: at, load: { to: 'Blaxland' } })
+  assert.equal(a.scope.board.open, false, 'taking a job closes it')
+  assert.equal(a.scope.boardButton(a.scope.data), false, 'and the button goes while on a job')
+  a.state({ state: 'READY', arrived: true, town: at }); a.scope.openBoard()
+  a.state({ state: 'READY', arrived: true, town })
+  assert.equal(a.scope.board.open, false, 'driving off closes it')
+  a.state({ state: 'READY', arrived: true, town: at, partsChange: {} })
+  assert.equal(a.scope.boardButton(a.scope.data), false, 'not over a bill')
+  // A fuel depot: its runs on the same board, with the same button.
+  const fuelRuns = { hub: { id: 'gn2', name: 'Orange' }, depot: { name: 'Caltex Terminal' }, atDepot: true, runs: [{ id: 'fuel_gn2_1', allowed: true }] }
+  a.state({ state: 'READY', arrived: true, town, fuelRuns })
+  assert.equal(a.scope.boardButton(a.scope.data), true, 'at the fuel terminal')
+  assert.equal(a.scope.boardTown(a.scope.data), false, 'just the fuel runs')
+  assert.equal(a.scope.boardName(a.scope.data), 'Caltex Terminal, Orange')
+  a.state({ state: 'READY', arrived: true, town, fuelRuns: { ...fuelRuns, atDepot: false } })
+  assert.equal(a.scope.boardButton(a.scope.data), false, 'not away from it')
+  // Moved onto the page body like the help page, and taken off again when the HUD goes.
+  const holder = { querySelector: sel => (sel === '.ef-board' ? { tag: 'board', parentNode: null } : null) }
+  const b = app(undefined, [holder])
+  assert.ok(b.document.body.children.some(c => c.tag === 'board'), 'on the page body')
+  b.handlers.$destroy()
+  assert.ok(!b.document.body.children.some(c => c.tag === 'board'), 'removed with the HUD')
 })
 
 test('Pickup point: the Town tab points to it with a needle and a GPS button, and the minimised strip shows how far', () => {
