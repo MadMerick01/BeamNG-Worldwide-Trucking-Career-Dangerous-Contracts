@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 290 · 27 Nov 2026
+
 - **Still hidden while MadMerick tests it: the revolver is gone from the precursor run in the desert, and your EMP takes its place.** You get 4 EMP charges for the whole run and no more. Press the EMP button on the HUD, or the Fire EMP key, to hit the nearest Raider within 15 m: its engine is cut and it is out. Every press uses a charge, hit or miss, and the EMP then takes 20 seconds to charge again. The HUD shows how many charges you have left. Downed Raiders' boots no longer hold rounds, so there is no Open boot button, and the Draw revolver and Reload revolver keys are gone. The help page is unchanged while the mission stays hidden. Saves still work, and a run in progress gets its 4 charges.
 - **Still hidden: the Raiders have two new cars.** Besides the rusty and the fast Barstow, a Raider can now turn up in a black 4WD Roamer or a rusty white front-cab van, each a quarter of the time. None of them turn up in traffic. If your game lacks one of them, the Raiders use another.
 - **Still hidden: the Raiders now have EMPs of their own.** A Raider fires its EMP only if your truck is doing under 5 km/h for 2 seconds with a Raider within 15 m. That ends the run just like Give up: your engine dies and you lose the load and what you paid for it. A message tells you what happened, and you are only taken back to where you bought the load once you press Close. The game saves as the message opens, so if you quit before pressing Close it is still there when you come back.
