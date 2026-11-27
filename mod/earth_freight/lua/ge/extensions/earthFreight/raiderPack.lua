@@ -665,11 +665,11 @@ function M.new(car, random)
     for _, h in ipairs(p.raiders) do if h.id == id and h.state ~= 'DOWN' then return h end end
   end
 
-  -- The nearest Raider still up, or nil.
-  function p:nearestRaider()
+  -- The nearest Raider still up (with withEmp, still holding its one EMP), or nil.
+  function p:nearestRaider(withEmp)
     local best
     for _, h in ipairs(self.raiders) do
-      if h.state ~= 'DOWN' and h.metres and (not best or h.metres < best.metres) then best = h end
+      if h.state ~= 'DOWN' and not (withEmp and h.empUsed) and h.metres and (not best or h.metres < best.metres) then best = h end
     end
     return best
   end

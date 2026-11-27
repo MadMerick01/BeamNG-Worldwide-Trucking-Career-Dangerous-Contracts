@@ -20,6 +20,7 @@
 -- c.raiderCar (raiderCar.lua), which may be missing, and then there are no Raiders.
 local special = require('earthFreight/special')
 local raiderPack = require('earthFreight/raiderPack')
+local location = require('earthFreight/location')
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
@@ -33,6 +34,11 @@ M.STEP_SECONDS = 0.5
 M.LINE_SECONDS = 6
 -- The Raiders' EMP: fired at a truck at this speed or less, from within this far, once it has been that slow this long.
 M.RAIDER_EMP_KMH, M.RAIDER_EMP_METRES, M.RAIDER_EMP_SECONDS = 15, 15, 2
+-- With less than this many km left to the shed, a Raider fires at any speed (MadMerick, 27 Nov). Each Raider has one
+-- EMP (h.empUsed). Fired at a truck going faster than RAIDER_EMP_KMH it doesn't end the run: like the road robber's, it
+-- kills the engine for STALL_SECONDS and jams the brakes for BRAKE_SECONDS, and the player has to deal with it.
+M.RAIDER_EMP_ANY_SPEED_KM = 10
+M.STALL_SECONDS, M.BRAKE_SECONDS = 10, 0.5
 
 function M.attach(c)
   -- The load of a special delivery that has started, or nil.
@@ -57,6 +63,7 @@ function M.attach(c)
       return
     end
     if load.emps == nil then load.emps = special.EMP_CHARGES end
+    self:raiderStallTick()
     local car = self.raiderCar
     if not car then return end
     -- The truck: what the Raiders go for, even while the player walks.
@@ -111,22 +118,39 @@ function M.attach(c)
   -- The Raiders' EMP: true once a Raider fired it and the run is over.
   function c:raiderEmpWatch(car, pack)
     local truck = car:player()
-    local near = pack:nearestRaider()
+    local near = pack:nearestRaider(true)
     local slow = truck and type(truck.speed) == 'number' and truck.speed * 3.6 <= M.RAIDER_EMP_KMH
-    if not (slow and near and near.metres <= M.RAIDER_EMP_METRES) then
+    local sample = self.lastSample
+    local left = sample and sample.valid ~= false and location.distance(sample, special.FINISH)
+    local closing = left ~= nil and left < M.RAIDER_EMP_ANY_SPEED_KM * 1000
+    if not ((slow or closing) and near and near.metres <= M.RAIDER_EMP_METRES) then
       self.raiderSlowSince = nil
       return false
     end
     self.raiderSlowSince = self.raiderSlowSince or self.clock
     if self.clock - self.raiderSlowSince < M.RAIDER_EMP_SECONDS then return false end
     self.raiderSlowSince = nil
+    near.empUsed = true
+    -- The EMP sound on the HUD, and the truck shoved away from the Raider that fired.
+    local function hit()
+      if self.thiefCar and self.thiefCar.empPlayer then pcall(self.thiefCar.empPlayer, self.thiefCar) end
+      self:empSound()
+      local from = car:state(near.id)
+      if truck and from and car.shove then pcall(car.shove, car, truck.id, from.x, from.y, true) end
+    end
+    if not slow then
+      -- At speed: the engine dies for a while, and the run goes on.
+      hit()
+      self.raiderStall = { brakeAt = self.clock + M.BRAKE_SECONDS, endAt = self.clock + M.STALL_SECONDS }
+      self.diag:event('raider_emp_stall', string.format('Raider %d at %.0f m', near.n or 0, near.metres))
+      self:raiderSays('A Raider\'s EMP hit you: your engine is dead for ' .. M.STALL_SECONDS
+        .. ' s. Don\'t let them catch you at ' .. M.RAIDER_EMP_KMH .. ' km/h or less.')
+      return false
+    end
     local load = self.load
     local back = load.back
-    if self.thiefCar and self.thiefCar.empPlayer then pcall(self.thiefCar.empPlayer, self.thiefCar) end
-    -- The EMP sound on the HUD, and the truck shoved away from the Raider that fired.
-    self:empSound()
-    local from = car:state(near.id)
-    if truck and from and car.shove then pcall(car.shove, car, truck.id, from.x, from.y, true) end
+    self.raiderStall = nil
+    hit()
     self.diag:event('raider_emp', string.format('Raider %d at %.0f m', near.n or 0, near.metres))
     self:dropJob('raider_emp')
     self.raiderCaught = { cost = load.cost, back = back }
@@ -152,6 +176,21 @@ function M.attach(c)
     self:returnFromDesert(g.back)
     self:saveNowOrSoon('the dangerous contract lost to a Raider')
     return true
+  end
+
+  -- A Raider's EMP at speed: the brakes let off after BRAKE_SECONDS, the engine back after STALL_SECONDS.
+  function c:raiderStallTick()
+    local s = self.raiderStall
+    if not s then return end
+    local t = self.thiefCar
+    if not s.brakesOff and self.clock >= s.brakeAt then
+      s.brakesOff = true
+      if t and t.empPlayerBrakeOff then pcall(t.empPlayerBrakeOff, t) end
+    end
+    if self.clock >= s.endAt then
+      self.raiderStall = nil
+      if t and t.empPlayerEnd then pcall(t.empPlayerEnd, t) end
+    end
   end
 
   function c:raiderSays(line)
@@ -181,6 +220,10 @@ function M.attach(c)
 
   -- The run is over: the Raiders go and their cars are deleted.
   function c:endRaiders()
+    if self.raiderStall then
+      self.raiderStall = nil
+      if self.thiefCar and self.thiefCar.empPlayerEnd then pcall(self.thiefCar.empPlayerEnd, self.thiefCar) end
+    end
     if self.raiders then self.raiders:remove() end
     self.raiders, self.raiderNextAt, self.raiderStepAt, self.raiderLine, self.raiderWhy = nil, nil, nil, nil, nil
     if self.raiderCar then self.raiderCar.targetId = nil end

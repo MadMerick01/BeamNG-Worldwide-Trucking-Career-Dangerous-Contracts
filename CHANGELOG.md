@@ -6,6 +6,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Still hidden: the last 10 km of the precursor run are harder.** With under 10 km to the shed, a Raider within 15 m fires its EMP whatever your speed, and every Raider has one EMP to use. Above 15 km/h it doesn't end the run: your engine dies for 10 seconds, your brakes lock for a moment and your truck is shoved, and you have to deal with it. If they catch you at 15 km/h or less, the run is over as before.
 - **Still hidden: at most 2 successful precursor runs a day.** Once you have delivered 2 in the last 24 hours, the jobs board shows when the next one opens and Take job is off until then. The run's description on the jobs board says so.
 - **Still hidden: your EMP now has 20 charges for the precursor run, up from 4.** The jobs board says so in the run's description. A run already under way keeps the charges it had.
 - **Still hidden: both EMPs now hit with the EMP sound and a shove, without needing Bolides – The Cut.** When your EMP stops a Raider, its car is kicked sideways away from you and lifted a little. When a Raider's EMP gets you, you hear the EMP sound and your truck is kicked away from that Raider.

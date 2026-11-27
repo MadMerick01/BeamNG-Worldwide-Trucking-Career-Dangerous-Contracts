@@ -3145,6 +3145,42 @@ do
   now = now + 23 * 3600
   T.check(specialRows(g)[1].allowed, 'a day after the first, open again')
   T.check(g:manualSave(), 'saved')
+
+  -- With under 10 km to go, a Raider within 15 m fires its one EMP at any speed (MadMerick, 27 Nov). Above 15 km/h
+  -- it doesn't end the run: the engine dies for a while and the player has to deal with it.
+  local k, _, ka = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  k:tick(0.1); k:tick(0.6); k:tick(0.6)
+  k.profile.progression.balance = 1000000
+  T.check(k:takeJob(specialRows(k)[1].id), 'bought')
+  ka.pose = F.copy(special.START); k:tick(0.1); k:tick(0.6); k:tick(0.6)
+  local krc = fakeRaiderCar()
+  local kHits = {}
+  k.thiefCar = { empPlayer = function() kHits[#kHits + 1] = 'dead' end, empPlayerBrakeOff = function() kHits[#kHits + 1] = 'brakes' end,
+    empPlayerEnd = function() kHits[#kHits + 1] = 'back' end }
+  k.raiderCar = krc
+  for _ = 1, math.ceil((desertRun.FIRST_SECONDS + 2) / 0.5) do k:tick(0.5) end
+  for _, car in pairs(krc.cars) do car.x, car.y = 0, 8 end
+  F.drive(k, ka, location.destination(special.FINISH, 180, 12000))
+  T.eq(#kHits, 0, '12 km to go at 72 km/h: no Raider fires')
+  F.drive(k, ka, location.destination(special.FINISH, 180, 9500))
+  for _, car in pairs(krc.cars) do car.x, car.y = 0, 8 end
+  for _ = 1, 6 do k:tick(0.5) end
+  T.eq(kHits[1], 'dead', 'under 10 km to go, a Raider fires at 72 km/h: the engine dies')
+  T.check(k.load ~= nil and k.raiderCaught == nil, 'but the run goes on')
+  T.check(k:view().desert.line:find('engine is dead', 1, true), 'told so')
+  local used = 0
+  for _, h in ipairs(k.raiders.raiders) do if h.empUsed then used = used + 1 end end
+  local dead = 0
+  for _, x in ipairs(kHits) do if x == 'dead' then dead = dead + 1 end end
+  T.check(used >= 1 and used == dead, 'each EMP fired is that Raider\'s one EMP')
+  for _ = 1, math.ceil(desertRun.STALL_SECONDS / 0.5) + 1 do k:tick(0.5) end
+  local got = table.concat(kHits, ',')
+  T.check(got:find('brakes', 1, true) and got:find('back', 1, true), 'the brakes let off, then the engine is back')
+  -- Every Raider fires only once: with all of them used, none fires again.
+  for _, h in ipairs(k.raiders.raiders) do h.empUsed = true end
+  local before = #kHits
+  for _ = 1, 6 do k:tick(0.5) end
+  T.eq(#kHits, before, 'no Raider fires twice')
 end
 
 
