@@ -30,7 +30,7 @@ local function random(lo, hi) if lo == 0 and hi == 1 then return 0.9 end return 
 -- MadMerick's rules for the first test: at most four up at once.
 T.eq(P.MAX, 4, 'at most four Raiders up at once')
 T.eq(P.ESCAPE_METRES, 500, 'one that falls 500 m behind is gone')
-T.eq(special.EMP_CHARGES, 10, 'the EMP has ten charges for the run')
+T.eq(special.EMP_CHARGES, 3, 'the EMP has three charges for the run')
 local car = fakeCar()
 local p = P.new(car, random)
 for i = 1, 4 do T.check(p:add(i) ~= nil, 'Raider ' .. i .. ' turns up') end
@@ -200,12 +200,20 @@ do
   local s = shed.new(env)
   T.eq(s:where().y, 2, 'where the player is')
   T.check(not s:there(), 'no shed yet')
-  T.check(s:place(10, 20, 3), 'put down')
+  T.eq(s:place(10, 20, 3), 42, 'put down, at the ground\'s height')
   T.check(s:there(), 'there')
   T.eq(made[1].shapeName, shed.SHAPE, 'MadMerick\'s shed'); T.eq(made[1].fields.collisionType, 'Visible Mesh', 'solid')
   T.eq(made[1].pos[3], 42, 'on the ground'); T.eq(loaded, 1, 'its materials loaded')
   T.check(s:place(11, 21, 3), 'put down again')
-  T.check(made[1].deleted and #made == 2, 'the old one goes first, so the ground is not its roof'); T.eq(loaded, 1, 'materials once')
+  T.check(s:move(11, 21, 40), 'moved'); T.eq(made[2].pos[3], 40, 'to a new height')
+  local probes = {}
+  env.ground = function(x, y) probes[#probes + 1] = { x, y }; return #probes == 3 and 39 or 41 end
+  T.eq(s:groundAt(0, 0, 3), 39, 'the lowest ground around it')
+  T.eq(#probes, #shed.PROBES, 'looked at all round')
+  for _, p in ipairs(probes) do T.check(math.abs(p[1]) >= 7 or math.abs(p[2]) >= 10, 'outside its walls, never on its roof') end
+  env.ground = function() return ground end
+  T.eq(s:place(12, 22, 3, 37), 37, 'or at a height given'); T.eq(made[3].pos[3], 37, 'there')
+  T.check(made[1].deleted, 'the old one goes first, so the ground is not its roof'); T.eq(loaded, 1, 'materials once')
   ground = nil
   local ok, why = s:place(12, 22, 3)
   T.check(not ok and why == 'no_ground' and not s:there(), 'no ground found: no shed, tried again later')

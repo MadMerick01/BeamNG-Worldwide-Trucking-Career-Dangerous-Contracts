@@ -9,6 +9,10 @@ M.MATERIALS = '/art/shapes/earth_freight_shed/main.materials.json'
 M.NAME = 'earthFreightDesertShed'
 -- The ground is looked for from this far above the player's height, and this far down.
 M.ABOVE, M.DOWN = 300, 600
+-- Where the ground is looked for, from the shed's middle: just outside its walls and roof (12 m by 18 m, with a 0.6 m
+-- overhang), so a ray never lands on the shed itself. The lowest is used: the walls go 1.5 m into the sand, and a shed
+-- sunk a little into a dune looks right where one standing on its crest floats (MadMerick, 27 Nov).
+M.PROBES = { { 7.5, 10.5 }, { -7.5, 10.5 }, { 7.5, -10.5 }, { -7.5, -10.5 }, { 7.5, 0 }, { -7.5, 0 }, { 0, 10.5 }, { 0, -10.5 } }
 
 local function finite(n) return type(n) == 'number' and n == n and n > -math.huge and n < math.huge end
 
@@ -59,14 +63,31 @@ function M.new(environment)
     if ok and o then pcall(function() o:delete() end) end
   end
 
-  -- Puts the shed down on the ground at x, y (near height z), open end south. Any shed already there goes first, so
-  -- the ground found is the sand, not its roof. Returns true, or false and why.
-  function s:place(x, y, z)
+  -- The height of the ground around a shed at x, y (from near height z): the lowest of PROBES, or nil.
+  function s:groundAt(x, y, z)
+    local low
+    for _, p in ipairs(M.PROBES) do
+      local ok, g = pcall(env.ground, x + p[1], y + p[2], z)
+      if ok and finite(g) and (not low or g < low) then low = g end
+    end
+    return low
+  end
+
+  -- Moves the shed already down to height z at x, y. Returns true, or false.
+  function s:move(x, y, z)
+    local ok, o = pcall(env.find, M.NAME)
+    if not ok or not o then return false end
+    return (pcall(function() o:setPosRot(x, y, z, 0, 0, 0, 1) end))
+  end
+
+  -- Puts the shed down at x, y (near height z), open end south, at height ground, or else on the ground found
+  -- around it. Any shed already there goes first. Returns the height it was put at, or false and why.
+  function s:place(x, y, z, ground)
     self:remove()
     local okFile, has = pcall(env.exists, M.SHAPE)
     if not okFile or not has then return false, 'no_shed_shape' end
-    local okGround, g = pcall(env.ground, x, y, z)
-    if not okGround or not finite(g) then return false, 'no_ground' end
+    local g = finite(ground) and ground or self:groundAt(x, y, z)
+    if not finite(g) then return false, 'no_ground' end
     if not materials then
       materials = true
       pcall(env.loadMaterials, M.MATERIALS)
@@ -85,7 +106,7 @@ function M.new(environment)
       self:remove()
       return false, 'shed_failed: ' .. tostring(why)
     end
-    return true
+    return g
   end
 
   return s

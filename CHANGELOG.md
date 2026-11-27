@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Your EMP now has 3 charges for the whole Shed in the Desert run**, down from 10. The jobs board says so. A run already under way keeps the charges it had.
+- **Fixed: the shed at the end of the Shed in the Desert sometimes floated in the air.** It now sits on the sand, and it settles down onto the ground as you get close. Saves still work.
+
 - **The EU tanker now says it needs a drawbar hitch, not a fifth wheel.** It's a drawbar trailer with its own steering front axle and a towing eye, so it hitches to a rigid truck's pintle hook or towing jaw. Before, its card under Buy new trailer told you to fit a fifth wheel, which it can't use. Its load now sits evenly on its axles instead of being pushed towards the drawbar.
 - **New trailer: the EU tanker, 2 axle**, a shorter drawbar tanker holding 16,800 L, for trucks that don't need the full 22,500 L of the 3 axle one.
 - Trucks with a drawbar, drawbeam or pintle hitch now show a green tick on drawbar trailer cards. Saves still work, and an EU tanker you already own keeps working as before.

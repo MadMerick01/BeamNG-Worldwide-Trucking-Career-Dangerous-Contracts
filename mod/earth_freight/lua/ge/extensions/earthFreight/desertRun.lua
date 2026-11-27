@@ -51,6 +51,12 @@ M.RAIDER_EMP_ANY_SPEED_KM = 5
 M.STALL_SECONDS, M.BRAKE_SECONDS = 10, 0.5
 -- The shed: put down once the player is this close to the finish, and left where it is once put down this close.
 M.SHED_NEAR_METRES, M.SHED_PIN_METRES = 2500, 300
+-- Once it is left where it is, the ground under it is looked at again every SHED_CHECK_SECONDS while the player is
+-- within SHED_CHECK_METRES (Earth brings in finer ground as the player nears), and the shed moved down or up to it
+-- when it is more than SHED_SETTLE_METRES off. With the player within SHED_CLOSE_METRES, ground found more than
+-- SHED_ABOVE_METRES above where the player's car stands is not believed, and the shed goes at the car's height.
+M.SHED_CHECK_SECONDS, M.SHED_CHECK_METRES, M.SHED_SETTLE_METRES = 2, 600, 0.3
+M.SHED_CLOSE_METRES, M.SHED_ABOVE_METRES = 150, 2
 
 function M.attach(c)
   -- The load of a special delivery that has started, or nil.
@@ -246,13 +252,29 @@ function M.attach(c)
     if not world then return end
     local placed = self.shed
     if placed and not world:there() then placed, self.shed = nil, nil end
-    if placed and (placed.metres <= M.SHED_PIN_METRES or d > placed.metres / 2) then return end
     local me, b = world:where(), location.bearing(sample, special.FINISH)
     if not me or not b then return end
-    local ok, why = world:place(me.x + math.sin(math.rad(b)) * d, me.y + math.cos(math.rad(b)) * d, me.z)
-    if ok then
-      self.shed = { metres = d }
-      self.diag:event('shed_placed', string.format('%.0f m away', d))
+    -- The ground found, kept from floating above the player's car once they are close.
+    local function floor(g)
+      if g and d <= M.SHED_CLOSE_METRES and g > me.z + M.SHED_ABOVE_METRES then return me.z end
+      return g
+    end
+    if placed and (placed.metres <= M.SHED_PIN_METRES or d > placed.metres / 2) then
+      -- Left where it is: settled onto the ground now and then.
+      if d > M.SHED_CHECK_METRES or self.clock < (placed.checkAt or 0) then return end
+      placed.checkAt = self.clock + M.SHED_CHECK_SECONDS
+      local g = floor(world:groundAt(placed.x, placed.y, me.z))
+      if g and math.abs(g - placed.z) > M.SHED_SETTLE_METRES and world:move(placed.x, placed.y, g) then
+        self.diag:event('shed_settled', string.format('%.1f m %s', math.abs(g - placed.z), g < placed.z and 'down' or 'up'))
+        placed.z = g
+      end
+      return
+    end
+    local x, y = me.x + math.sin(math.rad(b)) * d, me.y + math.cos(math.rad(b)) * d
+    local z, why = world:place(x, y, me.z, floor(world:groundAt(x, y, me.z)))
+    if z then
+      self.shed = { metres = d, x = x, y = y, z = z, checkAt = self.clock + M.SHED_CHECK_SECONDS }
+      self.diag:event('shed_placed', string.format('%.0f m away, %.1f m from the car\'s height', d, z - me.z))
     elseif why ~= self.shedWhy then
       self.shedWhy = why
       self.diag:event('shed_not_placed', tostring(why), 'W')
