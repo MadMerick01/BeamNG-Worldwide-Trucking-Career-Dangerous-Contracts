@@ -42,11 +42,12 @@ M.STEP_SECONDS = 0.5
 -- How long a Raider's line stays on the HUD.
 M.LINE_SECONDS = 6
 -- The Raiders' EMP: fired at a truck at this speed or less, from within this far, once it has been that slow this long.
-M.RAIDER_EMP_KMH, M.RAIDER_EMP_METRES, M.RAIDER_EMP_SECONDS = 15, 15, 2
--- With less than this many km left to the shed, a Raider fires at any speed (MadMerick, 27 Nov). Each Raider has one
+M.RAIDER_EMP_KMH, M.RAIDER_EMP_METRES, M.RAIDER_EMP_SECONDS = 5, 15, 2
+-- With less than this many km left to the shed, a Raider fires at any speed (MadMerick, 27 Nov: 5 km/h
+-- and the last 5 km, back from 15 km/h and 10 km). Each Raider has one
 -- EMP (h.empUsed). Fired at a truck going faster than RAIDER_EMP_KMH it doesn't end the run: like the road robber's, it
 -- kills the engine for STALL_SECONDS and jams the brakes for BRAKE_SECONDS, and the player has to deal with it.
-M.RAIDER_EMP_ANY_SPEED_KM = 10
+M.RAIDER_EMP_ANY_SPEED_KM = 5
 M.STALL_SECONDS, M.BRAKE_SECONDS = 10, 0.5
 -- The shed: put down once the player is this close to the finish, and left where it is once put down this close.
 M.SHED_NEAR_METRES, M.SHED_PIN_METRES = 2500, 300
