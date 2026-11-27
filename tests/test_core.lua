@@ -2330,6 +2330,14 @@ do
   -- Hitches are read from the car's part names.
   local h = TR.hitches({ parts = { a = 'semi_fifthwheel', b = 'pickup_gooseneck_hitch', c = 'van_tow_hitch', d = 'x_pintle_hitch' } })
   T.check(h.fifthwheel and h.gooseneck and h.ball, 'fifth wheel, gooseneck and ball'); T.eq(TR.hitches(nil).ball, nil, 'none without parts')
+  T.eq(h.pintle, true, 'a pintle hitch is a drawbar hitch')
+  T.eq(TR.hitches({ parts = { a = 'truck_drawbeam' } }).pintle, true, 'so is a drawbeam')
+  T.eq(TR.hitches({ parts = { a = 'truck_drawbeam' } }).ball, nil, 'and neither is a ball hitch')
+  -- The EU tankers are drawbar trailers, with no weight on the hitch.
+  T.eq(TR.hitchOf('eu_trailers', 'vehicles/eu_trailers/tanker3a.pc'), 'pintle', 'the 3 axle EU tanker takes a drawbar')
+  T.eq(TR.hitchOf('eu_trailers', 'vehicles/eu_trailers/tanker2a.pc'), 'pintle', 'so does the 2 axle one')
+  T.eq(TR.limitOf('eu_trailers', 'vehicles/eu_trailers/tanker2a.pc'), 16800, 'which holds 16,800 L')
+  T.eq(TR.HITCH_SHARE.pintle, nil, 'a drawbar trailer puts no load on the hitch')
 end
 
 -- A load is split between the car and the trailer, each to the same share of its room.
