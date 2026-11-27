@@ -31,6 +31,7 @@ Pay only goes up when a road is measured: a job never pays less than the board s
 
 # depot | Pickup points and the jobs board
 Every town has a pickup point near its middle, on the nearest road. Stop your truck within {pickupMetres} m of it and an Open jobs board button shows in the middle of the screen.
+A garage bill or an unpaid relocation hides the button until you settle it. A crash doesn't: you can still take a job with a damaged car.
 Press it to open the jobs board: the town's jobs, off-road drops and dangerous contracts, with a Load slider and GPS on each. Press Take job and the board closes. It never opens by itself.
 The jobs board is the only place to take a job. The Town tab still lists every town's jobs, so you can see what each one has and wants before you drive there.
 The button goes away when you drive off or take a job. Online it's all on your own screen, like the Town tab.
