@@ -20,8 +20,6 @@ M.CONFIGS = { 'earth_freight_raider_old1', 'earth_freight_raider_fast2' }
 local function configPath(name) return 'vehicles/barstow/' .. name .. '.pc' end
 -- How high above the player the cars wait while hidden, in metres.
 M.HIDE_LIFT = 2000
--- How far the boot is behind the middle of a car, in metres, for a car whose length can't be read.
-M.BOOT_METRES = 2.3
 
 local function defaults()
   return {
@@ -265,16 +263,6 @@ function M.new(environment)
   function h:state(id)
     local p = pose(car(id))
     if p then return { x = p.x, y = p.y, z = p.z, speed = p.speed } end
-  end
-
-  -- Where car id's boot is: behind its middle by half its length.
-  function h:boot(id)
-    local c = car(id)
-    local p = pose(c)
-    if not p then return nil end
-    local okLen, length = pcall(function() return c:getInitialLength() end)
-    local back = (okLen and finite(length) and length > 1) and length / 2 or M.BOOT_METRES
-    return { x = p.x - p.dx * back, y = p.y - p.dy * back, z = p.z }
   end
 
   -- Hides the Raider's car for the next Raider.

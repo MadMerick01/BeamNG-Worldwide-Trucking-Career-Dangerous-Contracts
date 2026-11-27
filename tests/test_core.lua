@@ -2964,8 +2964,9 @@ do
   T.eq(f.sets[#f.sets].litres, 80, 'the fill is not undone as a reset')
   T.eq(c.fuel.litres, 80, 'full')
   -- The Raiders (desertRun.lua): a pretend game's cars, all at the truck.
-  T.eq(c.load.ammo, special.START_ROUNDS, 'the revolver starts with 60 rounds')
-  T.eq(c:view().desert.rounds, 60, 'shown on the HUD')
+  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 4 charges for the whole run')
+  T.eq(special.EMP_CHARGES, 4, 'four, as MadMerick asked')
+  T.eq(c:view().desert.charges, 4, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 4, 'of four')
   local desertRun = require('earthFreight/desertRun')
   local raiderPack = require('earthFreight/raiderPack')
   local rcar = { cars = {}, next = 500, preloaded = 0 }
@@ -2978,7 +2979,6 @@ do
   function rcar:ground() return 0 end
   function rcar:state(id) return self.cars[id] end
   function rcar:calm() end
-  function rcar:boot(id) return { x = 0, y = 1, z = 0 } end
   function rcar:release(id) self.cars[id] = nil end
   function rcar:removeAll() self.removed = true end
   c.raiderCar = rcar
@@ -2987,67 +2987,34 @@ do
   T.eq(c:view().desert.up, 0, 'no Raider straight away')
   for _ = 1, math.ceil((desertRun.FIRST_SECONDS + desertRun.GAP_SECONDS * 4) / 0.5) do c:tick(0.5) end
   T.eq(c:view().desert.up, raiderPack.MAX, 'then they keep coming, four at most')
-  local downed = c.raiders.raiders[1]
-  c.raiders:driverShot(downed.id)
-  downed.boot = 17
+  T.eq(c:view().desert.emp.charges, 4, 'the EMP button with them')
+  -- The EMP (emp.lua): the nearest Raider within 15 m is hit, and every press uses a charge.
+  local emp = require('earthFreight/emp')
+  local near = c.raiders.raiders[1]
+  for _, r in ipairs(c.raiders.raiders) do rcar.cars[r.id].x, rcar.cars[r.id].y = 0, 100 end
+  rcar.cars[near.id].x, rcar.cars[near.id].y = 0, 10
+  for _ = 1, 2 do c:tick(0.5) end
+  T.check(c:view().desert.emp.inRange, 'a Raider 10 m away is in range')
+  T.check(c:empHotkey(), 'the Fire EMP key hits it')
+  T.eq(near.state, 'DOWN', 'its engine cut, it is down')
+  T.eq(c.load.emps, 3, 'a charge used'); T.eq(c:view().desert.charges, 3, 'three left on the HUD')
   T.eq(c:view().desert.up, 3, 'one down')
-  T.eq(c:view().desert.boot, nil, 'no Open boot from the driver\'s seat')
-  T.eq(c:openBoot(), nil, 'and it does nothing')
-  local garage = c.garage
-  garage.walking = true; c:tick(0.1)
-  T.check(c:view().desert.boot, 'walking to its boot: Open boot')
-  T.eq(c:openBoot(), 17, 'the rounds in it')
-  T.eq(c.load.ammo, 77, 'go with the load')
-  T.check(c:view().desert.line:find('17 rounds', 1, true), 'told so')
-  T.eq(c:view().desert.boot, nil, 'a boot is opened once')
-  garage.walking = false; c:tick(0.1)
-  -- The flat-screen revolver (revolver.lua, aim.lua): a pretend mouse.
-  local vrOn, clicking, shots, pistol = false, false, 0, nil
-  c.aim = { vr = function() return vrOn end, pistol = function() return pistol end,
-    aim = function() return { origin = {}, dir = {} } end, draw = function() end,
-    clicked = function() return clicking end, shoot = function() shots = shots + 1; return true end }
-  c:tick(0.1)
-  local dv = c:view().desert
-  T.eq(dv.loaded, 6, 'six in the gun'); T.eq(dv.spare, 71, 'the rest spare')
-  T.check(dv.revolverAllowed and not dv.drawn, 'Draw revolver')
-  c:followAim(); T.eq(shots, 0, 'holstered, a click is no shot')
-  T.check(c:toggleRevolver(), 'drawn')
-  clicking = true
-  c.hudHover = true; c:followAim(); T.eq(shots, 0, 'a click on the HUD is no shot')
-  c.hudHover = false; c:followAim(); T.eq(shots, 1, 'fired')
-  T.eq(c.load.ammo, 76, 'a round used')
-  c.clock = c.clock + 1; c:followAim()
-  T.eq(c.load.ammo, 75, 'and another')
-  clicking = false
-  T.check(c:view().desert.reloadAllowed, 'Reload with spare rounds')
-  T.check(c:reloadRevolver(), 'reloading')
-  for _ = 1, 4 do c:tick(0.5) end
-  T.eq(c:view().desert.loaded, 6, 'the cylinder filled'); T.eq(c.load.ammo, 75, 'from the spare rounds')
-  -- Hits from either revolver: four stop a Raider, the driver at once.
-  local target
-  for _, r in ipairs(c.raiders.raiders) do if r.state ~= 'DOWN' then target = r break end end
-  for _ = 1, 3 do c:raiderHit(target.id, false) end
-  T.check(target.state ~= 'DOWN', 'three hits and it keeps going')
-  c:raiderHit(target.id, false)
-  T.eq(target.state, 'DOWN', 'four hits stop a Raider')
-  for _, r in ipairs(c.raiders.raiders) do if r.state ~= 'DOWN' then target = r break end end
-  c:raiderHit(target.id, true)
-  T.eq(target.state, 'DOWN', 'a shot through the driver stops it at once')
-  -- In VR: MadMerick's VR revolver gets the run's rounds and gives them back as it fires.
-  local set = {}
-  pistol = { setAmmo = function(n, spare) set[#set + 1] = { n = n, spare = spare } end,
-    getAmmo = function() return 2, 6, 50 end, getConfig = function() return { cylinderSize = 6 } end }
-  vrOn = true; c:tick(0.1)
-  T.eq(set[1].n, 6, 'the VR revolver loaded'); T.eq(set[1].spare, 69, 'with the run\'s spare rounds')
-  T.eq(c:view().desert.drawn, nil, 'no flat-screen revolver in VR'); T.check(c:view().desert.vr, 'the VR one instead')
-  c:tick(0.1)
-  T.eq(c.load.ammo, 52, 'its rounds read back as it fires')
-  T.eq(c:toggleRevolver(), false, 'Draw revolver does nothing in VR')
-  vrOn = false; c:tick(0.1)
-  T.eq(set[#set].spare, nil, 'out of VR, the VR revolver gets its own unlimited rounds back')
-  T.eq(c.load.ammo, 52, 'and the run keeps what was left')
-  T.check(c:manualSave(), 'saved with the rounds')
-  T.eq(F.controller({ io = io }).load.ammo, 52, 'a reload keeps the rounds')
+  T.check(c:view().desert.line:find('EMP', 1, true), 'told so')
+  T.check(not c:view().desert.emp.ready, 'then it charges')
+  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 3, 'nor use a charge')
+  -- A miss: the nearest is 100 m away. It still uses a charge.
+  for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
+  T.check(c:view().desert.emp.ready, 'charged after 20 s')
+  T.check(not c:view().desert.emp.inRange, 'the rest are out of range')
+  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 2, 'still uses a charge')
+  T.check(c:view().desert.emp.feedback:find('15 m', 1, true), 'and says how close to get')
+  T.check(c:manualSave(), 'saved with the charges')
+  T.eq(F.controller({ io = io }).load.emps, 2, 'a reload keeps the charges')
+  -- None left: it can't fire.
+  c.load.emps = 0
+  for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
+  T.eq(c:fireEmp(), false, 'no charges, no EMP'); T.eq(c:view().desert.emp.feedback, 'No EMP charges left.', 'told so')
+  T.eq(c.load.emps, 0, 'never below none')
   -- Driven to the shed and stopped: paid 6 times.
   F.drive(c, a, special.FINISH)
   T.check(c:view().load.drop.inZone and c:view().load.drop.delivery.allowed, 'at the shed and stopped')

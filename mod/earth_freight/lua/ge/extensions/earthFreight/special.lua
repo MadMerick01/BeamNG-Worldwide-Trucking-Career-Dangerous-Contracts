@@ -8,7 +8,7 @@
 -- It rides on the dangerous contract's code (contracts.lua): SECTION is a contract section that contracts.get
 -- finds but the boards' rotation never picks. Hidden while it is tested: only shown when OPEN is true, to the
 -- server's admins online, or in single player with "specialDelivery": true in settings/earthFreight/config.json.
--- The Raiders and their boots are in desertRun.lua; the revolver and the shed itself come in later builds. Pure
+-- The Raiders and the player's EMP against them are in desertRun.lua; the shed itself comes in a later build. Pure
 -- data and maths.
 local location = require('earthFreight/location')
 local M = {}
@@ -27,8 +27,8 @@ M.FINISH = location.destination(M.START, 0, M.KM * 1000)
 -- After the free full tank at the start goes in, a rise in the fuel gauge for this long is that fill, not a reset to
 -- undo (core.lua's fuelReading).
 M.FILL_SECONDS = 15
--- The rounds the revolver starts the run with (MadMerick, 26 Nov). Downed Raiders' boots hold more (desertRun.lua).
-M.START_ROUNDS = 60
+-- The EMP charges the player has for the whole run, and no more (MadMerick, 27 Nov, in place of the revolver).
+M.EMP_CHARGES = 4
 -- The two loads, as goods (goods.lua): solid and fluid.
 M.GOODS = { 'precursors', 'precursors_fluid' }
 

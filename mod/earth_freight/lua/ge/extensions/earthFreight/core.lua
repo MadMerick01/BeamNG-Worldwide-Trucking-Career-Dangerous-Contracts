@@ -37,7 +37,6 @@ local fuelruns = require('earthFreight/fuelruns')
 local thief = require('earthFreight/thief')
 local thiefCar = require('earthFreight/thiefCar')
 local raiderCar = require('earthFreight/raiderCar')
-local revolverAim = require('earthFreight/aim')
 local emp = require('earthFreight/emp')
 local roadRobber = require('earthFreight/roadRobber')
 local adminRobber = require('earthFreight/adminRobber')
@@ -179,8 +178,6 @@ function M.new(deps)
     thiefCar = deps.thiefCar,
     -- The special delivery's Raider cars (raiderCar.lua); without them there are no Raiders.
     raiderCar = deps.raiderCar,
-    -- The special delivery's flat-screen revolver: mouse aim, crosshair and shot (aim.lua); without it, no revolver.
-    aim = deps.aim,
     -- Finds the road nearest a town's pickup point (pickupWorld.lua); without it each town's pickup
     -- point stays at the town's own point.
     pickupWorld = deps.pickupWorld,
@@ -1070,11 +1067,11 @@ function M.new(deps)
       -- The special delivery: no roads and no GPS, just the arrow north to the shed. The tank is filled once the car
       -- reports it (fuelReading).
       if section.special then
-        self.load.ammo = contracts.special.START_ROUNDS
+        self.load.emps = contracts.special.EMP_CHARGES
         self:showFlash('delivered', 'SPECIAL DELIVERY: THE SHED IN THE DESERT', section.summary
           .. ' No roads: follow the arrow on the Route tab and stop within ' .. contracts.FINISH_RADIUS
-          .. ' m of the shed. Your tank is filled and your revolver has ' .. contracts.special.START_ROUNDS
-          .. ' rounds. Rival clans\' Raiders will come for you. Fail to make the drop and you lose the lot.')
+          .. ' m of the shed. Your tank is filled and your EMP has ' .. contracts.special.EMP_CHARGES
+          .. ' charges for the whole run. Rival clans\' Raiders will come for you. Fail to make the drop and you lose the lot.')
         self.diag:event('special_started', section.id)
         self:saveNowOrSoon('the special delivery')
         return
@@ -3853,7 +3850,7 @@ end
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
-      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(), raiderCar = raiderCar.new(), aim = revolverAim.new(), pickupWorld = pickupWorld.new(),
+      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(), raiderCar = raiderCar.new(), pickupWorld = pickupWorld.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
       streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(), nametagsOff = gameNametagsOff, layout = gameLayout,
       layouts = gameLayouts(),
@@ -4061,18 +4058,8 @@ function M.thiefChase(index)
   return safely(function() return ensure():thiefChase(index) end)
 end
 function M.empThief() return safely(function() return ensure():empThief() end) end
--- The special delivery: Open boot on a downed Raider, and a Raider's driver reporting a problem from inside its car.
-function M.openBoot() return safely(function() return ensure():openBoot() end) end
+-- The special delivery: a Raider's driver reporting a problem from inside its car.
 function M.raiderProblem(vehicleId, why) return safely(function() return ensure():raiderProblem(vehicleId, why) end) end
--- The special delivery's revolver: the Draw revolver and Reload buttons and keys, whether the mouse is over the HUD
--- (a click there is not a shot), the crosshair each frame, and a hit from either revolver. MadMerick's VR revolver
--- mod sends onVrPistolHit and onVrPistolDriverHit to every extension; the flat-screen revolver sends the same.
-function M.toggleRevolver() return safely(function() return ensure():toggleRevolver() end) end
-function M.reloadRevolver() return safely(function() return ensure():reloadRevolver() end) end
-function M.hudHover(on) return safely(function() ensure().hudHover = on == true end) end
-function M.onDrawDebug() return safely(function() if active then active:followAim() end end) end
-function M.onVrPistolHit(vehicleId) return safely(function() if active then active:raiderHit(vehicleId, false) end end) end
-function M.onVrPistolDriverHit(vehicleId) return safely(function() if active then active:raiderHit(vehicleId, true) end end) end
 function M.empHotkey() return safely(function() return ensure():empHotkey() end) end
 function M.thiefLetGo() return safely(function() return ensure():thiefLetGo() end) end
 function M.thiefGoBack() return safely(function() return ensure():thiefGoBack() end) end
