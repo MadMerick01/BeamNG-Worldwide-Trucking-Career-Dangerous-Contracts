@@ -294,6 +294,16 @@ function M.validate(s)
     end
     thiefClock = { played = k.played, hour = k.hour, due = k.due, last = k.last }
   end
+  -- A Raider's EMP ended the desert's dangerous contract (desertRun.lua): what the lost load cost and where to go back
+  -- to, kept until the player closes the message.
+  local caught = nil
+  if s.raiderCaught ~= nil then
+    local g = s.raiderCaught
+    if type(g) ~= 'table' or not integer(g.cost, 0) or (g.back ~= nil and not location.valid(g.back)) then
+      return nil, 'invalid_load'
+    end
+    caught = { cost = g.cost, back = g.back and { latitude = g.back.latitude, longitude = g.back.longitude } or nil }
+  end
   local cargo = nil
   if s.load ~= nil then
     cargo = load(s.load)
@@ -365,6 +375,7 @@ function M.validate(s)
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
     trailer = trailer, spareTrailers = spareTrailers, property = home, storedCars = stored, commissionId = s.commissionId, rewardId = s.rewardId,
     corp = member, extraCarSlot = s.extraCarSlot, noRobbers = s.noRobbers, robbersOff = s.robbersOff, thiefClock = thiefClock,
+    raiderCaught = caught,
   }
 end
 
@@ -435,7 +446,7 @@ function M.new(io, directory)
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
       trailer = candidate.trailer, spareTrailers = candidate.spareTrailers, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId, rewardId = candidate.rewardId,
       corp = candidate.corp, extraCarSlot = candidate.extraCarSlot, noRobbers = candidate.noRobbers, robbersOff = candidate.robbersOff,
-      thiefClock = candidate.thiefClock,
+      thiefClock = candidate.thiefClock, raiderCaught = candidate.raiderCaught,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

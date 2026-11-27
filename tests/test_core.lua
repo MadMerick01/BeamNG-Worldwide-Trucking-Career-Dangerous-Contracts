@@ -2963,6 +2963,15 @@ do
   c:fuelReading(1, 12, 80); c:fuelReading(1, 80, 80)
   T.eq(f.sets[#f.sets].litres, 80, 'the fill is not undone as a reset')
   T.eq(c.fuel.litres, 80, 'full')
+  -- No repairs or insurance on the run (MadMerick, 27 Nov).
+  local workshopM = require('earthFreight/workshop')
+  T.check(not c:requestRepairQuote(), 'no repair quote'); T.eq(c:view().repairFeedback, workshopM.DESERT_NO_REPAIRS, 'told why')
+  T.check(not c:view().repairQuoteAllowed, 'no Get quote button')
+  c.quote = { vehicleId = 1, cost = 100 }
+  T.check(not c:repairVehicle(), 'nor a repair')
+  T.check(not c:insuranceAllowed(), 'no insurance claim'); T.check(not c:claimInsurance(), 'refused')
+  T.eq(c:view().repairFeedback, workshopM.DESERT_NO_REPAIRS, 'told why')
+  T.eq(c:view().insurance, nil, 'no insurance card')
   -- The Raiders (desertRun.lua): a pretend game's cars, all at the truck.
   T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 4 charges for the whole run')
   T.eq(special.EMP_CHARGES, 4, 'four, as MadMerick asked')
@@ -3029,7 +3038,7 @@ do
   T.eq(c:view().desert, nil, 'the panel with them')
 
   -- Cancelled before the start: the cost is paid back.
-  local d, _, da = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  local d, dio, da = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
   d:tick(0.1); d:tick(0.6); d:tick(0.6)
   d.profile.progression.balance = 500000
   T.check(d:takeJob(specialRows(d)[1].id, 50), 'half a load bought')
@@ -3079,11 +3088,15 @@ do
   T.eq(d.raiders, nil, 'the Raiders go')
   for _ = 1, 4 do d:tick(0.5) end
   T.eq(#da.teleports, teleports, 'no teleport until the message is closed')
+  local reloaded = F.controller({ io = dio })
+  T.eq(reloaded.raiderCaught and reloaded.raiderCaught.cost, paid, 'saved as the message opened: a reload shows it again')
+  T.eq(reloaded.load, nil, 'without the load')
   T.check(d:closeRaiderCaught(), 'Close')
   T.eq(empHit, 11, 'the engine back')
   T.eq(#da.teleports, teleports + 1, 'then Earth takes the player back')
   T.near(da.teleports[#da.teleports].latitude, back.latitude, 1e-9, 'to where the load was taken')
   T.eq(d:view().raiderCaught, nil, 'the message gone'); T.check(not d:closeRaiderCaught(), 'closed once')
+  d:manualSave(); T.eq(F.controller({ io = dio }).raiderCaught, nil, 'and gone from the save')
   da.pose = F.copy(back); d:tick(0.1); d:tick(0.6); d:tick(0.6)
   T.eq(d.stranded, nil, 'the trip back is not an unpaid relocation')
 

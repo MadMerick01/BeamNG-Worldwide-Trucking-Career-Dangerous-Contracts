@@ -13,7 +13,8 @@
 -- The Raiders' EMP (MadMerick, 27 Nov): every Raider has one too, but only fires it at a truck doing under
 -- RAIDER_EMP_KMH, from within RAIDER_EMP_METRES, once it has been that slow for RAIDER_EMP_SECONDS. That ends the run
 -- as Give up does: the load and what it cost are lost. The truck's engine dies and the HUD shows a message with a Close
--- button; only once it is closed is the player taken back to where they took the load (raiderCaught).
+-- button; only once it is closed is the player taken back to where they took the load (raiderCaught). The game saves
+-- as the message opens, with the message, so a reload shows it again.
 --
 -- Delivered, given up or dropped, the Raiders go and their cars are deleted. Pure Lua: the cars are handled by
 -- c.raiderCar (raiderCar.lua), which may be missing, and then there are no Raiders.
@@ -136,6 +137,7 @@ function M.attach(c)
     if self.thiefCar and self.thiefCar.empPlayerEnd then pcall(self.thiefCar.empPlayerEnd, self.thiefCar) end
     self.tradeFeedback = 'A Raider\'s EMP ended the dangerous contract and you lost the load.'
     self:returnFromDesert(g.back)
+    self:saveNowOrSoon('the dangerous contract lost to a Raider')
     return true
   end
 
@@ -183,7 +185,7 @@ function M.attach(c)
     local line = self.raiderLine and self.clock - (self.raiderLineAt or 0) <= M.LINE_SECONDS and self.raiderLine or nil
     return { up = self.raiders and self.raiders:up() or 0, max = raiderPack.MAX, line = line,
       charges = load.emps or special.EMP_CHARGES, totalCharges = special.EMP_CHARGES,
-      emp = self:empView() }
+      emp = self:empView(), noRepairs = true }
   end
 end
 

@@ -660,6 +660,7 @@
             <button type="button" ng-click="empRaider()" ng-disabled="!data.desert.emp.ready || data.desert.charges <= 0" ng-style="empStyle(data.desert.emp)" title="Fires the EMP at the nearest Raider. Every press uses a charge, hit or miss, and it then takes 20 seconds to charge" style="padding:4px 14px;border-radius:4px;color:#0c1318;font-weight:bold;white-space:nowrap;">{{data.desert.charges > 0 ? empLabel(data.desert.emp) : 'NO CHARGES LEFT'}}</button>
             <span style="font-size:12px;color:#8fa39d;">or the Fire EMP key</span>
           </div>
+          <div ng-if="data.desert.noRepairs" style="margin-top:4px;font-size:12px;color:#c9d6d2;">No repairs or insurance on this run.</div>
           <div role="status" ng-if="data.desert.emp.feedback" style="margin-top:4px;color:#c9d6d2;">{{data.desert.emp.feedback}}</div>
         </div>
         <div ng-if="data.abandonAllowed && data.giveUp" class="ef-sec">

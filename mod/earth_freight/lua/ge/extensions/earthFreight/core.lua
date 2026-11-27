@@ -300,6 +300,8 @@ function M.new(deps)
     self.robbersOffSaved = self.profile and self.profile.robbersOff or nil
     -- The play counted towards the hourly base thief (thief.lua).
     self.thiefClock = self.profile and copy(self.profile.thiefClock) or nil
+    -- A Raider's EMP message still open (desertRun.lua): shown again after a reload.
+    self.raiderCaught = self.profile and copy(self.profile.raiderCaught) or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
     self.corp = self.profile and copy(self.profile.corp) or nil
     self.homeFeedback, self.homeCard, self.corpSeen, self.leaveArmed, self.corpAskedAt = nil, nil, nil, nil, nil
@@ -3365,7 +3367,7 @@ function M.new(deps)
       tradeFeedback = self.tradeFeedback,
       fuelFeedback = self.fuelFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
-      repairQuoteAllowed = active and self.garage ~= nil and not self.hire and not self.onFoot,
+      repairQuoteAllowed = active and self.garage ~= nil and not self.hire and not self.onFoot and not (self.desertLoad and self:desertLoad()),
       repairQuote = quote and quote.cost or nil,
       repairOwed = self.owedDamage > 0 and pricing.repairCost(self.owedDamage, self:carValueOf(self.ownedParts and self.ownedParts.id)) or nil,
       repairAllowed = quote ~= nil and not self.pendingParts and not self.pendingCar and not self.onFoot,
@@ -3556,7 +3558,7 @@ function M.new(deps)
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
       robbersOff = self.robbersOffSaved or nil,
-      thiefClock = self:savedThiefClock(),
+      thiefClock = self:savedThiefClock(), raiderCaught = copy(self.raiderCaught),
       trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
