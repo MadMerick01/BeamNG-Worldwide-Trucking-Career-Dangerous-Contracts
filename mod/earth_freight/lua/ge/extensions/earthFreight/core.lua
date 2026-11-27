@@ -1954,6 +1954,11 @@ function M.new(deps)
     -- A hitched trailer adds its room to the car's. A dangerous contract only loads the car: its
     -- teleport to the start leaves the trailer behind.
     local units, slots, kg, inTrailer = trailers.fits(self:space(), not job.contract and self:trailerSpace() or nil, good)
+    -- The special delivery: no more than its cap buys (special.lua's MAX_COST).
+    if job.special and units > contracts.special.maxUnits(good) then
+      units = contracts.special.maxUnits(good)
+      slots, kg = units * good.slots, units * good.kg
+    end
     -- Ends inside the player's base circle pay more (magnate.lua).
     local quote = job.fuelRun and fuelruns.quote(job, units, self:baseShareFunction())
       or jobs.quote(job, units, self.needs, self.now(), self:baseShareFunction())
@@ -3503,7 +3508,8 @@ function M.new(deps)
       pickupMetres = pickups.RADIUS,
       -- The Shed in the Desert (special.lua, desertRun.lua).
       desertKm = contracts.special.KM, desertPayTimes = contracts.special.PAY_TIMES, desertEmps = contracts.special.EMP_CHARGES,
-      desertRuns = contracts.special.RUNS_PER_DAY, raiderEmpKmh = contracts.desertRun.RAIDER_EMP_KMH,
+      desertRuns = contracts.special.RUNS_PER_DAY, desertMaxCost = dollars(contracts.special.MAX_COST),
+      desertMaxPay = dollars(contracts.special.MAX_COST * contracts.special.PAY_TIMES), raiderEmpKmh = contracts.desertRun.RAIDER_EMP_KMH,
       raiderEmpMetres = contracts.desertRun.RAIDER_EMP_METRES, raiderEmpCloseKm = contracts.desertRun.RAIDER_EMP_ANY_SPEED_KM,
       raiderStallSeconds = contracts.desertRun.STALL_SECONDS,
     }

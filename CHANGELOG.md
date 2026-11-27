@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The Shed in the Desert now has a cap: you can take up to $100,000 of precursors, so a run pays at most $600,000.** A car or tank that holds more only takes as much as $100,000 buys. The jobs board and the help page say so. Saves still work.
+
 ## Build 301 · 27 Nov 2026
 
 - **Trailers no longer bounce on the hitch and run up a huge repair bill after you resume.** When your trailer comes out behind your truck (after loading a save, Bring out or a new trailer), it now waits until your truck has settled where it stays. The drop onto its legs, bumps while you back up to it and the jolt as it hitches are no longer added to the trailer's repair. If the trailer still gets bent and bounces on the hitch, it is fixed where it stands, for free, and hitches again. Damage it had before stays owed, and crashes once it is hitched are still charged. Saves still work.
