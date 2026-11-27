@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 297 · 27 Nov 2026
+
 - **The Open jobs board button no longer disappears after a crash.** If your car was badly damaged, the insurance offer hid the button in the middle of the screen, even though the Town tab told you to press it and you could still take jobs. Now it shows at the pickup point whether or not you claim insurance. A garage bill or an unpaid relocation still hides it, and the Town tab now says why instead of telling you to press a button that isn't there. Saves still work.
 
 ## Build 296 · 27 Nov 2026
