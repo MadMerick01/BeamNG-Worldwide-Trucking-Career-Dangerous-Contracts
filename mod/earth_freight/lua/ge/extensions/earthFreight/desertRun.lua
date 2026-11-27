@@ -10,10 +10,10 @@
 -- emp.RANGE metres: its engine is cut (Bolides' EMP effect when that mod is installed) and it is down. The charges
 -- left are kept with the load in the save (load.emps).
 --
--- The Raiders' EMP (MadMerick, 27 Nov): every Raider has one too, but only fires it at a truck doing under
--- RAIDER_EMP_KMH, from within RAIDER_EMP_METRES, once it has been that slow for RAIDER_EMP_SECONDS. That ends the run
+-- The Raiders' EMP (MadMerick, 27 Nov): every Raider has one too, but only fires it at a truck doing
+-- RAIDER_EMP_KMH or less, from within RAIDER_EMP_METRES, once it has been that slow for RAIDER_EMP_SECONDS. That ends the run
 -- as Give up does: the load and what it cost are lost. The truck's engine dies and the HUD shows a message with a Close
--- button; only once it is closed is the player taken back to where they took the load (raiderCaught). The game saves
+-- button. The Raiders stay: those still up speed away and go once 500 m off (raiderPack's flee). Only once it is closed is the player taken back to where they took the load (raiderCaught). The game saves
 -- as the message opens, with the message, so a reload shows it again.
 --
 -- Delivered, given up or dropped, the Raiders go and their cars are deleted. Pure Lua: the cars are handled by
@@ -31,8 +31,8 @@ M.RETRY_SECONDS = 10
 M.STEP_SECONDS = 0.5
 -- How long a Raider's line stays on the HUD.
 M.LINE_SECONDS = 6
--- The Raiders' EMP: fired at a truck under this speed, from within this far, once it has been that slow this long.
-M.RAIDER_EMP_KMH, M.RAIDER_EMP_METRES, M.RAIDER_EMP_SECONDS = 5, 15, 2
+-- The Raiders' EMP: fired at a truck at this speed or less, from within this far, once it has been that slow this long.
+M.RAIDER_EMP_KMH, M.RAIDER_EMP_METRES, M.RAIDER_EMP_SECONDS = 15, 15, 2
 
 function M.attach(c)
   -- The load of a special delivery that has started, or nil.
@@ -45,7 +45,15 @@ function M.attach(c)
   function c:watchRaiders(dt)
     local load = self:desertLoad()
     if not load then
-      if self.raiders then self:endRaiders() end
+      -- A Raider's EMP ended the run: the Raiders speed away, and go once far off or the message is closed.
+      if self.raiders and self.raiderCaught then
+        if self.clock >= (self.raiderStepAt or 0) then
+          self.raiderStepAt = self.clock + M.STEP_SECONDS
+          self.raiders:step(self.clock)
+        end
+      elseif self.raiders then
+        self:endRaiders()
+      end
       return
     end
     if load.emps == nil then load.emps = special.EMP_CHARGES end
@@ -104,7 +112,7 @@ function M.attach(c)
   function c:raiderEmpWatch(car, pack)
     local truck = car:player()
     local near = pack:nearestRaider()
-    local slow = truck and type(truck.speed) == 'number' and truck.speed * 3.6 < M.RAIDER_EMP_KMH
+    local slow = truck and type(truck.speed) == 'number' and truck.speed * 3.6 <= M.RAIDER_EMP_KMH
     if not (slow and near and near.metres <= M.RAIDER_EMP_METRES) then
       self.raiderSlowSince = nil
       return false
@@ -118,7 +126,7 @@ function M.attach(c)
     self.diag:event('raider_emp', string.format('Raider %d at %.0f m', near.n or 0, near.metres))
     self:dropJob('raider_emp')
     self.raiderCaught = { cost = load.cost, back = back }
-    self:endRaiders()
+    pack:flee(self.clock)
     self:saveNowOrSoon('the dangerous contract lost to a Raider')
     return true
   end
@@ -134,6 +142,7 @@ function M.attach(c)
     local g = self.raiderCaught
     if not g then return false end
     self.raiderCaught = nil
+    self:endRaiders()
     if self.thiefCar and self.thiefCar.empPlayerEnd then pcall(self.thiefCar.empPlayerEnd, self.thiefCar) end
     self.tradeFeedback = 'A Raider\'s EMP ended the dangerous contract and you lost the load.'
     self:returnFromDesert(g.back)

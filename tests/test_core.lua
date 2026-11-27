@@ -3059,7 +3059,7 @@ do
   da.pose = F.copy(back); d:tick(0.1); d:tick(0.6); d:tick(0.6)
   T.eq(d.stranded, nil, 'the trip back is not an unpaid relocation')
 
-  -- A Raider's EMP (MadMerick, 27 Nov): it fires only at a truck doing under 5 km/h, from within 15 m, and that ends
+  -- A Raider's EMP (MadMerick, 27 Nov): it fires only at a truck doing 15 km/h or less, from within 15 m, and that ends
   -- the run like Give up, but the player is only taken back once they close the message.
   T.check(d:takeJob(specialRows(d)[1].id), 'bought a third time'); paid = d.load.cost
   local balance = d:view().balance
@@ -3073,25 +3073,39 @@ do
   T.check(d.raiders:up() >= 1, 'a Raider is up next to the truck')
   for id, car in pairs(drc.cars) do car.x, car.y = 0, 8 end
   T.check(d.load ~= nil, 'driving at 72 km/h, no Raider fires')
-  drc.speed = 1.6
+  drc.speed = 4.5
   for _ = 1, 4 do d:tick(0.5) end
-  T.check(d.load ~= nil, 'at 5.8 km/h it still does not')
-  drc.speed = 1
+  T.check(d.load ~= nil, 'at 16 km/h it still does not')
+  drc.speed = 4.1
+  local goes = {}
+  function drc:goTo(id, aim) goes[id] = aim; return true end
   d:tick(0.5); d:tick(0.5)
-  T.check(d.load ~= nil, 'under 5 km/h, not straight away')
+  T.check(d.load ~= nil, 'at 15 km/h or less, not straight away')
   teleports = #da.teleports
   for _ = 1, 4 do d:tick(0.5) end
   T.eq(d.load, nil, 'after 2 seconds a Raider fires its EMP: the load is lost')
   T.eq(empHit, 1, 'the truck\'s engine dies')
   T.eq(d:view().balance, balance, 'and what it cost')
   T.eq(d:view().raiderCaught.cost, paid, 'the message says what was lost')
-  T.eq(d.raiders, nil, 'the Raiders go')
+  local raiderPackM = require('earthFreight/raiderPack')
+  T.check(d.raiders ~= nil and #d.raiders.raiders >= 1, 'the Raiders stay, so the player sees them')
+  local fleeing = d.raiders.raiders[1]
+  T.eq(fleeing.state, 'FLEE', 'they speed away')
+  goes = {}
+  d:tick(0.5); d:tick(0.5)
+  local aim = goes[fleeing.id]
+  T.check(aim and aim.speed == raiderPackM.FLEE_MPS and aim.y > 8, 'fast, away from the truck')
+  T.eq(d:view().desert, nil, 'no Raiders panel: the run is over')
+  drc.cars[fleeing.id].y = 600
+  d:tick(0.5); d:tick(0.5)
+  T.check(drc.cars[fleeing.id] == nil, 'gone once 500 m away')
   for _ = 1, 4 do d:tick(0.5) end
   T.eq(#da.teleports, teleports, 'no teleport until the message is closed')
   local reloaded = F.controller({ io = dio })
   T.eq(reloaded.raiderCaught and reloaded.raiderCaught.cost, paid, 'saved as the message opened: a reload shows it again')
   T.eq(reloaded.load, nil, 'without the load')
   T.check(d:closeRaiderCaught(), 'Close')
+  T.eq(d.raiders, nil, 'the rest go when it is closed')
   T.eq(empHit, 11, 'the engine back')
   T.eq(#da.teleports, teleports + 1, 'then Earth takes the player back')
   T.near(da.teleports[#da.teleports].latitude, back.latitude, 1e-9, 'to where the load was taken')

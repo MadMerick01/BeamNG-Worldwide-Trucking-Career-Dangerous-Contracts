@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Still hidden: after a Raider's EMP gets you, you now see the Raiders leave.** They no longer vanish the moment it fires. Every Raider still running speeds away from your truck and disappears once it is 500 m off, while the message stays open until you press Close. Raiders now fire their EMP when you are doing 15 km/h or less, up from 5 km/h.
+
 ## Build 291 · 27 Nov 2026
 
 - **Still hidden: the precursor run's job description now warns you to expect hostile Raiders.** You see it on the jobs board and when the run starts.
