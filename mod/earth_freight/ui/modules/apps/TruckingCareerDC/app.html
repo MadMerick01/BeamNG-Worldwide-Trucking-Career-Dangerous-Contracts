@@ -249,6 +249,14 @@
       <div style="margin-top:10px;text-align:right;"><button type="button" ng-click="closeRaiderCaught()" style="padding:6px 18px;font-weight:bold;">Close</button></div>
     </div>
   </div>
+  <div class="ef-done" ng-if="data.desertDone" style="position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:2147483646;pointer-events:auto;color:#f2f6f5;font:15px/1.45 sans-serif;">
+    <div role="alertdialog" aria-label="Delivered to the shed" style="width:430px;max-width:92vw;box-sizing:border-box;padding:14px 18px;background:rgba(12,19,24,.97);border:3px solid #6fcf97;border-radius:12px;box-shadow:0 0 30px rgba(0,0,0,.8);">
+      <div style="font-weight:bold;font-size:17px;color:#6fcf97;">DELIVERED TO THE SHED: +${{data.desertDone.pay | number:0}}</div>
+      <div style="margin-top:6px;">You made it across the dunes. The sheikh paid ${{data.desertDone.pay | number:0}}, {{data.desertDone.times}} times the ${{data.desertDone.cost | number:0}} the precursors cost you. The Raiders are leaving. Press Close to be taken back to where you took the job.</div>
+      <div ng-if="data.desertDone.note" style="margin-top:6px;">{{data.desertDone.note}}</div>
+      <div style="margin-top:10px;text-align:right;"><button type="button" ng-click="closeDesertDone()" style="padding:6px 18px;font-weight:bold;">Close</button></div>
+    </div>
+  </div>
   <div class="ef-foot" ng-if="data.footAway && !data.relocateHere" style="position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:2147483645;pointer-events:auto;color:#f2f6f5;font:15px/1.45 sans-serif;">
     <div role="dialog" aria-label="Back to your truck" style="width:430px;max-width:92vw;box-sizing:border-box;padding:14px 18px;background:rgba(12,19,24,.97);border:3px solid #eb5757;border-radius:12px;box-shadow:0 0 30px rgba(0,0,0,.8);">
       <div style="font-size:11px;font-weight:bold;letter-spacing:3px;color:#eb5757;">YOUR TRUCK IS {{km(data.footAway.distanceMetres)}} KM AWAY</div>

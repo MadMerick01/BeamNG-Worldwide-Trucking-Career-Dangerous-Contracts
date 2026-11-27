@@ -176,4 +176,44 @@ T.check(rc:shove(2, 0, 0, true), 'only when it is meant')
 rc:removeAll()
 T.eq(cars[id], nil, 'its cars deleted when the run is over')
 
+-- The shed at the finish (shed.lua), with a pretend game.
+do
+  local shed = require('earthFreight/shed')
+  local objects, made, loaded = {}, {}, 0
+  local ground = 42
+  local env = {
+    player = function() return { getPosition = function() return { x = 1, y = 2, z = 3 } end } end,
+    find = function(name) return objects[name] end,
+    exists = function(path) return path == shed.SHAPE end,
+    loadMaterials = function() loaded = loaded + 1 end,
+    create = function()
+      local o = { fields = {} }
+      function o:setField(k, _, v) self.fields[k] = v end
+      function o:registerObject(name) self.name = name; objects[name] = self end
+      function o:setPosRot(x, y, z) self.pos = { x, y, z } end
+      function o:delete() objects[self.name] = nil; self.deleted = true end
+      made[#made + 1] = o
+      return o
+    end,
+    ground = function() return ground end,
+  }
+  local s = shed.new(env)
+  T.eq(s:where().y, 2, 'where the player is')
+  T.check(not s:there(), 'no shed yet')
+  T.check(s:place(10, 20, 3), 'put down')
+  T.check(s:there(), 'there')
+  T.eq(made[1].shapeName, shed.SHAPE, 'MadMerick\'s shed'); T.eq(made[1].fields.collisionType, 'Visible Mesh', 'solid')
+  T.eq(made[1].pos[3], 42, 'on the ground'); T.eq(loaded, 1, 'its materials loaded')
+  T.check(s:place(11, 21, 3), 'put down again')
+  T.check(made[1].deleted and #made == 2, 'the old one goes first, so the ground is not its roof'); T.eq(loaded, 1, 'materials once')
+  ground = nil
+  local ok, why = s:place(12, 22, 3)
+  T.check(not ok and why == 'no_ground' and not s:there(), 'no ground found: no shed, tried again later')
+  s:remove(); T.check(not s:there(), 'removed')
+  env.exists = function() return false end
+  ground = 1
+  ok, why = s:place(1, 1, 1)
+  T.eq(why, 'no_shed_shape', 'no shape in the game: no shed')
+end
+
 T.done('Raiders')

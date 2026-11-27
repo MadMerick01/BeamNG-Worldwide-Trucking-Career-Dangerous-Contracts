@@ -822,6 +822,7 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       scope.abandonJob = function () { if (scope.data.abandonAllowed) core('abandonJob()') }
       // The special delivery: the EMP at the nearest Raider, one of the run's charges.
       scope.closeRaiderCaught = function () { if (scope.data.raiderCaught) core('closeRaiderCaught()') }
+      scope.closeDesertDone = function () { if (scope.data.desertDone) core('closeDesertDone()') }
       scope.empRaider = function () { if (scope.data.desert && scope.data.desert.emp) core('empHotkey()') }
       // Heli flights: hire asks Lua to confirm, and so does Back to my car.
       scope.hireHeli = function () { if (scope.data.heli && scope.data.heli.hireAllowed) core('hireHeli()') }

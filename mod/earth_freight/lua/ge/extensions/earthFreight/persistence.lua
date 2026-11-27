@@ -304,6 +304,18 @@ function M.validate(s)
     end
     caught = { cost = g.cost, back = g.back and { latitude = g.back.latitude, longitude = g.back.longitude } or nil }
   end
+  -- The desert's dangerous contract delivered (desertRun.lua): what the sheikh paid, what the load cost, a note on any
+  -- relocation paid back, and where to go back to, kept until the player closes the message.
+  local done = nil
+  if s.desertDone ~= nil then
+    local g = s.desertDone
+    if type(g) ~= 'table' or not integer(g.pay, 0) or not integer(g.cost, 0) or (g.back ~= nil and not location.valid(g.back))
+        or (g.note ~= nil and (type(g.note) ~= 'string' or #g.note > 400)) then
+      return nil, 'invalid_load'
+    end
+    done = { pay = g.pay, cost = g.cost, note = g.note,
+      back = g.back and { latitude = g.back.latitude, longitude = g.back.longitude } or nil }
+  end
   -- The desert's dangerous contract delivered (special.lua's RUNS_PER_DAY): when, in real seconds, the latest few.
   local runs = nil
   if s.specialRuns ~= nil then
@@ -385,7 +397,7 @@ function M.validate(s)
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
     trailer = trailer, spareTrailers = spareTrailers, property = home, storedCars = stored, commissionId = s.commissionId, rewardId = s.rewardId,
     corp = member, extraCarSlot = s.extraCarSlot, noRobbers = s.noRobbers, robbersOff = s.robbersOff, thiefClock = thiefClock,
-    raiderCaught = caught, specialRuns = runs,
+    raiderCaught = caught, desertDone = done, specialRuns = runs,
   }
 end
 
@@ -456,7 +468,7 @@ function M.new(io, directory)
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
       trailer = candidate.trailer, spareTrailers = candidate.spareTrailers, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId, rewardId = candidate.rewardId,
       corp = candidate.corp, extraCarSlot = candidate.extraCarSlot, noRobbers = candidate.noRobbers, robbersOff = candidate.robbersOff,
-      thiefClock = candidate.thiefClock, raiderCaught = candidate.raiderCaught, specialRuns = candidate.specialRuns,
+      thiefClock = candidate.thiefClock, raiderCaught = candidate.raiderCaught, desertDone = candidate.desertDone, specialRuns = candidate.specialRuns,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

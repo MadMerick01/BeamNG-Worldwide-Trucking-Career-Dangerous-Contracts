@@ -3033,16 +3033,61 @@ do
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
   T.eq(c:fireEmp(), false, 'no charges, no EMP'); T.eq(c:view().desert.emp.feedback, 'No EMP charges left.', 'told so')
   T.eq(c.load.emps, 0, 'never below none')
-  -- Driven to the shed and stopped: paid 6 times.
+  -- The shed (MadMerick, 27 Nov): put down at the finish once 2.5 km away, again each time the distance halves, and
+  -- left once put down within 300 m.
+  local sheds = {}
+  local shedThere = false
+  c.shedWorld = {
+    where = function() return { x = 100, y = 200, z = 30 } end,
+    there = function() return shedThere end,
+    remove = function() shedThere = false; sheds.removed = (sheds.removed or 0) + 1 end,
+    place = function(_, x, y, z) shedThere = true; sheds[#sheds + 1] = { x = x, y = y, z = z }; return true end,
+  }
+  F.drive(c, a, location.destination(special.FINISH, 180, 3000))
+  T.eq(#sheds, 0, 'no shed 3 km out')
+  F.drive(c, a, location.destination(special.FINISH, 180, 2400))
+  for _ = 1, 2 do c:tick(0.5) end
+  T.check(#sheds >= 1 and c.shed.metres <= 2500, 'put down once within 2.5 km')
+  T.near(sheds[#sheds].x, 100, 1, 'due north of the player'); T.near(sheds[#sheds].y, 200 + c.shed.metres, 1, 'at the finish')
+  local first = c.shed.metres
+  F.drive(c, a, location.destination(special.FINISH, 180, 60))
+  for _ = 1, 2 do c:tick(0.5) end
+  T.check(#sheds >= 2 and c.shed.metres <= 300 and c.shed.metres > 0, 'put down again as the distance halves, last within 300 m')
+  T.near(sheds[#sheds].y, 200 + c.shed.metres, 1, 'still at the finish')
+  T.check(c.shed.metres < first / 2 + 1, 'closer to right')
+  local count = #sheds
+  for _ = 1, 4 do c:tick(0.5) end
+  T.eq(#sheds, count, 'then it stays')
+  -- Driven to the shed and stopped: paid 6 times, with a message that stays until Close (MadMerick, 27 Nov).
+  local cBack = F.copy(c.load.back)
   F.drive(c, a, special.FINISH)
   T.check(c:view().load.drop.inZone and c:view().load.drop.delivery.allowed, 'at the shed and stopped')
+  local cTeleports = #a.teleports
   T.check(c:deliver(), 'delivered'); T.eq(c:view().balance, 1000000 - cost + cost * special.PAY_TIMES, 'paid 6 times the cost')
-  T.check(c:view().flash.text:find('sheikh', 1, true), 'the sheikh paid')
+  local done = c:view().desertDone
+  T.check(done and done.pay == cost * special.PAY_TIMES and done.cost == cost and done.times == 6, 'the message says what the sheikh paid')
   T.eq(c.profile.progression.contractsDone, nil, 'not counted as a dangerous contract')
-  c:tick(0.1); T.eq(c.raiders, nil, 'the Raiders go'); T.check(rcar.removed, 'and their cars are deleted')
-  T.eq(c:view().desert, nil, 'the panel with them')
+  c:tick(0.1); c:tick(0.5)
+  T.check(c.raiders ~= nil and not rcar.removed, 'the Raiders stay while the message is open')
+  for _, r in ipairs(c.raiders.raiders) do
+    T.check(r.state == 'FLEE' or r.state == 'DOWN', 'and the ones up speed away')
+  end
+  T.eq(c:view().desert, nil, 'the Raiders panel goes')
+  T.check(shedThere, 'the shed stays')
+  T.eq(#a.teleports, cTeleports, 'no teleport until Close')
   T.eq(#c.specialRuns, 1, 'one run counted towards the day')
-  T.check(c:manualSave(), 'saved'); T.eq(#F.controller({ io = io }).specialRuns, 1, 'kept in the save')
+  local cReloaded = F.controller({ io = io })
+  T.eq(#cReloaded.specialRuns, 1, 'saved as the message opened, run counted')
+  T.eq(cReloaded.desertDone and cReloaded.desertDone.pay, cost * special.PAY_TIMES, 'a reload shows the message again')
+  T.check(c:closeDesertDone(), 'Close')
+  T.check(rcar.removed and c.raiders == nil, 'then the Raiders go and their cars are deleted')
+  T.check(not shedThere, 'and the shed')
+  T.eq(#a.teleports, cTeleports + 1, 'Earth takes the player back')
+  T.near(a.teleports[#a.teleports].latitude, cBack.latitude, 1e-9, 'to where the load was taken')
+  T.eq(c:view().desertDone, nil, 'the message gone'); T.check(not c:closeDesertDone(), 'closed once')
+  T.check(c:manualSave(), 'saved'); T.eq(F.controller({ io = io }).desertDone, nil, 'and gone from the save')
+  a.pose = F.copy(cBack); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(c.stranded, nil, 'the trip back is not an unpaid relocation')
 
   -- Cancelled before the start: the cost is paid back.
   local d, dio, da = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
