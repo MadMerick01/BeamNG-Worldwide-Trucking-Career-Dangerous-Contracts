@@ -123,6 +123,10 @@ function M.attach(c)
     local load = self.load
     local back = load.back
     if self.thiefCar and self.thiefCar.empPlayer then pcall(self.thiefCar.empPlayer, self.thiefCar) end
+    -- The EMP sound on the HUD, and the truck shoved away from the Raider that fired.
+    self:empSound()
+    local from = car:state(near.id)
+    if truck and from and car.shove then pcall(car.shove, car, truck.id, from.x, from.y, true) end
     self.diag:event('raider_emp', string.format('Raider %d at %.0f m', near.n or 0, near.metres))
     self:dropJob('raider_emp')
     self.raiderCaught = { cost = load.cost, back = back }
@@ -167,6 +171,10 @@ function M.attach(c)
     local line = self.raiders and self.raiders:emped(id)
     if not line then return false end
     if self.thiefCar and self.thiefCar.emp then pcall(self.thiefCar.emp, self.thiefCar, id) end
+    -- Shoved away from the player (raiderCar.lua's shove).
+    local car = self.raiderCar
+    local me = car and car.walker and car:walker()
+    if me and car.shove then pcall(car.shove, car, id, me.x, me.y) end
     self:raiderSays(line)
     return true
   end

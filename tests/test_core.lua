@@ -2973,9 +2973,9 @@ do
   T.eq(c:view().repairFeedback, workshopM.DESERT_NO_REPAIRS, 'told why')
   T.eq(c:view().insurance, nil, 'no insurance card')
   -- The Raiders (desertRun.lua): a pretend game's cars, all at the truck.
-  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 4 charges for the whole run')
-  T.eq(special.EMP_CHARGES, 4, 'four, as MadMerick asked')
-  T.eq(c:view().desert.charges, 4, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 4, 'of four')
+  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 20 charges for the whole run')
+  T.eq(special.EMP_CHARGES, 20, 'twenty, as MadMerick asked')
+  T.eq(c:view().desert.charges, 20, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 20, 'of twenty')
   local desertRun = require('earthFreight/desertRun')
   local raiderPack = require('earthFreight/raiderPack')
   local function fakeRaiderCar()
@@ -2990,7 +2990,8 @@ do
     function rcar:state(id) return self.cars[id] end
     function rcar:calm() end
     function rcar:release(id) self.cars[id] = nil end
-    function rcar:removeAll() self.removed = true end
+    function rcar:shove(id, x, y, truck) self.shoved = { id = id, from = { x, y }, truck = truck }; return true end
+  function rcar:removeAll() self.removed = true end
     return rcar
   end
   local rcar = fakeRaiderCar()
@@ -3000,7 +3001,7 @@ do
   T.eq(c:view().desert.up, 0, 'no Raider straight away')
   for _ = 1, math.ceil((desertRun.FIRST_SECONDS + desertRun.GAP_SECONDS * 4) / 0.5) do c:tick(0.5) end
   T.eq(c:view().desert.up, raiderPack.MAX, 'then they keep coming, four at most')
-  T.eq(c:view().desert.emp.charges, 4, 'the EMP button with them')
+  T.eq(c:view().desert.emp.charges, 20, 'the EMP button with them')
   -- The EMP (emp.lua): the nearest Raider within 15 m is hit, and every press uses a charge.
   local emp = require('earthFreight/emp')
   local near = c.raiders.raiders[1]
@@ -3009,20 +3010,21 @@ do
   for _ = 1, 2 do c:tick(0.5) end
   T.check(c:view().desert.emp.inRange, 'a Raider 10 m away is in range')
   T.check(c:empHotkey(), 'the Fire EMP key hits it')
+  T.eq(rcar.shoved and rcar.shoved.id, near.id, 'and shoves it'); T.check(not rcar.shoved.truck, 'away from the player')
   T.eq(near.state, 'DOWN', 'its engine cut, it is down')
-  T.eq(c.load.emps, 3, 'a charge used'); T.eq(c:view().desert.charges, 3, 'three left on the HUD')
+  T.eq(c.load.emps, 19, 'a charge used'); T.eq(c:view().desert.charges, 19, 'nineteen left on the HUD')
   T.eq(c:view().desert.up, 3, 'one down')
   T.check(c:view().desert.line:find('EMP', 1, true), 'told so')
   T.check(not c:view().desert.emp.ready, 'then it charges')
-  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 3, 'nor use a charge')
+  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 19, 'nor use a charge')
   -- A miss: the nearest is 100 m away. It still uses a charge.
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
   T.check(c:view().desert.emp.ready, 'charged after 20 s')
   T.check(not c:view().desert.emp.inRange, 'the rest are out of range')
-  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 2, 'still uses a charge')
+  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 18, 'still uses a charge')
   T.check(c:view().desert.emp.feedback:find('15 m', 1, true), 'and says how close to get')
   T.check(c:manualSave(), 'saved with the charges')
-  T.eq(F.controller({ io = io }).load.emps, 2, 'a reload keeps the charges')
+  T.eq(F.controller({ io = io }).load.emps, 18, 'a reload keeps the charges')
   -- None left: it can't fire.
   c.load.emps = 0
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
@@ -3085,6 +3087,8 @@ do
   for _ = 1, 4 do d:tick(0.5) end
   T.eq(d.load, nil, 'after 2 seconds a Raider fires its EMP: the load is lost')
   T.eq(empHit, 1, 'the truck\'s engine dies')
+  T.check(drc.shoved and drc.shoved.truck and drc.shoved.from[2] == 8, 'shoved away from the Raider that fired')
+  T.check(d:view().empSound > 0, 'with the EMP sound')
   T.eq(d:view().balance, balance, 'and what it cost')
   T.eq(d:view().raiderCaught.cost, paid, 'the message says what was lost')
   local raiderPackM = require('earthFreight/raiderPack')

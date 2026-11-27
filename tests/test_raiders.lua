@@ -30,7 +30,7 @@ local function random(lo, hi) if lo == 0 and hi == 1 then return 0.9 end return 
 -- MadMerick's rules for the first test: at most four up at once.
 T.eq(P.MAX, 4, 'at most four Raiders up at once')
 T.eq(P.ESCAPE_METRES, 500, 'one that falls 500 m behind is gone')
-T.eq(special.EMP_CHARGES, 4, 'the EMP has four charges for the run')
+T.eq(special.EMP_CHARGES, 20, 'the EMP has twenty charges for the run')
 local car = fakeCar()
 local p = P.new(car, random)
 for i = 1, 4 do T.check(p:add(i) ~= nil, 'Raider ' .. i .. ' turns up') end
@@ -169,6 +169,10 @@ T.check(rc:place(id, 10, 10, 0, 0, 1), 'a Raider is put down')
 T.eq(cars[id].active, 1, 'switched on')
 T.check(rc:goTo(id, { x = 1, y = 2, z = 0, speed = 10 }), 'and driven')
 T.check(cars[id].commands[#cars[id].commands]:find('earthFreightRaider.target', 1, true) ~= nil, 'by its own driver')
+T.check(rc:shove(id, 10, 0), 'an EMP shoves a Raider')
+T.check(cars[id].commands[#cars[id].commands]:find('applyForceVector', 1, true) ~= nil, 'with a force on its nodes')
+T.eq(rc:shove(2, 0, 0), false, 'never the truck by mistake')
+T.check(rc:shove(2, 0, 0, true), 'only when it is meant')
 rc:removeAll()
 T.eq(cars[id], nil, 'its cars deleted when the run is over')
 

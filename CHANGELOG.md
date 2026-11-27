@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Still hidden: your EMP now has 20 charges for the precursor run, up from 4.** The jobs board says so in the run's description. A run already under way keeps the charges it had.
+- **Still hidden: both EMPs now hit with the EMP sound and a shove, without needing Bolides – The Cut.** When your EMP stops a Raider, its car is kicked sideways away from you and lifted a little. When a Raider's EMP gets you, you hear the EMP sound and your truck is kicked away from that Raider.
 - **Still hidden: after a Raider's EMP gets you, you now see the Raiders leave.** They no longer vanish the moment it fires. Every Raider still running speeds away from your truck and disappears once it is 500 m off, while the message stays open until you press Close. Raiders now fire their EMP when you are doing 15 km/h or less, up from 5 km/h.
 
 ## Build 291 · 27 Nov 2026

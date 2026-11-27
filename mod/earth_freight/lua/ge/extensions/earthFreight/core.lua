@@ -1072,8 +1072,7 @@ function M.new(deps)
         self.load.emps = contracts.special.EMP_CHARGES
         self:showFlash('delivered', 'DANGEROUS CONTRACT: THE SHED IN THE DESERT', section.summary
           .. ' No roads: follow the arrow on the Route tab and stop within ' .. contracts.FINISH_RADIUS
-          .. ' m of the shed. Your tank is filled and your EMP has ' .. contracts.special.EMP_CHARGES
-          .. ' charges for the whole run. Rival clans\' Raiders will come for you. Fail to make the drop and you lose the lot.')
+          .. ' m of the shed. Your tank is filled. Fail to make the drop and you lose the lot.')
         self.diag:event('special_started', section.id)
         self:saveNowOrSoon('the dangerous contract')
         return
