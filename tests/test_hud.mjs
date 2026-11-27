@@ -1634,6 +1634,13 @@ test('Open jobs board shows on the screen at a pickup point or fuel depot, and o
   assert.equal(a.scope.board.open, false, 'driving off closes it')
   a.state({ state: 'READY', arrived: true, town: at, partsChange: {} })
   assert.equal(a.scope.boardButton(a.scope.data), false, 'not over a bill')
+  a.state({ state: 'READY', arrived: true, town: at, stranded: { distanceMetres: 900 } })
+  assert.equal(a.scope.boardButton(a.scope.data), false, 'or while stranded')
+  a.state({ state: 'READY', arrived: true, town: at, insurance: { fee: 1000, allowed: true } })
+  assert.equal(a.scope.boardButton(a.scope.data), true, 'but an insurance offer after a crash leaves it: jobs can still be taken')
+  const inZone = html.slice(html.indexOf('ng-if="data.town.pickup.inZone"'))
+  assert.ok(inZone.slice(0, 700).includes('ng-if="boardButton(data)"') && inZone.slice(0, 700).includes('data.town.takeProblem'),
+    'the Town tab only says to press Open jobs board while the button shows, and says why not otherwise')
   // A fuel depot: its runs on the same board, with the same button.
   const fuelRuns = { hub: { id: 'gn2', name: 'Orange' }, depot: { name: 'Caltex Terminal' }, atDepot: true, runs: [{ id: 'fuel_gn2_1', allowed: true }] }
   a.state({ state: 'READY', arrived: true, town, fuelRuns })

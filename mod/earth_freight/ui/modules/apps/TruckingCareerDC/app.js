@@ -518,8 +518,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var f = d && d.fuelRuns
         return !!(f && f.hub && f.atDepot && !d.load && f.runs)
       }
+      // Not over a garage bill or while stranded, when no job can be taken anyway. An insurance offer after a crash
+      // doesn't stop it: jobs can still be taken with a damaged car, so the button stays.
       scope.boardButton = function (d) {
-        return !!d && d.state === 'READY' && !urgent(d) && (scope.boardTown(d) || scope.boardFuel(d))
+        return !!d && d.state === 'READY' && !d.partsChange && !d.carChange && !d.stranded &&
+          (scope.boardTown(d) || scope.boardFuel(d))
       }
       // The board's name: the town, or the fuel depot when the player is only there.
       scope.boardName = function (d) {
