@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 296 · 27 Nov 2026
+
 - **The live feed now follows the Shed in the Desert.** On a multiplayer server, everyone sees when a trucker sets off across the Rub' al Khali and how many dollars of precursors they took. They also see when the trucker reaches the shed and what the sheikh paid, gives up, or gets caught by a Raider's EMP. Saves still work.
 
 ## Build 295 · 27 Nov 2026
