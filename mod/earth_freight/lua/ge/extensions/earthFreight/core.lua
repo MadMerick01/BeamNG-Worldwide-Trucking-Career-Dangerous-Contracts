@@ -1077,6 +1077,7 @@ function M.new(deps)
           .. ' No roads: follow the arrow on the Route tab and stop within ' .. contracts.FINISH_RADIUS
           .. ' m of the shed. Your tank is filled. Fail to make the drop and you lose the lot.')
         self.diag:event('special_started', section.id)
+        self:reportDesert('set off', self.load.cost)
         self:saveNowOrSoon('the dangerous contract')
         return
       end
@@ -2534,6 +2535,7 @@ function M.new(deps)
       return true
     end
     self.tradeFeedback = 'You gave up the dangerous contract and lost the load.'
+    self:reportDesert('gave up', load.cost)
     self:returnFromDesert(load.back)
     self:saveNowOrSoon('the dangerous contract')
     return true

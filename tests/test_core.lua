@@ -3101,12 +3101,21 @@ do
 
   -- Given up in the desert: the lot is lost and Earth takes the player back.
   T.check(d:takeJob(specialRows(d)[1].id), 'bought again'); paid = d.load.cost
+  -- Each step goes to the server's live feed (MadMerick, 27 Nov).
+  local feedSent = {}
+  local realReport = d.reportDesert
+  local gate = { mp = { state = 'server', desert = function(_, what, cost) feedSent[#feedSent + 1] = what .. ':' .. tostring(cost) end } }
+  realReport(gate, 'set off', 5); T.eq(feedSent[1], 'set off:5', 'sent on a server')
+  gate.mp.state = 'off'; realReport(gate, 'set off', 5); T.eq(#feedSent, 1, 'not in single player')
+  feedSent = {}
+  function d:reportDesert(what, cost) feedSent[#feedSent + 1] = what .. ':' .. tostring(cost) end
   local back = F.copy(d.load.back)
   da.pose = F.copy(special.START); d:tick(0.1); d:tick(0.6); d:tick(0.6)
   T.check(d.load.started, 'in the desert')
   T.check(not d:abandonJob(), 'asks first'); T.check(d:view().tradeFeedback:find('lose the load'), 'says the load is lost')
   local teleports = #da.teleports
   T.check(d:abandonJob(), 'given up'); T.eq(d.load, nil, 'no load'); T.eq(d:view().balance, 500000 - paid, 'the cost is lost, no fee')
+  T.eq(table.concat(feedSent, ','), 'set off:' .. paid .. ',gave up:' .. paid, 'the feed hears the setting off and the giving up')
   T.eq(#da.teleports, teleports + 1, 'Earth takes the player back'); T.near(da.teleports[#da.teleports].latitude, back.latitude, 1e-9, 'to where it was taken')
   da.pose = F.copy(back); d:tick(0.1); d:tick(0.6); d:tick(0.6)
   T.eq(d.stranded, nil, 'the trip back is not an unpaid relocation')
@@ -3141,6 +3150,7 @@ do
   T.check(d:view().empSound > 0, 'with the EMP sound')
   T.eq(d:view().balance, balance, 'and what it cost')
   T.eq(d:view().raiderCaught.cost, paid, 'the message says what was lost')
+  T.eq(feedSent[#feedSent], 'caught:' .. paid, 'and the feed that Raiders caught them')
   local raiderPackM = require('earthFreight/raiderPack')
   T.check(d.raiders ~= nil and #d.raiders.raiders >= 1, 'the Raiders stay, so the player sees them')
   local fleeing = d.raiders.raiders[1]

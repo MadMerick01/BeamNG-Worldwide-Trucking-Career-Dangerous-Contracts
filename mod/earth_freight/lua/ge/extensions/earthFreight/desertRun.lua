@@ -166,10 +166,18 @@ function M.attach(c)
     hit()
     self.diag:event('raider_emp', string.format('Raider %d at %.0f m', near.n or 0, near.metres))
     self:dropJob('raider_emp')
+    self:reportDesert('caught', load.cost)
     self.raiderCaught = { cost = load.cost, back = back }
     pack:flee(self.clock)
     self:saveNowOrSoon('the dangerous contract lost to a Raider')
     return true
+  end
+
+  -- The live feed on a multiplayer server (MadMerick, 27 Nov): what 'set off', 'gave up' or 'caught'. The server words
+  -- it; a delivery there goes as reportDelivery's 'special'.
+  function c:reportDesert(what, cost)
+    if not self.mp or self.mp.state ~= 'server' or not self.mp.desert then return end
+    pcall(self.mp.desert, self.mp, what, cost)
   end
 
   -- For the HUD: the message after a Raider's EMP, until it is closed.
