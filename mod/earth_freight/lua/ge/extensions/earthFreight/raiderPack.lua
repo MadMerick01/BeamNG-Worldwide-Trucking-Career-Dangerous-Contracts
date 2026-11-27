@@ -120,6 +120,9 @@ M.STUCK_MPS, M.DOWN_SECONDS, M.DRIVING_MPS, M.STALL_SECONDS = 1, 12, 3, 5
 M.UNSTICK_SECONDS, M.UNSTICK_METRES, M.UNSTICK_HOP, M.UNSTICK_TRIES = 4, 50, 8, 3
 -- Further than ESCAPE_METRES from you for ESCAPE_SECONDS, and it has fallen behind: it is gone (MadMerick: 500 m).
 M.ESCAPE_METRES, M.ESCAPE_SECONDS = 500, 0
+-- After a Raider's EMP ends the run (desertRun.lua): every Raider still up speeds away from you at FLEE_MPS, aiming
+-- FLEE_AHEAD metres further out each time, and is gone once ESCAPE_METRES away (MadMerick, 27 Nov).
+M.FLEE_MPS, M.FLEE_AHEAD = 35, 200
 -- A downed Raider's car is put away once you are this far from it.
 M.LEAVE_METRES = 400
 
@@ -572,10 +575,41 @@ function M.new(car, random)
     return true
   end
 
+  -- Every Raider still up speeds away from you (a Raider's EMP ended the run).
+  function p:flee(clock)
+    self.fleeing = true
+    for _, h in ipairs(self.raiders) do
+      if h.state ~= 'DOWN' then
+        leaveBox(h)
+        h.state, h.slot, h.since = 'FLEE', nil, clock
+      end
+    end
+  end
+
+  local function fleeStep(me)
+    for _, h in ipairs({ unpack(p.raiders) }) do
+      local st = car:state(h.id)
+      if st and h.state == 'FLEE' then
+        h.metres = distance2d(me.x, me.y, st.x, st.y)
+        if h.metres > M.ESCAPE_METRES then
+          release(h)
+        else
+          local dx, dy = st.x - me.x, st.y - me.y
+          local len = math.max(1, math.sqrt(dx * dx + dy * dy))
+          local x, y = st.x + dx / len * M.FLEE_AHEAD, st.y + dy / len * M.FLEE_AHEAD
+          car:goTo(h.id, { x = x, y = y, z = car:ground(x, y, me.z) or me.z, speed = M.FLEE_MPS, slotX = x, slotY = y })
+        end
+      elseif not st and h.state ~= 'DOWN' then
+        release(h)
+      end
+    end
+  end
+
   function p:step(clock)
     if #self.raiders == 0 then return nil end
     local me = car:player()
     if not me then return nil end
+    if self.fleeing then fleeStep(me); return nil end
     track(me, clock)
     local line
     for _, h in ipairs({ unpack(self.raiders) }) do
@@ -615,7 +649,7 @@ function M.new(car, random)
 
   -- Called every frame: keeps each moving Raider's point and speed fresh.
   function p:steer(clock)
-    if #self.raiders == 0 then return end
+    if #self.raiders == 0 or self.fleeing then return end
     local me = car:player()
     if not me then return end
     track(me, clock)
@@ -631,11 +665,11 @@ function M.new(car, random)
     for _, h in ipairs(p.raiders) do if h.id == id and h.state ~= 'DOWN' then return h end end
   end
 
-  -- The nearest Raider still up, or nil.
-  function p:nearestRaider()
+  -- The nearest Raider still up (with withEmp, still holding its one EMP), or nil.
+  function p:nearestRaider(withEmp)
     local best
     for _, h in ipairs(self.raiders) do
-      if h.state ~= 'DOWN' and h.metres and (not best or h.metres < best.metres) then best = h end
+      if h.state ~= 'DOWN' and not (withEmp and h.empUsed) and h.metres and (not best or h.metres < best.metres) then best = h end
     end
     return best
   end

@@ -80,6 +80,21 @@ end
 -- The driving modes a point may ask for (see earthFreightRaider.control), as Lua in the command.
 local MODES = { coast = '"coast"', swipe = '"swipe"' }
 -- Hands the car back from the driver and switches the game's AI off.
+-- An EMP's shove (MadMerick, 27 Nov, without Bolides – The Cut): every node of the car gets a sudden kick of %f m/s
+-- along (%f, %f) and %f m/s up, as Tanker's revolver hit pushes nodes (tankerHit.lua): a force over one physics step
+-- of 1/2000 s.
+local SHOVE = [[
+local kick, up = %f, %f
+local d = vec3(%f, %f, 0)
+local step = 1 / 2000
+for _, n in pairs(v.data.nodes) do
+  local m = obj.getNodeMass and obj:getNodeMass(n.cid) or 1
+  obj:applyForceVector(n.cid, (d * kick + vec3(0, 0, up)) * (m / step))
+end
+]]
+-- How hard an EMP shoves a car: sideways away from whoever fired it, and up, in metres a second.
+M.SHOVE_MPS, M.SHOVE_UP_MPS = 4, 1.5
+
 local STOP = [[
 if extensions and extensions.earthFreightRaider then extensions.earthFreightRaider.stop() end
 if ai then pcall(ai.setMode, 'disabled') end
@@ -263,6 +278,25 @@ function M.new(environment)
     local c = car(id)
     if not (c and aim and finite(aim.x) and finite(aim.y) and finite(aim.z) and finite(aim.speed)) then return false end
     return (pcall(function() c:queueLuaCommand(string.format(DRIVE, aim.x, aim.y, aim.z, aim.speed, MODES[aim.mode] or 'nil', id)) end))
+  end
+
+  -- An EMP shoves car id (a Raider, or the truck with allowTruck) away from the point (fromX, fromY).
+  function h:shove(id, fromX, fromY, allowTruck)
+    local c
+    if allowTruck then
+      local ok, found = pcall(env.byId, id)
+      c = ok and found or nil
+    else
+      c = car(id)
+    end
+    local p = pose(c)
+    if not (p and finite(fromX) and finite(fromY)) then return false end
+    local dx, dy = p.x - fromX, p.y - fromY
+    local len = math.sqrt(dx * dx + dy * dy)
+    if len < 0.5 then dx, dy, len = p.dy, -p.dx, 1 end
+    return (pcall(function()
+      c:queueLuaCommand(string.format(SHOVE, M.SHOVE_MPS, M.SHOVE_UP_MPS, dx / len, dy / len))
+    end))
   end
 
   -- Calms a downed Raider so a wreck does not keep revving.

@@ -2973,9 +2973,9 @@ do
   T.eq(c:view().repairFeedback, workshopM.DESERT_NO_REPAIRS, 'told why')
   T.eq(c:view().insurance, nil, 'no insurance card')
   -- The Raiders (desertRun.lua): a pretend game's cars, all at the truck.
-  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 4 charges for the whole run')
-  T.eq(special.EMP_CHARGES, 4, 'four, as MadMerick asked')
-  T.eq(c:view().desert.charges, 4, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 4, 'of four')
+  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 10 charges for the whole run')
+  T.eq(special.EMP_CHARGES, 10, 'ten, as MadMerick asked')
+  T.eq(c:view().desert.charges, 10, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 10, 'of ten')
   local desertRun = require('earthFreight/desertRun')
   local raiderPack = require('earthFreight/raiderPack')
   local function fakeRaiderCar()
@@ -2990,7 +2990,8 @@ do
     function rcar:state(id) return self.cars[id] end
     function rcar:calm() end
     function rcar:release(id) self.cars[id] = nil end
-    function rcar:removeAll() self.removed = true end
+    function rcar:shove(id, x, y, truck) self.shoved = { id = id, from = { x, y }, truck = truck }; return true end
+  function rcar:removeAll() self.removed = true end
     return rcar
   end
   local rcar = fakeRaiderCar()
@@ -3000,7 +3001,7 @@ do
   T.eq(c:view().desert.up, 0, 'no Raider straight away')
   for _ = 1, math.ceil((desertRun.FIRST_SECONDS + desertRun.GAP_SECONDS * 4) / 0.5) do c:tick(0.5) end
   T.eq(c:view().desert.up, raiderPack.MAX, 'then they keep coming, four at most')
-  T.eq(c:view().desert.emp.charges, 4, 'the EMP button with them')
+  T.eq(c:view().desert.emp.charges, 10, 'the EMP button with them')
   -- The EMP (emp.lua): the nearest Raider within 15 m is hit, and every press uses a charge.
   local emp = require('earthFreight/emp')
   local near = c.raiders.raiders[1]
@@ -3009,20 +3010,21 @@ do
   for _ = 1, 2 do c:tick(0.5) end
   T.check(c:view().desert.emp.inRange, 'a Raider 10 m away is in range')
   T.check(c:empHotkey(), 'the Fire EMP key hits it')
+  T.eq(rcar.shoved and rcar.shoved.id, near.id, 'and shoves it'); T.check(not rcar.shoved.truck, 'away from the player')
   T.eq(near.state, 'DOWN', 'its engine cut, it is down')
-  T.eq(c.load.emps, 3, 'a charge used'); T.eq(c:view().desert.charges, 3, 'three left on the HUD')
+  T.eq(c.load.emps, 9, 'a charge used'); T.eq(c:view().desert.charges, 9, 'nine left on the HUD')
   T.eq(c:view().desert.up, 3, 'one down')
   T.check(c:view().desert.line:find('EMP', 1, true), 'told so')
   T.check(not c:view().desert.emp.ready, 'then it charges')
-  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 3, 'nor use a charge')
+  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 9, 'nor use a charge')
   -- A miss: the nearest is 100 m away. It still uses a charge.
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
   T.check(c:view().desert.emp.ready, 'charged after 20 s')
   T.check(not c:view().desert.emp.inRange, 'the rest are out of range')
-  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 2, 'still uses a charge')
+  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 8, 'still uses a charge')
   T.check(c:view().desert.emp.feedback:find('15 m', 1, true), 'and says how close to get')
   T.check(c:manualSave(), 'saved with the charges')
-  T.eq(F.controller({ io = io }).load.emps, 2, 'a reload keeps the charges')
+  T.eq(F.controller({ io = io }).load.emps, 8, 'a reload keeps the charges')
   -- None left: it can't fire.
   c.load.emps = 0
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
@@ -3036,6 +3038,8 @@ do
   T.eq(c.profile.progression.contractsDone, nil, 'not counted as a dangerous contract')
   c:tick(0.1); T.eq(c.raiders, nil, 'the Raiders go'); T.check(rcar.removed, 'and their cars are deleted')
   T.eq(c:view().desert, nil, 'the panel with them')
+  T.eq(#c.specialRuns, 1, 'one run counted towards the day')
+  T.check(c:manualSave(), 'saved'); T.eq(#F.controller({ io = io }).specialRuns, 1, 'kept in the save')
 
   -- Cancelled before the start: the cost is paid back.
   local d, dio, da = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
@@ -3059,7 +3063,7 @@ do
   da.pose = F.copy(back); d:tick(0.1); d:tick(0.6); d:tick(0.6)
   T.eq(d.stranded, nil, 'the trip back is not an unpaid relocation')
 
-  -- A Raider's EMP (MadMerick, 27 Nov): it fires only at a truck doing under 5 km/h, from within 15 m, and that ends
+  -- A Raider's EMP (MadMerick, 27 Nov): it fires only at a truck doing 15 km/h or less, from within 15 m, and that ends
   -- the run like Give up, but the player is only taken back once they close the message.
   T.check(d:takeJob(specialRows(d)[1].id), 'bought a third time'); paid = d.load.cost
   local balance = d:view().balance
@@ -3073,25 +3077,41 @@ do
   T.check(d.raiders:up() >= 1, 'a Raider is up next to the truck')
   for id, car in pairs(drc.cars) do car.x, car.y = 0, 8 end
   T.check(d.load ~= nil, 'driving at 72 km/h, no Raider fires')
-  drc.speed = 1.6
+  drc.speed = 4.5
   for _ = 1, 4 do d:tick(0.5) end
-  T.check(d.load ~= nil, 'at 5.8 km/h it still does not')
-  drc.speed = 1
+  T.check(d.load ~= nil, 'at 16 km/h it still does not')
+  drc.speed = 4.1
+  local goes = {}
+  function drc:goTo(id, aim) goes[id] = aim; return true end
   d:tick(0.5); d:tick(0.5)
-  T.check(d.load ~= nil, 'under 5 km/h, not straight away')
+  T.check(d.load ~= nil, 'at 15 km/h or less, not straight away')
   teleports = #da.teleports
   for _ = 1, 4 do d:tick(0.5) end
   T.eq(d.load, nil, 'after 2 seconds a Raider fires its EMP: the load is lost')
   T.eq(empHit, 1, 'the truck\'s engine dies')
+  T.check(drc.shoved and drc.shoved.truck and drc.shoved.from[2] == 8, 'shoved away from the Raider that fired')
+  T.check(d:view().empSound > 0, 'with the EMP sound')
   T.eq(d:view().balance, balance, 'and what it cost')
   T.eq(d:view().raiderCaught.cost, paid, 'the message says what was lost')
-  T.eq(d.raiders, nil, 'the Raiders go')
+  local raiderPackM = require('earthFreight/raiderPack')
+  T.check(d.raiders ~= nil and #d.raiders.raiders >= 1, 'the Raiders stay, so the player sees them')
+  local fleeing = d.raiders.raiders[1]
+  T.eq(fleeing.state, 'FLEE', 'they speed away')
+  goes = {}
+  d:tick(0.5); d:tick(0.5)
+  local aim = goes[fleeing.id]
+  T.check(aim and aim.speed == raiderPackM.FLEE_MPS and aim.y > 8, 'fast, away from the truck')
+  T.eq(d:view().desert, nil, 'no Raiders panel: the run is over')
+  drc.cars[fleeing.id].y = 600
+  d:tick(0.5); d:tick(0.5)
+  T.check(drc.cars[fleeing.id] == nil, 'gone once 500 m away')
   for _ = 1, 4 do d:tick(0.5) end
   T.eq(#da.teleports, teleports, 'no teleport until the message is closed')
   local reloaded = F.controller({ io = dio })
   T.eq(reloaded.raiderCaught and reloaded.raiderCaught.cost, paid, 'saved as the message opened: a reload shows it again')
   T.eq(reloaded.load, nil, 'without the load')
   T.check(d:closeRaiderCaught(), 'Close')
+  T.eq(d.raiders, nil, 'the rest go when it is closed')
   T.eq(empHit, 11, 'the engine back')
   T.eq(#da.teleports, teleports + 1, 'then Earth takes the player back')
   T.near(da.teleports[#da.teleports].latitude, back.latitude, 1e-9, 'to where the load was taken')
@@ -3108,6 +3128,59 @@ do
   e.profile.progression.balance = unit
   T.check(not e:takeJob(specialRows(e)[1].id), 'a full load is too dear'); T.check(e:view().tradeFeedback:find('Load slider'), 'told to take less')
   T.check(e:takeJob(specialRows(e)[1].id, 10), 'a smaller load')
+
+  -- At most 2 runs delivered a day, by the real clock (MadMerick, 27 Nov).
+  T.eq(special.RUNS_PER_DAY, 2, 'two a day')
+  local g = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  g:tick(0.1); g:tick(0.6); g:tick(0.6)
+  g.profile.progression.balance = 1000000
+  local now = 5000000
+  g.now = function() return now end
+  T.check(specialRows(g)[1].allowed, 'open')
+  T.check(specialRows(g)[1].contract.summary:find('2 successful runs a day', 1, true), 'the jobs board says so')
+  g.specialRuns = { now - 3600, now - 600 }
+  T.check(not specialRows(g)[1].allowed, 'two delivered in the last 24 hours: closed')
+  T.eq(specialRows(g)[1].contract.wait, 'You have made 2 runs in the last 24 hours. The next opens in 23 h 0 min.', 'and when it opens')
+  T.check(not g:takeJob(specialRows(g)[1].id), 'not taken'); T.eq(g:view().tradeFeedback, specialRows(g)[1].contract.wait, 'told why')
+  now = now + 23 * 3600
+  T.check(specialRows(g)[1].allowed, 'a day after the first, open again')
+  T.check(g:manualSave(), 'saved')
+
+  -- With under 10 km to go, a Raider within 15 m fires its one EMP at any speed (MadMerick, 27 Nov). Above 15 km/h
+  -- it doesn't end the run: the engine dies for a while and the player has to deal with it.
+  local k, _, ka = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  k:tick(0.1); k:tick(0.6); k:tick(0.6)
+  k.profile.progression.balance = 1000000
+  T.check(k:takeJob(specialRows(k)[1].id), 'bought')
+  ka.pose = F.copy(special.START); k:tick(0.1); k:tick(0.6); k:tick(0.6)
+  local krc = fakeRaiderCar()
+  local kHits = {}
+  k.thiefCar = { empPlayer = function() kHits[#kHits + 1] = 'dead' end, empPlayerBrakeOff = function() kHits[#kHits + 1] = 'brakes' end,
+    empPlayerEnd = function() kHits[#kHits + 1] = 'back' end }
+  k.raiderCar = krc
+  for _ = 1, math.ceil((desertRun.FIRST_SECONDS + 2) / 0.5) do k:tick(0.5) end
+  for _, car in pairs(krc.cars) do car.x, car.y = 0, 8 end
+  F.drive(k, ka, location.destination(special.FINISH, 180, 12000))
+  T.eq(#kHits, 0, '12 km to go at 72 km/h: no Raider fires')
+  F.drive(k, ka, location.destination(special.FINISH, 180, 9500))
+  for _, car in pairs(krc.cars) do car.x, car.y = 0, 8 end
+  for _ = 1, 6 do k:tick(0.5) end
+  T.eq(kHits[1], 'dead', 'under 10 km to go, a Raider fires at 72 km/h: the engine dies')
+  T.check(k.load ~= nil and k.raiderCaught == nil, 'but the run goes on')
+  T.check(k:view().desert.line:find('engine is dead', 1, true), 'told so')
+  local used = 0
+  for _, h in ipairs(k.raiders.raiders) do if h.empUsed then used = used + 1 end end
+  local dead = 0
+  for _, x in ipairs(kHits) do if x == 'dead' then dead = dead + 1 end end
+  T.check(used >= 1 and used == dead, 'each EMP fired is that Raider\'s one EMP')
+  for _ = 1, math.ceil(desertRun.STALL_SECONDS / 0.5) + 1 do k:tick(0.5) end
+  local got = table.concat(kHits, ',')
+  T.check(got:find('brakes', 1, true) and got:find('back', 1, true), 'the brakes let off, then the engine is back')
+  -- Every Raider fires only once: with all of them used, none fires again.
+  for _, h in ipairs(k.raiders.raiders) do h.empUsed = true end
+  local before = #kHits
+  for _ = 1, 6 do k:tick(0.5) end
+  T.eq(#kHits, before, 'no Raider fires twice')
 end
 
 

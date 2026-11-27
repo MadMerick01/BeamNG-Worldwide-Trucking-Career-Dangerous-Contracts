@@ -28,7 +28,9 @@ M.FINISH = location.destination(M.START, 0, M.KM * 1000)
 -- undo (core.lua's fuelReading).
 M.FILL_SECONDS = 15
 -- The EMP charges the player has for the whole run, and no more (MadMerick, 27 Nov, in place of the revolver).
-M.EMP_CHARGES = 4
+M.EMP_CHARGES = 10
+-- At most this many runs delivered in any DAY_SECONDS, by the real clock (MadMerick, 27 Nov).
+M.RUNS_PER_DAY, M.DAY_SECONDS = 2, 86400
 -- The two loads, as goods (goods.lua): solid and fluid.
 M.GOODS = { 'precursors', 'precursors_fluid' }
 
@@ -45,7 +47,8 @@ M.SECTION = {
   id = 'shed_in_the_desert', name = 'the Shed in the Desert', region = "Rub' al Khali, the Empty Quarter",
   km = M.KM, special = true,
   summary = 'Rival clans are fighting for control of the Empty Quarter, south of the Strait of Hormuz. A sheikh needs '
-    .. 'precursor ordnance chemicals dropped at the Shed in the Desert, ' .. M.KM .. ' km north across the dunes. Expect hostile Raiders.',
+    .. 'precursor ordnance chemicals dropped at the Shed in the Desert, ' .. M.KM .. ' km north across the dunes. Expect hostile Raiders. Your EMP has ' .. M.EMP_CHARGES .. ' charges for the whole run. At most '
+    .. M.RUNS_PER_DAY .. ' successful runs a day.',
   start = M.START, finish = M.FINISH,
 }
 
@@ -55,6 +58,18 @@ function M.visible(online, admin, switch)
   if M.OPEN then return true end
   if online then return admin == true end
   return switch == true
+end
+
+-- The runs delivered in the last DAY_SECONDS before now (times in seconds), oldest first, and when the next run opens
+-- if none are left (nil otherwise).
+function M.recentRuns(times, now)
+  local recent = {}
+  for _, t in ipairs(times or {}) do
+    if type(t) == 'number' and now - t < M.DAY_SECONDS and t <= now then recent[#recent + 1] = t end
+  end
+  table.sort(recent)
+  local opensAt = #recent >= M.RUNS_PER_DAY and recent[#recent - M.RUNS_PER_DAY + 1] + M.DAY_SECONDS or nil
+  return recent, opensAt
 end
 
 -- What one unit of a good costs, in dollars: its weight for solid precursors, its litres for fluid.
