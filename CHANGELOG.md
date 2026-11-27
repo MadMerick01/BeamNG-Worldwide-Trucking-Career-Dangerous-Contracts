@@ -6,6 +6,10 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Your EMP now has 3 charges for the whole Shed in the Desert run**, down from 10. The jobs board says so. A run already under way keeps the charges it had.
+- **The Shed in the Desert's cards now say plainly when you've used up your 2 runs.** Once you've made 2 successful runs in 24 hours, each card shows "Time to next precursor drop" with a countdown, right on the card in the HUD's jobs list too, not only when you open it. If you can't afford even one unit of precursors, the card says how much you need. Holding the mouse over a greyed-out Take job button says why.
+- **Fixed: the shed at the end of the Shed in the Desert sometimes floated in the air.** It now sits on the sand, and it settles down onto the ground as you get close. Saves still work.
+
 ## Build 299 · 27 Nov 2026
 
 - **The "Turn on the trucking HUD" pop-up now shows only once, with an OK button.** Before, if you played BeamNG.Earth without the trucking HUD on screen, a reminder kept popping up in the corner every couple of minutes, even when you were only driving around and not trucking. Now you get one pop-up: either "Add the HUD?" (press Add the HUD, or No thanks) or the steps to add it yourself with an OK button. After that it never comes back, not on another map, not after a restart. You can still add the HUD any time in Esc > System > HUD Apps.

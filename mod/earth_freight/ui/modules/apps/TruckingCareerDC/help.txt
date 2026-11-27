@@ -106,7 +106,7 @@ Rival clans' Raiders hunt you all the way. Your EMP has {desertEmps} charges for
 If a Raider within {raiderEmpMetres} m catches you at {raiderEmpKmh} km/h or less, its EMP ends the run. You lose the load and what you paid, and are taken back.
 In the last {raiderEmpCloseKm} km a Raider fires at any speed. Above {raiderEmpKmh} km/h it only kills your engine for {raiderStallSeconds} s. Each Raider has one EMP.
 No repairs or insurance once you set off. Give up loses the load and takes you back.
-At most {desertRuns} successful runs a day.
+You can make {desertRuns} successful runs every 24 hours. After that the contracts stay on the jobs board, but Take job is off and the card counts down the time to your next precursor drop.
 
 # base | Bases, corps and turf
 Buy a base where you are parked for {basePrice}. Around its town grows a circle: your turf.

@@ -2993,9 +2993,9 @@ do
   T.eq(c:view().repairFeedback, workshopM.DESERT_NO_REPAIRS, 'told why')
   T.eq(c:view().insurance, nil, 'no insurance card')
   -- The Raiders (desertRun.lua): a pretend game's cars, all at the truck.
-  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 10 charges for the whole run')
-  T.eq(special.EMP_CHARGES, 10, 'ten, as MadMerick asked')
-  T.eq(c:view().desert.charges, 10, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 10, 'of ten')
+  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 3 charges for the whole run')
+  T.eq(special.EMP_CHARGES, 3, 'three, as MadMerick asked')
+  T.eq(c:view().desert.charges, 3, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 3, 'of three')
   local desertRun = require('earthFreight/desertRun')
   local raiderPack = require('earthFreight/raiderPack')
   local function fakeRaiderCar()
@@ -3021,7 +3021,7 @@ do
   T.eq(c:view().desert.up, 0, 'no Raider straight away')
   for _ = 1, math.ceil((desertRun.FIRST_SECONDS + desertRun.GAP_SECONDS * 4) / 0.5) do c:tick(0.5) end
   T.eq(c:view().desert.up, raiderPack.MAX, 'then they keep coming, four at most')
-  T.eq(c:view().desert.emp.charges, 10, 'the EMP button with them')
+  T.eq(c:view().desert.emp.charges, 3, 'the EMP button with them')
   -- The EMP (emp.lua): the nearest Raider within 15 m is hit, and every press uses a charge.
   local emp = require('earthFreight/emp')
   local near = c.raiders.raiders[1]
@@ -3032,19 +3032,19 @@ do
   T.check(c:empHotkey(), 'the Fire EMP key hits it')
   T.eq(rcar.shoved and rcar.shoved.id, near.id, 'and shoves it'); T.check(not rcar.shoved.truck, 'away from the player')
   T.eq(near.state, 'DOWN', 'its engine cut, it is down')
-  T.eq(c.load.emps, 9, 'a charge used'); T.eq(c:view().desert.charges, 9, 'nine left on the HUD')
+  T.eq(c.load.emps, 2, 'a charge used'); T.eq(c:view().desert.charges, 2, 'two left on the HUD')
   T.eq(c:view().desert.up, 3, 'one down')
   T.check(c:view().desert.line:find('EMP', 1, true), 'told so')
   T.check(not c:view().desert.emp.ready, 'then it charges')
-  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 9, 'nor use a charge')
+  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 2, 'nor use a charge')
   -- A miss: the nearest is 100 m away. It still uses a charge.
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
   T.check(c:view().desert.emp.ready, 'charged after 20 s')
   T.check(not c:view().desert.emp.inRange, 'the rest are out of range')
-  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 8, 'still uses a charge')
+  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 1, 'still uses a charge')
   T.check(c:view().desert.emp.feedback:find('15 m', 1, true), 'and says how close to get')
   T.check(c:manualSave(), 'saved with the charges')
-  T.eq(F.controller({ io = io }).load.emps, 8, 'a reload keeps the charges')
+  T.eq(F.controller({ io = io }).load.emps, 1, 'a reload keeps the charges')
   -- None left: it can't fire.
   c.load.emps = 0
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
@@ -3058,8 +3058,11 @@ do
     where = function() return { x = 100, y = 200, z = 30 } end,
     there = function() return shedThere end,
     remove = function() shedThere = false; sheds.removed = (sheds.removed or 0) + 1 end,
-    place = function(_, x, y, z) shedThere = true; sheds[#sheds + 1] = { x = x, y = y, z = z }; return true end,
+    place = function(_, x, y, z, g) shedThere = true; sheds[#sheds + 1] = { x = x, y = y, z = g }; return g end,
+    groundAt = function() return sheds.ground end,
+    move = function(_, x, y, z) sheds.moved = z; return shedThere end,
   }
+  sheds.ground = 30
   F.drive(c, a, location.destination(special.FINISH, 180, 3000))
   T.eq(#sheds, 0, 'no shed 3 km out')
   F.drive(c, a, location.destination(special.FINISH, 180, 2400))
@@ -3075,6 +3078,15 @@ do
   local count = #sheds
   for _ = 1, 4 do c:tick(0.5) end
   T.eq(#sheds, count, 'then it stays')
+  -- Floating (MadMerick, 27 Nov): the ground is looked at again every 2 s, and the shed settled onto it.
+  T.eq(c.shed.z, 30, 'on the ground found')
+  sheds.ground = 28.5
+  for _ = 1, 5 do c:tick(0.5) end
+  T.eq(sheds.moved, 28.5, 'finer ground came in: moved down to it'); T.eq(c.shed.z, 28.5, 'and kept')
+  T.eq(#sheds, count, 'moved, not put down again')
+  sheds.ground = 45
+  for _ = 1, 5 do c:tick(0.5) end
+  T.eq(c.shed.z, 30, 'ground more than 2 m above the car close by: put at the car\'s height')
   -- Driven to the shed and stopped: paid 6 times, with a message that stays until Close (MadMerick, 27 Nov).
   local cBack = F.copy(c.load.back)
   F.drive(c, a, special.FINISH)
@@ -3200,6 +3212,7 @@ do
   e:tick(0.1); e:tick(0.6); e:tick(0.6)
   e.profile.progression.balance = unit - 1
   T.check(not specialRows(e)[1].allowed, 'not even one unit')
+  T.check(specialRows(e)[1].contract.short:find('to buy even one unit', 1, true), 'the card says why')
   e.profile.progression.balance = unit
   T.check(not e:takeJob(specialRows(e)[1].id), 'a full load is too dear'); T.check(e:view().tradeFeedback:find('Load slider'), 'told to take less')
   T.check(e:takeJob(specialRows(e)[1].id, 10), 'a smaller load')
@@ -3215,7 +3228,7 @@ do
   T.check(specialRows(g)[1].contract.summary:find('2 successful runs a day', 1, true), 'the jobs board says so')
   g.specialRuns = { now - 3600, now - 600 }
   T.check(not specialRows(g)[1].allowed, 'two delivered in the last 24 hours: closed')
-  T.eq(specialRows(g)[1].contract.wait, 'You have made 2 runs in the last 24 hours. The next opens in 23 h 0 min.', 'and when it opens')
+  T.eq(specialRows(g)[1].contract.wait, 'Time to next precursor drop: 23 h 0 min. You can make 2 successful runs every 24 hours, and you have made them.', 'a countdown to the next (MadMerick, 27 Nov)')
   T.check(not g:takeJob(specialRows(g)[1].id), 'not taken'); T.eq(g:view().tradeFeedback, specialRows(g)[1].contract.wait, 'told why')
   now = now + 23 * 3600
   T.check(specialRows(g)[1].allowed, 'a day after the first, open again')
