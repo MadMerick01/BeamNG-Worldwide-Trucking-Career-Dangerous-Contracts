@@ -95,6 +95,16 @@ The helicopter is a free mod from the BeamNG forum. The Heli tab says which one 
 // You pay {contractFee} to be relocated to the start. Then drive the section with your load and stop at the finish.
 // A crash ends the contract.
 
+# desert | The Shed in the Desert
+Every jobs board has two orange dangerous contracts: precursor chemicals for a sheikh, as crates or liquid.
+You buy the load with your own money, as much as your car carries. You are moved to the Rub' al Khali with a full tank.
+Drive {desertKm} km north across the dunes, following the arrow on the Route tab, and stop at the shed. It pays {desertPayTimes} times what you paid.
+Rival clans' Raiders hunt you all the way. Your EMP has {desertEmps} charges for the whole run: press EMP to stop the nearest Raider within {empRange} m. Every press uses a charge, hit or miss.
+If a Raider within {raiderEmpMetres} m catches you at {raiderEmpKmh} km/h or less, its EMP ends the run. You lose the load and what you paid, and are taken back.
+In the last {raiderEmpCloseKm} km a Raider fires at any speed. Above {raiderEmpKmh} km/h it only kills your engine for {raiderStallSeconds} s. Each Raider has one EMP.
+No repairs or insurance once you set off. Give up loses the load and takes you back.
+At most {desertRuns} successful runs a day.
+
 # base | Bases, corps and turf
 Buy a base where you are parked for {basePrice}. Around its town grows a circle: your turf.
 Jobs that start or end in your turf pay you more. Your circle grows as you get richer, and never shrinks.
