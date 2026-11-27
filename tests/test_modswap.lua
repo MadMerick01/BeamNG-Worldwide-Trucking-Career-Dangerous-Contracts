@@ -88,6 +88,34 @@ do
   restore()
 end
 
+-- The player turns the mod off: with no copy mounted and no server, its code stops, so nothing of it keeps running.
+do
+  local unloaded, loaded = {}, nil
+  fake('extensions', {
+    getLoadedExtensionsNames = function() return { 'earthFreight_core', 'beamngEarth_core' } end,
+    unload = function(n) unloaded[#unloaded + 1] = n end,
+    load = function(names) loaded = names end,
+  })
+  fake('earthFreight_core', {})
+  package.loaded['earthFreight/fakeModule'] = {}
+  mount({ ['core.lua'] = 100 })
+  T.check(not S.offCheck('test'), 'still mounted: keeps running')
+  T.eq(#unloaded, 0, 'nothing unloaded')
+  mount(nil)
+  local session = true
+  fake('MPCoreNetwork', { isMPSession = function() return session end })
+  T.check(not S.offCheck('test'), 'on a server, none mounted is BeamMP swapping copies: wait')
+  T.eq(#unloaded, 0, 'nothing unloaded yet')
+  session = false
+  T.check(S.offCheck('test'), 'turned off outside a server: stopped')
+  T.eq(#unloaded, 1, 'our extension unloaded'); T.eq(unloaded[1], 'earthFreight_core', 'ours only')
+  T.eq(package.loaded['earthFreight/fakeModule'], nil, 'our modules forgotten')
+  T.eq(loaded, nil, 'and nothing loaded in its place: turning it on again loads it')
+  fake('earthFreight_core', nil)
+  T.check(not S.offCheck('test'), 'not running: nothing to stop')
+  restore()
+end
+
 -- The player's own copy: remembered, never a server's.
 do
   local owner = 'worldwide-trucking-dangerous-contracts'
