@@ -222,6 +222,7 @@ function F.garage()
     if self.trailers[target] then
       if type(config) == 'table' then self.trailers[target].fitted = F.copy(config.parts)
       elseif type(config) == 'string' then self.trailers[target].fitted = { deck = 'flatbed_deck' } end
+      self.trailers[target].damage = 0 -- a respawn leaves it as new
       self.trailerRepairs = self.trailerRepairs + 1
       return true
     end

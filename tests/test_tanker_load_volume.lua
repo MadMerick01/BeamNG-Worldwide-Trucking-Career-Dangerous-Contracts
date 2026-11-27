@@ -23,6 +23,8 @@ do
   local hitches = 0
   local hitch = g.hitch
   function g:hitch(...) hitches = hitches + 1; if hitch then return hitch(self, ...) end return true end
+  -- Hitched and settled: damage from here on is billed.
+  c:couplerChanged(g.vehicleId, id, true); c.clock = c.clock + 5
   g.trailers[id].damage = 4000
 
   local fuel = goods.get('fuel')
