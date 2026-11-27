@@ -11,6 +11,7 @@ Changes that are finished but not in a download yet. They move into a numbered b
 - **Still hidden: the Raiders now have EMPs of their own.** A Raider fires its EMP only if your truck is doing under 5 km/h for 2 seconds with a Raider within 15 m. That ends the run just like Give up: your engine dies and you lose the load and what you paid for it. A message tells you what happened, and you are only taken back to where you bought the load once you press Close. The game saves as the message opens, so if you quit before pressing Close it is still there when you come back.
 - **Still hidden: the precursor run in the desert is now called a dangerous contract, not a special delivery.** You see the new name on the jobs board, the HUD and its messages. It keeps its orange colour, so you can still tell it apart from the other dangerous contracts.
 - **Still hidden: no repairs or insurance on the precursor run.** Once you set off into the desert, Get quote, Repair and the insurance claim are off until you make the drop or give up. The Raiders panel says so.
+- **Still hidden: the precursor run is shorter.** The Shed in the Desert is now 20 km north of the start, down from 30 km.
 
 ## Build 289 · 26 Nov 2026
 

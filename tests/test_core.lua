@@ -2920,7 +2920,7 @@ do
     return out
   end
   T.eq(special.OPEN, false, 'hidden from players while it is tested')
-  T.near(location.distance(special.START, special.FINISH), 30000, 1, 'the shed is 30 km from the start')
+  T.near(location.distance(special.START, special.FINISH), 20000, 1, 'the shed is 20 km from the start')
   T.near((location.bearing(special.START, special.FINISH) + 180) % 360 - 180, 0, 1e-6, 'due north')
   T.check(special.visible(true, true, false) and not special.visible(true, false, true), 'online: admins only, the switch does not count')
   T.check(special.visible(false, false, true) and not special.visible(false, false, false), 'single player: the switch')

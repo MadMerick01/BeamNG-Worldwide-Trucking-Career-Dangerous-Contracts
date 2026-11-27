@@ -22,7 +22,7 @@ M.PAY_TIMES = 6
 M.PRICE_PER_KG, M.PRICE_PER_LITRE = 60, 45
 -- The start, and how far north the shed is.
 M.START = { latitude = 21.177270, longitude = 53.517038 }
-M.KM = 30
+M.KM = 20
 M.FINISH = location.destination(M.START, 0, M.KM * 1000)
 -- After the free full tank at the start goes in, a rise in the fuel gauge for this long is that fill, not a reset to
 -- undo (core.lua's fuelReading).
