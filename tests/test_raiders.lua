@@ -30,7 +30,7 @@ local function random(lo, hi) if lo == 0 and hi == 1 then return 0.9 end return 
 -- MadMerick's rules for the first test: at most four up at once.
 T.eq(P.MAX, 4, 'at most four Raiders up at once')
 T.eq(P.ESCAPE_METRES, 500, 'one that falls 500 m behind is gone')
-T.eq(special.EMP_CHARGES, 20, 'the EMP has twenty charges for the run')
+T.eq(special.EMP_CHARGES, 10, 'the EMP has ten charges for the run')
 local car = fakeCar()
 local p = P.new(car, random)
 for i = 1, 4 do T.check(p:add(i) ~= nil, 'Raider ' .. i .. ' turns up') end

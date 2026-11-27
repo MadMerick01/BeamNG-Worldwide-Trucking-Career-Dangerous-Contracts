@@ -2973,9 +2973,9 @@ do
   T.eq(c:view().repairFeedback, workshopM.DESERT_NO_REPAIRS, 'told why')
   T.eq(c:view().insurance, nil, 'no insurance card')
   -- The Raiders (desertRun.lua): a pretend game's cars, all at the truck.
-  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 20 charges for the whole run')
-  T.eq(special.EMP_CHARGES, 20, 'twenty, as MadMerick asked')
-  T.eq(c:view().desert.charges, 20, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 20, 'of twenty')
+  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 10 charges for the whole run')
+  T.eq(special.EMP_CHARGES, 10, 'ten, as MadMerick asked')
+  T.eq(c:view().desert.charges, 10, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 10, 'of ten')
   local desertRun = require('earthFreight/desertRun')
   local raiderPack = require('earthFreight/raiderPack')
   local function fakeRaiderCar()
@@ -3001,7 +3001,7 @@ do
   T.eq(c:view().desert.up, 0, 'no Raider straight away')
   for _ = 1, math.ceil((desertRun.FIRST_SECONDS + desertRun.GAP_SECONDS * 4) / 0.5) do c:tick(0.5) end
   T.eq(c:view().desert.up, raiderPack.MAX, 'then they keep coming, four at most')
-  T.eq(c:view().desert.emp.charges, 20, 'the EMP button with them')
+  T.eq(c:view().desert.emp.charges, 10, 'the EMP button with them')
   -- The EMP (emp.lua): the nearest Raider within 15 m is hit, and every press uses a charge.
   local emp = require('earthFreight/emp')
   local near = c.raiders.raiders[1]
@@ -3012,19 +3012,19 @@ do
   T.check(c:empHotkey(), 'the Fire EMP key hits it')
   T.eq(rcar.shoved and rcar.shoved.id, near.id, 'and shoves it'); T.check(not rcar.shoved.truck, 'away from the player')
   T.eq(near.state, 'DOWN', 'its engine cut, it is down')
-  T.eq(c.load.emps, 19, 'a charge used'); T.eq(c:view().desert.charges, 19, 'nineteen left on the HUD')
+  T.eq(c.load.emps, 9, 'a charge used'); T.eq(c:view().desert.charges, 9, 'nine left on the HUD')
   T.eq(c:view().desert.up, 3, 'one down')
   T.check(c:view().desert.line:find('EMP', 1, true), 'told so')
   T.check(not c:view().desert.emp.ready, 'then it charges')
-  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 19, 'nor use a charge')
+  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 9, 'nor use a charge')
   -- A miss: the nearest is 100 m away. It still uses a charge.
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
   T.check(c:view().desert.emp.ready, 'charged after 20 s')
   T.check(not c:view().desert.emp.inRange, 'the rest are out of range')
-  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 18, 'still uses a charge')
+  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 8, 'still uses a charge')
   T.check(c:view().desert.emp.feedback:find('15 m', 1, true), 'and says how close to get')
   T.check(c:manualSave(), 'saved with the charges')
-  T.eq(F.controller({ io = io }).load.emps, 18, 'a reload keeps the charges')
+  T.eq(F.controller({ io = io }).load.emps, 8, 'a reload keeps the charges')
   -- None left: it can't fire.
   c.load.emps = 0
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
