@@ -120,7 +120,7 @@ local env = {
   byId = function(id) return cars[id] end,
   random = function() return 0.2 end,
   vehicles = function()
-    return { getModel = function(name) return name == 'barstow' and { model = name } or nil end,
+    return { getModel = function(name) return (name == 'roamer' or name == 'van') and { model = name } or nil end,
       spawnNewVehicle = function(name, options)
         spawned = spawned + 1
         local c = fake(spawned, 0, 0)
@@ -140,7 +140,18 @@ T.eq(rc:player().id, 2, 'walking, they go for the truck')
 T.eq(rc:walker().id, 1, 'the walker is still the player')
 local ready = rc:preload(2)
 T.eq(ready, 2, 'two cars loaded and hidden')
-T.eq(cars[51].config, 'vehicles/barstow/earth_freight_raider_old1.pc', "MadMerick's rusty Barstow")
+T.eq(cars[51].config, 'vehicles/roamer/earth_freight_raider_black4wd.pc', "MadMerick's black 4WD")
+T.eq(cars[51].model, 'roamer', 'a Roamer')
+local function pick(roll, models)
+  local pc = RC.new({ random = function() return roll end, vehicles = function()
+    return { getModel = function(name) return models[name] and { model = name } or nil end } end })
+  return pc:model()
+end
+local m, cfg = pick(0.7, { roamer = true, van = true })
+T.eq(m, 'van', 'or the front-cab van, even odds'); T.eq(cfg, 'vehicles/van/earth_freight_raider_frontcab.pc', 'with its config')
+T.eq(pick(0.7, { roamer = true }), 'roamer', 'without the van, the 4WD')
+m, cfg = pick(0.2, { moonhawk = true })
+T.eq(m, 'moonhawk', 'with neither, a plain car'); T.eq(cfg, nil, 'with no config')
 T.eq(cars[51].active, 0, 'switched off while hidden')
 local id = rc:take()
 T.check(id == 51 or id == 52, 'a Raider takes a hidden car')
