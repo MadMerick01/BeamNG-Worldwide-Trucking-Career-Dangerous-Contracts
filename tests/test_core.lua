@@ -181,12 +181,12 @@ do
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
   T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 3000 * places.ROAD_FACTOR, 'distances are road estimates')
   T.eq(#v.nearby[1].dots, 4, 'a dot per good: parts, bricks, water and fuel')
-  T.eq(#v.town.jobs, 5, 'the board lists parts, bricks, a fluid, a long haul and the off-road drop')
+  T.eq(#v.town.jobs, 7, 'the board lists parts, bricks, a fluid, a long haul, the off-road drop and the Shed in the Desert\'s two')
   T.eq(v.town.jobs[1].goodId, 'parts', 'parts first'); T.eq(v.town.jobs[2].goodId, 'bricks', 'then bricks')
   T.eq(v.town.jobs[3].goodId, jobs.fluid(penrith).id, 'then the town fluid')
   T.check(v.town.jobs[4].long and v.town.jobs[4].distanceMetres > 20000, 'then a long haul past 20 km')
   T.check(v.town.jobs[5].drop, 'then the drop')
-  for _, j in ipairs(v.town.jobs) do T.eq(j.contract, nil, 'no dangerous contract: they are off for now') end
+  for _, j in ipairs(v.town.jobs) do T.check(j.contract == nil or j.contract.special, 'no road dangerous contract: they are off for now') end
   T.eq(v.career.contractsOn, nil, 'and the start page leaves out the Dangerous count')
   T.check(v.town.jobs[3].fluid and v.town.jobs[3].units == 0 and not v.town.jobs[3].allowed, 'a fluid needs a tank')
   for _, j in ipairs(v.town.jobs) do
@@ -388,7 +388,7 @@ do
   T.near(a.gps[#a.gps].latitude, section.start.latitude, 1e-9, 'at the start of its road')
   T.eq(a.gps[#a.gps].name, section.name .. ' start', 'named after it')
   v = c:view()
-  for _, j in ipairs(v.town.jobs) do T.eq(j.gps, j.contract and true or nil, j.id .. ': only the contract is marked now') end
+  for _, j in ipairs(v.town.jobs) do T.eq(j.gps, j.contract and not j.contract.special and true or nil, j.id .. ': only the contract is marked now') end
   T.check(v.gpsFeedback:find(section.name) ~= nil, 'the message names the road')
   T.eq(c.load, nil, 'nothing taken'); T.check(not c:gpsToContract('nowhere'), 'an unknown contract is refused')
 end
@@ -2330,6 +2330,14 @@ do
   -- Hitches are read from the car's part names.
   local h = TR.hitches({ parts = { a = 'semi_fifthwheel', b = 'pickup_gooseneck_hitch', c = 'van_tow_hitch', d = 'x_pintle_hitch' } })
   T.check(h.fifthwheel and h.gooseneck and h.ball, 'fifth wheel, gooseneck and ball'); T.eq(TR.hitches(nil).ball, nil, 'none without parts')
+  T.eq(h.pintle, true, 'a pintle hitch is a drawbar hitch')
+  T.eq(TR.hitches({ parts = { a = 'truck_drawbeam' } }).pintle, true, 'so is a drawbeam')
+  T.eq(TR.hitches({ parts = { a = 'truck_drawbeam' } }).ball, nil, 'and neither is a ball hitch')
+  -- The EU tankers are drawbar trailers, with no weight on the hitch.
+  T.eq(TR.hitchOf('eu_trailers', 'vehicles/eu_trailers/tanker3a.pc'), 'pintle', 'the 3 axle EU tanker takes a drawbar')
+  T.eq(TR.hitchOf('eu_trailers', 'vehicles/eu_trailers/tanker2a.pc'), 'pintle', 'so does the 2 axle one')
+  T.eq(TR.limitOf('eu_trailers', 'vehicles/eu_trailers/tanker2a.pc'), 16800, 'which holds 16,800 L')
+  T.eq(TR.HITCH_SHARE.pintle, nil, 'a drawbar trailer puts no load on the hitch')
 end
 
 -- A load is split between the car and the trailer, each to the same share of its room.
@@ -2689,77 +2697,92 @@ do
   if card then T.eq(card.repair, 0, 'the start page card shows no repair') end
 end
 
--- A player who has never put the HUD on screen is told how until it shows; once it shows, never again that level.
+-- A player who has never put the HUD on screen is told how, once: an OK pop-up with the steps, never again.
 do
-  local function hints(c)
-    local n = 0
-    for _, e in ipairs(c.toasts) do if e.title == Core.HUD_HINT_TITLE then n = n + 1 end end
-    return n
-  end
   local function watched(options)
-    local c = F.controller(options)
+    options = options or {}
+    options.io = options.io or F.io({ [F.CONFIG] = F.config(), [F.HUD_HINT_FILE] = false })
+    local c, io = F.controller(options)
     c.toasts, c.dialogs = {}, {}
     c.trigger = function(name, data)
       if name == 'toastrMsg' then c.toasts[#c.toasts + 1] = data end
       if name == 'showConfirmationDialog' then c.dialogs[#c.dialogs + 1] = data end
     end
-    return c
+    return c, io
   end
-  local c = watched()
+  local function steps(c)
+    local n = 0
+    for _, e in ipairs(c.dialogs) do if e.title == Core.HUD_HINT_TITLE then n = n + 1 end end
+    for _, e in ipairs(c.toasts) do if e.title == Core.HUD_HINT_TITLE then n = n + 1 end end
+    return n
+  end
+  T.eq(F.HUD_HINT_FILE, Core.HUD_HINT_FILE, 'the tests know where it is remembered')
+  local c, io = watched()
   F.advance(c, Core.HUD_HINT_SECONDS - 1)
-  T.eq(hints(c), 0, 'not straight away')
+  T.eq(steps(c), 0, 'not straight away')
   F.advance(c, 2)
-  T.eq(hints(c), 1, 'no HUD for a while: a pop-up says how to add it')
-  T.check(c.toasts[1].msg:find('+ Add app', 1, true) ~= nil, 'with the steps')
-  T.check(c.toasts[1].msg:find('"Worldwide Trucking HUD"', 1, true) ~= nil, 'naming the HUD as the HUD Apps menu does')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 5)
-  T.eq(hints(c), 6, 'and again every so often until the HUD is on screen')
-  c:mount(true)
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
-  T.eq(hints(c), 6, 'then never again')
+  T.eq(steps(c), 1, 'no HUD for a while: a pop-up says how to add it')
+  local d = c.dialogs[1]
+  T.check(d.text:find('+ Add app', 1, true) ~= nil, 'with the steps')
+  T.check(d.text:find('"Worldwide Trucking HUD"', 1, true) ~= nil, 'naming the HUD as the HUD Apps menu does')
+  T.check(d.text:find('only shows once', 1, true) ~= nil, 'and saying it shows once')
+  T.eq(#d.buttons, 1, 'one button'); T.eq(d.buttons[1].label, 'OK', 'OK')
+  T.eq(#c.toasts, 0, 'not a corner pop-up')
+  F.advance(c, 600)
+  T.eq(steps(c), 1, 'never again, however long the HUD is missing')
   c:endMission(); c:reload()
-  F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(hints(c), 7, 'a new level without the HUD starts again')
+  F.advance(c, Core.HUD_HINT_SECONDS * 3)
+  T.eq(steps(c), 1, 'nor on a new level')
+  local again = watched({ io = io })
+  F.advance(again, Core.HUD_HINT_SECONDS * 3)
+  T.eq(steps(again), 0, 'nor after a restart: it is remembered')
 
   c = watched()
   F.advance(c, 5)
   c:mount(true)
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
-  T.eq(hints(c), 0, 'a player with the HUD on screen is never told')
+  F.advance(c, 600)
+  T.eq(steps(c), 0, 'a player with the HUD on screen is never told')
 
   local adapter = F.adapter(); adapter.valid, adapter.reason = false, 'earth_missing'
   c = watched({ adapter = adapter })
   F.advance(c, Core.HUD_HINT_SECONDS * 3)
-  T.eq(hints(c), 0, 'nor on a level without BeamNG.Earth')
+  T.eq(steps(c), 0, 'nor on a level without BeamNG.Earth')
 
+  -- The dialog can't be shown: the steps in the corner instead, still once.
   c = watched()
+  c.trigger = function(name, data)
+    if name == 'showConfirmationDialog' then error('no dialog') end
+    if name == 'toastrMsg' then c.toasts[#c.toasts + 1] = data end
+  end
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(#c.toasts, 1, 'a corner pop-up instead')
   T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'playing alone: the .Earth layout')
+  F.advance(c, 600)
+  T.eq(#c.toasts, 1, 'once')
 
   -- On a server, not while the career is on its way (the join is still settling), then the BeamMP layout.
   local mp = { inSession = function() return true end, send = function() end, listen = function() return true end,
     encode = function() return '' end, decode = function() return {} end }
   c = watched({ multiplayer = mp })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(hints(c), 0, 'not while the server is still answering')
+  T.eq(steps(c), 0, 'not while the server is still answering')
   F.advance(c, 30)
-  T.eq(hints(c), 1, 'then on a server too')
-  T.check(c.toasts[1].msg:find('BeamMP (edit layout)', 1, true) ~= nil, 'on a server: the BeamMP layout')
-  T.check(c.toasts[1].msg:find('stops as soon as the HUD is on screen', 1, true) ~= nil, 'and says when it stops')
+  T.eq(steps(c), 1, 'then on a server too')
+  T.check(c.dialogs[1].text:find('BeamMP (edit layout)', 1, true) ~= nil, 'on a server: the BeamMP layout')
 
   -- The layout the game has up is named as the HUD Apps menu shows it, whatever it is.
   for name, title in pairs({ beammp = 'BeamMP', beamngEarthMP = '.Earth multiplayer', beamngEarth = '.Earth', My_Layout = 'My_Layout' }) do
     c = watched({ layout = function() return name end })
     F.advance(c, Core.HUD_HINT_SECONDS + 1)
-    T.check(c.toasts[1].msg:find(title .. ' (edit layout)', 1, true) ~= nil, name .. ' is shown as ' .. title)
-    T.check(c.toasts[1].msg:find('another layout', 1, true) ~= nil, 'and that each layout has its own apps')
+    T.check(c.dialogs[1].text:find(title .. ' (edit layout)', 1, true) ~= nil, name .. ' is shown as ' .. title)
+    T.check(c.dialogs[1].text:find('another layout', 1, true) ~= nil, 'and that each layout has its own apps')
   end
   c = watched({ layout = function() error('no game state') end })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'unknown: the usual one')
+  T.check(c.dialogs[1].text:find('.Earth (edit layout)', 1, true) ~= nil, 'unknown: the usual one')
   c = watched({ layout = function() return '  ' end })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'blank: the usual one')
+  T.check(c.dialogs[1].text:find('.Earth (edit layout)', 1, true) ~= nil, 'blank: the usual one')
 end
 
 -- With the game's layouts at hand, the HUD is added for the player with one press, on the layout that's up.
@@ -2776,13 +2799,15 @@ do
     return l
   end
   local function watched(options)
-    local c = F.controller(options)
+    options = options or {}
+    options.io = options.io or F.io({ [F.CONFIG] = F.config(), [F.HUD_HINT_FILE] = false })
+    local c, io = F.controller(options)
     c.toasts, c.dialogs = {}, {}
     c.trigger = function(name, data)
       if name == 'toastrMsg' then c.toasts[#c.toasts + 1] = data end
       if name == 'showConfirmationDialog' then c.dialogs[#c.dialogs + 1] = data end
     end
-    return c
+    return c, io
   end
   local function titled(c, title)
     local n = 0
@@ -2798,11 +2823,13 @@ do
   local d = c.dialogs[1]
   T.eq(d.title, Core.HUD_ASK_TITLE, 'its title')
   T.check(d.text:find('<b>BeamMP</b> layout', 1, true) ~= nil, 'naming the layout that is up')
+  T.check(d.text:find('only asks once', 1, true) ~= nil, 'saying it asks once')
   T.eq(#d.buttons, 2, 'two buttons')
   T.eq(d.buttons[2].label, 'Add the HUD', 'Add the HUD')
   T.check(d.buttons[2].luaCallback:find('earthFreight_core.addHud(true)', 1, true) ~= nil, 'which adds it')
-  T.check(d.buttons[1].luaCallback:find('earthFreight_core.addHud(false)', 1, true) ~= nil, 'Not now, which does not')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS)
+  T.eq(d.buttons[1].label, 'No thanks', 'No thanks')
+  T.check(d.buttons[1].luaCallback:find('earthFreight_core.addHud(false)', 1, true) ~= nil, 'which does not')
+  F.advance(c, 600)
   T.eq(#c.dialogs + titled(c, Core.HUD_HINT_TITLE), 1, 'nothing more while it waits for an answer')
   T.check(c:addHud(true), 'Add the HUD')
   T.eq(#l.added, 1, 'the HUD is added once')
@@ -2810,40 +2837,30 @@ do
   T.eq(l.added[1].app, Core.HUD_APP, 'the trucking HUD')
   for k, v in pairs(Core.HUD_PLACEMENT) do T.eq(l.added[1].placement[k], v, 'where the HUD Apps menu puts it: ' .. k) end
   T.eq(titled(c, Core.HUD_ADDED_TITLE), 1, 'and a pop-up says so')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
-  T.eq(#c.dialogs + titled(c, Core.HUD_HINT_TITLE), 1, 'with the HUD on the layout, nothing more')
   T.check(c:addHud(true), 'a second press is fine'); T.eq(#l.added, 1, 'and adds nothing more')
 
   -- Already on the layout that's up: never asked, even if it is slow to show.
   l = layouts({ filename = 'a', title = '.Earth', has = true })
   c = watched({ layouts = l })
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
+  F.advance(c, 600)
   T.eq(#c.dialogs + #c.toasts, 0, 'a player who has the HUD on this layout is never asked')
 
-  -- Not now: the steps carry on, and that layout isn't asked about again this game, but another layout is.
+  -- No thanks: nothing more, on this layout or another (joining a server), nor after a restart.
   l = layouts({ filename = 'earth', title = '.Earth', has = false })
-  c = watched({ layouts = l })
+  local io
+  c, io = watched({ layouts = l })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
   T.eq(#c.dialogs, 1, 'asked')
-  T.eq(c:addHud(false), false, 'Not now'); T.eq(#l.added, 0, 'adds nothing')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS)
-  T.eq(#c.dialogs, 1, 'not asked again'); T.eq(titled(c, Core.HUD_HINT_TITLE), 1, 'the steps instead')
-  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'for that layout')
+  T.eq(c:addHud(false), false, 'No thanks'); T.eq(#l.added, 0, 'adds nothing')
+  F.advance(c, 600)
+  T.eq(#c.dialogs + #c.toasts, 1, 'nothing more')
   c:endMission(); c:reload()
   l.now = { filename = 'mp', title = 'BeamMP', has = false }
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(#c.dialogs, 2, 'another layout (joining a server): asked again')
-  c:endMission(); c:reload()
-  l.now = { filename = 'earth', title = '.Earth', has = false }
+  T.eq(#c.dialogs + #c.toasts, 1, 'another layout: not asked again')
+  c = watched({ layouts = l, io = io })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(#c.dialogs, 2, 'back on .Earth: not asked twice in one game')
-
-  -- A pop-up closed without an answer counts as Not now after a while.
-  l = layouts({ filename = 'earth', title = '.Earth', has = false })
-  c = watched({ layouts = l })
-  F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  F.advance(c, Core.HUD_ASK_WAIT_SECONDS + Core.HUD_HINT_REPEAT_SECONDS)
-  T.check(titled(c, Core.HUD_HINT_TITLE) >= 1, 'the steps come back')
+  T.eq(#c.dialogs + #c.toasts, 0, 'after a restart: not asked again')
 
   -- Adding fails: the steps instead.
   l = layouts({ filename = 'earth', title = '.Earth', has = false }); l.fails = true
@@ -2856,7 +2873,7 @@ do
   -- The game's layouts throwing, or with no layout up: the steps, as without them.
   c = watched({ layouts = { current = function() error('broken') end, add = function() return false end } })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(#c.dialogs, 0, 'no pop-up'); T.eq(titled(c, Core.HUD_HINT_TITLE), 1, 'the steps')
+  T.eq(#c.dialogs, 1, 'one pop-up'); T.eq(c.dialogs[1].title, Core.HUD_HINT_TITLE, 'with the steps')
 
   -- A layout title can't put markup in the pop-up.
   l = layouts({ filename = 'x', title = '<script>x</script>', has = false })
@@ -2877,7 +2894,7 @@ do
   T.eq(#sent, 0, 'nothing while the HUD may still be coming')
   F.advance(c, 2)
   T.eq(sent[1], false, 'missing: off')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 2)
+  F.advance(c, 240)
   T.eq(#sent, 1, 'said once')
   c:mount(true); c:tick(0.1)
   T.eq(sent[2], true, 'on screen: on'); T.eq(#sent, 2, 'once')
@@ -2919,16 +2936,19 @@ do
     for _, j in ipairs(c:view().town.jobs) do if j.contract and j.contract.special then out[#out + 1] = j end end
     return out
   end
-  T.eq(special.OPEN, false, 'hidden from players while it is tested')
+  T.eq(special.OPEN, true, 'open to everyone (MadMerick, 27 Nov)')
   T.near(location.distance(special.START, special.FINISH), 20000, 1, 'the shed is 20 km from the start')
   T.near((location.bearing(special.START, special.FINISH) + 180) % 360 - 180, 0, 1e-6, 'due north')
-  T.check(special.visible(true, true, false) and not special.visible(true, false, true), 'online: admins only, the switch does not count')
-  T.check(special.visible(false, false, true) and not special.visible(false, false, false), 'single player: the switch')
+  T.check(special.visible(true, false, false) and special.visible(false, false, false), 'shown to everyone, online or not')
+  special.OPEN = false
+  T.check(special.visible(true, true, false) and not special.visible(true, false, true), 'hidden: online, admins only, the switch does not count')
+  T.check(special.visible(false, false, true) and not special.visible(false, false, false), 'hidden: in single player, the switch')
+  special.OPEN = true
   for _, g in ipairs(goods.carried()) do T.check(not g.special, g.id .. ': precursors are never posted on a board') end
 
-  -- Hidden: no cards on the board.
+  -- Open: on every board, no switch needed.
   local h = F.controller(); h:tick(0.1); h:tick(0.6); h:tick(0.6)
-  T.eq(#specialRows(h), 0, 'not on the board without the switch')
+  T.eq(#specialRows(h), 2, 'on the board without the switch')
 
   -- Shown with the switch in config.json.
   local cfg = F.config(); cfg.specialDelivery = true
@@ -2973,9 +2993,9 @@ do
   T.eq(c:view().repairFeedback, workshopM.DESERT_NO_REPAIRS, 'told why')
   T.eq(c:view().insurance, nil, 'no insurance card')
   -- The Raiders (desertRun.lua): a pretend game's cars, all at the truck.
-  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 10 charges for the whole run')
-  T.eq(special.EMP_CHARGES, 10, 'ten, as MadMerick asked')
-  T.eq(c:view().desert.charges, 10, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 10, 'of ten')
+  T.eq(c.load.emps, special.EMP_CHARGES, 'the EMP has 3 charges for the whole run')
+  T.eq(special.EMP_CHARGES, 3, 'three, as MadMerick asked')
+  T.eq(c:view().desert.charges, 3, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 3, 'of three')
   local desertRun = require('earthFreight/desertRun')
   local raiderPack = require('earthFreight/raiderPack')
   local function fakeRaiderCar()
@@ -3001,7 +3021,7 @@ do
   T.eq(c:view().desert.up, 0, 'no Raider straight away')
   for _ = 1, math.ceil((desertRun.FIRST_SECONDS + desertRun.GAP_SECONDS * 4) / 0.5) do c:tick(0.5) end
   T.eq(c:view().desert.up, raiderPack.MAX, 'then they keep coming, four at most')
-  T.eq(c:view().desert.emp.charges, 10, 'the EMP button with them')
+  T.eq(c:view().desert.emp.charges, 3, 'the EMP button with them')
   -- The EMP (emp.lua): the nearest Raider within 15 m is hit, and every press uses a charge.
   local emp = require('earthFreight/emp')
   local near = c.raiders.raiders[1]
@@ -3012,34 +3032,91 @@ do
   T.check(c:empHotkey(), 'the Fire EMP key hits it')
   T.eq(rcar.shoved and rcar.shoved.id, near.id, 'and shoves it'); T.check(not rcar.shoved.truck, 'away from the player')
   T.eq(near.state, 'DOWN', 'its engine cut, it is down')
-  T.eq(c.load.emps, 9, 'a charge used'); T.eq(c:view().desert.charges, 9, 'nine left on the HUD')
+  T.eq(c.load.emps, 2, 'a charge used'); T.eq(c:view().desert.charges, 2, 'two left on the HUD')
   T.eq(c:view().desert.up, 3, 'one down')
   T.check(c:view().desert.line:find('EMP', 1, true), 'told so')
   T.check(not c:view().desert.emp.ready, 'then it charges')
-  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 9, 'nor use a charge')
+  T.eq(c:fireEmp(), false, 'and does not fire while charging'); T.eq(c.load.emps, 2, 'nor use a charge')
   -- A miss: the nearest is 100 m away. It still uses a charge.
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
   T.check(c:view().desert.emp.ready, 'charged after 20 s')
   T.check(not c:view().desert.emp.inRange, 'the rest are out of range')
-  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 8, 'still uses a charge')
+  T.eq(c:fireEmp(), false, 'a miss'); T.eq(c.load.emps, 1, 'still uses a charge')
   T.check(c:view().desert.emp.feedback:find('15 m', 1, true), 'and says how close to get')
   T.check(c:manualSave(), 'saved with the charges')
-  T.eq(F.controller({ io = io }).load.emps, 8, 'a reload keeps the charges')
+  T.eq(F.controller({ io = io }).load.emps, 1, 'a reload keeps the charges')
   -- None left: it can't fire.
   c.load.emps = 0
   for _ = 1, math.ceil(emp.CHARGE_SECONDS / 0.5) + 1 do c:tick(0.5) end
   T.eq(c:fireEmp(), false, 'no charges, no EMP'); T.eq(c:view().desert.emp.feedback, 'No EMP charges left.', 'told so')
   T.eq(c.load.emps, 0, 'never below none')
-  -- Driven to the shed and stopped: paid 6 times.
+  -- The shed (MadMerick, 27 Nov): put down at the finish once 2.5 km away, again each time the distance halves, and
+  -- left once put down within 300 m.
+  local sheds = {}
+  local shedThere = false
+  c.shedWorld = {
+    where = function() return { x = 100, y = 200, z = 30 } end,
+    there = function() return shedThere end,
+    remove = function() shedThere = false; sheds.removed = (sheds.removed or 0) + 1 end,
+    place = function(_, x, y, z, g) shedThere = true; sheds[#sheds + 1] = { x = x, y = y, z = g }; return g end,
+    groundAt = function() return sheds.ground end,
+    move = function(_, x, y, z) sheds.moved = z; return shedThere end,
+  }
+  sheds.ground = 30
+  F.drive(c, a, location.destination(special.FINISH, 180, 3000))
+  T.eq(#sheds, 0, 'no shed 3 km out')
+  F.drive(c, a, location.destination(special.FINISH, 180, 2400))
+  for _ = 1, 2 do c:tick(0.5) end
+  T.check(#sheds >= 1 and c.shed.metres <= 2500, 'put down once within 2.5 km')
+  T.near(sheds[#sheds].x, 100, 1, 'due north of the player'); T.near(sheds[#sheds].y, 200 + c.shed.metres, 1, 'at the finish')
+  local first = c.shed.metres
+  F.drive(c, a, location.destination(special.FINISH, 180, 60))
+  for _ = 1, 2 do c:tick(0.5) end
+  T.check(#sheds >= 2 and c.shed.metres <= 300 and c.shed.metres > 0, 'put down again as the distance halves, last within 300 m')
+  T.near(sheds[#sheds].y, 200 + c.shed.metres, 1, 'still at the finish')
+  T.check(c.shed.metres < first / 2 + 1, 'closer to right')
+  local count = #sheds
+  for _ = 1, 4 do c:tick(0.5) end
+  T.eq(#sheds, count, 'then it stays')
+  -- Floating (MadMerick, 27 Nov): the ground is looked at again every 2 s, and the shed settled onto it.
+  T.eq(c.shed.z, 30, 'on the ground found')
+  sheds.ground = 28.5
+  for _ = 1, 5 do c:tick(0.5) end
+  T.eq(sheds.moved, 28.5, 'finer ground came in: moved down to it'); T.eq(c.shed.z, 28.5, 'and kept')
+  T.eq(#sheds, count, 'moved, not put down again')
+  sheds.ground = 45
+  for _ = 1, 5 do c:tick(0.5) end
+  T.eq(c.shed.z, 30, 'ground more than 2 m above the car close by: put at the car\'s height')
+  -- Driven to the shed and stopped: paid 6 times, with a message that stays until Close (MadMerick, 27 Nov).
+  local cBack = F.copy(c.load.back)
   F.drive(c, a, special.FINISH)
   T.check(c:view().load.drop.inZone and c:view().load.drop.delivery.allowed, 'at the shed and stopped')
+  local cTeleports = #a.teleports
   T.check(c:deliver(), 'delivered'); T.eq(c:view().balance, 1000000 - cost + cost * special.PAY_TIMES, 'paid 6 times the cost')
-  T.check(c:view().flash.text:find('sheikh', 1, true), 'the sheikh paid')
+  local done = c:view().desertDone
+  T.check(done and done.pay == cost * special.PAY_TIMES and done.cost == cost and done.times == 6, 'the message says what the sheikh paid')
   T.eq(c.profile.progression.contractsDone, nil, 'not counted as a dangerous contract')
-  c:tick(0.1); T.eq(c.raiders, nil, 'the Raiders go'); T.check(rcar.removed, 'and their cars are deleted')
-  T.eq(c:view().desert, nil, 'the panel with them')
+  c:tick(0.1); c:tick(0.5)
+  T.check(c.raiders ~= nil and not rcar.removed, 'the Raiders stay while the message is open')
+  for _, r in ipairs(c.raiders.raiders) do
+    T.check(r.state == 'FLEE' or r.state == 'DOWN', 'and the ones up speed away')
+  end
+  T.eq(c:view().desert, nil, 'the Raiders panel goes')
+  T.check(shedThere, 'the shed stays')
+  T.eq(#a.teleports, cTeleports, 'no teleport until Close')
   T.eq(#c.specialRuns, 1, 'one run counted towards the day')
-  T.check(c:manualSave(), 'saved'); T.eq(#F.controller({ io = io }).specialRuns, 1, 'kept in the save')
+  local cReloaded = F.controller({ io = io })
+  T.eq(#cReloaded.specialRuns, 1, 'saved as the message opened, run counted')
+  T.eq(cReloaded.desertDone and cReloaded.desertDone.pay, cost * special.PAY_TIMES, 'a reload shows the message again')
+  T.check(c:closeDesertDone(), 'Close')
+  T.check(rcar.removed and c.raiders == nil, 'then the Raiders go and their cars are deleted')
+  T.check(not shedThere, 'and the shed')
+  T.eq(#a.teleports, cTeleports + 1, 'Earth takes the player back')
+  T.near(a.teleports[#a.teleports].latitude, cBack.latitude, 1e-9, 'to where the load was taken')
+  T.eq(c:view().desertDone, nil, 'the message gone'); T.check(not c:closeDesertDone(), 'closed once')
+  T.check(c:manualSave(), 'saved'); T.eq(F.controller({ io = io }).desertDone, nil, 'and gone from the save')
+  a.pose = F.copy(cBack); c:tick(0.1); c:tick(0.6); c:tick(0.6)
+  T.eq(c.stranded, nil, 'the trip back is not an unpaid relocation')
 
   -- Cancelled before the start: the cost is paid back.
   local d, dio, da = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
@@ -3053,17 +3130,26 @@ do
 
   -- Given up in the desert: the lot is lost and Earth takes the player back.
   T.check(d:takeJob(specialRows(d)[1].id), 'bought again'); paid = d.load.cost
+  -- Each step goes to the server's live feed (MadMerick, 27 Nov).
+  local feedSent = {}
+  local realReport = d.reportDesert
+  local gate = { mp = { state = 'server', desert = function(_, what, cost) feedSent[#feedSent + 1] = what .. ':' .. tostring(cost) end } }
+  realReport(gate, 'set off', 5); T.eq(feedSent[1], 'set off:5', 'sent on a server')
+  gate.mp.state = 'off'; realReport(gate, 'set off', 5); T.eq(#feedSent, 1, 'not in single player')
+  feedSent = {}
+  function d:reportDesert(what, cost) feedSent[#feedSent + 1] = what .. ':' .. tostring(cost) end
   local back = F.copy(d.load.back)
   da.pose = F.copy(special.START); d:tick(0.1); d:tick(0.6); d:tick(0.6)
   T.check(d.load.started, 'in the desert')
   T.check(not d:abandonJob(), 'asks first'); T.check(d:view().tradeFeedback:find('lose the load'), 'says the load is lost')
   local teleports = #da.teleports
   T.check(d:abandonJob(), 'given up'); T.eq(d.load, nil, 'no load'); T.eq(d:view().balance, 500000 - paid, 'the cost is lost, no fee')
+  T.eq(table.concat(feedSent, ','), 'set off:' .. paid .. ',gave up:' .. paid, 'the feed hears the setting off and the giving up')
   T.eq(#da.teleports, teleports + 1, 'Earth takes the player back'); T.near(da.teleports[#da.teleports].latitude, back.latitude, 1e-9, 'to where it was taken')
   da.pose = F.copy(back); d:tick(0.1); d:tick(0.6); d:tick(0.6)
   T.eq(d.stranded, nil, 'the trip back is not an unpaid relocation')
 
-  -- A Raider's EMP (MadMerick, 27 Nov): it fires only at a truck doing 15 km/h or less, from within 15 m, and that ends
+  -- A Raider's EMP (MadMerick, 27 Nov): it fires only at a truck doing 5 km/h or less, from within 15 m, and that ends
   -- the run like Give up, but the player is only taken back once they close the message.
   T.check(d:takeJob(specialRows(d)[1].id), 'bought a third time'); paid = d.load.cost
   local balance = d:view().balance
@@ -3077,14 +3163,14 @@ do
   T.check(d.raiders:up() >= 1, 'a Raider is up next to the truck')
   for id, car in pairs(drc.cars) do car.x, car.y = 0, 8 end
   T.check(d.load ~= nil, 'driving at 72 km/h, no Raider fires')
-  drc.speed = 4.5
+  drc.speed = 1.6
   for _ = 1, 4 do d:tick(0.5) end
-  T.check(d.load ~= nil, 'at 16 km/h it still does not')
-  drc.speed = 4.1
+  T.check(d.load ~= nil, 'at 6 km/h it still does not')
+  drc.speed = 1.3
   local goes = {}
   function drc:goTo(id, aim) goes[id] = aim; return true end
   d:tick(0.5); d:tick(0.5)
-  T.check(d.load ~= nil, 'at 15 km/h or less, not straight away')
+  T.check(d.load ~= nil, 'at 5 km/h or less, not straight away')
   teleports = #da.teleports
   for _ = 1, 4 do d:tick(0.5) end
   T.eq(d.load, nil, 'after 2 seconds a Raider fires its EMP: the load is lost')
@@ -3093,6 +3179,7 @@ do
   T.check(d:view().empSound > 0, 'with the EMP sound')
   T.eq(d:view().balance, balance, 'and what it cost')
   T.eq(d:view().raiderCaught.cost, paid, 'the message says what was lost')
+  T.eq(feedSent[#feedSent], 'caught:' .. paid, 'and the feed that Raiders caught them')
   local raiderPackM = require('earthFreight/raiderPack')
   T.check(d.raiders ~= nil and #d.raiders.raiders >= 1, 'the Raiders stay, so the player sees them')
   local fleeing = d.raiders.raiders[1]
@@ -3125,6 +3212,7 @@ do
   e:tick(0.1); e:tick(0.6); e:tick(0.6)
   e.profile.progression.balance = unit - 1
   T.check(not specialRows(e)[1].allowed, 'not even one unit')
+  T.check(specialRows(e)[1].contract.short:find('to buy even one unit', 1, true), 'the card says why')
   e.profile.progression.balance = unit
   T.check(not e:takeJob(specialRows(e)[1].id), 'a full load is too dear'); T.check(e:view().tradeFeedback:find('Load slider'), 'told to take less')
   T.check(e:takeJob(specialRows(e)[1].id, 10), 'a smaller load')
@@ -3140,13 +3228,13 @@ do
   T.check(specialRows(g)[1].contract.summary:find('2 successful runs a day', 1, true), 'the jobs board says so')
   g.specialRuns = { now - 3600, now - 600 }
   T.check(not specialRows(g)[1].allowed, 'two delivered in the last 24 hours: closed')
-  T.eq(specialRows(g)[1].contract.wait, 'You have made 2 runs in the last 24 hours. The next opens in 23 h 0 min.', 'and when it opens')
+  T.eq(specialRows(g)[1].contract.wait, 'Time to next precursor drop: 23 h 0 min. You can make 2 successful runs every 24 hours, and you have made them.', 'a countdown to the next (MadMerick, 27 Nov)')
   T.check(not g:takeJob(specialRows(g)[1].id), 'not taken'); T.eq(g:view().tradeFeedback, specialRows(g)[1].contract.wait, 'told why')
   now = now + 23 * 3600
   T.check(specialRows(g)[1].allowed, 'a day after the first, open again')
   T.check(g:manualSave(), 'saved')
 
-  -- With under 10 km to go, a Raider within 15 m fires its one EMP at any speed (MadMerick, 27 Nov). Above 15 km/h
+  -- With under 5 km to go, a Raider within 15 m fires its one EMP at any speed (MadMerick, 27 Nov). Above 5 km/h
   -- it doesn't end the run: the engine dies for a while and the player has to deal with it.
   local k, _, ka = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
   k:tick(0.1); k:tick(0.6); k:tick(0.6)
@@ -3160,12 +3248,12 @@ do
   k.raiderCar = krc
   for _ = 1, math.ceil((desertRun.FIRST_SECONDS + 2) / 0.5) do k:tick(0.5) end
   for _, car in pairs(krc.cars) do car.x, car.y = 0, 8 end
-  F.drive(k, ka, location.destination(special.FINISH, 180, 12000))
-  T.eq(#kHits, 0, '12 km to go at 72 km/h: no Raider fires')
-  F.drive(k, ka, location.destination(special.FINISH, 180, 9500))
+  F.drive(k, ka, location.destination(special.FINISH, 180, 6000))
+  T.eq(#kHits, 0, '6 km to go at 72 km/h: no Raider fires')
+  F.drive(k, ka, location.destination(special.FINISH, 180, 4500))
   for _, car in pairs(krc.cars) do car.x, car.y = 0, 8 end
   for _ = 1, 6 do k:tick(0.5) end
-  T.eq(kHits[1], 'dead', 'under 10 km to go, a Raider fires at 72 km/h: the engine dies')
+  T.eq(kHits[1], 'dead', 'under 5 km to go, a Raider fires at 72 km/h: the engine dies')
   T.check(k.load ~= nil and k.raiderCaught == nil, 'but the run goes on')
   T.check(k:view().desert.line:find('engine is dead', 1, true), 'told so')
   local used = 0

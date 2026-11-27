@@ -30,7 +30,7 @@ local function random(lo, hi) if lo == 0 and hi == 1 then return 0.9 end return 
 -- MadMerick's rules for the first test: at most four up at once.
 T.eq(P.MAX, 4, 'at most four Raiders up at once')
 T.eq(P.ESCAPE_METRES, 500, 'one that falls 500 m behind is gone')
-T.eq(special.EMP_CHARGES, 10, 'the EMP has ten charges for the run')
+T.eq(special.EMP_CHARGES, 3, 'the EMP has three charges for the run')
 local car = fakeCar()
 local p = P.new(car, random)
 for i = 1, 4 do T.check(p:add(i) ~= nil, 'Raider ' .. i .. ' turns up') end
@@ -175,5 +175,53 @@ T.eq(rc:shove(2, 0, 0), false, 'never the truck by mistake')
 T.check(rc:shove(2, 0, 0, true), 'only when it is meant')
 rc:removeAll()
 T.eq(cars[id], nil, 'its cars deleted when the run is over')
+
+-- The shed at the finish (shed.lua), with a pretend game.
+do
+  local shed = require('earthFreight/shed')
+  local objects, made, loaded = {}, {}, 0
+  local ground = 42
+  local env = {
+    player = function() return { getPosition = function() return { x = 1, y = 2, z = 3 } end } end,
+    find = function(name) return objects[name] end,
+    exists = function(path) return path == shed.SHAPE end,
+    loadMaterials = function() loaded = loaded + 1 end,
+    create = function()
+      local o = { fields = {} }
+      function o:setField(k, _, v) self.fields[k] = v end
+      function o:registerObject(name) self.name = name; objects[name] = self end
+      function o:setPosRot(x, y, z) self.pos = { x, y, z } end
+      function o:delete() objects[self.name] = nil; self.deleted = true end
+      made[#made + 1] = o
+      return o
+    end,
+    ground = function() return ground end,
+  }
+  local s = shed.new(env)
+  T.eq(s:where().y, 2, 'where the player is')
+  T.check(not s:there(), 'no shed yet')
+  T.eq(s:place(10, 20, 3), 42, 'put down, at the ground\'s height')
+  T.check(s:there(), 'there')
+  T.eq(made[1].shapeName, shed.SHAPE, 'MadMerick\'s shed'); T.eq(made[1].fields.collisionType, 'Visible Mesh', 'solid')
+  T.eq(made[1].pos[3], 42, 'on the ground'); T.eq(loaded, 1, 'its materials loaded')
+  T.check(s:place(11, 21, 3), 'put down again')
+  T.check(s:move(11, 21, 40), 'moved'); T.eq(made[2].pos[3], 40, 'to a new height')
+  local probes = {}
+  env.ground = function(x, y) probes[#probes + 1] = { x, y }; return #probes == 3 and 39 or 41 end
+  T.eq(s:groundAt(0, 0, 3), 39, 'the lowest ground around it')
+  T.eq(#probes, #shed.PROBES, 'looked at all round')
+  for _, p in ipairs(probes) do T.check(math.abs(p[1]) >= 7 or math.abs(p[2]) >= 10, 'outside its walls, never on its roof') end
+  env.ground = function() return ground end
+  T.eq(s:place(12, 22, 3, 37), 37, 'or at a height given'); T.eq(made[3].pos[3], 37, 'there')
+  T.check(made[1].deleted, 'the old one goes first, so the ground is not its roof'); T.eq(loaded, 1, 'materials once')
+  ground = nil
+  local ok, why = s:place(12, 22, 3)
+  T.check(not ok and why == 'no_ground' and not s:there(), 'no ground found: no shed, tried again later')
+  s:remove(); T.check(not s:there(), 'removed')
+  env.exists = function() return false end
+  ground = 1
+  ok, why = s:place(1, 1, 1)
+  T.eq(why, 'no_shed_shape', 'no shape in the game: no shed')
+end
 
 T.done('Raiders')

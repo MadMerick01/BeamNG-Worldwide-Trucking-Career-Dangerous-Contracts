@@ -90,11 +90,15 @@ end
 
 -- Our extensions unloaded and our modules forgotten; with reload, the mounted copy's extensions loaded in their place
 -- (from a hook; after a modScript, the mod manager does it). -> the extensions unloaded.
-function M.swap(why, reload)
+function M.swap(why, reload, stopping)
   local names = M.ours()
   local ext = g('extensions')
-  say('W', string.format('another copy of the trucking mod is mounted (%s): its code loaded in place of the running '
-    .. 'one (%d extensions)', tostring(why), #names))
+  if stopping then
+    say('I', string.format('%s: its code stopped (%d extensions)', tostring(why), #names))
+  else
+    say('W', string.format('another copy of the trucking mod is mounted (%s): its code loaded in place of the running '
+      .. 'one (%d extensions)', tostring(why), #names))
+  end
   if type(ext) == 'table' and type(ext.unload) == 'function' then
     for _, n in ipairs(names) do pcall(ext.unload, n) end
   end
@@ -111,6 +115,17 @@ function M.check(why, reload)
   local now = M.fingerprint()
   if not M.due(g(M.PREFIX .. '_core') ~= nil, rawget(_G, M.FINGERPRINT), now) then return false end
   M.swap(why, reload)
+  return true
+end
+
+-- The player turned the mod off (core.lua's onModDeactivated, and again the next frame): with no copy of it mounted and
+-- no BeamMP session on (in one, no copy is the moment between BeamMP turning one off and the other on: wait), our
+-- extensions are unloaded, so nothing of the mod runs until it is turned on again, when its modScript loads it. Before,
+-- the 'manual' extension stayed loaded and kept running (its HUD pop-up among it) with the mod off. -> true when it
+-- unloaded.
+function M.offCheck(why)
+  if g(M.PREFIX .. '_core') == nil or M.sessionOn() or M.fingerprint() ~= nil then return false end
+  M.swap(why, false, true)
   return true
 end
 

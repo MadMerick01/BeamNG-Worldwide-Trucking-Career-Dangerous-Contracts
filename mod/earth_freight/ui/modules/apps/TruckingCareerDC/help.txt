@@ -31,6 +31,7 @@ Pay only goes up when a road is measured: a job never pays less than the board s
 
 # depot | Pickup points and the jobs board
 Every town has a pickup point near its middle, on the nearest road. Stop your truck within {pickupMetres} m of it and an Open jobs board button shows in the middle of the screen.
+A garage bill or an unpaid relocation hides the button until you settle it. A crash doesn't: you can still take a job with a damaged car.
 Press it to open the jobs board: the town's jobs, off-road drops and dangerous contracts, with a Load slider and GPS on each. Press Take job and the board closes. It never opens by itself.
 The jobs board is the only place to take a job. The Town tab still lists every town's jobs, so you can see what each one has and wants before you drive there.
 The button goes away when you drive off or take a job. Online it's all on your own screen, like the Town tab.
@@ -62,6 +63,7 @@ You start with {startSlots} car slots. A base or a corp gives you {baseSlots}, a
 Drive brings a parked car to you anywhere for {driveFee} and parks the one you are in. Each car keeps its own parts, fuel and damage.
 Sell pays {sellShare} of a car's worth, less any repair.
 A trailer adds cargo space. Each load is shared between your car and the trailer. You need the right hitch on your car: fit one with Buy parts.
+Most trailers take a ball hitch, a gooseneck or a fifth wheel. The EU tankers are drawbar trailers: they hitch to a rigid truck's drawbar hitch (a pintle hook or towing jaw), not a fifth wheel.
 Back up slowly to a trailer and it hitches itself. It only adds space once it is hitched.
 Trailers come with their boxes or tanks fitted. For more room, buy a bigger trailer. You can own as many trailers as you have car slots.
 
@@ -95,6 +97,17 @@ The helicopter is a free mod from the BeamNG forum. The Heli tab says which one 
 // You pay {contractFee} to be relocated to the start. Then drive the section with your load and stop at the finish.
 // A crash ends the contract.
 
+# desert | The Shed in the Desert
+Every jobs board has two orange dangerous contracts: precursor chemicals for a sheikh, as crates or liquid.
+You buy the load with your own money, as much as your car carries. You are moved to the Rub' al Khali with a full tank.
+Drive {desertKm} km north across the dunes, following the arrow on the Route tab, and stop at the rusty shed. It pays {desertPayTimes} times what you paid.
+Once you deliver, the Raiders drive off. Press Close on the message to be taken back to where you took the job.
+Rival clans' Raiders hunt you all the way. Your EMP has {desertEmps} charges for the whole run: press EMP to stop the nearest Raider within {empRange} m. Every press uses a charge, hit or miss.
+If a Raider within {raiderEmpMetres} m catches you at {raiderEmpKmh} km/h or less, its EMP ends the run. You lose the load and what you paid, and are taken back.
+In the last {raiderEmpCloseKm} km a Raider fires at any speed. Above {raiderEmpKmh} km/h it only kills your engine for {raiderStallSeconds} s. Each Raider has one EMP.
+No repairs or insurance once you set off. Give up loses the load and takes you back.
+You can make {desertRuns} successful runs every 24 hours. After that the contracts stay on the jobs board, but Take job is off and the card counts down the time to your next precursor drop.
+
 # base | Bases, corps and turf
 Buy a base where you are parked for {basePrice}. Around its town grows a circle: your turf.
 Jobs that start or end in your turf pay you more. Your circle grows as you get richer, and never shrinks.
@@ -114,7 +127,7 @@ Any teleport, the heli or changing cars ends your run, but you can start again f
 # online | Playing online and the land race | online
 Online, everyone trucks on the same Earth. Your single player career stays on this PC.
 The server gives you its own copy of the mod. Your copy steps aside while you're on, and is turned back on when you leave.
-Each HUD layout has its own apps, and a server usually shows a different layout from single player. The first time the HUD is missing, a pop-up offers to add it: press Add the HUD.
+Each HUD layout has its own apps, and a server usually shows a different layout from single player. The first time the HUD is missing, a pop-up offers to add it: press Add the HUD. It only asks once, so for another layout, add it yourself in Esc > System > HUD Apps.
 Bases grow into turf, and the first corp to cover enough of Earth's land wins the season. Then everyone starts again.
 The season leaderboard ranks everyone by what they're worth.
 Follow the race on the live server page, on your phone or a second screen. Its address is at the top of this page.

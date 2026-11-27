@@ -302,6 +302,7 @@ function M.new(deps)
     self.thiefClock = self.profile and copy(self.profile.thiefClock) or nil
     -- A Raider's EMP message still open (desertRun.lua): shown again after a reload.
     self.raiderCaught = self.profile and copy(self.profile.raiderCaught) or nil
+    self.desertDone = self.profile and copy(self.profile.desertDone) or nil
     -- When the desert's dangerous contract was last delivered (special.lua's RUNS_PER_DAY).
     self.specialRuns = self.profile and copy(self.profile.specialRuns) or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
@@ -475,10 +476,12 @@ function M.new(deps)
   -- who got the mod from it) sees nothing of the mod at all, so while BeamNG.Earth is loaded and the HUD hasn't been
   -- on screen this level, the game is asked to add it: after HUD_HINT_SECONDS (online, once the career is in, so the
   -- join has settled), a pop-up asks whether to add the HUD to the layout that's up, and one press of Add the HUD puts
-  -- it there (BeamNG's own ui_appLayouts, as the HUD Apps menu does). It asks once a game for each layout. Without
-  -- that (an older BeamNG, or Not now), a smaller pop-up gives the steps every HUD_HINT_REPEAT_SECONDS until the HUD
-  -- is on screen. Once it has shown, nothing more that level.
-  M.HUD_HINT_SECONDS, M.HUD_HINT_REPEAT_SECONDS, M.HUD_ASK_WAIT_SECONDS = 15, 120, 60
+  -- it there (BeamNG's own ui_appLayouts, as the HUD Apps menu does). Without that (an older BeamNG, or no layout to
+  -- add it to), a pop-up gives the steps instead, with an OK button. Either pop-up shows once, ever: HUD_HINT_FILE
+  -- remembers it, so a player who keeps the mod but drives .Earth without the HUD isn't asked again (MPG, 27 Nov: the
+  -- old steps pop-up came back every couple of minutes).
+  M.HUD_HINT_SECONDS = 15
+  M.HUD_HINT_FILE = '/settings/earthFreight/hudhint.json'
   M.HUD_APP = 'TruckingCareerDC'
   M.HUD_APP_NAME = 'Worldwide Trucking HUD'
   -- Where the HUD goes on the layout: the same as app.json's css, where + Add to layout in the HUD Apps menu puts it.
@@ -500,7 +503,7 @@ function M.new(deps)
       .. 'where you like and press Save.' .. (extra or '')
   end
   M.HUD_HINT_OTHER = ' Each layout has its own apps, so a HUD added to another layout does not show on this one.'
-  M.HUD_HINT_STOPS = ' This reminder stops as soon as the HUD is on screen.'
+  M.HUD_HINT_STOPS = ' This reminder only shows once.'
   M.HUD_HINT_TEXT = hudHint('.Earth', M.HUD_HINT_STOPS)
   M.HUD_HINT_TEXT_SERVER = hudHint('BeamMP', ' Added it in single player already? The server uses the BeamMP layout, '
     .. 'so it needs adding there too.' .. M.HUD_HINT_STOPS)
@@ -532,18 +535,38 @@ function M.new(deps)
       title = M.HUD_ASK_TITLE,
       text = 'Worldwide Trucking needs its HUD on screen, and it isn\'t on your ' .. (title and ('<b>' .. title .. '</b> ') or '')
         .. 'layout yet.<br><br>Press <b>Add the HUD</b> and it appears straight away. You can move it later in Esc > '
-        .. 'System > HUD Apps.',
+        .. 'System > HUD Apps.<br><br>This only asks once. To add it later yourself: Esc > System > HUD Apps, edit '
+        .. 'the layout, + Add app and pick "' .. M.HUD_APP_NAME .. '".',
       buttons = {
-        { label = 'Not now', luaCallback = string.format(call, 'false'), isCancel = true },
+        { label = 'No thanks', luaCallback = string.format(call, 'false'), isCancel = true },
         { label = 'Add the HUD', luaCallback = string.format(call, 'true'), default = true, isConfirm = true },
       },
     })
     return ok
   end
-  -- Add the HUD (yes): puts the HUD on the layout that's up and has the game show it. Not now (no): the steps pop-up
-  -- carries on instead. True when the HUD was added.
+  -- The steps, when the HUD can't be added for the player: the game's own dialog with one OK button (a corner pop-up
+  -- if the dialog can't be shown).
+  function c:showHudSteps(layout)
+    local text = self:hudHintText(layout)
+    local ok = self.trigger and pcall(self.trigger, 'showConfirmationDialog', {
+      title = M.HUD_HINT_TITLE, text = text,
+      buttons = { { label = 'OK', luaCallback = 'if earthFreight_core then earthFreight_core.addHud(false) end',
+        isCancel = true, default = true, isConfirm = true } },
+    })
+    if not ok then self:toast('info', M.HUD_HINT_TITLE, text, 30) end
+  end
+  -- The HUD pop-up has shown: never again, on any level or after a restart.
+  function c:hudHintShown()
+    self.hudHintDone = true
+    if not deps.io then return end
+    pcall(function()
+      deps.io.mkdir('/settings/earthFreight')
+      deps.io.write(M.HUD_HINT_FILE, { shown = true })
+    end)
+  end
+  -- Add the HUD (yes): puts the HUD on the layout that's up and has the game show it. No thanks (no): nothing more.
+  -- True when the HUD was added.
   function c:addHud(yes)
-    self.hudAsking = nil
     if not yes then
       self.diag:event('hud_add', 'not_now')
       return false
@@ -565,27 +588,22 @@ function M.new(deps)
   end
   function c:hintHud(sample, dt)
     local earth = type(sample) == 'table' and (sample.valid or sample.reason == 'vehicle_required')
-    if self.hudSeen or not earth then return end
-    -- The add pop-up is up: wait for an answer (a pop-up closed some other way is taken as Not now after a while).
-    if self.hudAsking and self.clock - self.hudAsking < M.HUD_ASK_WAIT_SECONDS then return end
+    if self.hudSeen or not earth or self.error then return end
     -- Online, not before the career is in: the join has settled by then, and a HUD built during it can upset BeamMP's.
     if self.mp and (not self.mp:ready() or self.loadStatus == 'mp_waiting') then return end
+    -- Counted for the server's reminders (reportHud) even once the pop-up has had its one showing.
     self.hudMissingFor = (self.hudMissingFor or 0) + dt
-    local due = M.HUD_HINT_SECONDS + (self.hudHints or 0) * M.HUD_HINT_REPEAT_SECONDS
-    if self.hudMissingFor < due then return end
-    self.hudHints = (self.hudHints or 0) + 1
+    if self.hudHintDone or self.hudMissingFor < M.HUD_HINT_SECONDS then return end
     local layout = self:hudLayout()
     -- On the layout already: it is on its way to the screen (or the game's menus are open), nothing to tell.
     if layout and layout.has then return end
-    self.hudAsked = self.hudAsked or {}
-    if layout and not self.hudAsked[layout.filename] and self:askToAddHud(layout) then
-      self.hudAsked[layout.filename] = true
-      self.hudAsking = self.clock
+    self:hudHintShown()
+    if layout and self:askToAddHud(layout) then
       self.diag:event('hud_ask', self:layoutTitle(layout) or '?')
       return
     end
-    self:toast('info', M.HUD_HINT_TITLE, self:hudHintText(layout), 30)
-    self.diag:event('hud_hint', tostring(self.hudHints))
+    self:showHudSteps(layout)
+    self.diag:event('hud_hint', 'shown')
   end
   -- Online: tells the server whether the HUD is on screen (off once it has been missing for HUD_HINT_SECONDS), each
   -- time that changes, so the server's chat reminders go only to players without it.
@@ -734,7 +752,7 @@ function M.new(deps)
 
   function c:endMission()
     self.whereSent, self.whereAt = nil, nil
-    self.hudSeen, self.hudHints, self.hudMissingFor, self.hudAsking, self.hudSent = nil, nil, nil, nil, nil
+    self.hudSeen, self.hudMissingFor, self.hudSent = nil, nil, nil
     self.mayday, self.maydayRun, self.maydayClaim, self.maydayFeedback = nil, nil, nil, nil
     self.finding = nil
     self.turf, self.turfKey, self.turfPending, self.turfCheckedAt = nil, nil, nil, nil
@@ -1076,6 +1094,7 @@ function M.new(deps)
           .. ' No roads: follow the arrow on the Route tab and stop within ' .. contracts.FINISH_RADIUS
           .. ' m of the shed. Your tank is filled. Fail to make the drop and you lose the lot.')
         self.diag:event('special_started', section.id)
+        self:reportDesert('set off', self.load.cost)
         self:saveNowOrSoon('the dangerous contract')
         return
       end
@@ -1898,8 +1917,9 @@ function M.new(deps)
     if not opensAt then return nil end
     local minutes = math.max(1, math.ceil((opensAt - self.now()) / 60))
     local h, m = math.floor(minutes / 60), minutes % 60
-    return 'You have made ' .. contracts.special.RUNS_PER_DAY .. ' runs in the last 24 hours. The next opens in '
-      .. (h > 0 and (h .. ' h ') or '') .. m .. ' min.'
+    -- MadMerick (27 Nov): said plainly on the card, as a countdown.
+    return 'Time to next precursor drop: ' .. (h > 0 and (h .. ' h ') or '') .. m .. ' min. You can make '
+      .. contracts.special.RUNS_PER_DAY .. ' successful runs every 24 hours, and you have made them.'
   end
 
   -- The Distance filter: 'short', 'medium' or 'long' sends every town job that far; anything else
@@ -2395,8 +2415,8 @@ function M.new(deps)
       self.specialRuns = recent
       -- Kept off the server's feed while the special delivery is hidden (contracts.special.OPEN).
       if contracts.special.OPEN then self:reportDelivery('special', good, load.units, nil, section.name, load.pay, nil, nil, load.rockets) end
-      self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' dropped at '
-        .. section.name .. '. The sheikh paid ' .. contracts.special.PAY_TIMES .. ' times the ' .. dollars(load.cost) .. ' it cost you.' .. refund)
+      -- The message with a Close button, which takes the player back (desertRun.lua).
+      self:desertDelivered(load, refund)
       self.tradeFeedback = nil
       self:saveNowOrSoon('your delivery')
       self.diag:event('job_delivered', 'special for ' .. load.pay)
@@ -2533,6 +2553,7 @@ function M.new(deps)
       return true
     end
     self.tradeFeedback = 'You gave up the dangerous contract and lost the load.'
+    self:reportDesert('gave up', load.cost)
     self:returnFromDesert(load.back)
     self:saveNowOrSoon('the dangerous contract')
     return true
@@ -2981,7 +3002,10 @@ function M.new(deps)
           -- The special delivery: what a unit of its load costs, and the multiple the shed pays.
           special = section.special or nil, unitPrice = section.special and contracts.special.unitPrice(good) or nil,
           times = section.special and contracts.special.PAY_TIMES or nil, cost = section.special and q.cost or nil,
-          wait = section.special and self:specialWait() or nil } or nil,
+          wait = section.special and self:specialWait() or nil,
+          -- Why its Take job is off for want of money: the price of one unit.
+          short = section.special and not self:canAfford(contracts.special.unitPrice(good))
+            and ('You need ' .. dollars(contracts.special.unitPrice(good)) .. ' to buy even one unit.') or nil } or nil,
         direction = job.drop and not section and location.compassPoint(location.bearing(place, job.drop)) or nil,
         -- The measured road where there is one (byRoad), else the estimate; measuring while Earth plans it.
         distanceMetres = (q.roadKm or job.km) * 1000, byRoad = q.roadKm ~= nil or nil,
@@ -3386,7 +3410,7 @@ function M.new(deps)
       abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee, giveUp = trade.giveUp,
       -- The special delivery's Raiders and rounds (desertRun.lua).
       desert = self:desertView(),
-      raiderCaught = self:raiderCaughtView(),
+      raiderCaught = self:raiderCaughtView(), desertDone = self:desertDoneView(),
       tradeFeedback = self.tradeFeedback,
       fuelFeedback = self.fuelFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
@@ -3477,6 +3501,11 @@ function M.new(deps)
       fuelRunMinKm = fuelruns.MIN_KM, fuelRunMaxKm = fuelruns.MAX_KM, townFuelTimes = fuel.TOWN_PRICE_TIMES,
       toll = percent(magnate.TOLL),
       pickupMetres = pickups.RADIUS,
+      -- The Shed in the Desert (special.lua, desertRun.lua).
+      desertKm = contracts.special.KM, desertPayTimes = contracts.special.PAY_TIMES, desertEmps = contracts.special.EMP_CHARGES,
+      desertRuns = contracts.special.RUNS_PER_DAY, raiderEmpKmh = contracts.desertRun.RAIDER_EMP_KMH,
+      raiderEmpMetres = contracts.desertRun.RAIDER_EMP_METRES, raiderEmpCloseKm = contracts.desertRun.RAIDER_EMP_ANY_SPEED_KM,
+      raiderStallSeconds = contracts.desertRun.STALL_SECONDS,
     }
   end
 
@@ -3581,7 +3610,7 @@ function M.new(deps)
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
       robbersOff = self.robbersOffSaved or nil,
-      thiefClock = self:savedThiefClock(), raiderCaught = copy(self.raiderCaught),
+      thiefClock = self:savedThiefClock(), raiderCaught = copy(self.raiderCaught), desertDone = copy(self.desertDone),
       specialRuns = self.specialRuns and #self.specialRuns > 0 and copy(self.specialRuns) or nil,
       trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
@@ -3751,6 +3780,11 @@ function M.new(deps)
     end
   end
 
+  -- The HUD pop-up shows once, ever (hintHud).
+  if deps.io then
+    local ok, saved = pcall(function() return deps.io.exists(M.HUD_HINT_FILE) and deps.io.read(M.HUD_HINT_FILE) end)
+    c.hudHintDone = ok and type(saved) == 'table' and saved.shown == true or nil
+  end
   c:reload()
   -- Street View carries on from last time, so a tab left open picks the truck up again.
   if c.streetView and deps.io then
@@ -3928,11 +3962,22 @@ end
 -- A mod turned on or off: BeamMP swapping the player's own copy for a server's, or back. The player's own copy turned
 -- off in a session is turned back on when it ends, and the copy mounted now runs its own code (modswap.lua).
 function M.onModActivated() pcall(modswap.check, 'a mod turned on', true) end
+-- A mod turned off: checked again next frame too, when the game has surely taken its files away. The player turning
+-- the trucking mod off outside a server leaves no copy mounted, and its code stops then (modswap.lua's offCheck).
+local offCheckDue = false
 function M.onModDeactivated(mod)
   pcall(modswap.onModDeactivated, mod)
   pcall(modswap.check, 'a mod turned off', true)
+  offCheckDue = true
+  local ok, stopped = pcall(modswap.offCheck, 'the trucking mod turned off')
+  if ok and stopped then offCheckDue = false end
 end
 function M.onPreRender(dtReal)
+  if offCheckDue then
+    offCheckDue = false
+    local ok, stopped = pcall(modswap.offCheck, 'the trucking mod turned off')
+    if ok and stopped then return end
+  end
   return safely(function() ensure():tick(dtReal) end)
 end
 function M.save() return safely(function() return ensure():manualSave() end) end
@@ -4092,6 +4137,7 @@ end
 function M.empThief() return safely(function() return ensure():empThief() end) end
 -- The special delivery: a Raider's driver reporting a problem from inside its car.
 function M.closeRaiderCaught() return safely(function() return ensure():closeRaiderCaught() end) end
+function M.closeDesertDone() return safely(function() return ensure():closeDesertDone() end) end
 function M.raiderProblem(vehicleId, why) return safely(function() return ensure():raiderProblem(vehicleId, why) end) end
 function M.empHotkey() return safely(function() return ensure():empHotkey() end) end
 function M.thiefLetGo() return safely(function() return ensure():thiefLetGo() end) end

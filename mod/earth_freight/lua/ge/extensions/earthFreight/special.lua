@@ -15,7 +15,7 @@ local M = {}
 
 -- One-line settings. Tune these after testing in game.
 -- true shows the special delivery to everyone.
-M.OPEN = false
+M.OPEN = true
 -- What the shed pays, as a multiple of what the load cost.
 M.PAY_TIMES = 6
 -- What the precursors cost: solid by the kg, fluid by the litre.
@@ -28,7 +28,7 @@ M.FINISH = location.destination(M.START, 0, M.KM * 1000)
 -- undo (core.lua's fuelReading).
 M.FILL_SECONDS = 15
 -- The EMP charges the player has for the whole run, and no more (MadMerick, 27 Nov, in place of the revolver).
-M.EMP_CHARGES = 10
+M.EMP_CHARGES = 3
 -- At most this many runs delivered in any DAY_SECONDS, by the real clock (MadMerick, 27 Nov).
 M.RUNS_PER_DAY, M.DAY_SECONDS = 2, 86400
 -- The two loads, as goods (goods.lua): solid and fluid.
