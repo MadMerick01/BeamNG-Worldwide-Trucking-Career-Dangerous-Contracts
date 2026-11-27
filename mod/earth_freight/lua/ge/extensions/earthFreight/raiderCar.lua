@@ -1,7 +1,8 @@
 -- The game's side of the Raiders (raiderPack.lua) on the special delivery. Copied from MadMerick's Tanker mod, where
--- the Hoons do the same (its hoonCar.lua and packCar.lua). Each Raider drives one of MadMerick's two Raider cars (27 Nov),
--- shipped in this mod: a black 4WD Roamer (vehicles/roamer) and a white front-cab van (vehicles/van), even odds. If the
--- game lacks that car, the other is used; with neither, a plain one of FALLBACKS, in order. The cars are loaded when the run starts and kept hidden
+-- the Hoons do the same (its hoonCar.lua and packCar.lua). Each Raider drives one of MadMerick's four Raider cars, shipped in
+-- this mod, in equal amounts (27 Nov): the rusty and the fast Barstow (vehicles/barstow), a black 4WD Roamer
+-- (vehicles/roamer) and a white front-cab van (vehicles/van). If the game lacks the one picked, the next is used;
+-- with none, a plain one of FALLBACKS, in order. The cars are loaded when the run starts and kept hidden
 -- (switched off, high above the player, so they cost nothing and are not drawn) until a Raider needs one: switching a
 -- car back on is instant, where loading one mid-drive hitches the frame rate. A Raider that is done goes back into
 -- hiding for the next.
@@ -16,6 +17,8 @@ local behind = require('earthFreight/behind')
 local M = {}
 
 M.RAIDERS = {
+  { model = 'barstow', config = 'earth_freight_raider_old1' },
+  { model = 'barstow', config = 'earth_freight_raider_fast2' },
   { model = 'roamer', config = 'earth_freight_raider_black4wd' },
   { model = 'van', config = 'earth_freight_raider_frontcab' },
 }
@@ -147,9 +150,10 @@ function M.new(environment)
       return okModel and type(found) == 'table' and next(found) ~= nil
     end
     local okRoll, roll = pcall(env.random)
-    local first = (okRoll and type(roll) == 'number' and roll < 0.5) and 1 or 2
-    for _, i in ipairs({ first, 3 - first }) do
-      local r = M.RAIDERS[i]
+    local n = #M.RAIDERS
+    local first = (okRoll and type(roll) == 'number' and roll >= 0 and roll < 1) and math.floor(roll * n) or 0
+    for k = 0, n - 1 do
+      local r = M.RAIDERS[(first + k) % n + 1]
       if has(r.model) then return r.model, configPath(r) end
     end
     for _, name in ipairs(M.FALLBACKS) do
