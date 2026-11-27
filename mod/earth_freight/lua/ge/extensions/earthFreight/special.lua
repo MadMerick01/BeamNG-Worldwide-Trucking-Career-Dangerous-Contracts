@@ -45,7 +45,7 @@ M.SECTION = {
   id = 'shed_in_the_desert', name = 'the Shed in the Desert', region = "Rub' al Khali, the Empty Quarter",
   km = M.KM, special = true,
   summary = 'Rival clans are fighting for control of the Empty Quarter, south of the Strait of Hormuz. A sheikh needs '
-    .. 'precursor ordnance chemicals dropped at the Shed in the Desert, ' .. M.KM .. ' km north across the dunes.',
+    .. 'precursor ordnance chemicals dropped at the Shed in the Desert, ' .. M.KM .. ' km north across the dunes. Expect hostile Raiders.',
   start = M.START, finish = M.FINISH,
 }
 
