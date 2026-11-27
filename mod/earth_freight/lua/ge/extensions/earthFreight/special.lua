@@ -22,7 +22,7 @@ M.PAY_TIMES = 6
 M.PRICE_PER_KG, M.PRICE_PER_LITRE = 60, 45
 -- The most a load may cost (MadMerick, 27 Nov: a cap, so no truck or tank pays a fortune). The shed pays at most
 -- PAY_TIMES this. A car that carries more takes only as many units as this buys. The server checks it too.
-M.MAX_COST = 100000
+M.MAX_COST = 150000
 -- The start, and how far north the shed is.
 M.START = { latitude = 21.177270, longitude = 53.517038 }
 M.KM = 20
@@ -37,7 +37,7 @@ M.RUNS_PER_DAY, M.DAY_SECONDS = 2, 86400
 -- The two loads, as goods (goods.lua): solid and fluid.
 M.GOODS = { 'precursors', 'precursors_fluid' }
 
--- Dollars as players read them: $100,000.
+-- Dollars as players read them: $150,000.
 local function money(n)
   local digits = tostring(math.floor(n)):reverse():gsub('(%d%d%d)', '%1,'):reverse():gsub('^,', '')
   return '$' .. digits

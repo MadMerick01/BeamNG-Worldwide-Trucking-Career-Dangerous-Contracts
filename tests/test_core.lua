@@ -3218,16 +3218,16 @@ do
   T.check(not e:takeJob(specialRows(e)[1].id), 'a full load is too dear'); T.check(e:view().tradeFeedback:find('Load slider'), 'told to take less')
   T.check(e:takeJob(specialRows(e)[1].id, 10), 'a smaller load')
 
-  -- The cap (MadMerick, 27 Nov): a load costs at most $100,000, so a run pays at most $600,000, however much the car carries.
-  T.eq(special.MAX_COST, 100000, 'loads up to $100,000')
+  -- The cap (MadMerick, 27 Nov): a load costs at most $150,000, so a run pays at most $900,000, however much the car carries.
+  T.eq(special.MAX_COST, 150000, 'loads up to $150,000')
   e.profile.progression.balance = 10000000
   local realSpace = e.space
   function e:space() return { slots = 100000, kg = 1000000, litres = 1000000, tankKg = 1000000, parts = {}, tankParts = {} } end
   for _, row in ipairs(specialRows(e)) do
-    T.check(row.contract.cost <= special.MAX_COST and row.contract.cost > special.MAX_COST * 0.9, 'a huge tank or box takes $100,000 at most')
-    T.check(row.pay <= special.MAX_COST * special.PAY_TIMES, 'and pays $600,000 at most')
+    T.check(row.contract.cost <= special.MAX_COST and row.contract.cost > special.MAX_COST * 0.9, 'a huge tank or box takes $150,000 at most')
+    T.check(row.pay <= special.MAX_COST * special.PAY_TIMES, 'and pays $900,000 at most')
   end
-  T.check(specialRows(e)[1].contract.summary:find('pays at most $600,000', 1, true), 'the jobs board says so')
+  T.check(specialRows(e)[1].contract.summary:find('pays at most $900,000', 1, true), 'the jobs board says so')
   e.space = realSpace
 
   -- At most 2 runs delivered a day, by the real clock (MadMerick, 27 Nov).

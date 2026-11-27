@@ -6,7 +6,7 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
-- **The Shed in the Desert now has a cap: you can take up to $100,000 of precursors, so a run pays at most $600,000.** A car or tank that holds more only takes as much as $100,000 buys. The jobs board and the help page say so. Saves still work.
+- **The Shed in the Desert now has a cap: you can take up to $150,000 of precursors, so a run pays at most $900,000.** A car or tank that holds more only takes as much as $150,000 buys. The jobs board and the help page say so. Saves still work.
 
 ## Build 301 · 27 Nov 2026
 
