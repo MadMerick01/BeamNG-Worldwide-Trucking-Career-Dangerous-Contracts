@@ -939,7 +939,7 @@
             </div>
             <div ng-if="data.trailer.open">
               <div style="display:flex;gap:8px;align-items:baseline;"><span style="flex:1;min-width:0;font-weight:bold;color:#a7e5c9;">New trailers</span><button type="button" ng-click="openTrailers(false)" style="padding:3px 10px;">Close</button></div>
-              <div style="font-size:12px;color:#7d8b88;">Trailers built for freight, from small ones on a ball hitch to semi trailers on a fifth wheel. Each card says the hitch it needs and whether your car has one.</div>
+              <div style="font-size:12px;color:#7d8b88;">Trailers built for freight, from small ones on a ball hitch to semi trailers on a fifth wheel and EU tankers on a drawbar. Each card says the hitch it needs and whether your car has one.</div>
               <div ng-if="data.trailer.offers.length === 0" style="margin-top:6px;color:#c9d6d2;">No trailers found.</div>
               <div style="max-height:320px;overflow-y:auto;">
                 <div ng-repeat="offer in data.trailer.offers track by offer.name" style="display:flex;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(167,229,201,.3);align-items:flex-start;">

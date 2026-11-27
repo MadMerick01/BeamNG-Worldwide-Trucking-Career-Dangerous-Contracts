@@ -63,6 +63,7 @@ You start with {startSlots} car slots. A base or a corp gives you {baseSlots}, a
 Drive brings a parked car to you anywhere for {driveFee} and parks the one you are in. Each car keeps its own parts, fuel and damage.
 Sell pays {sellShare} of a car's worth, less any repair.
 A trailer adds cargo space. Each load is shared between your car and the trailer. You need the right hitch on your car: fit one with Buy parts.
+Most trailers take a ball hitch, a gooseneck or a fifth wheel. The EU tankers are drawbar trailers: they hitch to a rigid truck's drawbar hitch (a pintle hook or towing jaw), not a fifth wheel.
 Back up slowly to a trailer and it hitches itself. It only adds space once it is hitched.
 Trailers come with their boxes or tanks fitted. For more room, buy a bigger trailer. You can own as many trailers as you have car slots.
 

@@ -64,23 +64,34 @@ M.FOR_SALE = {
   { id = 'dryvan/earth_freight_28ft_boxes', name = 'Dry van 28 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '8 XL boxes', maxKg = 9600 },
   { id = 'flatbed/earth_freight_53ft_boxes', name = 'Flatbed 53 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '32 XL boxes', maxKg = 19700 },
   { id = 'dryvan/earth_freight_53ft_boxes', name = 'Dry van 53 ft', fit = 'Boxes', hitch = 'fifthwheel', room = '32 XL boxes', maxKg = 22400 },
-  { id = 'eu_trailers/tanker3a', name = 'EU tanker, 3 axle', hitch = 'fifthwheel', room = '22,500 L tank', maxKg = 22500 },
+  -- The game's EU tankers are drawbar trailers (a turntable front axle and an A-frame with a towing
+  -- eye), not semi trailers: they hitch to a rigid truck's pintle hook or towing jaw, never a fifth wheel.
+  { id = 'eu_trailers/tanker2a', name = 'EU tanker, 2 axle', hitch = 'pintle', room = '16,800 L tank', maxKg = 16800 },
+  { id = 'eu_trailers/tanker3a', name = 'EU tanker, 3 axle', hitch = 'pintle', room = '22,500 L tank', maxKg = 22500 },
 }
 local forSale = {}
 for _, entry in ipairs(M.FOR_SALE) do forSale[entry.id] = entry end
 
 -- What each hitch is called on a card.
-M.HITCHES = { ball = 'ball hitch', gooseneck = 'gooseneck hitch', fifthwheel = 'fifth wheel' }
+M.HITCHES = { ball = 'ball hitch', gooseneck = 'gooseneck hitch', fifthwheel = 'fifth wheel', pintle = 'drawbar hitch' }
+
+-- Words in a part's name that mean a drawbar hitch: a pintle hook or a towing jaw on a rigid truck.
+local DRAWBAR_WORDS = { 'pintle', 'drawbar', 'drawbeam', 'towing_jaw', 'tow_jaw', 'ringfeder' }
 
 -- The hitches a car has, from its fitted parts (a parts snapshot): a set of ball, gooseneck,
--- fifthwheel. Read from the part names, so a car with an oddly named hitch may show none.
+-- fifthwheel, pintle (drawbar). Read from the part names, so a car with an oddly named hitch may show none.
 function M.hitches(snapshot)
   local found = {}
   for _, part in pairs(type(snapshot) == 'table' and type(snapshot.parts) == 'table' and snapshot.parts or {}) do
     local text = type(part) == 'string' and part:lower() or ''
+    local drawbar = false
+    for _, word in ipairs(DRAWBAR_WORDS) do
+      if text:find(word, 1, true) then drawbar = true; break end
+    end
     if text:find('fifthwheel', 1, true) or text:find('fifth_wheel', 1, true) then found.fifthwheel = true
     elseif text:find('gooseneck', 1, true) then found.gooseneck = true
-    elseif text:find('hitch', 1, true) and not text:find('pintle', 1, true) then found.ball = true end
+    elseif drawbar then found.pintle = true
+    elseif text:find('hitch', 1, true) then found.ball = true end
   end
   return found
 end
@@ -185,7 +196,8 @@ end
 -- The share of the trailer's load that rests on the hitch, by the hitch it uses: the load sits
 -- just ahead of the axles, close to the 60/40 rule (60% ahead of the axles, 40% behind). Too
 -- little weight on the hitch makes a trailer sway and jackknife; too much lifts the car's front.
-M.HITCH_SHARE = { ball = 0.12, gooseneck = 0.2, fifthwheel = 0.2 }
+-- A drawbar trailer has none: its own front axle carries its front, so its load is spread evenly.
+M.HITCH_SHARE = { ball = 0.12, gooseneck = 0.2, fifthwheel = 0.2, pintle = nil }
 
 -- The hitch a trailer for sale uses, by its model and .pc path; nil when not listed.
 function M.hitchOf(model, config)
