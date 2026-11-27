@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 295 · 27 Nov 2026
+
 - **Raiders on the Shed in the Desert now fire their EMP only when you're doing 5 km/h or less**, down from 15 km/h. They only fire it at any speed in the last 5 km to the shed, down from the last 10 km. Saves still work.
 
 ## Build 293 · 27 Nov 2026
