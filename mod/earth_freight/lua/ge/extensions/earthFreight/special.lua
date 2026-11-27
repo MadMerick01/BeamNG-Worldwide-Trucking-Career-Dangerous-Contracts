@@ -8,7 +8,7 @@
 -- It rides on the dangerous contract's code (contracts.lua): SECTION is a contract section that contracts.get
 -- finds but the boards' rotation never picks. Hidden while it is tested: only shown when OPEN is true, to the
 -- server's admins online, or in single player with "specialDelivery": true in settings/earthFreight/config.json.
--- The Raiders and their boots are in desertRun.lua; the revolver and the shed itself come in later builds. Pure
+-- The Raiders and the player's EMP against them are in desertRun.lua; the shed itself comes in a later build. Pure
 -- data and maths.
 local location = require('earthFreight/location')
 local M = {}
@@ -22,20 +22,20 @@ M.PAY_TIMES = 6
 M.PRICE_PER_KG, M.PRICE_PER_LITRE = 60, 45
 -- The start, and how far north the shed is.
 M.START = { latitude = 21.177270, longitude = 53.517038 }
-M.KM = 30
+M.KM = 20
 M.FINISH = location.destination(M.START, 0, M.KM * 1000)
 -- After the free full tank at the start goes in, a rise in the fuel gauge for this long is that fill, not a reset to
 -- undo (core.lua's fuelReading).
 M.FILL_SECONDS = 15
--- The rounds the revolver starts the run with (MadMerick, 26 Nov). Downed Raiders' boots hold more (desertRun.lua).
-M.START_ROUNDS = 60
+-- The EMP charges the player has for the whole run, and no more (MadMerick, 27 Nov, in place of the revolver).
+M.EMP_CHARGES = 4
 -- The two loads, as goods (goods.lua): solid and fluid.
 M.GOODS = { 'precursors', 'precursors_fluid' }
 
 -- Online, MadMerick's server checks the special delivery's money in every save (the private trucking-server repo):
 -- why it refused one, in words for the HUD.
 M.REFUSED = {
-  special_hidden = 'the special delivery is only open to the server\'s admins for now',
+  special_hidden = 'the dangerous contract is only open to the server\'s admins for now',
   special_price = 'the precursors cost less than the sheikh\'s price',
   special_pay = 'it was paid more than ' .. M.PAY_TIMES .. ' times what the load cost',
   special_too_fast = 'the load reached the shed too soon to have driven the ' .. M.KM .. ' km',

@@ -1,5 +1,6 @@
--- The player's EMP, shared by every robber: the base thief (thief.lua) and the road robber (roadRobber.lua), and
--- later the weekend PvP raids. It reaches RANGE metres. Every press fires and starts the CHARGE_SECONDS charge, hit or
+-- The player's EMP, shared by every robber: the base thief (thief.lua) and the road robber (roadRobber.lua), the
+-- special delivery's Raiders (desertRun.lua), and later the weekend PvP raids. On the special delivery it has only
+-- the run's charges (load.emps): each press uses one, and with none left it can't fire. It reaches RANGE metres. Every press fires and starts the CHARGE_SECONDS charge, hit or
 -- miss, and while it charges it can't fire again. It only fires when there is something to fire at: a thief or robber
 -- being chased. A road robber that hasn't struck yet can't be stopped, but the press still uses the charge.
 -- The HUD's EMP button shows the charge filling, then IN RANGE (green) or OUT OF RANGE with the distance (yellow).
@@ -29,7 +30,7 @@ function M.attach(c)
     local r = self.robber
     if r and (r.phase == 'lurking' or r.phase == 'hunting') then return { kind = 'robber', metres = r.metres, stoppable = false } end
     if r and r.phase == 'chasing' then return { kind = 'robber', metres = r.metres, stoppable = true } end
-    return nil
+    return self.raiderEmpTarget and self:raiderEmpTarget() or nil
   end
 
   -- Fires the EMP. Returns true when it stopped a thief or robber; the reason it didn't is in self.empFeedback.
@@ -43,6 +44,13 @@ function M.attach(c)
     if left > 0 then
       self.empFeedback = 'EMP charging: ' .. math.ceil(left) .. ' s.'
       return false
+    end
+    if target.kind == 'raider' then
+      if target.charges <= 0 then
+        self.empFeedback = 'No EMP charges left.'
+        return false
+      end
+      self.load.emps = target.charges - 1
     end
     self.empFiredAt = self.clock
     self:empSound()
@@ -61,6 +69,7 @@ function M.attach(c)
     self.empFeedback = nil
     self.diag:event('emp', 'hit ' .. target.kind)
     if target.kind == 'thief' then return self:catchThief() end
+    if target.kind == 'raider' then return self:empRaider(target.id) end
     return self:catchRobber()
   end
 
@@ -75,6 +84,8 @@ function M.attach(c)
       charged = math.floor((1 - left / M.CHARGE_SECONDS) * 100 + 0.5),
       inRange = d ~= nil and d <= M.RANGE, metres = d and math.floor(d + 0.5) or nil, range = M.RANGE,
       feedback = self.empFeedback,
+      -- On the special delivery: the charges left for the run.
+      charges = target.charges,
     }
   end
 

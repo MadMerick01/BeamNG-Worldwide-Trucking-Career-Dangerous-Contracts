@@ -1,4 +1,4 @@
-<div class="bngApp" ng-mouseenter="hover(true)" ng-mouseleave="hover(false)" ng-style="hud.minimised || intro.open ? {height:'auto',overflow:'visible',padding:'0',background:'none',border:'none',pointerEvents:'none'} : {height:'100%',overflow:'auto',padding:'12px 14px',background:'rgba(12,19,24,.9)',border:'1px solid #568d7a',pointerEvents:'auto'}" style="width:100%;box-sizing:border-box;color:#f2f6f5;font:14px/1.4 sans-serif;border-radius:8px;">
+<div class="bngApp" ng-style="hud.minimised || intro.open ? {height:'auto',overflow:'visible',padding:'0',background:'none',border:'none',pointerEvents:'none'} : {height:'100%',overflow:'auto',padding:'12px 14px',background:'rgba(12,19,24,.9)',border:'1px solid #568d7a',pointerEvents:'auto'}" style="width:100%;box-sizing:border-box;color:#f2f6f5;font:14px/1.4 sans-serif;border-radius:8px;">
   <style>@keyframes efArrive { 0%, 100% { background: rgba(12,19,24,.9); border-color: #568d7a; color: #f2f6f5 } 50% { background: #f2c94c; border-color: #f2c94c; color: #0c1318 } } .ef-arrive { animation: efArrive 1s ease-in-out infinite }
     .ef-sec { border-top: 1px solid rgba(86,141,122,.35) } .ef-sh { display: flex; align-items: center; gap: 8px; padding: 6px 0 }
     .ef-hit { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; cursor: pointer } .ef-ar { flex: none; width: 10px; font-size: 10px; color: #a7e5c9 }
@@ -242,6 +242,13 @@
       </div>
     </div>
   </div>
+  <div class="ef-caught" ng-if="data.raiderCaught" style="position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:2147483646;pointer-events:auto;color:#f2f6f5;font:15px/1.45 sans-serif;">
+    <div role="alertdialog" aria-label="A Raider's EMP got you" style="width:430px;max-width:92vw;box-sizing:border-box;padding:14px 18px;background:rgba(12,19,24,.97);border:3px solid #eb5757;border-radius:12px;box-shadow:0 0 30px rgba(0,0,0,.8);">
+      <div style="font-weight:bold;font-size:17px;color:#eb5757;">A RAIDER'S EMP GOT YOU</div>
+      <div style="margin-top:6px;">You slowed to a crawl and a Raider got close enough to fire its EMP. Your engine is dead and the Raiders have taken the precursors. You lose the load and the ${{data.raiderCaught.cost | number:0}} you paid for it, and you are taken back to where you bought it.</div>
+      <div style="margin-top:10px;text-align:right;"><button type="button" ng-click="closeRaiderCaught()" style="padding:6px 18px;font-weight:bold;">Close</button></div>
+    </div>
+  </div>
   <div class="ef-foot" ng-if="data.footAway && !data.relocateHere" style="position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:2147483645;pointer-events:auto;color:#f2f6f5;font:15px/1.45 sans-serif;">
     <div role="dialog" aria-label="Back to your truck" style="width:430px;max-width:92vw;box-sizing:border-box;padding:14px 18px;background:rgba(12,19,24,.97);border:3px solid #eb5757;border-radius:12px;box-shadow:0 0 30px rgba(0,0,0,.8);">
       <div style="font-size:11px;font-weight:bold;letter-spacing:3px;color:#eb5757;">YOUR TRUCK IS {{km(data.footAway.distanceMetres)}} KM AWAY</div>
@@ -279,7 +286,7 @@
             <div ng-if="hasOutside(data.town.jobs)" style="margin-top:4px;font-size:13px;color:#f2c94c;">No towns that far from {{data.town.name}}, so the jobs marked "nearest" go to the closest towns instead.</div>
             <div ng-repeat="j in data.town.jobs track by $index" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(86,141,122,.3);">
               <div style="flex:1;min-width:0;">
-                <div ng-if="j.contract && j.contract.special"><span style="padding:0 4px;border-radius:3px;background:#f2994a;color:#0c1318;font-size:11px;font-weight:bold;">SPECIAL DELIVERY</span> <b>{{j.good}}</b> to {{j.to}} <span style="color:#7d8b88;font-size:13px;">{{km(j.distanceMetres)}} km north, no roads</span></div>
+                <div ng-if="j.contract && j.contract.special"><span style="padding:0 4px;border-radius:3px;background:#f2994a;color:#0c1318;font-size:11px;font-weight:bold;">DANGEROUS CONTRACT</span> <b>{{j.good}}</b> to {{j.to}} <span style="color:#7d8b88;font-size:13px;">{{km(j.distanceMetres)}} km north, no roads</span></div>
                 <div ng-if="j.contract && !j.contract.special"><span style="padding:0 4px;border-radius:3px;background:#eb5757;color:#0c1318;font-size:11px;font-weight:bold;">DANGEROUS CONTRACT</span> <b>{{j.good}}</b> over {{j.to}} <span style="color:#7d8b88;font-size:13px;">{{km(j.distanceMetres)}} km</span></div>
                 <div ng-if="!j.drop && !j.contract"><span ng-style="{background: dotColor(j.level)}" style="display:inline-block;width:9px;height:9px;border-radius:5px;"></span> <span ng-if="j.long" style="padding:0 4px;border-radius:3px;background:#56ccf2;color:#0c1318;font-size:11px;font-weight:bold;">LONG HAUL</span> <b>{{j.good}}</b> &rarr; {{j.to}} <span style="color:#7d8b88;font-size:13px;">{{km(j.distanceMetres)}} km</span><span ng-if="j.outside" style="color:#f2c94c;font-size:13px;"> &middot; nearest</span></div>
                 <div ng-if="j.drop"><span ng-style="{background: dotColor(j.level)}" style="display:inline-block;width:9px;height:9px;border-radius:5px;"></span> <b>{{j.good}}</b>, off-road drop <span style="color:#7d8b88;font-size:13px;">{{km(j.distanceMetres)}} km {{j.direction}}, no roads: follow the arrow on the Route tab</span></div>
@@ -565,7 +572,7 @@
         <div ng-if="data.load.contract && !data.load.contract.started" style="margin:0 0 8px;padding:10px;border:1px solid #eb5757;border-radius:6px;">
           <div ng-if="!data.load.contract.special" style="font-weight:bold;color:#eb5757;">Dangerous contract: {{data.load.contract.name}}</div>
           <div ng-if="!data.load.contract.special" style="font-size:13px;">Your relocation to the start is paid. Teleport there, then drive the section to the finish with your load.</div>
-          <div ng-if="data.load.contract.special" style="font-weight:bold;color:#f2994a;">Special delivery: {{data.load.contract.name}}</div>
+          <div ng-if="data.load.contract.special" style="font-weight:bold;color:#f2994a;">Dangerous contract: {{data.load.contract.name}}</div>
           <div ng-if="data.load.contract.special" style="font-size:13px;">You paid ${{data.load.contract.cost | number:0}} for the load. Teleport to the start in the {{data.load.contract.region}}, then follow the arrow north to the shed.</div>
           <button type="button" ng-click="teleportToContract()" ng-disabled="!data.load.contract.teleportAllowed" style="margin-top:6px;padding:7px 12px;background:#f2c94c;color:#0c1318;font-weight:bold;border:1px solid #f2c94c;border-radius:4px;">Teleport to the start</button>
           <div ng-if="data.load.contract.teleporting" style="margin-top:4px;color:#c9d6d2;">Teleporting. The terrain takes a few seconds to load.</div>
@@ -589,7 +596,7 @@
           <div ng-if="!data.load.contract && !data.load.beacon" style="font-weight:bold;color:#f2c94c;">Off-road drop</div>
           <div ng-if="data.load.beacon" style="font-weight:bold;color:#eb5757;">Don't ask questions</div>
           <div ng-if="data.load.contract && !data.load.contract.special" style="font-weight:bold;color:#eb5757;">Dangerous contract: {{data.load.contract.name}}</div>
-          <div ng-if="data.load.contract.special" style="font-weight:bold;color:#f2994a;">Special delivery: {{data.load.contract.name}}</div>
+          <div ng-if="data.load.contract.special" style="font-weight:bold;color:#f2994a;">Dangerous contract: {{data.load.contract.name}}</div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
             <div ng-if="data.load.drop.arrow != null" aria-hidden="true" ng-style="arrowStyle(data.load.drop)" style="width:44px;height:44px;line-height:44px;text-align:center;font-size:34px;color:#f2c94c;"><svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;"><polygon points="12,1 18.5,22.5 12,17.5 5.5,22.5" fill="currentColor" stroke="#0c1318" stroke-width="1.2" stroke-linejoin="round" /><circle cx="12" cy="14" r="1.6" fill="#0c1318" /></svg></div>
             <div style="flex:1;min-width:0;">
@@ -646,23 +653,22 @@
         <div ng-if="data.desert" style="margin:8px 0;padding:8px 10px;border:1px solid #f2c94c;border-radius:6px;font-size:13px;">
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="flex:1;min-width:0;"><b style="color:#f2c94c;">Raiders</b> <span style="color:#c9d6d2;">{{data.desert.up}} of {{data.desert.max}} out</span></div>
-            <div><b>{{data.desert.rounds}}</b> <span style="color:#c9d6d2;">{{data.desert.rounds == 1 ? 'round' : 'rounds'}}<span ng-if="data.desert.loaded != null">, {{data.desert.loaded}} in the gun</span></span></div>
+            <div><b>{{data.desert.charges}}</b> <span style="color:#c9d6d2;">of {{data.desert.totalCharges}} EMP charges left</span></div>
           </div>
           <div role="status" ng-if="data.desert.line" style="margin-top:4px;">{{data.desert.line}}</div>
-          <div ng-if="data.desert.vr" style="margin-top:4px;color:#c9d6d2;">In VR your VR revolver has these rounds.</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
-            <button type="button" ng-if="data.desert.revolverAllowed" ng-click="toggleRevolver()" style="padding:5px 10px;">{{data.desert.drawn ? 'Holster revolver' : 'Draw revolver'}}</button>
-            <button type="button" ng-if="data.desert.reloadAllowed" ng-click="reloadRevolver()" style="padding:5px 10px;">Reload</button>
-            <span ng-if="data.desert.reloading" style="color:#c9d6d2;align-self:center;">Reloading...</span>
-            <button type="button" ng-if="data.desert.boot" ng-click="openBoot()" style="padding:5px 10px;">Open boot</button>
+          <div ng-if="data.desert.emp" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;">
+            <button type="button" ng-click="empRaider()" ng-disabled="!data.desert.emp.ready || data.desert.charges <= 0" ng-style="empStyle(data.desert.emp)" title="Fires the EMP at the nearest Raider. Every press uses a charge, hit or miss, and it then takes 20 seconds to charge" style="padding:4px 14px;border-radius:4px;color:#0c1318;font-weight:bold;white-space:nowrap;">{{data.desert.charges > 0 ? empLabel(data.desert.emp) : 'NO CHARGES LEFT'}}</button>
+            <span style="font-size:12px;color:#8fa39d;">or the Fire EMP key</span>
           </div>
+          <div ng-if="data.desert.noRepairs" style="margin-top:4px;font-size:12px;color:#c9d6d2;">No repairs or insurance on this run.</div>
+          <div role="status" ng-if="data.desert.emp.feedback" style="margin-top:4px;color:#c9d6d2;">{{data.desert.emp.feedback}}</div>
         </div>
         <div ng-if="data.abandonAllowed && data.giveUp" class="ef-sec">
           <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('abandon')" aria-expanded="{{isOpen('abandon', data.abandonArmed)}}"><span class="ef-ar" aria-hidden="true">{{isOpen('abandon', data.abandonArmed) ? '&#9660;' : '&#9654;'}}</span><div class="ef-t" style="color:#c9d6d2;">Give up</div><span class="ef-sum">{{data.giveUp.started ? 'lose the load' : 'get your money back'}}</span></div></div>
           <div ng-if="isOpen('abandon', data.abandonArmed)" class="ef-sb">
             <button type="button" ng-click="abandonJob()" ng-style="data.abandonArmed ? {background:'#eb5757',color:'#0c1318',fontWeight:'bold',borderColor:'#eb5757'} : {}" style="padding:5px 10px;">{{data.abandonArmed ? 'Confirm give up' : 'Give up'}}</button>
-            <span ng-if="data.giveUp.started" style="font-size:12px;color:#c9d6d2;"> Gives up the special delivery: you lose the load and the ${{data.giveUp.cost | number:0}} you paid, and you are taken back to where you took it.</span>
-            <span ng-if="!data.giveUp.started" style="font-size:12px;color:#c9d6d2;"> Cancels the special delivery before you set off: your ${{data.giveUp.cost | number:0}} is paid back.</span>
+            <span ng-if="data.giveUp.started" style="font-size:12px;color:#c9d6d2;"> Gives up the dangerous contract: you lose the load and the ${{data.giveUp.cost | number:0}} you paid, and you are taken back to where you took it.</span>
+            <span ng-if="!data.giveUp.started" style="font-size:12px;color:#c9d6d2;"> Cancels the dangerous contract before you set off: your ${{data.giveUp.cost | number:0}} is paid back.</span>
           </div>
         </div>
         <div ng-if="data.abandonAllowed && !data.giveUp" class="ef-sec">
@@ -727,7 +733,7 @@
               <div class="ef-hit" role="button" tabindex="0" ng-click="toggleJob(j.id)" aria-expanded="{{jobOpen(j.id)}}" title="Details, load and GPS" style="font-size:13px;">
                 <span class="ef-ar" aria-hidden="true">{{jobOpen(j.id) ? '&#9660;' : '&#9654;'}}</span>
                 <div style="flex:1;min-width:0;">
-                  <div ng-if="j.contract && j.contract.special"><span style="padding:0 4px;border-radius:3px;background:#f2994a;color:#0c1318;font-size:10px;font-weight:bold;">SPECIAL DELIVERY</span> <b>{{j.good}}</b> to {{j.to}} <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km north, no roads</span></div>
+                  <div ng-if="j.contract && j.contract.special"><span style="padding:0 4px;border-radius:3px;background:#f2994a;color:#0c1318;font-size:10px;font-weight:bold;">DANGEROUS CONTRACT</span> <b>{{j.good}}</b> to {{j.to}} <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km north, no roads</span></div>
                   <div ng-if="j.contract && !j.contract.special"><span style="padding:0 4px;border-radius:3px;background:#eb5757;color:#0c1318;font-size:10px;font-weight:bold;">DANGEROUS CONTRACT</span> <b>{{j.good}}</b> over {{j.to}} <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km</span></div>
                   <div ng-if="!j.drop && !j.contract"><span ng-style="{background: dotColor(j.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> <span ng-if="j.long" style="padding:0 4px;border-radius:3px;background:#56ccf2;color:#0c1318;font-size:10px;font-weight:bold;">LONG HAUL</span> <b>{{j.good}}</b> &rarr; {{j.to}} <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km</span><span ng-if="j.outside" style="color:#f2c94c;font-size:12px;"> &middot; nearest</span></div>
                   <div ng-if="j.drop"><span ng-style="{background: dotColor(j.level)}" style="display:inline-block;width:8px;height:8px;border-radius:4px;"></span> <b>{{j.good}}</b>, off-road drop <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km {{j.direction}}</span></div>
@@ -1403,7 +1409,7 @@
             <div class="ef-sh"><div class="ef-hit" role="button" tabindex="0" ng-click="toggle('heliboard')" aria-expanded="{{isOpen('heliboard')}}"><span class="ef-ar" aria-hidden="true">{{isOpen('heliboard') ? '&#9660;' : '&#9654;'}}</span><div class="ef-t">Jobs from {{data.heli.hired.here.name}}</div><span class="ef-sum">to plan ahead; take them in your car</span></div></div>
             <div ng-if="isOpen('heliboard')">
             <div ng-repeat="j in data.heli.hired.board" style="display:flex;gap:8px;font-size:13px;padding:2px 0;border-bottom:1px solid rgba(86,141,122,.3);">
-              <div style="flex:1;min-width:0;"><span ng-if="j.contract && j.contract.special" style="color:#f2994a;">Special delivery: </span><span ng-if="j.contract && !j.contract.special" style="color:#eb5757;">Dangerous contract: </span><b>{{j.good}}</b><span ng-if="j.drop && !j.contract">, off-road drop</span><span ng-if="j.contract"> over {{j.to}}</span><span ng-if="!j.contract && !j.drop"> to {{j.to}}</span> <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km</span></div>
+              <div style="flex:1;min-width:0;"><span ng-if="j.contract && j.contract.special" style="color:#f2994a;">Dangerous contract: </span><span ng-if="j.contract && !j.contract.special" style="color:#eb5757;">Dangerous contract: </span><b>{{j.good}}</b><span ng-if="j.drop && !j.contract">, off-road drop</span><span ng-if="j.contract"> over {{j.to}}</span><span ng-if="!j.contract && !j.drop"> to {{j.to}}</span> <span style="color:#7d8b88;font-size:12px;">{{km(j.distanceMetres)}} km</span></div>
               <div ng-if="j.units > 0" ng-style="{color: dotColor(j.level)}" style="font-weight:bold;">${{j.pay | number:0}}</div>
               <div ng-if="j.units === 0" style="color:#eb5757;font-size:12px;">Won't fit</div>
             </div>

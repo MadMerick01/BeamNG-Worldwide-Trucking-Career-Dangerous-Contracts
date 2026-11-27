@@ -1,0 +1,11 @@
+{
+  "Configuration": "Raider (black 4WD)",
+  "defaultMultiPaintSetup": {
+    "name": "raiderblack4wd Multi Paint Setup",
+    "paint1": "Black",
+    "paint2": "Black",
+    "paint3": "Black"
+  },
+  "Population": 0,
+  "Config Type": "Custom"
+}

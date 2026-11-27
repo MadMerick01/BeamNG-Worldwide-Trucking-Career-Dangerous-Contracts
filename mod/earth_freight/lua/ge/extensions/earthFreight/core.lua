@@ -37,7 +37,6 @@ local fuelruns = require('earthFreight/fuelruns')
 local thief = require('earthFreight/thief')
 local thiefCar = require('earthFreight/thiefCar')
 local raiderCar = require('earthFreight/raiderCar')
-local revolverAim = require('earthFreight/aim')
 local emp = require('earthFreight/emp')
 local roadRobber = require('earthFreight/roadRobber')
 local adminRobber = require('earthFreight/adminRobber')
@@ -179,8 +178,6 @@ function M.new(deps)
     thiefCar = deps.thiefCar,
     -- The special delivery's Raider cars (raiderCar.lua); without them there are no Raiders.
     raiderCar = deps.raiderCar,
-    -- The special delivery's flat-screen revolver: mouse aim, crosshair and shot (aim.lua); without it, no revolver.
-    aim = deps.aim,
     -- Finds the road nearest a town's pickup point (pickupWorld.lua); without it each town's pickup
     -- point stays at the town's own point.
     pickupWorld = deps.pickupWorld,
@@ -303,6 +300,8 @@ function M.new(deps)
     self.robbersOffSaved = self.profile and self.profile.robbersOff or nil
     -- The play counted towards the hourly base thief (thief.lua).
     self.thiefClock = self.profile and copy(self.profile.thiefClock) or nil
+    -- A Raider's EMP message still open (desertRun.lua): shown again after a reload.
+    self.raiderCaught = self.profile and copy(self.profile.raiderCaught) or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
     self.corp = self.profile and copy(self.profile.corp) or nil
     self.homeFeedback, self.homeCard, self.corpSeen, self.leaveArmed, self.corpAskedAt = nil, nil, nil, nil, nil
@@ -1070,13 +1069,13 @@ function M.new(deps)
       -- The special delivery: no roads and no GPS, just the arrow north to the shed. The tank is filled once the car
       -- reports it (fuelReading).
       if section.special then
-        self.load.ammo = contracts.special.START_ROUNDS
-        self:showFlash('delivered', 'SPECIAL DELIVERY: THE SHED IN THE DESERT', section.summary
+        self.load.emps = contracts.special.EMP_CHARGES
+        self:showFlash('delivered', 'DANGEROUS CONTRACT: THE SHED IN THE DESERT', section.summary
           .. ' No roads: follow the arrow on the Route tab and stop within ' .. contracts.FINISH_RADIUS
-          .. ' m of the shed. Your tank is filled and your revolver has ' .. contracts.special.START_ROUNDS
-          .. ' rounds. Rival clans\' Raiders will come for you. Fail to make the drop and you lose the lot.')
+          .. ' m of the shed. Your tank is filled and your EMP has ' .. contracts.special.EMP_CHARGES
+          .. ' charges for the whole run. Rival clans\' Raiders will come for you. Fail to make the drop and you lose the lot.')
         self.diag:event('special_started', section.id)
-        self:saveNowOrSoon('the special delivery')
+        self:saveNowOrSoon('the dangerous contract')
         return
       end
       local gps = self:gpsToFinish(section)
@@ -2501,28 +2500,33 @@ function M.new(deps)
     if not self.abandonArmed then
       self.abandonArmed = true
       self.tradeFeedback = load.started
-        and ('Press Confirm give up to give up the special delivery. You lose the load and the ' .. dollars(load.cost)
+        and ('Press Confirm give up to give up the dangerous contract. You lose the load and the ' .. dollars(load.cost)
           .. ' you paid for it, and you are taken back to where you took it.')
-        or ('Press Confirm give up to cancel the special delivery. Your ' .. dollars(load.cost) .. ' is paid back.')
+        or ('Press Confirm give up to cancel the dangerous contract. Your ' .. dollars(load.cost) .. ' is paid back.')
       return false
     end
     self:dropJob('abandoned')
     if not load.started then
-      self.tradeFeedback = 'Special delivery cancelled. Your ' .. dollars(load.cost) .. ' is paid back.'
-      self:saveNowOrSoon('the cancelled special delivery')
+      self.tradeFeedback = 'Dangerous contract cancelled. Your ' .. dollars(load.cost) .. ' is paid back.'
+      self:saveNowOrSoon('the cancelled dangerous contract')
       return true
     end
-    self.tradeFeedback = 'You gave up the special delivery and lost the load.'
-    if load.back and self.adapter.teleport and not self.hire then
-      local ok, why = self.adapter:teleport(load.back, 'Worldwide Trucking: back from the desert')
-      self.diag:event('special_return', ok and coordinates(load.back) or tostring(why), ok and 'I' or 'W')
-      if ok then
-        self.specialReturn = location.copy(load.back)
-        self.tradeFeedback = self.tradeFeedback .. ' Taking you back to where you took it.'
-      end
-    end
-    self:saveNowOrSoon('the special delivery')
+    self.tradeFeedback = 'You gave up the dangerous contract and lost the load.'
+    self:returnFromDesert(load.back)
+    self:saveNowOrSoon('the dangerous contract')
     return true
+  end
+
+  -- After a lost special delivery: Earth takes the player back to where they took it (back).
+  function c:returnFromDesert(back)
+    if not (back and self.adapter.teleport and not self.hire) then return false end
+    local ok, why = self.adapter:teleport(back, 'Worldwide Trucking: back from the desert')
+    self.diag:event('special_return', ok and coordinates(back) or tostring(why), ok and 'I' or 'W')
+    if ok then
+      self.specialReturn = location.copy(back)
+      self.tradeFeedback = (self.tradeFeedback or '') .. ' Taking you back to where you took it.'
+    end
+    return ok
   end
 
   -- Why the beacon's package cannot be picked up now, or nil when it can.
@@ -3359,10 +3363,11 @@ function M.new(deps)
       abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee, giveUp = trade.giveUp,
       -- The special delivery's Raiders and rounds (desertRun.lua).
       desert = self:desertView(),
+      raiderCaught = self:raiderCaughtView(),
       tradeFeedback = self.tradeFeedback,
       fuelFeedback = self.fuelFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
-      repairQuoteAllowed = active and self.garage ~= nil and not self.hire and not self.onFoot,
+      repairQuoteAllowed = active and self.garage ~= nil and not self.hire and not self.onFoot and not (self.desertLoad and self:desertLoad()),
       repairQuote = quote and quote.cost or nil,
       repairOwed = self.owedDamage > 0 and pricing.repairCost(self.owedDamage, self:carValueOf(self.ownedParts and self.ownedParts.id)) or nil,
       repairAllowed = quote ~= nil and not self.pendingParts and not self.pendingCar and not self.onFoot,
@@ -3553,7 +3558,7 @@ function M.new(deps)
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
       robbersOff = self.robbersOffSaved or nil,
-      thiefClock = self:savedThiefClock(),
+      thiefClock = self:savedThiefClock(), raiderCaught = copy(self.raiderCaught),
       trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
@@ -3853,7 +3858,7 @@ end
 local function ensure()
   if not active then
     active = M.new({ io = gameIO(), adapter = earthAdapter.new(), garage = garage.new(),
-      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(), raiderCar = raiderCar.new(), aim = revolverAim.new(), pickupWorld = pickupWorld.new(),
+      punctures = punctures.new(), cargo = cargo.new(), fuel = fuel.new(), aircraft = aircraft.new(), thiefCar = thiefCar.new(), raiderCar = raiderCar.new(), pickupWorld = pickupWorld.new(),
       log = rawget(_G, 'log'), camera = gameCamera(),
       streetView = streetView.new(), openUrl = gameOpenUrl, multiplayer = gameMultiplayer(), nametagsOff = gameNametagsOff, layout = gameLayout,
       layouts = gameLayouts(),
@@ -4061,18 +4066,9 @@ function M.thiefChase(index)
   return safely(function() return ensure():thiefChase(index) end)
 end
 function M.empThief() return safely(function() return ensure():empThief() end) end
--- The special delivery: Open boot on a downed Raider, and a Raider's driver reporting a problem from inside its car.
-function M.openBoot() return safely(function() return ensure():openBoot() end) end
+-- The special delivery: a Raider's driver reporting a problem from inside its car.
+function M.closeRaiderCaught() return safely(function() return ensure():closeRaiderCaught() end) end
 function M.raiderProblem(vehicleId, why) return safely(function() return ensure():raiderProblem(vehicleId, why) end) end
--- The special delivery's revolver: the Draw revolver and Reload buttons and keys, whether the mouse is over the HUD
--- (a click there is not a shot), the crosshair each frame, and a hit from either revolver. MadMerick's VR revolver
--- mod sends onVrPistolHit and onVrPistolDriverHit to every extension; the flat-screen revolver sends the same.
-function M.toggleRevolver() return safely(function() return ensure():toggleRevolver() end) end
-function M.reloadRevolver() return safely(function() return ensure():reloadRevolver() end) end
-function M.hudHover(on) return safely(function() ensure().hudHover = on == true end) end
-function M.onDrawDebug() return safely(function() if active then active:followAim() end end) end
-function M.onVrPistolHit(vehicleId) return safely(function() if active then active:raiderHit(vehicleId, false) end end) end
-function M.onVrPistolDriverHit(vehicleId) return safely(function() if active then active:raiderHit(vehicleId, true) end end) end
 function M.empHotkey() return safely(function() return ensure():empHotkey() end) end
 function M.thiefLetGo() return safely(function() return ensure():thiefLetGo() end) end
 function M.thiefGoBack() return safely(function() return ensure():thiefGoBack() end) end

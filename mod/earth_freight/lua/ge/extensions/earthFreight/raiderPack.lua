@@ -15,14 +15,14 @@
 -- attack happens at a time; Raiders not in it hold their slots and wait.
 --
 -- For the first test (MadMerick, 26 Nov) they just keep coming: at most MAX Raiders are up at once, and one that is
--- down (stopped or stuck) or falls ESCAPE_METRES behind is replaced (desertRun.lua sends the next). A downed
--- Raider's car stays where it stopped, with BOOT_MIN to BOOT_MAX rounds in its boot, until you are LEAVE_METRES
--- away. This is the logic only; raiderCar.lua does the game's side.
+-- down (stopped by your EMP, or stuck) or falls ESCAPE_METRES behind is replaced (desertRun.lua sends the next). A
+-- downed Raider's car stays where it stopped until you are LEAVE_METRES away. This is the logic only; raiderCar.lua
+-- does the game's side.
 local M = {}
 local behind = require('earthFreight/behind')
 
 -- One-line settings. Tune these after testing in game.
--- At most this many Raiders up at once, and at most MAX_DOWN downed cars left standing for their boots.
+-- At most this many Raiders up at once, and at most MAX_DOWN downed cars left standing.
 M.MAX, M.MAX_DOWN = 4, 4
 -- The slots: near is NEAR_SIDE metres out to the side, level with your front or back; far is
 -- FAR_SIDE metres out and FAR_BEYOND metres beyond your front or back. HALF_LENGTH is half your
@@ -78,24 +78,20 @@ M.WINDUP_SIDE, M.WINDUP_SECONDS = 6, 1.5
 M.SWIPE_INTO, M.STRIKE_LEAD = 0.5, 2
 M.SWIPE_SECONDS, M.CONTACT_METRES, M.AFTER_CONTACT_SECONDS = 4, 5, 1
 -- The PIT (MadMerick, 6 Nov): a Raider at one of your rear near slots goes for your back wheel instead
--- of swiping, PIT_CHANCE of the time (PIT_GUN_CHANCE while your revolver is drawn, since your
--- back corners are hardest to shoot at). It lines up PIT_SIDE metres off your back corner, then
+-- of swiping, PIT_CHANCE of the time. It lines up PIT_SIDE metres off your back corner, then
 -- matches your speed plus PIT_PUSH and steers its nose through your back wheel, PIT_WHEEL metres
 -- ahead of your back, aiming PIT_INTO metres past your middle, so your back end is shoved
 -- sideways and you spin. No brake, as in a swipe.
-M.PIT_CHANCE, M.PIT_GUN_CHANCE = 0.5, 0.8
+M.PIT_CHANCE = 0.5
 M.PIT_SIDE, M.PIT_PUSH, M.PIT_WHEEL, M.PIT_INTO = 3, 2, 1.5, 1
 -- Aiming where you'll be (MadMerick, 6 Nov): while you turn faster than TURN_RAD_S (radians a
 -- second), a Raider aims at its spot around where you will be, following your turn, up to
 -- PREDICT_SECONDS ahead (the time it needs to get there), so it cuts inside your turn instead
 -- of chasing round the outside. Your turn rate is smoothed by TURN_SMOOTH each reading.
 M.TURN_RAD_S, M.PREDICT_SECONDS, M.TURN_SMOOTH = 0.05, 2.5, 0.5
--- Respecting your revolver (MadMerick, 6 Nov): while it is drawn, Raiders getting into place weave
--- WEAVE_METRES side to side every WEAVE_SECONDS, Raiders at your rear slots stay there instead of
--- moving up to your front, and more attacks are PITs. A Raider you hit but don't stop drops back:
--- for SHY_SECONDS it peels off to a far slot, keeps further out (SHY_SIDE times the usual), may
--- ease off up to SHY_DROP_MPS below your speed, and won't attack.
-M.WEAVE_METRES, M.WEAVE_SECONDS = 4, 2.5
+-- Backing off (from Tanker, where a Hoon hit by the revolver drops back): a Raider with shyUntil set peels off to a far
+-- slot for SHY_SECONDS, keeps further out (SHY_SIDE times the usual), may ease off up to SHY_DROP_MPS below your
+-- speed, and won't attack. Nothing sets it on the special delivery for now, which has no revolver.
 M.SHY_SECONDS, M.SHY_SIDE, M.SHY_DROP_MPS = 6, 1.5, 4
 -- This share of attacks are a box instead of a swipe. The lead Raider gets BOX_AHEAD metres in
 -- front of you and drives at BOX_SLOW of your speed; a second Raider, if there is one, sits
@@ -124,12 +120,8 @@ M.STUCK_MPS, M.DOWN_SECONDS, M.DRIVING_MPS, M.STALL_SECONDS = 1, 12, 3, 5
 M.UNSTICK_SECONDS, M.UNSTICK_METRES, M.UNSTICK_HOP, M.UNSTICK_TRIES = 4, 50, 8, 3
 -- Further than ESCAPE_METRES from you for ESCAPE_SECONDS, and it has fallen behind: it is gone (MadMerick: 500 m).
 M.ESCAPE_METRES, M.ESCAPE_SECONDS = 500, 0
--- A downed Raider's car is put away once you are this far from it, and its boot with it.
+-- A downed Raider's car is put away once you are this far from it.
 M.LEAVE_METRES = 400
--- This many hits from your revolver stop a Raider.
-M.SHOTS_TO_STOP = 4
--- What a downed Raider's boot holds, in rounds, picked at random between the two (MadMerick: a gamble).
-M.BOOT_MIN, M.BOOT_MAX = 0, 20
 
 -- A new Raider starts at a free far slot behind the camera (behind.lua). With none free
 -- there, it starts this many metres straight behind the camera and drives to its slot.
@@ -151,7 +143,7 @@ local function where(slot)
 end
 M.DOING = {
   CIRCLING = 'sizing you up', CLOSING = 'closing in', WINDUP = 'lining up', SWIPE = 'attacking',
-  PIT_WINDUP = 'lining up on your back wheel', PIT = 'going for your back wheel', SHY = 'backing off from your gun',
+  PIT_WINDUP = 'lining up on your back wheel', PIT = 'going for your back wheel', SHY = 'backing off',
   PEEL = 'peeling off', BOXING = 'boxing you in, in front', BOX_SIDE = 'boxing you in, beside you', DOWN = 'down',
   BOX_REAR = 'boxing you in, behind you',
 }
@@ -167,9 +159,8 @@ local LINES = {
   swiped = 'The Raider hit you and peeled off.',
   pitted = 'The Raider shoved your back end and peeled off.',
   missed = 'The Raider missed and peeled off.',
-  down = 'A Raider is down. Its boot may hold rounds.',
-  shotDown = 'You shot a Raider to a stop. Its boot may hold rounds.',
-  driverShot = 'You shot a Raider\'s driver. Its boot may hold rounds.',
+  down = 'A Raider is down.',
+  emped = 'Your EMP stopped a Raider dead.',
   escaped = 'A Raider fell more than 500 m behind and is gone.',
   gone = 'A Raider is gone.',
   full = 'That\'s as many Raiders as there can be at once.',
@@ -264,10 +255,6 @@ function M.new(car, random)
     if h.state == 'WINDUP' then right = side * M.WINDUP_SIDE end
     if h.state == 'SWIPE' then return side * M.SWIPE_INTO, ahead, 1, M.STRIKE_LEAD end
     if h.shyUntil and p.clock and p.clock < h.shyUntil then right = right * M.SHY_SIDE end
-    -- Weaving while your revolver is drawn, so it is harder to hit.
-    if p.gunDrawn and (h.state == 'CIRCLING' or h.state == 'CLOSING' or h.state == 'PEEL') then
-      right = right + M.WEAVE_METRES * math.sin(2 * math.pi * (p.clock or 0) / M.WEAVE_SECONDS + h.n)
-    end
     return right, ahead, 1
   end
 
@@ -397,12 +384,10 @@ function M.new(car, random)
     end
   end
 
-  -- h is down: it stops where it is, with BOOT_MIN to BOOT_MAX rounds in its boot. With more than MAX_DOWN downed
-  -- cars standing, the one down longest is put away.
+  -- h is down: it stops where it is. With more than MAX_DOWN downed cars standing, the one down longest is put away.
   local function down(h, line)
     leaveBox(h)
     h.state, h.slot, h.downAt = 'DOWN', nil, p.clock or 0
-    h.boot = whole({ M.BOOT_MIN, M.BOOT_MAX })
     car:calm(h.id)
     local downed = {}
     for _, o in ipairs(p.raiders) do if o.state == 'DOWN' then downed[#downed + 1] = o end end
@@ -467,9 +452,6 @@ function M.new(car, random)
           h.holdUntil = nil
           if h.shyUntil and clock < h.shyUntil then
             h.holdUntil = clock + 1
-          elseif p.gunDrawn and M.SLOTS[h.slot].ahead < 0 and h.movesLeft > 0 then
-            -- Your revolver is drawn: it stays at your back corner, out of your line of fire.
-            h.movesLeft = h.movesLeft - 1
           elseif h.movesLeft > 0 then
             local nextSlot = M.forward(h.slot)
             if not taken(nextSlot, h) then h.slot, h.replanAt = nextSlot, nil end
@@ -519,7 +501,7 @@ function M.new(car, random)
           -- the box is on
         else
           h.state, h.since, h.replanAt = 'WINDUP', clock, nil
-          h.pit = M.SLOTS[h.slot].ahead < 0 and chance(p.gunDrawn and M.PIT_GUN_CHANCE or M.PIT_CHANCE)
+          h.pit = M.SLOTS[h.slot].ahead < 0 and chance(M.PIT_CHANCE)
           line = h.pit and LINES.pit(h.slot) or LINES.windup(h.slot)
         end
       end
@@ -649,57 +631,20 @@ function M.new(car, random)
     for _, h in ipairs(p.raiders) do if h.id == id and h.state ~= 'DOWN' then return h end end
   end
 
-  -- A round from your revolver hit car id. Returns a line when it stops a Raider, and whether the car was one of
-  -- the Raiders.
-  function p:shot(id)
-    local h = find(id)
-    if not h then return nil, false end
-    h.hits = h.hits + 1
-    if h.hits >= M.SHOTS_TO_STOP then return down(h, LINES.shotDown), true end
-    -- Hit but still going: it backs off for a while, unless it is boxing.
-    local placing = h.state == 'CIRCLING' or h.state == 'CLOSING' or h.state == 'PEEL'
-    if not (placing or h.state == 'WINDUP' or h.state == 'SWIPE') then return nil, true end
-    local clock = self.clock or 0
-    local already = h.shyUntil and clock < h.shyUntil
-    h.shyUntil = clock + M.SHY_SECONDS
-    if h.state ~= 'CIRCLING' and h.state ~= 'PEEL' then peel(h, clock) end
-    if already then return nil, true end
-    return LINES.shy, true
-  end
-
-  function p:driverShot(id)
-    local h = find(id)
-    if not h then return nil, false end
-    return down(h, LINES.driverShot), true
-  end
-
-  -- The downed Raider whose boot is nearest x, y within metres, that hasn't been opened: the Raider, or nil. Its
-  -- boot is at the back of the car (raiderCar.lua's boot).
-  function p:bootNear(x, y, metres)
-    local best, bestD
+  -- The nearest Raider still up, or nil.
+  function p:nearestRaider()
+    local best
     for _, h in ipairs(self.raiders) do
-      if h.state == 'DOWN' and not h.opened then
-        local b = car:boot(h.id)
-        if b then
-          local d = distance2d(x, y, b.x, b.y)
-          if d <= metres and (not bestD or d < bestD) then best, bestD = h, d end
-        end
-      end
+      if h.state ~= 'DOWN' and h.metres and (not best or h.metres < best.metres) then best = h end
     end
     return best
   end
 
-  -- Opens h's boot: the rounds in it, once.
-  function p:openBoot(h)
-    if not h or h.state ~= 'DOWN' or h.opened then return nil end
-    h.opened = true
-    return h.boot or 0
-  end
-
-  -- Whether car id is one of the Raiders' (up or down): the only cars the revolver can hit.
-  function p:isRaider(id)
-    for _, h in ipairs(self.raiders) do if h.id == id then return true end end
-    return false
+  -- Your EMP hit Raider id: it is down. Returns the line to show, or nil if it wasn't a Raider up.
+  function p:emped(id)
+    local h = find(id)
+    if not h then return nil end
+    return down(h, LINES.emped)
   end
 
   -- The distance to the nearest Raider still up, or nil.
@@ -718,8 +663,7 @@ function M.new(car, random)
       local doing = M.DOING[h.state]
       if h.pit and h.state == 'WINDUP' then doing = M.DOING.PIT_WINDUP elseif h.pit and h.state == 'SWIPE' then doing = M.DOING.PIT end
       if h.shyUntil and self.clock and self.clock < h.shyUntil and h.state ~= 'DOWN' then doing = M.DOING.SHY end
-      list[#list + 1] = { n = h.n, slot = h.slot, doing = doing, state = h.state, metres = h.metres,
-        opened = h.opened or nil }
+      list[#list + 1] = { n = h.n, slot = h.slot, doing = doing, state = h.state, metres = h.metres }
     end
     return list
   end
