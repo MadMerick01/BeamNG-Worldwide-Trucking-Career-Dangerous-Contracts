@@ -3212,6 +3212,7 @@ do
   e:tick(0.1); e:tick(0.6); e:tick(0.6)
   e.profile.progression.balance = unit - 1
   T.check(not specialRows(e)[1].allowed, 'not even one unit')
+  T.check(specialRows(e)[1].contract.short:find('to buy even one unit', 1, true), 'the card says why')
   e.profile.progression.balance = unit
   T.check(not e:takeJob(specialRows(e)[1].id), 'a full load is too dear'); T.check(e:view().tradeFeedback:find('Load slider'), 'told to take less')
   T.check(e:takeJob(specialRows(e)[1].id, 10), 'a smaller load')
@@ -3227,7 +3228,7 @@ do
   T.check(specialRows(g)[1].contract.summary:find('2 successful runs a day', 1, true), 'the jobs board says so')
   g.specialRuns = { now - 3600, now - 600 }
   T.check(not specialRows(g)[1].allowed, 'two delivered in the last 24 hours: closed')
-  T.eq(specialRows(g)[1].contract.wait, 'You have made 2 runs in the last 24 hours. The next opens in 23 h 0 min.', 'and when it opens')
+  T.eq(specialRows(g)[1].contract.wait, 'Time to next precursor drop: 23 h 0 min. You can make 2 successful runs every 24 hours, and you have made them.', 'a countdown to the next (MadMerick, 27 Nov)')
   T.check(not g:takeJob(specialRows(g)[1].id), 'not taken'); T.eq(g:view().tradeFeedback, specialRows(g)[1].contract.wait, 'told why')
   now = now + 23 * 3600
   T.check(specialRows(g)[1].allowed, 'a day after the first, open again')

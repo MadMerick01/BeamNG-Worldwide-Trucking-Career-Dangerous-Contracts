@@ -1917,8 +1917,9 @@ function M.new(deps)
     if not opensAt then return nil end
     local minutes = math.max(1, math.ceil((opensAt - self.now()) / 60))
     local h, m = math.floor(minutes / 60), minutes % 60
-    return 'You have made ' .. contracts.special.RUNS_PER_DAY .. ' runs in the last 24 hours. The next opens in '
-      .. (h > 0 and (h .. ' h ') or '') .. m .. ' min.'
+    -- MadMerick (27 Nov): said plainly on the card, as a countdown.
+    return 'Time to next precursor drop: ' .. (h > 0 and (h .. ' h ') or '') .. m .. ' min. You can make '
+      .. contracts.special.RUNS_PER_DAY .. ' successful runs every 24 hours, and you have made them.'
   end
 
   -- The Distance filter: 'short', 'medium' or 'long' sends every town job that far; anything else
@@ -3001,7 +3002,10 @@ function M.new(deps)
           -- The special delivery: what a unit of its load costs, and the multiple the shed pays.
           special = section.special or nil, unitPrice = section.special and contracts.special.unitPrice(good) or nil,
           times = section.special and contracts.special.PAY_TIMES or nil, cost = section.special and q.cost or nil,
-          wait = section.special and self:specialWait() or nil } or nil,
+          wait = section.special and self:specialWait() or nil,
+          -- Why its Take job is off for want of money: the price of one unit.
+          short = section.special and not self:canAfford(contracts.special.unitPrice(good))
+            and ('You need ' .. dollars(contracts.special.unitPrice(good)) .. ' to buy even one unit.') or nil } or nil,
         direction = job.drop and not section and location.compassPoint(location.bearing(place, job.drop)) or nil,
         -- The measured road where there is one (byRoad), else the estimate; measuring while Earth plans it.
         distanceMetres = (q.roadKm or job.km) * 1000, byRoad = q.roadKm ~= nil or nil,
