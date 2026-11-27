@@ -8,6 +8,10 @@ Changes that are finished but not in a download yet. They move into a numbered b
 
 - **The live feed now follows the Shed in the Desert.** On a multiplayer server, everyone sees when a trucker sets off across the Rub' al Khali and how many dollars of precursors they took. They also see when the trucker reaches the shed and what the sheikh paid, gives up, or gets caught by a Raider's EMP. Saves still work.
 
+## Build 295 · 27 Nov 2026
+
+- **Raiders on the Shed in the Desert now fire their EMP only when you're doing 5 km/h or less**, down from 15 km/h. They only fire it at any speed in the last 5 km to the shed, down from the last 10 km. Saves still work.
+
 ## Build 293 · 27 Nov 2026
 
 - **New for everyone: the Shed in the Desert.** Every jobs board now has two orange dangerous contracts carrying precursor chemicals for a sheikh, as crates or liquid. You buy the load with your own money, are moved to the Rub' al Khali with a full tank, and drive 20 km north across the dunes to the shed, which pays 6 times what you paid. Raiders hunt you all the way: you have 10 EMP charges to stop them, and if one catches you at 15 km/h or less its EMP ends the run and you lose the load. There are no repairs or insurance on the run, and you can make at most 2 successful runs a day. The help page (the **?** at the top of the HUD) has a new section on it. Saves still work.
