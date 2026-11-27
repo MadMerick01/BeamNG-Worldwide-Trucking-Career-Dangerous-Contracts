@@ -53,6 +53,23 @@ local function townBetween(c, minKm, maxKm)
   end
 end
 
+-- Road robbers are off for now (MadMerick, 27 Nov): no robber comes for a long job and the Route tab shows no Road
+-- robbers card, though the tests' robber (robMe) still works.
+do
+  T.eq(robber.ON, false, 'off for now')
+  local c, a, car = ready(0)
+  local to = townBetween(c, 20, 60)
+  T.check(c:takeJob(F.offer(c, to, 'food')), 'a long job')
+  c:tick(0.1)
+  T.eq(c.robberAtKm, nil, 'not robbed, even on a sure roll'); T.eq(car.loaded, 0, 'no robber loaded')
+  T.eq(c:robberProblem(false), 'Road robbers are off for now.', 'no robber')
+  T.eq(c:view().robMe, nil, 'no Road robbers card')
+  T.check(c:robMe(), 'the tests\' robber still works')
+end
+
+-- The rest of these test road robbers switched on.
+robber.ON = true
+
 -- Speeds: catching up fast from behind, easing off once close, capped.
 T.eq(robber.huntKph(60, 100), 100, 'far back: 40 km/h faster')
 T.eq(robber.huntKph(60, 40), 75, 'close: 15 km/h faster')

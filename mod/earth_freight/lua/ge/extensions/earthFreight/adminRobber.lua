@@ -271,7 +271,8 @@ function M.attach(c)
   -- The admin's panel on the Route tab (his list), and while robbing the panel in place of the sightseeing one.
   function c:adminView()
     local targets = self:adminTargets()
-    if not targets then return nil end
+    -- Road robbers off for now (roadRobber.lua ON): no panel, unless he's already out as the robber.
+    if not targets or (not roadRobber.ON and not self.adminDrive) then return nil end
     local a = self.adminDrive
     local problem = self:adminDriveProblem()
     local out = { feedback = self.adminFeedback, problem = not a and problem or nil, targets = {} }

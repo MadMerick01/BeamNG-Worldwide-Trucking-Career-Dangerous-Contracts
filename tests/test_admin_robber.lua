@@ -92,6 +92,16 @@ local function target()
   return c, a, car, s, sent
 end
 
+-- Road robbers are off for now (MadMerick, 27 Nov): nobody can be picked, and the admin's panel isn't shown.
+do
+  T.eq(robber.ON, false, 'off for now')
+  local c, a, car, s = target()
+  T.eq(c:adminRobProblem(), 'off', 'nobody can be robbed')
+end
+
+-- The rest of these test road robbers switched on.
+robber.ON = true
+
 -- Rob, struck, caught, revealed.
 do
   local c, a, car, s = target()
@@ -270,6 +280,15 @@ do
   local c = F.controller()
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.eq(c:view().admin, nil, 'not an admin: nothing shown')
+end
+
+-- Road robbers off for now: the admin's panel isn't shown, even with a list.
+do
+  robber.ON = false
+  local c, a, g, car, s = adminGame()
+  s:receive('wwtcAdmin', { targets = { { id = 3, name = 'Sam' } } })
+  T.eq(c:view().admin, nil, 'no admin robber panel')
+  robber.ON = true
 end
 
 do

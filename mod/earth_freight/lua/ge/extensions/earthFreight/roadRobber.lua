@@ -30,6 +30,12 @@ local thief = require('earthFreight/thief')
 local emp = require('earthFreight/emp')
 local M = {}
 
+-- Road robbers are off for now (MadMerick, 27 Nov): no robber comes for a job, the admin robber can't pick anyone, and
+-- the Route tab doesn't show the Road robbers card or its switch. Everything else is kept, so setting ON back to true
+-- (and putting the help page's lines back) brings them back. c:robMe (the tests' robber) still works. The EMP code the
+-- desert run's Raiders use (thiefCar.lua's empPlayer, emp.lua) isn't affected.
+M.ON = false
+
 M.CHANCE = 0.35
 M.MIN_JOB_METRES = 5000
 M.EDGE_METRES = 2000
@@ -129,6 +135,7 @@ function M.attach(c)
     -- No robbers during a Mayday Rescue run (MadMerick, 22 Nov), not even ROB ME's.
     if self.maydayRun then return 'Not during a Mayday Rescue run.' end
     if forced then return nil end
+    if not M.ON then return 'Road robbers are off for now.' end
     if self:robbersOff() then return 'Robbers are switched off.' end
     if self.booking or self.stranded then return 'Busy.' end
     return nil
@@ -290,7 +297,7 @@ function M.attach(c)
       self.robberJob, self.robberAtKm = load, nil
       if self.robber and self.robber.phase == 'loaded' and not self.robber.forced then self:dropRobber('job ended') end
       local robbable, metres = self:robbableJob(load)
-      if robbable and not self:robbersOff() and not self.robber and self.robbedLoad ~= load and self.random() < M.CHANCE then
+      if robbable and M.ON and not self:robbersOff() and not self.robber and self.robbedLoad ~= load and self.random() < M.CHANCE then
         local span = metres - 2 * M.EDGE_METRES
         self.robberAtKm = (M.EDGE_METRES + self.random() * math.max(0, span)) / 1000
         self.diag:event('robber_planned', string.format('%.1f km', self.robberAtKm))
@@ -298,7 +305,7 @@ function M.attach(c)
       end
     end
     -- This job's robber not loaded (the game refused, or ROB ME used it): loaded again while its moment is ahead.
-    if not self.robber and self.robberAtKm and load and (load.drivenKm or 0) < self.robberAtKm and not self:robbersOff()
+    if not self.robber and self.robberAtKm and load and (load.drivenKm or 0) < self.robberAtKm and M.ON and not self:robbersOff()
       and self.clock >= (self.robberLoadAt or 0) then
       self.robberLoadAt = self.clock + M.RETRY_SECONDS * 5
       self:loadRobber(false)
@@ -310,7 +317,7 @@ function M.attach(c)
     if r.admin then return self:watchAdminRobber() end
     if r.phase == 'loaded' then
       if not r.go then
-        if self:robbersOff() or not self.robberAtKm or not load or load ~= self.robberJob or (load.drivenKm or 0) < self.robberAtKm then return end
+        if not M.ON or self:robbersOff() or not self.robberAtKm or not load or load ~= self.robberJob or (load.drivenKm or 0) < self.robberAtKm then return end
         r.go = true
       end
       if r.nextTry and self.clock < r.nextTry then return end
@@ -401,7 +408,7 @@ function M.attach(c)
   -- The Route tab's Road robbers card and its switch (only offered in single player). allowed and problem are what
   -- ROB ME would say; the HUD no longer has that button.
   function c:robMeView()
-    if not self.profile or self.error then return nil end
+    if not M.ON or not self.profile or self.error then return nil end
     local problem = self:robberProblem(true)
     if self.robber and self.robber.phase == 'loaded' and self.robber.go then problem = 'A robber is coming. Keep driving.' end
     -- What a robber takes is never shown here (MadMerick): only the amount, once it happens.

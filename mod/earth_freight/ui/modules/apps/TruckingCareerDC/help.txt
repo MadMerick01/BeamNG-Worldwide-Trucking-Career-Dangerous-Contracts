@@ -102,14 +102,9 @@ Your base keeps a trailer for you, and repairs there are {baseRepairOff} off.
 Online, other truckers pay a {toll} toll when they deliver in your turf, and you pay one in theirs. The job board shows it first.
 Online, others can ask to join your base as your corp. Members get the turf bonus and pay no toll there, and the tolls are shared.
 
-# robbers | Robbers and the EMP
-On a job of {robberMinKm} km or more, a road robber may hit you with an EMP and take some of your money. The bigger the job, the more they take.
-Chase them: get within {empRange} m and fire your own EMP to get it back, plus a bonus from their trunk. If they get too far ahead, they escape.
-A delivery is only ever robbed once.
-In single player you can switch road robbers off with the Road robbers tick box on the Route tab. It costs nothing and you can switch them back on any time. Online, every trucker can be robbed.
-Your EMP takes {empSeconds} seconds to charge again after each shot.
-Robbers never come during a Mayday Rescue run.
-Base thieves are switched off for now, so nobody breaks into your base.
+# robbers | Robbers and thieves
+Road robbers are switched off for now, so nobody ambushes you on a delivery.
+Base thieves are switched off for now too, so nobody breaks into your base.
 
 # mayday | Mayday Rescue | online
 Now and then a Mayday call goes out somewhere on Earth. The first trucker to reach the scene wins the reward.

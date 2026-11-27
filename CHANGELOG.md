@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Road robbers are switched off for now.** No robber ambushes you on a delivery, fuel run or contract any more, and the Road robbers box and its tick box are gone from the **Route** tab. On a server, the admin robber can't pick anyone either. The help page now says robbers are off. The Raiders on the hidden desert run still have their EMPs. Your saves still work, and there's nothing you need to do.
+
 ## Build 292 · 27 Nov 2026
 
 - **Still hidden: the last 10 km of the precursor run are harder.** With under 10 km to the shed, a Raider within 15 m fires its EMP whatever your speed, and every Raider has one EMP to use. Above 15 km/h it doesn't end the run: your engine dies for 10 seconds, your brakes lock for a moment and your truck is shoved, and you have to deal with it. If they catch you at 15 km/h or less, the run is over as before.
