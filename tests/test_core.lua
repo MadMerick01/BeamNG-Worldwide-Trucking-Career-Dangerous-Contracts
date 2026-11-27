@@ -3120,7 +3120,7 @@ do
   da.pose = F.copy(back); d:tick(0.1); d:tick(0.6); d:tick(0.6)
   T.eq(d.stranded, nil, 'the trip back is not an unpaid relocation')
 
-  -- A Raider's EMP (MadMerick, 27 Nov): it fires only at a truck doing 15 km/h or less, from within 15 m, and that ends
+  -- A Raider's EMP (MadMerick, 27 Nov): it fires only at a truck doing 5 km/h or less, from within 15 m, and that ends
   -- the run like Give up, but the player is only taken back once they close the message.
   T.check(d:takeJob(specialRows(d)[1].id), 'bought a third time'); paid = d.load.cost
   local balance = d:view().balance
@@ -3134,14 +3134,14 @@ do
   T.check(d.raiders:up() >= 1, 'a Raider is up next to the truck')
   for id, car in pairs(drc.cars) do car.x, car.y = 0, 8 end
   T.check(d.load ~= nil, 'driving at 72 km/h, no Raider fires')
-  drc.speed = 4.5
+  drc.speed = 1.6
   for _ = 1, 4 do d:tick(0.5) end
-  T.check(d.load ~= nil, 'at 16 km/h it still does not')
-  drc.speed = 4.1
+  T.check(d.load ~= nil, 'at 6 km/h it still does not')
+  drc.speed = 1.3
   local goes = {}
   function drc:goTo(id, aim) goes[id] = aim; return true end
   d:tick(0.5); d:tick(0.5)
-  T.check(d.load ~= nil, 'at 15 km/h or less, not straight away')
+  T.check(d.load ~= nil, 'at 5 km/h or less, not straight away')
   teleports = #da.teleports
   for _ = 1, 4 do d:tick(0.5) end
   T.eq(d.load, nil, 'after 2 seconds a Raider fires its EMP: the load is lost')
@@ -3204,7 +3204,7 @@ do
   T.check(specialRows(g)[1].allowed, 'a day after the first, open again')
   T.check(g:manualSave(), 'saved')
 
-  -- With under 10 km to go, a Raider within 15 m fires its one EMP at any speed (MadMerick, 27 Nov). Above 15 km/h
+  -- With under 5 km to go, a Raider within 15 m fires its one EMP at any speed (MadMerick, 27 Nov). Above 5 km/h
   -- it doesn't end the run: the engine dies for a while and the player has to deal with it.
   local k, _, ka = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
   k:tick(0.1); k:tick(0.6); k:tick(0.6)
@@ -3218,12 +3218,12 @@ do
   k.raiderCar = krc
   for _ = 1, math.ceil((desertRun.FIRST_SECONDS + 2) / 0.5) do k:tick(0.5) end
   for _, car in pairs(krc.cars) do car.x, car.y = 0, 8 end
-  F.drive(k, ka, location.destination(special.FINISH, 180, 12000))
-  T.eq(#kHits, 0, '12 km to go at 72 km/h: no Raider fires')
-  F.drive(k, ka, location.destination(special.FINISH, 180, 9500))
+  F.drive(k, ka, location.destination(special.FINISH, 180, 6000))
+  T.eq(#kHits, 0, '6 km to go at 72 km/h: no Raider fires')
+  F.drive(k, ka, location.destination(special.FINISH, 180, 4500))
   for _, car in pairs(krc.cars) do car.x, car.y = 0, 8 end
   for _ = 1, 6 do k:tick(0.5) end
-  T.eq(kHits[1], 'dead', 'under 10 km to go, a Raider fires at 72 km/h: the engine dies')
+  T.eq(kHits[1], 'dead', 'under 5 km to go, a Raider fires at 72 km/h: the engine dies')
   T.check(k.load ~= nil and k.raiderCaught == nil, 'but the run goes on')
   T.check(k:view().desert.line:find('engine is dead', 1, true), 'told so')
   local used = 0
