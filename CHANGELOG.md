@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 291 · 27 Nov 2026
+
 - **Still hidden: the precursor run's job description now warns you to expect hostile Raiders.** You see it on the jobs board and when the run starts.
 
 ## Build 290 · 27 Nov 2026
