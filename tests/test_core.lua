@@ -3038,6 +3038,8 @@ do
   T.eq(c.profile.progression.contractsDone, nil, 'not counted as a dangerous contract')
   c:tick(0.1); T.eq(c.raiders, nil, 'the Raiders go'); T.check(rcar.removed, 'and their cars are deleted')
   T.eq(c:view().desert, nil, 'the panel with them')
+  T.eq(#c.specialRuns, 1, 'one run counted towards the day')
+  T.check(c:manualSave(), 'saved'); T.eq(#F.controller({ io = io }).specialRuns, 1, 'kept in the save')
 
   -- Cancelled before the start: the cost is paid back.
   local d, dio, da = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
@@ -3126,6 +3128,23 @@ do
   e.profile.progression.balance = unit
   T.check(not e:takeJob(specialRows(e)[1].id), 'a full load is too dear'); T.check(e:view().tradeFeedback:find('Load slider'), 'told to take less')
   T.check(e:takeJob(specialRows(e)[1].id, 10), 'a smaller load')
+
+  -- At most 2 runs delivered a day, by the real clock (MadMerick, 27 Nov).
+  T.eq(special.RUNS_PER_DAY, 2, 'two a day')
+  local g = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  g:tick(0.1); g:tick(0.6); g:tick(0.6)
+  g.profile.progression.balance = 1000000
+  local now = 5000000
+  g.now = function() return now end
+  T.check(specialRows(g)[1].allowed, 'open')
+  T.check(specialRows(g)[1].contract.summary:find('2 successful runs a day', 1, true), 'the jobs board says so')
+  g.specialRuns = { now - 3600, now - 600 }
+  T.check(not specialRows(g)[1].allowed, 'two delivered in the last 24 hours: closed')
+  T.eq(specialRows(g)[1].contract.wait, 'You have made 2 runs in the last 24 hours. The next opens in 23 h 0 min.', 'and when it opens')
+  T.check(not g:takeJob(specialRows(g)[1].id), 'not taken'); T.eq(g:view().tradeFeedback, specialRows(g)[1].contract.wait, 'told why')
+  now = now + 23 * 3600
+  T.check(specialRows(g)[1].allowed, 'a day after the first, open again')
+  T.check(g:manualSave(), 'saved')
 end
 
 

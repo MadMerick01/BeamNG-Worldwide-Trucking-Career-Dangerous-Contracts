@@ -304,6 +304,16 @@ function M.validate(s)
     end
     caught = { cost = g.cost, back = g.back and { latitude = g.back.latitude, longitude = g.back.longitude } or nil }
   end
+  -- The desert's dangerous contract delivered (special.lua's RUNS_PER_DAY): when, in real seconds, the latest few.
+  local runs = nil
+  if s.specialRuns ~= nil then
+    if type(s.specialRuns) ~= 'table' or #s.specialRuns > 10 then return nil, 'invalid_identity' end
+    runs = {}
+    for i, t in ipairs(s.specialRuns) do
+      if not integer(t, 0) then return nil, 'invalid_identity' end
+      runs[i] = t
+    end
+  end
   local cargo = nil
   if s.load ~= nil then
     cargo = load(s.load)
@@ -375,7 +385,7 @@ function M.validate(s)
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
     trailer = trailer, spareTrailers = spareTrailers, property = home, storedCars = stored, commissionId = s.commissionId, rewardId = s.rewardId,
     corp = member, extraCarSlot = s.extraCarSlot, noRobbers = s.noRobbers, robbersOff = s.robbersOff, thiefClock = thiefClock,
-    raiderCaught = caught,
+    raiderCaught = caught, specialRuns = runs,
   }
 end
 
@@ -446,7 +456,7 @@ function M.new(io, directory)
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
       trailer = candidate.trailer, spareTrailers = candidate.spareTrailers, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId, rewardId = candidate.rewardId,
       corp = candidate.corp, extraCarSlot = candidate.extraCarSlot, noRobbers = candidate.noRobbers, robbersOff = candidate.robbersOff,
-      thiefClock = candidate.thiefClock, raiderCaught = candidate.raiderCaught,
+      thiefClock = candidate.thiefClock, raiderCaught = candidate.raiderCaught, specialRuns = candidate.specialRuns,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

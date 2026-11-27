@@ -302,6 +302,8 @@ function M.new(deps)
     self.thiefClock = self.profile and copy(self.profile.thiefClock) or nil
     -- A Raider's EMP message still open (desertRun.lua): shown again after a reload.
     self.raiderCaught = self.profile and copy(self.profile.raiderCaught) or nil
+    -- When the desert's dangerous contract was last delivered (special.lua's RUNS_PER_DAY).
+    self.specialRuns = self.profile and copy(self.profile.specialRuns) or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
     self.corp = self.profile and copy(self.profile.corp) or nil
     self.homeFeedback, self.homeCard, self.corpSeen, self.leaveArmed, self.corpAskedAt = nil, nil, nil, nil, nil
@@ -1890,6 +1892,16 @@ function M.new(deps)
       self.configuration and self.configuration.specialDelivery)
   end
 
+  -- Why the desert's dangerous contract can't be taken yet (RUNS_PER_DAY done in the last day), or nil.
+  function c:specialWait()
+    local _, opensAt = contracts.special.recentRuns(self.specialRuns, self.now())
+    if not opensAt then return nil end
+    local minutes = math.max(1, math.ceil((opensAt - self.now()) / 60))
+    local h, m = math.floor(minutes / 60), minutes % 60
+    return 'You have made ' .. contracts.special.RUNS_PER_DAY .. ' runs in the last 24 hours. The next opens in '
+      .. (h > 0 and (h .. ' h ') or '') .. m .. ' min.'
+  end
+
   -- The Distance filter: 'short', 'medium' or 'long' sends every town job that far; anything else
   -- shows the usual mix. The HUD keeps the choice and sends it again when it opens.
   function c:setJobDistance(distance)
@@ -1968,6 +1980,11 @@ function M.new(deps)
     local units, pay = jobs.share(quote.units, quote.pay, share)
     -- The special delivery's load is bought here: paid for in full, and the shed pays its multiple of that.
     if job.special then
+      local wait = self:specialWait()
+      if wait then
+        self.tradeFeedback = wait
+        return false
+      end
       quote.cost = contracts.special.cost(good, units)
       pay = contracts.special.pay(quote.cost)
       if not self:canAfford(quote.cost) then
@@ -2371,6 +2388,11 @@ function M.new(deps)
     -- An off-road drop counts for the turf of the town it was taken in, at both ends.
     local town = not load.beacon and not section and places.get(load.from) or nil
     if specialLoad then
+      -- Counted towards RUNS_PER_DAY: only the latest few are kept.
+      local recent = contracts.special.recentRuns(self.specialRuns, self.now())
+      recent[#recent + 1] = math.floor(self.now())
+      while #recent > contracts.special.RUNS_PER_DAY do table.remove(recent, 1) end
+      self.specialRuns = recent
       -- Kept off the server's feed while the special delivery is hidden (contracts.special.OPEN).
       if contracts.special.OPEN then self:reportDelivery('special', good, load.units, nil, section.name, load.pay, nil, nil, load.rockets) end
       self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' dropped at '
@@ -2958,7 +2980,8 @@ function M.new(deps)
           fee = not section.special and contracts.FEE or nil, pays = section.pay,
           -- The special delivery: what a unit of its load costs, and the multiple the shed pays.
           special = section.special or nil, unitPrice = section.special and contracts.special.unitPrice(good) or nil,
-          times = section.special and contracts.special.PAY_TIMES or nil, cost = section.special and q.cost or nil } or nil,
+          times = section.special and contracts.special.PAY_TIMES or nil, cost = section.special and q.cost or nil,
+          wait = section.special and self:specialWait() or nil } or nil,
         direction = job.drop and not section and location.compassPoint(location.bearing(place, job.drop)) or nil,
         -- The measured road where there is one (byRoad), else the estimate; measuring while Earth plans it.
         distanceMetres = (q.roadKm or job.km) * 1000, byRoad = q.roadKm ~= nil or nil,
@@ -2971,7 +2994,8 @@ function M.new(deps)
         -- What the player's base adds, as a percentage of the pay without it.
         basePercent = q.baseBonus and math.floor(q.baseBonus / (q.road - q.baseBonus) * 100 + 0.5) or nil, outside = job.outside, long = job.long,
         tollTo = q.toll and q.toll.owner or nil, tollPercent = q.toll and math.floor(magnate.TOLL * 100 + 0.5) or nil,
-        allowed = allowed and q.units > 0 and (not section or self:canAfford(section.special and contracts.special.unitPrice(good) or contracts.FEE)) }
+        allowed = allowed and q.units > 0 and not (section and section.special and self:specialWait())
+          and (not section or self:canAfford(section.special and contracts.special.unitPrice(good) or contracts.FEE)) }
     end
     return out
   end
@@ -3558,6 +3582,7 @@ function M.new(deps)
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
       robbersOff = self.robbersOffSaved or nil,
       thiefClock = self:savedThiefClock(), raiderCaught = copy(self.raiderCaught),
+      specialRuns = self.specialRuns and #self.specialRuns > 0 and copy(self.specialRuns) or nil,
       trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
       storedCars = self.storedCars and #self.storedCars > 0 and copy(self.storedCars) or nil,
