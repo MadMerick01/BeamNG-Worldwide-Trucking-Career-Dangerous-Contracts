@@ -100,7 +100,7 @@ The helicopter is a free mod from the BeamNG forum. The Heli tab says which one 
 
 # desert | The Shed in the Desert
 Every jobs board has two orange dangerous contracts: precursor chemicals for a sheikh, as crates or liquid.
-You buy the load with your own money, as much as your car carries. You are moved to the Rub' al Khali with a full tank.
+You buy the load with your own money, as much as your car carries, up to {desertMaxCost} of precursors. So a run pays at most {desertMaxPay}. You are moved to the Rub' al Khali with a full tank.
 Drive {desertKm} km north across the dunes, following the arrow on the Route tab, and stop at the rusty shed. It pays {desertPayTimes} times what you paid.
 Once you deliver, the Raiders drive off. Press Close on the message to be taken back to where you took the job.
 Rival clans' Raiders hunt you all the way. Your EMP has {desertEmps} charges for the whole run: press EMP to stop the nearest Raider within {empRange} m. Every press uses a charge, hit or miss.

@@ -20,6 +20,9 @@ M.OPEN = true
 M.PAY_TIMES = 6
 -- What the precursors cost: solid by the kg, fluid by the litre.
 M.PRICE_PER_KG, M.PRICE_PER_LITRE = 60, 45
+-- The most a load may cost (MadMerick, 27 Nov: a cap, so no truck or tank pays a fortune). The shed pays at most
+-- PAY_TIMES this. A car that carries more takes only as many units as this buys. The server checks it too.
+M.MAX_COST = 150000
 -- The start, and how far north the shed is.
 M.START = { latitude = 21.177270, longitude = 53.517038 }
 M.KM = 20
@@ -34,12 +37,19 @@ M.RUNS_PER_DAY, M.DAY_SECONDS = 2, 86400
 -- The two loads, as goods (goods.lua): solid and fluid.
 M.GOODS = { 'precursors', 'precursors_fluid' }
 
+-- Dollars as players read them: $150,000.
+local function money(n)
+  local digits = tostring(math.floor(n)):reverse():gsub('(%d%d%d)', '%1,'):reverse():gsub('^,', '')
+  return '$' .. digits
+end
+
 -- Online, MadMerick's server checks the special delivery's money in every save (the private trucking-server repo):
 -- why it refused one, in words for the HUD.
 M.REFUSED = {
   special_hidden = 'the dangerous contract is only open to the server\'s admins for now',
   special_price = 'the precursors cost less than the sheikh\'s price',
   special_pay = 'it was paid more than ' .. M.PAY_TIMES .. ' times what the load cost',
+  special_too_big = 'the load cost more than the ' .. money(M.MAX_COST) .. ' a run may carry',
   special_too_fast = 'the load reached the shed too soon to have driven the ' .. M.KM .. ' km',
 }
 
@@ -48,7 +58,8 @@ M.SECTION = {
   km = M.KM, special = true,
   summary = 'Rival clans are fighting for control of the Empty Quarter, south of the Strait of Hormuz. A sheikh needs '
     .. 'precursor ordnance chemicals dropped at the Shed in the Desert, ' .. M.KM .. ' km north across the dunes. Expect hostile Raiders. Your EMP has ' .. M.EMP_CHARGES .. ' charges for the whole run. At most '
-    .. M.RUNS_PER_DAY .. ' successful runs a day.',
+    .. M.RUNS_PER_DAY .. ' successful runs a day. You can take up to ' .. money(M.MAX_COST) .. ' of precursors, so a run pays at most '
+    .. money(M.MAX_COST * M.PAY_TIMES) .. '.',
   start = M.START, finish = M.FINISH,
 }
 
@@ -77,6 +88,13 @@ function M.unitPrice(good)
   if not good then return 0 end
   if good.kind == 'fluid' then return (good.litres or 0) * M.PRICE_PER_LITRE end
   return math.floor(good.kg * M.PRICE_PER_KG + 0.5)
+end
+
+-- The most units of a good one run may take: as many as MAX_COST buys.
+function M.maxUnits(good)
+  local price = M.unitPrice(good)
+  if price <= 0 then return 0 end
+  return math.floor(M.MAX_COST / price)
 end
 
 -- What this many units cost, and what the shed pays for them.
