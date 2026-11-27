@@ -2697,77 +2697,92 @@ do
   if card then T.eq(card.repair, 0, 'the start page card shows no repair') end
 end
 
--- A player who has never put the HUD on screen is told how until it shows; once it shows, never again that level.
+-- A player who has never put the HUD on screen is told how, once: an OK pop-up with the steps, never again.
 do
-  local function hints(c)
-    local n = 0
-    for _, e in ipairs(c.toasts) do if e.title == Core.HUD_HINT_TITLE then n = n + 1 end end
-    return n
-  end
   local function watched(options)
-    local c = F.controller(options)
+    options = options or {}
+    options.io = options.io or F.io({ [F.CONFIG] = F.config(), [F.HUD_HINT_FILE] = false })
+    local c, io = F.controller(options)
     c.toasts, c.dialogs = {}, {}
     c.trigger = function(name, data)
       if name == 'toastrMsg' then c.toasts[#c.toasts + 1] = data end
       if name == 'showConfirmationDialog' then c.dialogs[#c.dialogs + 1] = data end
     end
-    return c
+    return c, io
   end
-  local c = watched()
+  local function steps(c)
+    local n = 0
+    for _, e in ipairs(c.dialogs) do if e.title == Core.HUD_HINT_TITLE then n = n + 1 end end
+    for _, e in ipairs(c.toasts) do if e.title == Core.HUD_HINT_TITLE then n = n + 1 end end
+    return n
+  end
+  T.eq(F.HUD_HINT_FILE, Core.HUD_HINT_FILE, 'the tests know where it is remembered')
+  local c, io = watched()
   F.advance(c, Core.HUD_HINT_SECONDS - 1)
-  T.eq(hints(c), 0, 'not straight away')
+  T.eq(steps(c), 0, 'not straight away')
   F.advance(c, 2)
-  T.eq(hints(c), 1, 'no HUD for a while: a pop-up says how to add it')
-  T.check(c.toasts[1].msg:find('+ Add app', 1, true) ~= nil, 'with the steps')
-  T.check(c.toasts[1].msg:find('"Worldwide Trucking HUD"', 1, true) ~= nil, 'naming the HUD as the HUD Apps menu does')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 5)
-  T.eq(hints(c), 6, 'and again every so often until the HUD is on screen')
-  c:mount(true)
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
-  T.eq(hints(c), 6, 'then never again')
+  T.eq(steps(c), 1, 'no HUD for a while: a pop-up says how to add it')
+  local d = c.dialogs[1]
+  T.check(d.text:find('+ Add app', 1, true) ~= nil, 'with the steps')
+  T.check(d.text:find('"Worldwide Trucking HUD"', 1, true) ~= nil, 'naming the HUD as the HUD Apps menu does')
+  T.check(d.text:find('only shows once', 1, true) ~= nil, 'and saying it shows once')
+  T.eq(#d.buttons, 1, 'one button'); T.eq(d.buttons[1].label, 'OK', 'OK')
+  T.eq(#c.toasts, 0, 'not a corner pop-up')
+  F.advance(c, 600)
+  T.eq(steps(c), 1, 'never again, however long the HUD is missing')
   c:endMission(); c:reload()
-  F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(hints(c), 7, 'a new level without the HUD starts again')
+  F.advance(c, Core.HUD_HINT_SECONDS * 3)
+  T.eq(steps(c), 1, 'nor on a new level')
+  local again = watched({ io = io })
+  F.advance(again, Core.HUD_HINT_SECONDS * 3)
+  T.eq(steps(again), 0, 'nor after a restart: it is remembered')
 
   c = watched()
   F.advance(c, 5)
   c:mount(true)
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
-  T.eq(hints(c), 0, 'a player with the HUD on screen is never told')
+  F.advance(c, 600)
+  T.eq(steps(c), 0, 'a player with the HUD on screen is never told')
 
   local adapter = F.adapter(); adapter.valid, adapter.reason = false, 'earth_missing'
   c = watched({ adapter = adapter })
   F.advance(c, Core.HUD_HINT_SECONDS * 3)
-  T.eq(hints(c), 0, 'nor on a level without BeamNG.Earth')
+  T.eq(steps(c), 0, 'nor on a level without BeamNG.Earth')
 
+  -- The dialog can't be shown: the steps in the corner instead, still once.
   c = watched()
+  c.trigger = function(name, data)
+    if name == 'showConfirmationDialog' then error('no dialog') end
+    if name == 'toastrMsg' then c.toasts[#c.toasts + 1] = data end
+  end
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
+  T.eq(#c.toasts, 1, 'a corner pop-up instead')
   T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'playing alone: the .Earth layout')
+  F.advance(c, 600)
+  T.eq(#c.toasts, 1, 'once')
 
   -- On a server, not while the career is on its way (the join is still settling), then the BeamMP layout.
   local mp = { inSession = function() return true end, send = function() end, listen = function() return true end,
     encode = function() return '' end, decode = function() return {} end }
   c = watched({ multiplayer = mp })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(hints(c), 0, 'not while the server is still answering')
+  T.eq(steps(c), 0, 'not while the server is still answering')
   F.advance(c, 30)
-  T.eq(hints(c), 1, 'then on a server too')
-  T.check(c.toasts[1].msg:find('BeamMP (edit layout)', 1, true) ~= nil, 'on a server: the BeamMP layout')
-  T.check(c.toasts[1].msg:find('stops as soon as the HUD is on screen', 1, true) ~= nil, 'and says when it stops')
+  T.eq(steps(c), 1, 'then on a server too')
+  T.check(c.dialogs[1].text:find('BeamMP (edit layout)', 1, true) ~= nil, 'on a server: the BeamMP layout')
 
   -- The layout the game has up is named as the HUD Apps menu shows it, whatever it is.
   for name, title in pairs({ beammp = 'BeamMP', beamngEarthMP = '.Earth multiplayer', beamngEarth = '.Earth', My_Layout = 'My_Layout' }) do
     c = watched({ layout = function() return name end })
     F.advance(c, Core.HUD_HINT_SECONDS + 1)
-    T.check(c.toasts[1].msg:find(title .. ' (edit layout)', 1, true) ~= nil, name .. ' is shown as ' .. title)
-    T.check(c.toasts[1].msg:find('another layout', 1, true) ~= nil, 'and that each layout has its own apps')
+    T.check(c.dialogs[1].text:find(title .. ' (edit layout)', 1, true) ~= nil, name .. ' is shown as ' .. title)
+    T.check(c.dialogs[1].text:find('another layout', 1, true) ~= nil, 'and that each layout has its own apps')
   end
   c = watched({ layout = function() error('no game state') end })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'unknown: the usual one')
+  T.check(c.dialogs[1].text:find('.Earth (edit layout)', 1, true) ~= nil, 'unknown: the usual one')
   c = watched({ layout = function() return '  ' end })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'blank: the usual one')
+  T.check(c.dialogs[1].text:find('.Earth (edit layout)', 1, true) ~= nil, 'blank: the usual one')
 end
 
 -- With the game's layouts at hand, the HUD is added for the player with one press, on the layout that's up.
@@ -2784,13 +2799,15 @@ do
     return l
   end
   local function watched(options)
-    local c = F.controller(options)
+    options = options or {}
+    options.io = options.io or F.io({ [F.CONFIG] = F.config(), [F.HUD_HINT_FILE] = false })
+    local c, io = F.controller(options)
     c.toasts, c.dialogs = {}, {}
     c.trigger = function(name, data)
       if name == 'toastrMsg' then c.toasts[#c.toasts + 1] = data end
       if name == 'showConfirmationDialog' then c.dialogs[#c.dialogs + 1] = data end
     end
-    return c
+    return c, io
   end
   local function titled(c, title)
     local n = 0
@@ -2806,11 +2823,13 @@ do
   local d = c.dialogs[1]
   T.eq(d.title, Core.HUD_ASK_TITLE, 'its title')
   T.check(d.text:find('<b>BeamMP</b> layout', 1, true) ~= nil, 'naming the layout that is up')
+  T.check(d.text:find('only asks once', 1, true) ~= nil, 'saying it asks once')
   T.eq(#d.buttons, 2, 'two buttons')
   T.eq(d.buttons[2].label, 'Add the HUD', 'Add the HUD')
   T.check(d.buttons[2].luaCallback:find('earthFreight_core.addHud(true)', 1, true) ~= nil, 'which adds it')
-  T.check(d.buttons[1].luaCallback:find('earthFreight_core.addHud(false)', 1, true) ~= nil, 'Not now, which does not')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS)
+  T.eq(d.buttons[1].label, 'No thanks', 'No thanks')
+  T.check(d.buttons[1].luaCallback:find('earthFreight_core.addHud(false)', 1, true) ~= nil, 'which does not')
+  F.advance(c, 600)
   T.eq(#c.dialogs + titled(c, Core.HUD_HINT_TITLE), 1, 'nothing more while it waits for an answer')
   T.check(c:addHud(true), 'Add the HUD')
   T.eq(#l.added, 1, 'the HUD is added once')
@@ -2818,40 +2837,30 @@ do
   T.eq(l.added[1].app, Core.HUD_APP, 'the trucking HUD')
   for k, v in pairs(Core.HUD_PLACEMENT) do T.eq(l.added[1].placement[k], v, 'where the HUD Apps menu puts it: ' .. k) end
   T.eq(titled(c, Core.HUD_ADDED_TITLE), 1, 'and a pop-up says so')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
-  T.eq(#c.dialogs + titled(c, Core.HUD_HINT_TITLE), 1, 'with the HUD on the layout, nothing more')
   T.check(c:addHud(true), 'a second press is fine'); T.eq(#l.added, 1, 'and adds nothing more')
 
   -- Already on the layout that's up: never asked, even if it is slow to show.
   l = layouts({ filename = 'a', title = '.Earth', has = true })
   c = watched({ layouts = l })
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 3)
+  F.advance(c, 600)
   T.eq(#c.dialogs + #c.toasts, 0, 'a player who has the HUD on this layout is never asked')
 
-  -- Not now: the steps carry on, and that layout isn't asked about again this game, but another layout is.
+  -- No thanks: nothing more, on this layout or another (joining a server), nor after a restart.
   l = layouts({ filename = 'earth', title = '.Earth', has = false })
-  c = watched({ layouts = l })
+  local io
+  c, io = watched({ layouts = l })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
   T.eq(#c.dialogs, 1, 'asked')
-  T.eq(c:addHud(false), false, 'Not now'); T.eq(#l.added, 0, 'adds nothing')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS)
-  T.eq(#c.dialogs, 1, 'not asked again'); T.eq(titled(c, Core.HUD_HINT_TITLE), 1, 'the steps instead')
-  T.check(c.toasts[1].msg:find('.Earth (edit layout)', 1, true) ~= nil, 'for that layout')
+  T.eq(c:addHud(false), false, 'No thanks'); T.eq(#l.added, 0, 'adds nothing')
+  F.advance(c, 600)
+  T.eq(#c.dialogs + #c.toasts, 1, 'nothing more')
   c:endMission(); c:reload()
   l.now = { filename = 'mp', title = 'BeamMP', has = false }
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(#c.dialogs, 2, 'another layout (joining a server): asked again')
-  c:endMission(); c:reload()
-  l.now = { filename = 'earth', title = '.Earth', has = false }
+  T.eq(#c.dialogs + #c.toasts, 1, 'another layout: not asked again')
+  c = watched({ layouts = l, io = io })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(#c.dialogs, 2, 'back on .Earth: not asked twice in one game')
-
-  -- A pop-up closed without an answer counts as Not now after a while.
-  l = layouts({ filename = 'earth', title = '.Earth', has = false })
-  c = watched({ layouts = l })
-  F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  F.advance(c, Core.HUD_ASK_WAIT_SECONDS + Core.HUD_HINT_REPEAT_SECONDS)
-  T.check(titled(c, Core.HUD_HINT_TITLE) >= 1, 'the steps come back')
+  T.eq(#c.dialogs + #c.toasts, 0, 'after a restart: not asked again')
 
   -- Adding fails: the steps instead.
   l = layouts({ filename = 'earth', title = '.Earth', has = false }); l.fails = true
@@ -2864,7 +2873,7 @@ do
   -- The game's layouts throwing, or with no layout up: the steps, as without them.
   c = watched({ layouts = { current = function() error('broken') end, add = function() return false end } })
   F.advance(c, Core.HUD_HINT_SECONDS + 1)
-  T.eq(#c.dialogs, 0, 'no pop-up'); T.eq(titled(c, Core.HUD_HINT_TITLE), 1, 'the steps')
+  T.eq(#c.dialogs, 1, 'one pop-up'); T.eq(c.dialogs[1].title, Core.HUD_HINT_TITLE, 'with the steps')
 
   -- A layout title can't put markup in the pop-up.
   l = layouts({ filename = 'x', title = '<script>x</script>', has = false })
@@ -2885,7 +2894,7 @@ do
   T.eq(#sent, 0, 'nothing while the HUD may still be coming')
   F.advance(c, 2)
   T.eq(sent[1], false, 'missing: off')
-  F.advance(c, Core.HUD_HINT_REPEAT_SECONDS * 2)
+  F.advance(c, 240)
   T.eq(#sent, 1, 'said once')
   c:mount(true); c:tick(0.1)
   T.eq(sent[2], true, 'on screen: on'); T.eq(#sent, 2, 'once')

@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **The "Turn on the trucking HUD" pop-up now shows only once, with an OK button.** Before, if you played BeamNG.Earth without the trucking HUD on screen, a reminder kept popping up in the corner every couple of minutes, even when you were only driving around and not trucking. Now you get one pop-up: either "Add the HUD?" (press Add the HUD, or No thanks) or the steps to add it yourself with an OK button. After that it never comes back, not on another map, not after a restart. You can still add the HUD any time in Esc > System > HUD Apps.
+- **Turning the mod off in the Mod Manager or on the Add-ons page now really turns it off.** Before, the mod's code kept running until you restarted the game, so its pop-ups could still appear with the mod off. Now it stops straight away, and turning the mod back on starts it again. Joining and leaving servers works as before. Nothing to delete, and your saves still work.
+
 ## Build 298 · 27 Nov 2026
 
 - **The EU tanker now says it needs a drawbar hitch, not a fifth wheel.** It's a drawbar trailer with its own steering front axle and a towing eye, so it hitches to a rigid truck's pintle hook or towing jaw. Before, its card under Buy new trailer told you to fit a fifth wheel, which it can't use. Its load now sits evenly on its axles instead of being pushed towards the drawbar.
