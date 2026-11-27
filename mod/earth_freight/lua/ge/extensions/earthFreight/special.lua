@@ -15,7 +15,7 @@ local M = {}
 
 -- One-line settings. Tune these after testing in game.
 -- true shows the special delivery to everyone.
-M.OPEN = false
+M.OPEN = true
 -- What the shed pays, as a multiple of what the load cost.
 M.PAY_TIMES = 6
 -- What the precursors cost: solid by the kg, fluid by the litre.

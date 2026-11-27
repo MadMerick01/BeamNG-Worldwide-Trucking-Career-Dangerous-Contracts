@@ -181,12 +181,12 @@ do
   T.eq(v.space.slots, 4, 'the box gives 4 slots')
   T.eq(#v.nearby, 6, 'nearby list shows 6 places'); T.check(v.nearby[1].distanceMetres > 3000 * places.ROAD_FACTOR, 'distances are road estimates')
   T.eq(#v.nearby[1].dots, 4, 'a dot per good: parts, bricks, water and fuel')
-  T.eq(#v.town.jobs, 5, 'the board lists parts, bricks, a fluid, a long haul and the off-road drop')
+  T.eq(#v.town.jobs, 7, 'the board lists parts, bricks, a fluid, a long haul, the off-road drop and the Shed in the Desert\'s two')
   T.eq(v.town.jobs[1].goodId, 'parts', 'parts first'); T.eq(v.town.jobs[2].goodId, 'bricks', 'then bricks')
   T.eq(v.town.jobs[3].goodId, jobs.fluid(penrith).id, 'then the town fluid')
   T.check(v.town.jobs[4].long and v.town.jobs[4].distanceMetres > 20000, 'then a long haul past 20 km')
   T.check(v.town.jobs[5].drop, 'then the drop')
-  for _, j in ipairs(v.town.jobs) do T.eq(j.contract, nil, 'no dangerous contract: they are off for now') end
+  for _, j in ipairs(v.town.jobs) do T.check(j.contract == nil or j.contract.special, 'no road dangerous contract: they are off for now') end
   T.eq(v.career.contractsOn, nil, 'and the start page leaves out the Dangerous count')
   T.check(v.town.jobs[3].fluid and v.town.jobs[3].units == 0 and not v.town.jobs[3].allowed, 'a fluid needs a tank')
   for _, j in ipairs(v.town.jobs) do
@@ -388,7 +388,7 @@ do
   T.near(a.gps[#a.gps].latitude, section.start.latitude, 1e-9, 'at the start of its road')
   T.eq(a.gps[#a.gps].name, section.name .. ' start', 'named after it')
   v = c:view()
-  for _, j in ipairs(v.town.jobs) do T.eq(j.gps, j.contract and true or nil, j.id .. ': only the contract is marked now') end
+  for _, j in ipairs(v.town.jobs) do T.eq(j.gps, j.contract and not j.contract.special and true or nil, j.id .. ': only the contract is marked now') end
   T.check(v.gpsFeedback:find(section.name) ~= nil, 'the message names the road')
   T.eq(c.load, nil, 'nothing taken'); T.check(not c:gpsToContract('nowhere'), 'an unknown contract is refused')
 end
@@ -2919,16 +2919,19 @@ do
     for _, j in ipairs(c:view().town.jobs) do if j.contract and j.contract.special then out[#out + 1] = j end end
     return out
   end
-  T.eq(special.OPEN, false, 'hidden from players while it is tested')
+  T.eq(special.OPEN, true, 'open to everyone (MadMerick, 27 Nov)')
   T.near(location.distance(special.START, special.FINISH), 20000, 1, 'the shed is 20 km from the start')
   T.near((location.bearing(special.START, special.FINISH) + 180) % 360 - 180, 0, 1e-6, 'due north')
-  T.check(special.visible(true, true, false) and not special.visible(true, false, true), 'online: admins only, the switch does not count')
-  T.check(special.visible(false, false, true) and not special.visible(false, false, false), 'single player: the switch')
+  T.check(special.visible(true, false, false) and special.visible(false, false, false), 'shown to everyone, online or not')
+  special.OPEN = false
+  T.check(special.visible(true, true, false) and not special.visible(true, false, true), 'hidden: online, admins only, the switch does not count')
+  T.check(special.visible(false, false, true) and not special.visible(false, false, false), 'hidden: in single player, the switch')
+  special.OPEN = true
   for _, g in ipairs(goods.carried()) do T.check(not g.special, g.id .. ': precursors are never posted on a board') end
 
-  -- Hidden: no cards on the board.
+  -- Open: on every board, no switch needed.
   local h = F.controller(); h:tick(0.1); h:tick(0.6); h:tick(0.6)
-  T.eq(#specialRows(h), 0, 'not on the board without the switch')
+  T.eq(#specialRows(h), 2, 'on the board without the switch')
 
   -- Shown with the switch in config.json.
   local cfg = F.config(); cfg.specialDelivery = true

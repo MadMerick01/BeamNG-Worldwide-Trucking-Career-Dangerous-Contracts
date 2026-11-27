@@ -3477,6 +3477,11 @@ function M.new(deps)
       fuelRunMinKm = fuelruns.MIN_KM, fuelRunMaxKm = fuelruns.MAX_KM, townFuelTimes = fuel.TOWN_PRICE_TIMES,
       toll = percent(magnate.TOLL),
       pickupMetres = pickups.RADIUS,
+      -- The Shed in the Desert (special.lua, desertRun.lua).
+      desertKm = contracts.special.KM, desertPayTimes = contracts.special.PAY_TIMES, desertEmps = contracts.special.EMP_CHARGES,
+      desertRuns = contracts.special.RUNS_PER_DAY, raiderEmpKmh = contracts.desertRun.RAIDER_EMP_KMH,
+      raiderEmpMetres = contracts.desertRun.RAIDER_EMP_METRES, raiderEmpCloseKm = contracts.desertRun.RAIDER_EMP_ANY_SPEED_KM,
+      raiderStallSeconds = contracts.desertRun.STALL_SECONDS,
     }
   end
 
