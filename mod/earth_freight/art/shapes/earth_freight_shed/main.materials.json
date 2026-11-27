@@ -1,0 +1,112 @@
+{
+  "earth_freight_shed_iron": {
+    "name": "earth_freight_shed_iron",
+    "mapTo": "earth_freight_shed_iron",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.42,
+          0.27,
+          0.17,
+          1
+        ],
+        "metallicFactor": 0.55,
+        "roughnessFactor": 0.8
+      },
+      {},
+      {},
+      {}
+    ],
+    "activeLayers": 1
+  },
+  "earth_freight_shed_roof": {
+    "name": "earth_freight_shed_roof",
+    "mapTo": "earth_freight_shed_roof",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.5,
+          0.49,
+          0.46,
+          1
+        ],
+        "metallicFactor": 0.7,
+        "roughnessFactor": 0.6
+      },
+      {},
+      {},
+      {}
+    ],
+    "activeLayers": 1
+  },
+  "earth_freight_shed_frame": {
+    "name": "earth_freight_shed_frame",
+    "mapTo": "earth_freight_shed_frame",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.16,
+          0.15,
+          0.14,
+          1
+        ],
+        "metallicFactor": 0.6,
+        "roughnessFactor": 0.55
+      },
+      {},
+      {},
+      {}
+    ],
+    "activeLayers": 1
+  },
+  "earth_freight_shed_crate": {
+    "name": "earth_freight_shed_crate",
+    "mapTo": "earth_freight_shed_crate",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.55,
+          0.42,
+          0.26,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.9
+      },
+      {},
+      {},
+      {}
+    ],
+    "activeLayers": 1
+  },
+  "earth_freight_shed_drum": {
+    "name": "earth_freight_shed_drum",
+    "mapTo": "earth_freight_shed_drum",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.62,
+          0.12,
+          0.08,
+          1
+        ],
+        "metallicFactor": 0.4,
+        "roughnessFactor": 0.6
+      },
+      {},
+      {},
+      {}
+    ],
+    "activeLayers": 1
+  }
+}

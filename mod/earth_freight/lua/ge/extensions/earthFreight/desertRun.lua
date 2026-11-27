@@ -16,11 +16,20 @@
 -- button. The Raiders stay: those still up speed away and go once 500 m off (raiderPack's flee). Only once it is closed is the player taken back to where they took the load (raiderCaught). The game saves
 -- as the message opens, with the message, so a reload shows it again.
 --
--- Delivered, given up or dropped, the Raiders go and their cars are deleted. Pure Lua: the cars are handled by
+-- Delivered (MadMerick, 27 Nov), it is the same: the HUD shows what the sheikh paid with a Close button, the Raiders
+-- still up speed away and go once 500 m off, and only Close takes the player back to where they took the load
+-- (desertDone, saved like raiderCaught).
+--
+-- The shed (shed.lua): put down at the finish once the player is within SHED_NEAR_METRES of it, from where the player
+-- is in the world and the bearing and distance to the finish. Each time they have halved the distance it is put down
+-- again, closer to right, until it was put down within SHED_PIN_METRES. It goes once the run and its message are over.
+--
+-- Given up or dropped, the Raiders go and their cars are deleted. Pure Lua: the cars are handled by
 -- c.raiderCar (raiderCar.lua), which may be missing, and then there are no Raiders.
 local special = require('earthFreight/special')
 local raiderPack = require('earthFreight/raiderPack')
 local location = require('earthFreight/location')
+local shed = require('earthFreight/shed')
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
@@ -39,6 +48,8 @@ M.RAIDER_EMP_KMH, M.RAIDER_EMP_METRES, M.RAIDER_EMP_SECONDS = 15, 15, 2
 -- kills the engine for STALL_SECONDS and jams the brakes for BRAKE_SECONDS, and the player has to deal with it.
 M.RAIDER_EMP_ANY_SPEED_KM = 10
 M.STALL_SECONDS, M.BRAKE_SECONDS = 10, 0.5
+-- The shed: put down once the player is this close to the finish, and left where it is once put down this close.
+M.SHED_NEAR_METRES, M.SHED_PIN_METRES = 2500, 300
 
 function M.attach(c)
   -- The load of a special delivery that has started, or nil.
@@ -50,9 +61,11 @@ function M.attach(c)
   -- Called every tick.
   function c:watchRaiders(dt)
     local load = self:desertLoad()
+    self:shedTick(load)
     if not load then
-      -- A Raider's EMP ended the run: the Raiders speed away, and go once far off or the message is closed.
-      if self.raiders and self.raiderCaught then
+      -- A Raider's EMP ended the run, or the load was delivered: the Raiders speed away, and go once far off or the
+      -- message is closed.
+      if self.raiders and (self.raiderCaught or self.desertDone) then
         if self.clock >= (self.raiderStepAt or 0) then
           self.raiderStepAt = self.clock + M.STEP_SECONDS
           self.raiders:step(self.clock)
@@ -176,6 +189,70 @@ function M.attach(c)
     self:returnFromDesert(g.back)
     self:saveNowOrSoon('the dangerous contract lost to a Raider')
     return true
+  end
+
+  -- Delivered at the shed (core.lua's deliverDrop): the message with what the sheikh paid, until it is closed. The
+  -- Raiders speed away; nothing goes until Close.
+  function c:desertDelivered(load, refund)
+    if self.raiderStall then
+      self.raiderStall = nil
+      if self.thiefCar and self.thiefCar.empPlayerEnd then pcall(self.thiefCar.empPlayerEnd, self.thiefCar) end
+    end
+    self.desertDone = { pay = load.pay, cost = load.cost, back = load.back and location.copy(load.back) or nil,
+      note = refund ~= '' and refund:gsub('^ ', '') or nil }
+    if self.raiders then self.raiders:flee(self.clock) end
+  end
+
+  function c:desertDoneView()
+    local g = self.desertDone
+    return g and { pay = g.pay, cost = g.cost, times = special.PAY_TIMES, note = g.note } or nil
+  end
+
+  -- Close on that message: the Raiders and the shed go, and the player is taken back to where they took the load.
+  function c:closeDesertDone()
+    local g = self.desertDone
+    if not g then return false end
+    self.desertDone = nil
+    self:endRaiders()
+    self:removeShed()
+    self.tradeFeedback = 'You delivered the precursors to the shed.'
+    self:returnFromDesert(g.back)
+    self:saveNowOrSoon('your delivery')
+    return true
+  end
+
+  -- The shed at the finish: put down, moved closer to right, or taken away (see the top of this file).
+  function c:shedTick(load)
+    if self.clock < (self.shedAt or 0) then return end
+    self.shedAt = self.clock + M.STEP_SECONDS
+    local sample = self.lastSample
+    local wanted = load or self.desertDone or self.raiderCaught
+    local d = wanted and sample and sample.valid ~= false and location.distance(sample, special.FINISH)
+    if not d or d > M.SHED_NEAR_METRES * 1.2 or (not self.shed and d > M.SHED_NEAR_METRES) then
+      if self.shed then self:removeShed() end
+      return
+    end
+    if self.shedWorld == nil then self.shedWorld = self.raiderCar and shed.new() or false end
+    local world = self.shedWorld
+    if not world then return end
+    local placed = self.shed
+    if placed and not world:there() then placed, self.shed = nil, nil end
+    if placed and (placed.metres <= M.SHED_PIN_METRES or d > placed.metres / 2) then return end
+    local me, b = world:where(), location.bearing(sample, special.FINISH)
+    if not me or not b then return end
+    local ok, why = world:place(me.x + math.sin(math.rad(b)) * d, me.y + math.cos(math.rad(b)) * d, me.z)
+    if ok then
+      self.shed = { metres = d }
+      self.diag:event('shed_placed', string.format('%.0f m away', d))
+    elseif why ~= self.shedWhy then
+      self.shedWhy = why
+      self.diag:event('shed_not_placed', tostring(why), 'W')
+    end
+  end
+
+  function c:removeShed()
+    if self.shedWorld then self.shedWorld:remove() end
+    self.shed, self.shedWhy = nil, nil
   end
 
   -- A Raider's EMP at speed: the brakes let off after BRAKE_SECONDS, the engine back after STALL_SECONDS.

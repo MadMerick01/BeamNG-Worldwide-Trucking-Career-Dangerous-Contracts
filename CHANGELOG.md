@@ -7,6 +7,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **New for everyone: the Shed in the Desert.** Every jobs board now has two orange dangerous contracts carrying precursor chemicals for a sheikh, as crates or liquid. You buy the load with your own money, are moved to the Rub' al Khali with a full tank, and drive 20 km north across the dunes to the shed, which pays 6 times what you paid. Raiders hunt you all the way: you have 10 EMP charges to stop them, and if one catches you at 15 km/h or less its EMP ends the run and you lose the load. There are no repairs or insurance on the run, and you can make at most 2 successful runs a day. The help page (the **?** at the top of the HUD) has a new section on it. Saves still work.
+- **There's now a real shed at the end of the Shed in the Desert.** It's a rusty corrugated iron shed, open at the south end so you can drive in, with crates and red drums inside. It appears as you get within about 2.5 km of the finish.
+- **Delivering at the shed shows a message with a Close button**, saying what the sheikh paid. The Raiders drive off while it's open, and you're taken back to where you took the job, for free, once you press Close. Before, you were left stuck in the desert. The game saves as the message opens, so it shows again if you reload. Saves still work.
 
 ## Build 292 · 27 Nov 2026
 

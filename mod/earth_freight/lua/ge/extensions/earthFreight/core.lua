@@ -302,6 +302,7 @@ function M.new(deps)
     self.thiefClock = self.profile and copy(self.profile.thiefClock) or nil
     -- A Raider's EMP message still open (desertRun.lua): shown again after a reload.
     self.raiderCaught = self.profile and copy(self.profile.raiderCaught) or nil
+    self.desertDone = self.profile and copy(self.profile.desertDone) or nil
     -- When the desert's dangerous contract was last delivered (special.lua's RUNS_PER_DAY).
     self.specialRuns = self.profile and copy(self.profile.specialRuns) or nil
     -- On a server, the corp the player is a member of (its yard keeps their second trailer).
@@ -2395,8 +2396,8 @@ function M.new(deps)
       self.specialRuns = recent
       -- Kept off the server's feed while the special delivery is hidden (contracts.special.OPEN).
       if contracts.special.OPEN then self:reportDelivery('special', good, load.units, nil, section.name, load.pay, nil, nil, load.rockets) end
-      self:showFlash('delivered', 'DELIVERED: +' .. dollars(load.pay), amount(good, load.units) .. ' dropped at '
-        .. section.name .. '. The sheikh paid ' .. contracts.special.PAY_TIMES .. ' times the ' .. dollars(load.cost) .. ' it cost you.' .. refund)
+      -- The message with a Close button, which takes the player back (desertRun.lua).
+      self:desertDelivered(load, refund)
       self.tradeFeedback = nil
       self:saveNowOrSoon('your delivery')
       self.diag:event('job_delivered', 'special for ' .. load.pay)
@@ -3386,7 +3387,7 @@ function M.new(deps)
       abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee, giveUp = trade.giveUp,
       -- The special delivery's Raiders and rounds (desertRun.lua).
       desert = self:desertView(),
-      raiderCaught = self:raiderCaughtView(),
+      raiderCaught = self:raiderCaughtView(), desertDone = self:desertDoneView(),
       tradeFeedback = self.tradeFeedback,
       fuelFeedback = self.fuelFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
@@ -3586,7 +3587,7 @@ function M.new(deps)
       load = copy(self.load), offer = copy(self.offer), playerName = self.playerName, needs = self:savedNeeds(),
       commissionId = self.profile.commissionId, rewardId = self.profile.rewardId, extraCarSlot = self.extraCarSlot or nil,
       robbersOff = self.robbersOffSaved or nil,
-      thiefClock = self:savedThiefClock(), raiderCaught = copy(self.raiderCaught),
+      thiefClock = self:savedThiefClock(), raiderCaught = copy(self.raiderCaught), desertDone = copy(self.desertDone),
       specialRuns = self.specialRuns and #self.specialRuns > 0 and copy(self.specialRuns) or nil,
       trailer = self:savedTrailer(), spareTrailers = self:savedSpareTrailers(),
       property = copy(self.property), corp = not self.property and copy(self.corp) or nil,
@@ -4097,6 +4098,7 @@ end
 function M.empThief() return safely(function() return ensure():empThief() end) end
 -- The special delivery: a Raider's driver reporting a problem from inside its car.
 function M.closeRaiderCaught() return safely(function() return ensure():closeRaiderCaught() end) end
+function M.closeDesertDone() return safely(function() return ensure():closeDesertDone() end) end
 function M.raiderProblem(vehicleId, why) return safely(function() return ensure():raiderProblem(vehicleId, why) end) end
 function M.empHotkey() return safely(function() return ensure():empHotkey() end) end
 function M.thiefLetGo() return safely(function() return ensure():thiefLetGo() end) end
