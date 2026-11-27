@@ -6,6 +6,8 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+## Build 300 · 27 Nov 2026
+
 - **Your EMP now has 3 charges for the whole Shed in the Desert run**, down from 10. The jobs board says so. A run already under way keeps the charges it had.
 - **The Shed in the Desert's cards now say plainly when you've used up your 2 runs.** Once you've made 2 successful runs in 24 hours, each card shows "Time to next precursor drop" with a countdown, right on the card in the HUD's jobs list too, not only when you open it. If you can't afford even one unit of precursors, the card says how much you need. Holding the mouse over a greyed-out Take job button says why.
 - **Fixed: the shed at the end of the Shed in the Desert sometimes floated in the air.** It now sits on the sand, and it settles down onto the ground as you get close. Saves still work.
