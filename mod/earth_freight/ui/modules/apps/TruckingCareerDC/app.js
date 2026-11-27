@@ -518,8 +518,11 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
         var f = d && d.fuelRuns
         return !!(f && f.hub && f.atDepot && !d.load && f.runs)
       }
+      // Not over a garage bill or while stranded, when no job can be taken anyway. An insurance offer after a crash
+      // doesn't stop it: jobs can still be taken with a damaged car, so the button stays.
       scope.boardButton = function (d) {
-        return !!d && d.state === 'READY' && !urgent(d) && (scope.boardTown(d) || scope.boardFuel(d))
+        return !!d && d.state === 'READY' && !d.partsChange && !d.carChange && !d.stranded &&
+          (scope.boardTown(d) || scope.boardFuel(d))
       }
       // The board's name: the town, or the fuel depot when the player is only there.
       scope.boardName = function (d) {
@@ -820,12 +823,10 @@ angular.module('beamng.apps').directive('earthFreightHud', ['$rootScope', functi
       }
       scope.refuel = function () { if (scope.data.refuel && scope.data.refuel.allowed) core('refuel()') }
       scope.abandonJob = function () { if (scope.data.abandonAllowed) core('abandonJob()') }
-      // The special delivery: the rounds in a downed Raider's boot.
-      scope.openBoot = function () { if (scope.data.desert && scope.data.desert.boot) core('openBoot()') }
-      scope.toggleRevolver = function () { if (scope.data.desert && scope.data.desert.revolverAllowed) core('toggleRevolver()') }
-      scope.reloadRevolver = function () { if (scope.data.desert && scope.data.desert.reloadAllowed) core('reloadRevolver()') }
-      // A click on the HUD is never a shot from the revolver.
-      scope.hover = function (on) { core('hudHover(' + (on ? 'true' : 'false') + ')') }
+      // The special delivery: the EMP at the nearest Raider, one of the run's charges.
+      scope.closeRaiderCaught = function () { if (scope.data.raiderCaught) core('closeRaiderCaught()') }
+      scope.closeDesertDone = function () { if (scope.data.desertDone) core('closeDesertDone()') }
+      scope.empRaider = function () { if (scope.data.desert && scope.data.desert.emp) core('empHotkey()') }
       // Heli flights: hire asks Lua to confirm, and so does Back to my car.
       scope.hireHeli = function () { if (scope.data.heli && scope.data.heli.hireAllowed) core('hireHeli()') }
       scope.backToCar = function () {

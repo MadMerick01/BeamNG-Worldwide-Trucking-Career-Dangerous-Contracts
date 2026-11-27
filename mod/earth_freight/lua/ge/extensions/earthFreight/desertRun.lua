@@ -1,25 +1,35 @@
--- The Raiders on the special delivery (special.lua), and the rounds in their boots. MadMerick's first test (26 Nov):
--- once the run has started at the start in the Rub' al Khali, the rival clans' Raiders just keep coming. FIRST_SECONDS
--- after the start the first turns up, then another every GAP_SECONDS until MAX are up (raiderPack.lua). One that is
--- down (stopped or stuck) or falls 500 m behind is replaced the same way. The load always stays whole: the Raiders
--- can only stop you, and then it is press on or Give up.
+-- The Raiders on the special delivery (special.lua), and the player's EMP against them. MadMerick's first test
+-- (26 Nov): once the run has started at the start in the Rub' al Khali, the rival clans' Raiders just keep coming.
+-- FIRST_SECONDS after the start the first turns up, then another every GAP_SECONDS until MAX are up (raiderPack.lua).
+-- One that is down (stopped or stuck) or falls 500 m behind is replaced the same way. The load always stays whole: the
+-- Raiders can only stop you, and then it is press on or Give up.
 --
--- Rounds: the run starts with special.START_ROUNDS. A downed Raider's car stays where it stopped; walk to its boot
--- (within BOOT_REACH metres, in the game's walking mode) and press Open boot for the 0 to 20 rounds inside, once per
--- Raider. They are kept with the load in the save (load.ammo: every round left, in the cylinder and spare).
+-- The EMP (MadMerick, 27 Nov, in place of the revolver): the player's own EMP device, the one every robber is
+-- caught with (emp.lua), with special.EMP_CHARGES charges for the whole run and no more. Each press uses one, hit or
+-- miss, and then it charges for emp.CHARGE_SECONDS before it can fire again. It hits the nearest Raider still up within
+-- emp.RANGE metres: its engine is cut (Bolides' EMP effect when that mod is installed) and it is down. The charges
+-- left are kept with the load in the save (load.emps).
 --
--- The revolver (MadMerick, 26 Nov): on a flat screen, Tanker's mouse-aim six-shooter (revolver.lua and aim.lua): the
--- Draw revolver button or key, aim with the mouse, click to fire, Reload to fill the cylinder from the spare rounds.
--- In VR, MadMerick's own VR revolver mod (BeamngVRcontrollerPoses, a separate download) shoots: the run's rounds are
--- put in it (vrPistol.setAmmo) and read back as it fires and reloads. When the run ends it goes back to its own
--- unlimited rounds. Either revolver's hit comes back as onVrPistolHit or onVrPistolDriverHit: four hits stop a
--- Raider, one through the driver stops it at once (raiderPack.lua).
+-- The Raiders' EMP (MadMerick, 27 Nov): every Raider has one too, but only fires it at a truck doing
+-- RAIDER_EMP_KMH or less, from within RAIDER_EMP_METRES, once it has been that slow for RAIDER_EMP_SECONDS. That ends the run
+-- as Give up does: the load and what it cost are lost. The truck's engine dies and the HUD shows a message with a Close
+-- button. The Raiders stay: those still up speed away and go once 500 m off (raiderPack's flee). Only once it is closed is the player taken back to where they took the load (raiderCaught). The game saves
+-- as the message opens, with the message, so a reload shows it again.
 --
--- Delivered, given up or dropped, the Raiders go and their cars are deleted. Pure Lua: the cars are handled by
+-- Delivered (MadMerick, 27 Nov), it is the same: the HUD shows what the sheikh paid with a Close button, the Raiders
+-- still up speed away and go once 500 m off, and only Close takes the player back to where they took the load
+-- (desertDone, saved like raiderCaught).
+--
+-- The shed (shed.lua): put down at the finish once the player is within SHED_NEAR_METRES of it, from where the player
+-- is in the world and the bearing and distance to the finish. Each time they have halved the distance it is put down
+-- again, closer to right, until it was put down within SHED_PIN_METRES. It goes once the run and its message are over.
+--
+-- Given up or dropped, the Raiders go and their cars are deleted. Pure Lua: the cars are handled by
 -- c.raiderCar (raiderCar.lua), which may be missing, and then there are no Raiders.
 local special = require('earthFreight/special')
 local raiderPack = require('earthFreight/raiderPack')
-local revolver = require('earthFreight/revolver')
+local location = require('earthFreight/location')
+local shed = require('earthFreight/shed')
 local M = {}
 
 -- One-line settings. Tune these after testing in game.
@@ -29,10 +39,24 @@ M.FIRST_SECONDS, M.GAP_SECONDS = 30, 8
 M.RETRY_SECONDS = 10
 -- How often the Raiders think, in seconds (they steer every frame).
 M.STEP_SECONDS = 0.5
--- Walking within this many metres of a downed Raider's boot shows Open boot.
-M.BOOT_REACH = 4
 -- How long a Raider's line stays on the HUD.
 M.LINE_SECONDS = 6
+-- The Raiders' EMP: fired at a truck at this speed or less, from within this far, once it has been that slow this long.
+M.RAIDER_EMP_KMH, M.RAIDER_EMP_METRES, M.RAIDER_EMP_SECONDS = 5, 15, 2
+-- With less than this many km left to the shed, a Raider fires at any speed (MadMerick, 27 Nov: 5 km/h
+-- and the last 5 km, back from 15 km/h and 10 km). Each Raider has one
+-- EMP (h.empUsed). Fired at a truck going faster than RAIDER_EMP_KMH it doesn't end the run: like the road robber's, it
+-- kills the engine for STALL_SECONDS and jams the brakes for BRAKE_SECONDS, and the player has to deal with it.
+M.RAIDER_EMP_ANY_SPEED_KM = 5
+M.STALL_SECONDS, M.BRAKE_SECONDS = 10, 0.5
+-- The shed: put down once the player is this close to the finish, and left where it is once put down this close.
+M.SHED_NEAR_METRES, M.SHED_PIN_METRES = 2500, 300
+-- Once it is left where it is, the ground under it is looked at again every SHED_CHECK_SECONDS while the player is
+-- within SHED_CHECK_METRES (Earth brings in finer ground as the player nears), and the shed moved down or up to it
+-- when it is more than SHED_SETTLE_METRES off. With the player within SHED_CLOSE_METRES, ground found more than
+-- SHED_ABOVE_METRES above where the player's car stands is not believed, and the shed goes at the car's height.
+M.SHED_CHECK_SECONDS, M.SHED_CHECK_METRES, M.SHED_SETTLE_METRES = 2, 600, 0.3
+M.SHED_CLOSE_METRES, M.SHED_ABOVE_METRES = 150, 2
 
 function M.attach(c)
   -- The load of a special delivery that has started, or nil.
@@ -44,12 +68,22 @@ function M.attach(c)
   -- Called every tick.
   function c:watchRaiders(dt)
     local load = self:desertLoad()
+    self:shedTick(load)
     if not load then
-      if self.raiders or self.gun then self:endRaiders() end
+      -- A Raider's EMP ended the run, or the load was delivered: the Raiders speed away, and go once far off or the
+      -- message is closed.
+      if self.raiders and (self.raiderCaught or self.desertDone) then
+        if self.clock >= (self.raiderStepAt or 0) then
+          self.raiderStepAt = self.clock + M.STEP_SECONDS
+          self.raiders:step(self.clock)
+        end
+      elseif self.raiders then
+        self:endRaiders()
+      end
       return
     end
-    if load.ammo == nil then load.ammo = special.START_ROUNDS end
-    self:watchGun(load)
+    if load.emps == nil then load.emps = special.EMP_CHARGES end
+    self:raiderStallTick()
     local car = self.raiderCar
     if not car then return end
     -- The truck: what the Raiders go for, even while the player walks.
@@ -85,6 +119,7 @@ function M.attach(c)
       self.raiderStepAt = self.clock + M.STEP_SECONDS
       local line = pack:step(self.clock)
       if line then self:raiderSays(line) end
+      if self:raiderEmpWatch(car, pack) then return end
       -- One that went down or fell behind: the next comes GAP_SECONDS later at the soonest.
       if pack:up() < raiderPack.MAX and self.raiderNextAt < self.clock then
         self.raiderNextAt = self.clock + M.GAP_SECONDS
@@ -100,36 +135,204 @@ function M.attach(c)
     end
   end
 
+  -- The Raiders' EMP: true once a Raider fired it and the run is over.
+  function c:raiderEmpWatch(car, pack)
+    local truck = car:player()
+    local near = pack:nearestRaider(true)
+    local slow = truck and type(truck.speed) == 'number' and truck.speed * 3.6 <= M.RAIDER_EMP_KMH
+    local sample = self.lastSample
+    local left = sample and sample.valid ~= false and location.distance(sample, special.FINISH)
+    local closing = left ~= nil and left < M.RAIDER_EMP_ANY_SPEED_KM * 1000
+    if not ((slow or closing) and near and near.metres <= M.RAIDER_EMP_METRES) then
+      self.raiderSlowSince = nil
+      return false
+    end
+    self.raiderSlowSince = self.raiderSlowSince or self.clock
+    if self.clock - self.raiderSlowSince < M.RAIDER_EMP_SECONDS then return false end
+    self.raiderSlowSince = nil
+    near.empUsed = true
+    -- The EMP sound on the HUD, and the truck shoved away from the Raider that fired.
+    local function hit()
+      if self.thiefCar and self.thiefCar.empPlayer then pcall(self.thiefCar.empPlayer, self.thiefCar) end
+      self:empSound()
+      local from = car:state(near.id)
+      if truck and from and car.shove then pcall(car.shove, car, truck.id, from.x, from.y, true) end
+    end
+    if not slow then
+      -- At speed: the engine dies for a while, and the run goes on.
+      hit()
+      self.raiderStall = { brakeAt = self.clock + M.BRAKE_SECONDS, endAt = self.clock + M.STALL_SECONDS }
+      self.diag:event('raider_emp_stall', string.format('Raider %d at %.0f m', near.n or 0, near.metres))
+      self:raiderSays('A Raider\'s EMP hit you: your engine is dead for ' .. M.STALL_SECONDS
+        .. ' s. Don\'t let them catch you at ' .. M.RAIDER_EMP_KMH .. ' km/h or less.')
+      return false
+    end
+    local load = self.load
+    local back = load.back
+    self.raiderStall = nil
+    hit()
+    self.diag:event('raider_emp', string.format('Raider %d at %.0f m', near.n or 0, near.metres))
+    self:dropJob('raider_emp')
+    self:reportDesert('caught', load.cost)
+    self.raiderCaught = { cost = load.cost, back = back }
+    pack:flee(self.clock)
+    self:saveNowOrSoon('the dangerous contract lost to a Raider')
+    return true
+  end
+
+  -- The live feed on a multiplayer server (MadMerick, 27 Nov): what 'set off', 'gave up' or 'caught'. The server words
+  -- it; a delivery there goes as reportDelivery's 'special'.
+  function c:reportDesert(what, cost)
+    if not self.mp or self.mp.state ~= 'server' or not self.mp.desert then return end
+    pcall(self.mp.desert, self.mp, what, cost)
+  end
+
+  -- For the HUD: the message after a Raider's EMP, until it is closed.
+  function c:raiderCaughtView()
+    local g = self.raiderCaught
+    return g and { cost = g.cost } or nil
+  end
+
+  -- Close on that message: the engine comes back and the player is taken back to where they took the load.
+  function c:closeRaiderCaught()
+    local g = self.raiderCaught
+    if not g then return false end
+    self.raiderCaught = nil
+    self:endRaiders()
+    if self.thiefCar and self.thiefCar.empPlayerEnd then pcall(self.thiefCar.empPlayerEnd, self.thiefCar) end
+    self.tradeFeedback = 'A Raider\'s EMP ended the dangerous contract and you lost the load.'
+    self:returnFromDesert(g.back)
+    self:saveNowOrSoon('the dangerous contract lost to a Raider')
+    return true
+  end
+
+  -- Delivered at the shed (core.lua's deliverDrop): the message with what the sheikh paid, until it is closed. The
+  -- Raiders speed away; nothing goes until Close.
+  function c:desertDelivered(load, refund)
+    if self.raiderStall then
+      self.raiderStall = nil
+      if self.thiefCar and self.thiefCar.empPlayerEnd then pcall(self.thiefCar.empPlayerEnd, self.thiefCar) end
+    end
+    self.desertDone = { pay = load.pay, cost = load.cost, back = load.back and location.copy(load.back) or nil,
+      note = refund ~= '' and refund:gsub('^ ', '') or nil }
+    if self.raiders then self.raiders:flee(self.clock) end
+  end
+
+  function c:desertDoneView()
+    local g = self.desertDone
+    return g and { pay = g.pay, cost = g.cost, times = special.PAY_TIMES, note = g.note } or nil
+  end
+
+  -- Close on that message: the Raiders and the shed go, and the player is taken back to where they took the load.
+  function c:closeDesertDone()
+    local g = self.desertDone
+    if not g then return false end
+    self.desertDone = nil
+    self:endRaiders()
+    self:removeShed()
+    self.tradeFeedback = 'You delivered the precursors to the shed.'
+    self:returnFromDesert(g.back)
+    self:saveNowOrSoon('your delivery')
+    return true
+  end
+
+  -- The shed at the finish: put down, moved closer to right, or taken away (see the top of this file).
+  function c:shedTick(load)
+    if self.clock < (self.shedAt or 0) then return end
+    self.shedAt = self.clock + M.STEP_SECONDS
+    local sample = self.lastSample
+    local wanted = load or self.desertDone or self.raiderCaught
+    local d = wanted and sample and sample.valid ~= false and location.distance(sample, special.FINISH)
+    if not d or d > M.SHED_NEAR_METRES * 1.2 or (not self.shed and d > M.SHED_NEAR_METRES) then
+      if self.shed then self:removeShed() end
+      return
+    end
+    if self.shedWorld == nil then self.shedWorld = self.raiderCar and shed.new() or false end
+    local world = self.shedWorld
+    if not world then return end
+    local placed = self.shed
+    if placed and not world:there() then placed, self.shed = nil, nil end
+    local me, b = world:where(), location.bearing(sample, special.FINISH)
+    if not me or not b then return end
+    -- The ground found, kept from floating above the player's car once they are close.
+    local function floor(g)
+      if g and d <= M.SHED_CLOSE_METRES and g > me.z + M.SHED_ABOVE_METRES then return me.z end
+      return g
+    end
+    if placed and (placed.metres <= M.SHED_PIN_METRES or d > placed.metres / 2) then
+      -- Left where it is: settled onto the ground now and then.
+      if d > M.SHED_CHECK_METRES or self.clock < (placed.checkAt or 0) then return end
+      placed.checkAt = self.clock + M.SHED_CHECK_SECONDS
+      local g = floor(world:groundAt(placed.x, placed.y, me.z))
+      if g and math.abs(g - placed.z) > M.SHED_SETTLE_METRES and world:move(placed.x, placed.y, g) then
+        self.diag:event('shed_settled', string.format('%.1f m %s', math.abs(g - placed.z), g < placed.z and 'down' or 'up'))
+        placed.z = g
+      end
+      return
+    end
+    local x, y = me.x + math.sin(math.rad(b)) * d, me.y + math.cos(math.rad(b)) * d
+    local z, why = world:place(x, y, me.z, floor(world:groundAt(x, y, me.z)))
+    if z then
+      self.shed = { metres = d, x = x, y = y, z = z, checkAt = self.clock + M.SHED_CHECK_SECONDS }
+      self.diag:event('shed_placed', string.format('%.0f m away, %.1f m from the car\'s height', d, z - me.z))
+    elseif why ~= self.shedWhy then
+      self.shedWhy = why
+      self.diag:event('shed_not_placed', tostring(why), 'W')
+    end
+  end
+
+  function c:removeShed()
+    if self.shedWorld then self.shedWorld:remove() end
+    self.shed, self.shedWhy = nil, nil
+  end
+
+  -- A Raider's EMP at speed: the brakes let off after BRAKE_SECONDS, the engine back after STALL_SECONDS.
+  function c:raiderStallTick()
+    local s = self.raiderStall
+    if not s then return end
+    local t = self.thiefCar
+    if not s.brakesOff and self.clock >= s.brakeAt then
+      s.brakesOff = true
+      if t and t.empPlayerBrakeOff then pcall(t.empPlayerBrakeOff, t) end
+    end
+    if self.clock >= s.endAt then
+      self.raiderStall = nil
+      if t and t.empPlayerEnd then pcall(t.empPlayerEnd, t) end
+    end
+  end
+
   function c:raiderSays(line)
     self.raiderLine, self.raiderLineAt = line, self.clock
   end
 
-  -- The downed Raider whose boot the player is standing at, walking, or nil.
-  function c:bootHere()
-    if not (self.raiders and self.onFoot and self.raiderCar) then return nil end
-    local me = self.raiderCar:walker()
-    return me and self.raiders:bootNear(me.x, me.y, M.BOOT_REACH)
+  -- What the EMP would fire at on the run: the nearest Raider still up, as emp.lua's empTarget gives it, or nil.
+  function c:raiderEmpTarget()
+    if not (self.raiders and self:desertLoad()) then return nil end
+    local best = self.raiders:nearestRaider()
+    if not best then return nil end
+    return { kind = 'raider', metres = best.metres, stoppable = true, id = best.id, charges = self.load.emps or 0 }
   end
 
-  -- Open boot: the rounds in the Raider's boot go with the load. Returns how many.
-  function c:openBoot()
-    local load = self:desertLoad()
-    local h = load and self:bootHere()
-    if not h then return nil end
-    local rounds = self.raiders:openBoot(h) or 0
-    load.ammo = (load.ammo or 0) + rounds
-    self:gunFound(rounds)
-    self:raiderSays(rounds > 0 and ('You found ' .. rounds .. (rounds == 1 and ' round' or ' rounds') .. ' in the boot.')
-      or 'The boot is empty.')
-    self.diag:event('boot_opened', rounds .. ' rounds, ' .. load.ammo .. ' now')
-    self:autoSaveSoon('opening a boot')
-    return rounds
+  -- The EMP hit Raider id (emp.lua's fireEmp): its engine is cut and it is down.
+  function c:empRaider(id)
+    local line = self.raiders and self.raiders:emped(id)
+    if not line then return false end
+    if self.thiefCar and self.thiefCar.emp then pcall(self.thiefCar.emp, self.thiefCar, id) end
+    -- Shoved away from the player (raiderCar.lua's shove).
+    local car = self.raiderCar
+    local me = car and car.walker and car:walker()
+    if me and car.shove then pcall(car.shove, car, id, me.x, me.y) end
+    self:raiderSays(line)
+    return true
   end
 
   -- The run is over: the Raiders go and their cars are deleted.
   function c:endRaiders()
+    if self.raiderStall then
+      self.raiderStall = nil
+      if self.thiefCar and self.thiefCar.empPlayerEnd then pcall(self.thiefCar.empPlayerEnd, self.thiefCar) end
+    end
     if self.raiders then self.raiders:remove() end
-    self:endGun()
     self.raiders, self.raiderNextAt, self.raiderStepAt, self.raiderLine, self.raiderWhy = nil, nil, nil, nil, nil
     if self.raiderCar then self.raiderCar.targetId = nil end
   end
@@ -143,137 +346,14 @@ function M.attach(c)
     self.diag:event('raider_problem', tostring(id) .. ': ' .. why, 'W')
   end
 
-  -- The VR revolver, when the game is in VR and MadMerick's VR revolver mod is installed, or nil.
-  function c:vrGun()
-    if not (self.aim and self.aim:vr()) then return nil end
-    local pistol = self.aim:pistol()
-    return pistol and type(pistol.setAmmo) == 'function' and type(pistol.getAmmo) == 'function' and pistol or nil
-  end
-
-  -- Called every tick on the run: the revolver's rounds, in step with the load's, and its reload.
-  function c:watchGun(load)
-    if not self.gun then self.gun = revolver.new(load.ammo) end
-    local gun, pistol = self.gun, self:vrGun()
-    if pistol then
-      gun:setDrawn(false)
-      if self.vrGunFor ~= pistol then
-        -- The run's rounds go in the VR revolver.
-        self.vrGunFor = pistol
-        pcall(pistol.setAmmo, gun.loaded, gun.spare)
-        self.diag:event('vr_revolver', gun.loaded .. ' loaded, ' .. gun.spare .. ' spare')
-      else
-        local ok, loaded, _, spare = pcall(pistol.getAmmo)
-        if ok and type(loaded) == 'number' and type(spare) == 'number' then
-          gun.loaded, gun.spare = math.max(0, math.floor(loaded)), math.max(0, math.floor(spare))
-        end
-      end
-    else
-      if self.vrGunFor then self:freeVrGun() end
-      gun:step(self.clock)
-    end
-    load.ammo = gun:rounds()
-    if self.raiders then self.raiders.gunDrawn = gun.drawn or (pistol ~= nil and self:vrDrawn(pistol)) end
-  end
-
-  function c:vrDrawn(pistol)
-    if type(pistol.isEquipped) ~= 'function' then return false end
-    local ok, on = pcall(pistol.isEquipped)
-    return ok and on == true
-  end
-
-  -- The VR revolver back to its own unlimited rounds.
-  function c:freeVrGun()
-    local pistol = self.vrGunFor
-    self.vrGunFor = nil
-    if pistol and type(pistol.setAmmo) == 'function' then
-      local okCfg, cfg = pcall(function() return pistol.getConfig and pistol.getConfig() end)
-      local size = okCfg and type(cfg) == 'table' and cfg.cylinderSize or revolver.CYLINDER
-      pcall(pistol.setAmmo, size, nil)
-    end
-  end
-
-  -- Rounds from a boot: spare rounds, in the VR revolver too.
-  function c:gunFound(rounds)
-    local gun = self.gun
-    if not gun or rounds <= 0 then return end
-    gun.spare = gun.spare + rounds
-    local pistol = self:vrGun()
-    if pistol and self.vrGunFor == pistol then pcall(pistol.setAmmo, gun.loaded, gun.spare) end
-  end
-
-  function c:endGun()
-    if self.vrGunFor then self:freeVrGun() end
-    self.gun, self.vrGunFor = nil, nil
-  end
-
-  -- The Draw revolver button or key: the flat-screen revolver, on the run, in the car, without VR.
-  function c:toggleRevolver()
-    local gun = self.gun
-    if not (gun and self:desertLoad()) or self:vrGun() or self.onFoot then return false end
-    gun:setDrawn(not gun.drawn)
-    self:raiderSays(gun.drawn and 'Revolver drawn. Aim with the mouse and click to shoot.' or 'Revolver holstered.')
-    return true
-  end
-
-  function c:reloadRevolver()
-    local gun = self.gun
-    if not (gun and self:desertLoad()) or self:vrGun() then return false end
-    local ok, why = gun:reload(self.clock)
-    self:raiderSays(ok and 'Reloading.' or why == 'full' and 'The cylinder is full.' or 'No spare rounds left.')
-    return ok
-  end
-
-  -- Each frame: the crosshair while the revolver is drawn, and a shot on each click (not on the HUD).
-  function c:followAim()
-    local gun = self.gun
-    if not (gun and gun.drawn and self.aim) then return end
-    if self.onFoot or self:vrGun() or not self:desertLoad() then gun:setDrawn(false) return end
-    local shot = self.aim:aim()
-    self.aim:draw(shot)
-    if self.hudHover or not self.aim:clicked() then return end
-    local fired, why = gun:fire(self.clock)
-    local load = self:desertLoad()
-    load.ammo = gun:rounds()
-    if not fired then
-      if why == 'empty' then
-        self:raiderSays(gun:reloading() and 'Click. Empty, reloading.' or 'Click. You are out of rounds.')
-      end
-      return
-    end
-    -- The hit, if any, comes back from the car a moment later (raiderHit).
-    self.shotAt = self.clock
-    local pack = self.raiders
-    self.aim:shoot(shot, function(veh)
-      local ok, id = pcall(function() return veh:getID() end)
-      return ok and pack ~= nil and pack:isRaider(id)
-    end)
-  end
-
-  -- A hit from either revolver, the VR one or the flat-screen one: they send the same events.
-  function c:raiderHit(vehicleId, driver)
-    if not self.raiders then return end
-    local line, wasRaider
-    if driver then line, wasRaider = self.raiders:driverShot(vehicleId) else line, wasRaider = self.raiders:shot(vehicleId) end
-    if line then
-      self:raiderSays(line)
-      self.diag:event('raider_shot', driver and 'driver' or 'four hits')
-    elseif wasRaider and self.shotAt and self.clock - self.shotAt < 2 then
-      self:raiderSays('Hit the Raider.')
-    end
-  end
-
-  -- For the HUD: the rounds, the Raiders up, the latest line and whether Open boot is shown.
+  -- For the HUD: the Raiders up, the latest line, and the EMP: its charges left and its button (emp.lua's empView).
   function c:desertView()
     local load = self:desertLoad()
     if not load then return nil end
     local line = self.raiderLine and self.clock - (self.raiderLineAt or 0) <= M.LINE_SECONDS and self.raiderLine or nil
-    local gun, vr = self.gun, self:vrGun()
-    return { rounds = load.ammo or special.START_ROUNDS, up = self.raiders and self.raiders:up() or 0,
-      max = raiderPack.MAX, line = line, boot = self:bootHere() ~= nil or nil,
-      loaded = gun and gun.loaded, spare = gun and gun.spare, vr = vr ~= nil or nil,
-      drawn = gun and not vr and gun.drawn or nil, reloading = gun and gun:reloading() or nil,
-      reloadAllowed = gun and not vr and not gun:reloading() and gun.loaded < revolver.CYLINDER and gun.spare > 0 or nil,
-      revolverAllowed = gun ~= nil and not vr and not self.onFoot or nil }
+    return { up = self.raiders and self.raiders:up() or 0, max = raiderPack.MAX, line = line,
+      charges = load.emps or special.EMP_CHARGES, totalCharges = special.EMP_CHARGES,
+      emp = self:empView(), noRepairs = true }
   end
 end
 

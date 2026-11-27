@@ -239,12 +239,17 @@ function M.attach(c)
     self.diag:event('photo', tostring(owned.model))
   end
 
+  -- The desert's dangerous contract (desertRun.lua), once started: no repairs and no insurance (MadMerick, 27 Nov).
+  local function inDesert(self) return self.desertLoad ~= nil and self:desertLoad() ~= nil end
+  M.DESERT_NO_REPAIRS = 'No repairs or insurance on this dangerous contract. Make the drop or give up.'
+
   -- Reads the player vehicle's damage now and prices it. Returns the inspection and cost, or nil and a reason.
   function c:priceRepair()
     if not self.profile or self.error then return nil, 'unavailable' end
     if not self.garage then return nil, 'repair_unavailable' end
     if self.hire then return nil, 'heli' end
     if self.onFoot then return nil, 'on_foot' end
+    if inDesert(self) then return nil, 'desert' end
     local vehicle, why = self:inspectDamage()
     if not vehicle then return nil, why end
     -- Half price at home.
@@ -256,6 +261,7 @@ function M.attach(c)
     heli = 'Repairs are for your own car. Press Back to my car on the Heli tab first.',
     vehicle_required = 'Enter a vehicle to get a repair quote.',
     on_foot = 'Get back in your car to get a repair quote.',
+    desert = M.DESERT_NO_REPAIRS,
   }
   local function repairProblem(why)
     return repairMessages[why] or 'Could not read the vehicle damage. Try again in a moment.'
@@ -282,6 +288,10 @@ function M.attach(c)
   -- Charges the quoted price and repairs. A changed vehicle or new damage needs a fresh quote first,
   -- and the player is only charged once the game has accepted the repair.
   function c:repairVehicle()
+    if inDesert(self) then
+      self.quote, self.repairFeedback = nil, M.DESERT_NO_REPAIRS
+      return false
+    end
     if self.onFoot then
       self.repairFeedback = 'Get back in your car to repair it.'
       return false
@@ -398,6 +408,7 @@ function M.attach(c)
   function c:insuranceAllowed()
     return self.profile ~= nil and not self.error and self.garage ~= nil and self.arrived and self:seriousCrash()
       and not self.hire and not self.onFoot and not self.pendingParts and not self.pendingCar and not self.insurancePending
+      and not inDesert(self)
   end
 
   -- Claims: the first press asks to confirm. The car goes back to the road (BeamNG's own "teleport
@@ -405,7 +416,8 @@ function M.attach(c)
   function c:claimInsurance()
     if not self:insuranceAllowed() then
       self.insuranceArmed = false
-      self.repairFeedback = self.insurancePending and 'Your claim is going through.' or 'Insurance is only for a serious crash.'
+      self.repairFeedback = self.insurancePending and 'Your claim is going through.'
+        or (inDesert(self) and M.DESERT_NO_REPAIRS) or 'Insurance is only for a serious crash.'
       return false
     end
     if not self.insuranceArmed then
@@ -471,6 +483,7 @@ function M.attach(c)
   -- The insurance card on the HUD, after a serious crash.
   function c:insuranceView()
     if not self.insurancePending and not (self.garage and self.arrived and self:seriousCrash()) then return nil end
+    if not self.insurancePending and inDesert(self) then return nil end
     local d = self.lastDamage
     return { fee = self:insuranceFee(), armed = self.insuranceArmed, pending = self.insurancePending ~= nil,
       allowed = self:insuranceAllowed(), loseJob = self.load ~= nil and not self:jobCarParked(),

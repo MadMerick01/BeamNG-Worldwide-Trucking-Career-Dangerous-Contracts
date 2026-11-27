@@ -23,8 +23,12 @@ function F.save(generation, lat, lon)
     resume = F.position(lat, lon), progression = { balance = 0, totalDistanceKm = 0 }, vehicle = { model = 'pickup' },
   }
 end
+-- The HUD pop-up's one showing (core.lua's hintHud) is taken as had, so it writes nothing in the other tests. Its own
+-- tests set the file to false: not had yet.
+F.HUD_HINT_FILE = '/settings/earthFreight/hudhint.json'
 function F.io(files)
   local io = { files = files or {}, writes = 0, directories = 0 }
+  if io.files[F.HUD_HINT_FILE] == nil then io.files[F.HUD_HINT_FILE] = { shown = true } end
   io.exists = function(path)
     if io.existsFails then error('permission denied') end
     return io.files[path] ~= nil

@@ -585,6 +585,10 @@ function M.new(deps)
     return shipEvent('wwtcRobbed', { who = who, what = what, amount = type(taken) == 'number' and math.floor(taken) or nil,
       paid = type(paid) == 'number' and math.floor(paid) or nil })
   end
+  -- The Shed in the Desert, for the live feed: what 'set off', 'gave up' or 'caught', and what the load cost.
+  function s:desert(what, cost)
+    return shipEvent('wwtcDesert', { what = what, amount = type(cost) == 'number' and math.floor(cost) or nil })
+  end
   -- A base of operations: asks the server whether this town is free (one base a town, 10 km apart).
   function s:claimBase(t) return shipEvent('wwtcBaseClaim', t) end
   -- The land race: opens the corp's next base in this town, once its newest circle is full size.

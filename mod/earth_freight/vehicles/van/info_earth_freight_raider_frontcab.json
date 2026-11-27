@@ -1,0 +1,43 @@
+{
+  "Body Style": "Van",
+  "Config Type": "Custom",
+  "Configuration": "Raider (front cab)",
+  "Population": 0,
+  "Years": {
+    "max": 2017,
+    "min": 2006
+  },
+  "defaultMultiPaintSetup": {
+    "name": "raiderfrontcab Multi Paint Setup",
+    "paint1": {
+      "baseColor": [
+        0.9549999833107,
+        0.9549999833107,
+        0.9549999833107,
+        1.2000000476837
+      ],
+      "class": "hidden",
+      "clearcoat": 0,
+      "clearcoatRoughness": 0,
+      "metallic": 0,
+      "name": "raiderfrontcab Paint 1",
+      "roughness": 0.0700000003
+    },
+    "paint2": {
+      "baseColor": [
+        0.67500001192093,
+        0.67500001192093,
+        0.67500001192093,
+        1.2000000476837
+      ],
+      "class": "hidden",
+      "clearcoat": 0,
+      "clearcoatRoughness": 0,
+      "metallic": 0,
+      "name": "raiderfrontcab Paint 2",
+      "roughness": 0.0700000003
+    },
+    "paint3": "Black"
+  },
+  "vehicleSelectorSubGroup": "vehiclesData.van.derby.vehicleSelectorSubGroup"
+}

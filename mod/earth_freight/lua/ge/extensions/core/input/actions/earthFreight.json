@@ -5,22 +5,6 @@
     "ctx": "tlua",
     "onDown": "if earthFreight_core and earthFreight_core.empHotkey then earthFreight_core.empHotkey() end",
     "title": "Fire EMP",
-    "desc": "Fires the EMP at the base thief during a chase. It reaches 5 m."
-  },
-  "earthFreightToggleRevolver": {
-    "cat": "gameplay",
-    "order": 2,
-    "ctx": "tlua",
-    "onDown": "if earthFreight_core and earthFreight_core.toggleRevolver then earthFreight_core.toggleRevolver() end",
-    "title": "Draw or holster the revolver",
-    "desc": "On the special delivery, without VR: draws the revolver so you can aim with the mouse and click to shoot, or puts it away"
-  },
-  "earthFreightReloadRevolver": {
-    "cat": "gameplay",
-    "order": 3,
-    "ctx": "tlua",
-    "onDown": "if earthFreight_core and earthFreight_core.reloadRevolver then earthFreight_core.reloadRevolver() end",
-    "title": "Reload the revolver",
-    "desc": "On the special delivery: fills the revolver's cylinder from your spare rounds"
+    "desc": "Fires the EMP at the base thief during a chase, or at the nearest Raider on the dangerous contract. It reaches 15 m."
   }
 }

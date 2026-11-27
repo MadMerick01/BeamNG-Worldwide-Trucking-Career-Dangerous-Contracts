@@ -21,7 +21,6 @@ local function fakeCar()
   end
   function car:state(id) return self.cars[id] end
   function car:calm() self.calmed = self.calmed + 1 end
-  function car:boot(id) local c = self.cars[id]; return c and { x = c.x, y = c.y - 2, z = 0 } end
   function car:release(id) self.released[#self.released + 1] = id; self.cars[id] = nil end
   function car:removeAll() self.removedAll = true end
   return car
@@ -31,8 +30,7 @@ local function random(lo, hi) if lo == 0 and hi == 1 then return 0.9 end return 
 -- MadMerick's rules for the first test: at most four up at once.
 T.eq(P.MAX, 4, 'at most four Raiders up at once')
 T.eq(P.ESCAPE_METRES, 500, 'one that falls 500 m behind is gone')
-T.eq(P.BOOT_MIN, 0, 'a boot holds 0'); T.eq(P.BOOT_MAX, 20, 'to 20 rounds')
-T.eq(special.START_ROUNDS, 60, 'the run starts with 60 rounds')
+T.eq(special.EMP_CHARGES, 3, 'the EMP has three charges for the run')
 local car = fakeCar()
 local p = P.new(car, random)
 for i = 1, 4 do T.check(p:add(i) ~= nil, 'Raider ' .. i .. ' turns up') end
@@ -49,20 +47,9 @@ car.cars[r.id].x, car.cars[r.id].y = 30, 0
 local t = 10
 for _ = 1, 80 do t = t + 0.5; p:step(t) end
 T.eq(r.state, 'DOWN', 'a stuck Raider is down')
-T.check(r.boot >= 0 and r.boot <= 20, 'its boot holds 0 to 20 rounds')
 T.eq(p:up(), 3, 'three are up')
 T.check(p:add(t) ~= nil, 'so another can come')
-T.eq(#p.raiders, 5, 'the downed car stays for its boot')
-
--- The boot: only at the back of the downed car, opened once.
-local bx, by = car.cars[r.id].x, car.cars[r.id].y - 2
-T.eq(p:bootNear(bx + 20, by, 4), nil, 'too far from the boot')
-local found = p:bootNear(bx + 1, by, 4)
-T.eq(found, r, 'standing at the boot')
-r.boot = 13
-T.eq(p:openBoot(found), 13, 'the rounds in it')
-T.eq(p:openBoot(found), nil, 'and only once')
-T.eq(p:bootNear(bx, by, 4), nil, 'an opened boot is not offered again')
+T.eq(#p.raiders, 5, 'the downed car stays where it stopped')
 
 -- One that falls 500 m behind is gone.
 local back = p.raiders[2]
@@ -75,10 +62,17 @@ local said = false
 for _, l in ipairs(lines) do if l == P.LINES.escaped then said = true end end
 T.check(said, 'and the HUD says it fell behind')
 
--- Shot four times, a Raider is down.
+-- The EMP: it goes for the nearest Raider still up, and one hit stops it.
 local target = p.raiders[#p.raiders]
-for _ = 1, P.SHOTS_TO_STOP do p:shot(target.id) end
-T.eq(target.state, 'DOWN', 'four hits stop a Raider')
+for _, h in ipairs(p.raiders) do if h.state ~= 'DOWN' then h.metres = 80 end end
+target.metres = 12
+local best = p:nearestRaider()
+T.eq(best.id, target.id, 'the nearest Raider'); T.eq(best.metres, 12, 'and how far')
+T.eq(p:emped(target.id), P.LINES.emped, 'an EMP hit')
+T.eq(target.state, 'DOWN', 'stops a Raider')
+T.eq(p:emped(target.id), nil, 'and a downed one is not hit again')
+T.eq(p:emped(9999), nil, 'nor a car that is not a Raider')
+T.check(p:nearestRaider().id ~= target.id, 'the next nearest is another')
 
 -- At most MAX_DOWN downed cars stand: the one down longest goes.
 local car2 = fakeCar()
@@ -91,7 +85,7 @@ for i = 1, P.MAX_DOWN + 1 do
   for _, h in ipairs(p2.raiders) do if h.state ~= 'DOWN' then up = h break end end
   first = first or up
   p2.clock = 10 + i
-  p2:driverShot(up.id)
+  p2:emped(up.id)
 end
 local downed = 0
 for _, h in ipairs(p2.raiders) do if h.state == 'DOWN' then downed = downed + 1 end end
@@ -126,7 +120,7 @@ local env = {
   byId = function(id) return cars[id] end,
   random = function() return 0.2 end,
   vehicles = function()
-    return { getModel = function(name) return name == 'barstow' and { model = name } or nil end,
+    return { getModel = function(name) return (name == 'roamer' or name == 'van' or name == 'barstow') and { model = name } or nil end,
       spawnNewVehicle = function(name, options)
         spawned = spawned + 1
         local c = fake(spawned, 0, 0)
@@ -147,6 +141,22 @@ T.eq(rc:walker().id, 1, 'the walker is still the player')
 local ready = rc:preload(2)
 T.eq(ready, 2, 'two cars loaded and hidden')
 T.eq(cars[51].config, 'vehicles/barstow/earth_freight_raider_old1.pc', "MadMerick's rusty Barstow")
+local function pick(roll, models)
+  local pc = RC.new({ random = function() return roll end, vehicles = function()
+    return { getModel = function(name) return models[name] and { model = name } or nil end } end })
+  return pc:model()
+end
+local all = { barstow = true, roamer = true, van = true }
+local _, cfg = pick(0.3, all)
+T.eq(cfg, 'vehicles/barstow/earth_freight_raider_fast2.pc', 'the fast Barstow, a quarter of the time')
+_, cfg = pick(0.6, all)
+T.eq(cfg, 'vehicles/roamer/earth_freight_raider_black4wd.pc', 'the black 4WD, a quarter')
+local m
+m, cfg = pick(0.9, all)
+T.eq(m, 'van', 'the front-cab van, a quarter'); T.eq(cfg, 'vehicles/van/earth_freight_raider_frontcab.pc', 'with its config')
+T.eq(pick(0.9, { roamer = true }), 'roamer', 'without the van, the next one the game has')
+m, cfg = pick(0.2, { moonhawk = true })
+T.eq(m, 'moonhawk', 'with neither, a plain car'); T.eq(cfg, nil, 'with no config')
 T.eq(cars[51].active, 0, 'switched off while hidden')
 local id = rc:take()
 T.check(id == 51 or id == 52, 'a Raider takes a hidden car')
@@ -159,55 +169,59 @@ T.check(rc:place(id, 10, 10, 0, 0, 1), 'a Raider is put down')
 T.eq(cars[id].active, 1, 'switched on')
 T.check(rc:goTo(id, { x = 1, y = 2, z = 0, speed = 10 }), 'and driven')
 T.check(cars[id].commands[#cars[id].commands]:find('earthFreightRaider.target', 1, true) ~= nil, 'by its own driver')
-local b = rc:boot(id)
-T.near(b.y, 7.5, 0.01, 'its boot is at its back')
+T.check(rc:shove(id, 10, 0), 'an EMP shoves a Raider')
+T.check(cars[id].commands[#cars[id].commands]:find('applyForceVector', 1, true) ~= nil, 'with a force on its nodes')
+T.eq(rc:shove(2, 0, 0), false, 'never the truck by mistake')
+T.check(rc:shove(2, 0, 0, true), 'only when it is meant')
 rc:removeAll()
 T.eq(cars[id], nil, 'its cars deleted when the run is over')
 
--- The revolver: the run's rounds, six in the cylinder, and they run out.
-local Rev = require('earthFreight/revolver')
-T.eq(Rev.INFINITE, false, 'the rounds run out')
-local g = Rev.new(8)
-T.eq(g.loaded, 6, 'six in the cylinder'); T.eq(g.spare, 2, 'two spare')
-T.eq(g:fire(0), false, 'holstered: no shot')
-g:setDrawn(true)
-for i = 1, 6 do T.check(g:fire(i), 'shot ' .. i) end
-local ok, why = g:fire(7)
-T.eq(ok, false, 'empty'); T.eq(why, 'empty', 'clicks')
-T.check(g:reloading(), 'and reloads by itself')
-g:step(7 + Rev.RELOAD_SECONDS)
-T.eq(g.loaded, 2, 'the last two rounds'); T.eq(g.spare, 0, 'none spare')
-T.eq(g:rounds(), 2, 'two left')
-g:fire(20); g:fire(21)
-ok, why = g:fire(22)
-T.eq(why, 'empty', 'out of rounds'); T.check(not g:reloading(), 'nothing to reload')
-T.eq(Rev.new(3).loaded, 3, 'fewer than six: all in the cylinder')
-
--- The flat-screen shot hits only a Raider, never another player's car in the way (MadMerick's hard rule online).
-local A = require('earthFreight/aim')
-local V = {}
-V.__index = V
-local function v3(x, y, z) return setmetatable({ x = x, y = y, z = z }, V) end
-V.__sub = function(a, b) return v3(a.x - b.x, a.y - b.y, a.z - b.z) end
-function V:dot(o) return self.x * o.x + self.y * o.y + self.z * o.z end
-local function boxCar(id, y)
-  local c = { id = id, commands = {} }
-  function c:getID() return self.id end
-  function c:getSpawnWorldOOBB()
-    return { getHalfExtents = function() return { x = 1, y = 2, z = 1 } end, getCenter = function() return v3(0, y, 0) end,
-      getAxis = function(_, i) return i == 0 and v3(1, 0, 0) or i == 1 and v3(0, 1, 0) or v3(0, 0, 1) end }
-  end
-  function c:queueLuaCommand(cmd) self.commands[#self.commands + 1] = cmd end
-  return c
+-- The shed at the finish (shed.lua), with a pretend game.
+do
+  local shed = require('earthFreight/shed')
+  local objects, made, loaded = {}, {}, 0
+  local ground = 42
+  local env = {
+    player = function() return { getPosition = function() return { x = 1, y = 2, z = 3 } end } end,
+    find = function(name) return objects[name] end,
+    exists = function(path) return path == shed.SHAPE end,
+    loadMaterials = function() loaded = loaded + 1 end,
+    create = function()
+      local o = { fields = {} }
+      function o:setField(k, _, v) self.fields[k] = v end
+      function o:registerObject(name) self.name = name; objects[name] = self end
+      function o:setPosRot(x, y, z) self.pos = { x, y, z } end
+      function o:delete() objects[self.name] = nil; self.deleted = true end
+      made[#made + 1] = o
+      return o
+    end,
+    ground = function() return ground end,
+  }
+  local s = shed.new(env)
+  T.eq(s:where().y, 2, 'where the player is')
+  T.check(not s:there(), 'no shed yet')
+  T.eq(s:place(10, 20, 3), 42, 'put down, at the ground\'s height')
+  T.check(s:there(), 'there')
+  T.eq(made[1].shapeName, shed.SHAPE, 'MadMerick\'s shed'); T.eq(made[1].fields.collisionType, 'Visible Mesh', 'solid')
+  T.eq(made[1].pos[3], 42, 'on the ground'); T.eq(loaded, 1, 'its materials loaded')
+  T.check(s:place(11, 21, 3), 'put down again')
+  T.check(s:move(11, 21, 40), 'moved'); T.eq(made[2].pos[3], 40, 'to a new height')
+  local probes = {}
+  env.ground = function(x, y) probes[#probes + 1] = { x, y }; return #probes == 3 and 39 or 41 end
+  T.eq(s:groundAt(0, 0, 3), 39, 'the lowest ground around it')
+  T.eq(#probes, #shed.PROBES, 'looked at all round')
+  for _, p in ipairs(probes) do T.check(math.abs(p[1]) >= 7 or math.abs(p[2]) >= 10, 'outside its walls, never on its roof') end
+  env.ground = function() return ground end
+  T.eq(s:place(12, 22, 3, 37), 37, 'or at a height given'); T.eq(made[3].pos[3], 37, 'there')
+  T.check(made[1].deleted, 'the old one goes first, so the ground is not its roof'); T.eq(loaded, 1, 'materials once')
+  ground = nil
+  local ok, why = s:place(12, 22, 3)
+  T.check(not ok and why == 'no_ground' and not s:there(), 'no ground found: no shed, tried again later')
+  s:remove(); T.check(not s:there(), 'removed')
+  env.exists = function() return false end
+  ground = 1
+  ok, why = s:place(1, 1, 1)
+  T.eq(why, 'no_shed_shape', 'no shape in the game: no shed')
 end
-_G.vec3 = function(x, y, z) if type(x) == 'table' then return v3(x.x, x.y, x.z) end return v3(x, y, z) end
-local someone, raider = boxCar(8, 20), boxCar(9, 40)
-local gun = A.new({ vehicles = function() return { someone, raider } end, player = function() return nil end,
-  wall = function(_, _, range) return range end, vrPistol = function() return nil end })
-gun:shoot({ origin = v3(0, 0, 0), dir = v3(0, 1, 0) }, function(veh) return veh:getID() == 9 end)
-T.eq(#someone.commands, 0, 'the other player\'s car in the way is not hit')
-T.eq(#raider.commands, 1, 'the Raider behind it is')
-T.check(raider.commands[1]:find('earthFreightHit', 1, true) ~= nil, 'with this mod\'s own shot')
-_G.vec3 = nil
 
 T.done('Raiders')

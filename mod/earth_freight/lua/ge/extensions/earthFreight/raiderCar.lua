@@ -1,7 +1,8 @@
 -- The game's side of the Raiders (raiderPack.lua) on the special delivery. Copied from MadMerick's Tanker mod, where
--- the Hoons do the same (its hoonCar.lua and packCar.lua). Each Raider drives one of MadMerick's Barstows, shipped in
--- this mod under vehicles/barstow: a rusty one and a fast one, even odds. If the game has no Barstow, a plain one of
--- the other vanilla muscle cars, in order, is used instead. The cars are loaded when the run starts and kept hidden
+-- the Hoons do the same (its hoonCar.lua and packCar.lua). Each Raider drives one of MadMerick's four Raider cars, shipped in
+-- this mod, in equal amounts (27 Nov): the rusty and the fast Barstow (vehicles/barstow), a black 4WD Roamer
+-- (vehicles/roamer) and a white front-cab van (vehicles/van). If the game lacks the one picked, the next is used;
+-- with none, a plain one of FALLBACKS, in order. The cars are loaded when the run starts and kept hidden
 -- (switched off, high above the player, so they cost nothing and are not drawn) until a Raider needs one: switching a
 -- car back on is instant, where loading one mid-drive hitches the frame rate. A Raider that is done goes back into
 -- hiding for the next.
@@ -15,13 +16,16 @@
 local behind = require('earthFreight/behind')
 local M = {}
 
-M.MODELS = { 'barstow', 'moonhawk', 'burnside' }
-M.CONFIGS = { 'earth_freight_raider_old1', 'earth_freight_raider_fast2' }
-local function configPath(name) return 'vehicles/barstow/' .. name .. '.pc' end
+M.RAIDERS = {
+  { model = 'barstow', config = 'earth_freight_raider_old1' },
+  { model = 'barstow', config = 'earth_freight_raider_fast2' },
+  { model = 'roamer', config = 'earth_freight_raider_black4wd' },
+  { model = 'van', config = 'earth_freight_raider_frontcab' },
+}
+M.FALLBACKS = { 'moonhawk', 'burnside' }
+local function configPath(r) return 'vehicles/' .. r.model .. '/' .. r.config .. '.pc' end
 -- How high above the player the cars wait while hidden, in metres.
 M.HIDE_LIFT = 2000
--- How far the boot is behind the middle of a car, in metres, for a car whose length can't be read.
-M.BOOT_METRES = 2.3
 
 local function defaults()
   return {
@@ -76,6 +80,21 @@ end
 -- The driving modes a point may ask for (see earthFreightRaider.control), as Lua in the command.
 local MODES = { coast = '"coast"', swipe = '"swipe"' }
 -- Hands the car back from the driver and switches the game's AI off.
+-- An EMP's shove (MadMerick, 27 Nov, without Bolides – The Cut): every node of the car gets a sudden kick of %f m/s
+-- along (%f, %f) and %f m/s up, as Tanker's revolver hit pushes nodes (tankerHit.lua): a force over one physics step
+-- of 1/2000 s.
+local SHOVE = [[
+local kick, up = %f, %f
+local d = vec3(%f, %f, 0)
+local step = 1 / 2000
+for _, n in pairs(v.data.nodes) do
+  local m = obj.getNodeMass and obj:getNodeMass(n.cid) or 1
+  obj:applyForceVector(n.cid, (d * kick + vec3(0, 0, up)) * (m / step))
+end
+]]
+-- How hard an EMP shoves a car: sideways away from whoever fired it, and up, in metres a second.
+M.SHOVE_MPS, M.SHOVE_UP_MPS = 4, 1.5
+
 local STOP = [[
 if extensions and extensions.earthFreightRaider then extensions.earthFreightRaider.stop() end
 if ai then pcall(ai.setMode, 'disabled') end
@@ -136,13 +155,24 @@ function M.new(environment)
     return ok and pose(c) or nil
   end
 
+  -- The car for the next Raider: its model, and its config path or nil for a plain one.
   function h:model()
     local ok, vehicles = pcall(env.vehicles)
     if not ok or type(vehicles) ~= 'table' then return nil end
-    if type(vehicles.getModel) ~= 'function' then return M.MODELS[1] end
-    for _, name in ipairs(M.MODELS) do
+    local function has(name)
+      if type(vehicles.getModel) ~= 'function' then return true end
       local okModel, found = pcall(vehicles.getModel, name)
-      if okModel and type(found) == 'table' and next(found) ~= nil then return name end
+      return okModel and type(found) == 'table' and next(found) ~= nil
+    end
+    local okRoll, roll = pcall(env.random)
+    local n = #M.RAIDERS
+    local first = (okRoll and type(roll) == 'number' and roll >= 0 and roll < 1) and math.floor(roll * n) or 0
+    for k = 0, n - 1 do
+      local r = M.RAIDERS[(first + k) % n + 1]
+      if has(r.model) then return r.model, configPath(r) end
+    end
+    for _, name in ipairs(M.FALLBACKS) do
+      if has(name) then return name end
     end
   end
 
@@ -161,20 +191,15 @@ function M.new(environment)
   function h:load()
     local me = self:player()
     if not me then return nil, 'vehicle_required' end
-    local name = self:model()
+    local name, config = self:model()
     if not name then return nil, 'no_raider_model' end
-    local config
-    if name == 'barstow' then
-      local okRoll, roll = pcall(env.random)
-      config = M.CONFIGS[(okRoll and type(roll) == 'number' and roll < 0.5) and 1 or 2]
-    end
     local okVehicles, vehicles = pcall(env.vehicles)
     if not okVehicles or type(vehicles) ~= 'table' or type(vehicles.spawnNewVehicle) ~= 'function' then
       return nil, 'spawn_unavailable'
     end
     local okPos, pos = pcall(env.vec3, me.x, me.y, me.z + M.HIDE_LIFT)
     local ok, c = pcall(vehicles.spawnNewVehicle, name,
-      { config = config and configPath(config), pos = okPos and pos or nil, autoEnterVehicle = false })
+      { config = config, pos = okPos and pos or nil, autoEnterVehicle = false })
     if not ok or not c then return nil, 'spawn_failed', tostring(c) end
     local okId, id = pcall(function() return c:getID() end)
     if not okId or type(id) ~= 'number' then return nil, 'spawn_failed' end
@@ -255,6 +280,25 @@ function M.new(environment)
     return (pcall(function() c:queueLuaCommand(string.format(DRIVE, aim.x, aim.y, aim.z, aim.speed, MODES[aim.mode] or 'nil', id)) end))
   end
 
+  -- An EMP shoves car id (a Raider, or the truck with allowTruck) away from the point (fromX, fromY).
+  function h:shove(id, fromX, fromY, allowTruck)
+    local c
+    if allowTruck then
+      local ok, found = pcall(env.byId, id)
+      c = ok and found or nil
+    else
+      c = car(id)
+    end
+    local p = pose(c)
+    if not (p and finite(fromX) and finite(fromY)) then return false end
+    local dx, dy = p.x - fromX, p.y - fromY
+    local len = math.sqrt(dx * dx + dy * dy)
+    if len < 0.5 then dx, dy, len = p.dy, -p.dx, 1 end
+    return (pcall(function()
+      c:queueLuaCommand(string.format(SHOVE, M.SHOVE_MPS, M.SHOVE_UP_MPS, dx / len, dy / len))
+    end))
+  end
+
   -- Calms a downed Raider so a wreck does not keep revving.
   function h:calm(id)
     local c = car(id)
@@ -265,16 +309,6 @@ function M.new(environment)
   function h:state(id)
     local p = pose(car(id))
     if p then return { x = p.x, y = p.y, z = p.z, speed = p.speed } end
-  end
-
-  -- Where car id's boot is: behind its middle by half its length.
-  function h:boot(id)
-    local c = car(id)
-    local p = pose(c)
-    if not p then return nil end
-    local okLen, length = pcall(function() return c:getInitialLength() end)
-    local back = (okLen and finite(length) and length > 1) and length / 2 or M.BOOT_METRES
-    return { x = p.x - p.dx * back, y = p.y - p.dy * back, z = p.z }
   end
 
   -- Hides the Raider's car for the next Raider.

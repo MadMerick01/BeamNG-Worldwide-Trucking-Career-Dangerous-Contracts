@@ -132,8 +132,8 @@ local function load(l)
   if l.cost ~= nil and (l.contract == nil or not integer(l.cost, 0)) then return nil end
   if l.back ~= nil and (l.contract == nil or not drop(l.back)) then return nil end
   if l.fuelled ~= nil and l.fuelled ~= true then return nil end
-  -- Its revolver's rounds (desertRun.lua).
-  if l.ammo ~= nil and (l.cost == nil or not integer(l.ammo, 0)) then return nil end
+  -- Its EMP charges left (desertRun.lua).
+  if l.emps ~= nil and (l.cost == nil or not integer(l.emps, 0)) then return nil end
   -- A Ship Day container from before Mayday Rescue replaced it: which ship and which container on it.
   local container
   if l.ship ~= nil then
@@ -159,7 +159,7 @@ local function load(l)
   return { good = l.good, units = l.units, slots = l.slots, kg = l.kg or 0, pay = l.pay, paid = l.paid,
     from = l.from, to = l.to, drivenKm = l.drivenKm or 0, drop = drop(l.drop),
     contract = l.contract, started = l.contract and l.started == true or nil, fee = l.contract and l.fee or nil,
-    cost = l.cost, back = l.back and drop(l.back) or nil, fuelled = l.fuelled, ammo = l.ammo,
+    cost = l.cost, back = l.back and drop(l.back) or nil, fuelled = l.fuelled, emps = l.emps,
     pickup = l.pickup and drop(l.pickup) or nil, beacon = l.beacon, trailerUnits = l.trailerUnits, business = shop, ship = container,
     -- JATO rockets were fitted on this job online (rockets.lua): it pays nothing.
     toll = toll, fuelRun = l.fuelRun, rockets = l.rockets == true or nil,
@@ -294,6 +294,38 @@ function M.validate(s)
     end
     thiefClock = { played = k.played, hour = k.hour, due = k.due, last = k.last }
   end
+  -- A Raider's EMP ended the desert's dangerous contract (desertRun.lua): what the lost load cost and where to go back
+  -- to, kept until the player closes the message.
+  local caught = nil
+  if s.raiderCaught ~= nil then
+    local g = s.raiderCaught
+    if type(g) ~= 'table' or not integer(g.cost, 0) or (g.back ~= nil and not location.valid(g.back)) then
+      return nil, 'invalid_load'
+    end
+    caught = { cost = g.cost, back = g.back and { latitude = g.back.latitude, longitude = g.back.longitude } or nil }
+  end
+  -- The desert's dangerous contract delivered (desertRun.lua): what the sheikh paid, what the load cost, a note on any
+  -- relocation paid back, and where to go back to, kept until the player closes the message.
+  local done = nil
+  if s.desertDone ~= nil then
+    local g = s.desertDone
+    if type(g) ~= 'table' or not integer(g.pay, 0) or not integer(g.cost, 0) or (g.back ~= nil and not location.valid(g.back))
+        or (g.note ~= nil and (type(g.note) ~= 'string' or #g.note > 400)) then
+      return nil, 'invalid_load'
+    end
+    done = { pay = g.pay, cost = g.cost, note = g.note,
+      back = g.back and { latitude = g.back.latitude, longitude = g.back.longitude } or nil }
+  end
+  -- The desert's dangerous contract delivered (special.lua's RUNS_PER_DAY): when, in real seconds, the latest few.
+  local runs = nil
+  if s.specialRuns ~= nil then
+    if type(s.specialRuns) ~= 'table' or #s.specialRuns > 10 then return nil, 'invalid_identity' end
+    runs = {}
+    for i, t in ipairs(s.specialRuns) do
+      if not integer(t, 0) then return nil, 'invalid_identity' end
+      runs[i] = t
+    end
+  end
   local cargo = nil
   if s.load ~= nil then
     cargo = load(s.load)
@@ -365,6 +397,7 @@ function M.validate(s)
     atStart = s.atStart, load = cargo, offer = offer, playerName = s.playerName, needs = recent, beacon = found,
     trailer = trailer, spareTrailers = spareTrailers, property = home, storedCars = stored, commissionId = s.commissionId, rewardId = s.rewardId,
     corp = member, extraCarSlot = s.extraCarSlot, noRobbers = s.noRobbers, robbersOff = s.robbersOff, thiefClock = thiefClock,
+    raiderCaught = caught, desertDone = done, specialRuns = runs,
   }
 end
 
@@ -435,7 +468,7 @@ function M.new(io, directory)
       playerName = candidate.playerName, needs = candidate.needs, beacon = candidate.beacon,
       trailer = candidate.trailer, spareTrailers = candidate.spareTrailers, property = candidate.property, storedCars = candidate.storedCars, commissionId = candidate.commissionId, rewardId = candidate.rewardId,
       corp = candidate.corp, extraCarSlot = candidate.extraCarSlot, noRobbers = candidate.noRobbers, robbersOff = candidate.robbersOff,
-      thiefClock = candidate.thiefClock,
+      thiefClock = candidate.thiefClock, raiderCaught = candidate.raiderCaught, desertDone = candidate.desertDone, specialRuns = candidate.specialRuns,
     }
     local clean, why = M.validate(prepared)
     if not clean then return nil, why end

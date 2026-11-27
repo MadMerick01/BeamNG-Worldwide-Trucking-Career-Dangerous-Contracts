@@ -7,6 +7,62 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
 - **Trailers no longer bounce on the hitch and run up a huge repair bill after you resume.** When your trailer comes out behind your truck (after loading a save, Bring out or a new trailer), it now waits until your truck has settled where it stays. The drop onto its legs, bumps while you back up to it and the jolt as it hitches are no longer added to the trailer's repair. If the trailer still gets bent and bounces on the hitch, it is fixed where it stands, for free, and hitches again. Damage it had before stays owed, and crashes once it is hitched are still charged. Saves still work.
+- **Your EMP now has 3 charges for the whole Shed in the Desert run**, down from 10. The jobs board says so. A run already under way keeps the charges it had.
+- **The Shed in the Desert's cards now say plainly when you've used up your 2 runs.** Once you've made 2 successful runs in 24 hours, each card shows "Time to next precursor drop" with a countdown, right on the card in the HUD's jobs list too, not only when you open it. If you can't afford even one unit of precursors, the card says how much you need. Holding the mouse over a greyed-out Take job button says why.
+- **Fixed: the shed at the end of the Shed in the Desert sometimes floated in the air.** It now sits on the sand, and it settles down onto the ground as you get close. Saves still work.
+
+## Build 299 · 27 Nov 2026
+
+- **The "Turn on the trucking HUD" pop-up now shows only once, with an OK button.** Before, if you played BeamNG.Earth without the trucking HUD on screen, a reminder kept popping up in the corner every couple of minutes, even when you were only driving around and not trucking. Now you get one pop-up: either "Add the HUD?" (press Add the HUD, or No thanks) or the steps to add it yourself with an OK button. After that it never comes back, not on another map, not after a restart. You can still add the HUD any time in Esc > System > HUD Apps.
+- **Turning the mod off in the Mod Manager or on the Add-ons page now really turns it off.** Before, the mod's code kept running until you restarted the game, so its pop-ups could still appear with the mod off. Now it stops straight away, and turning the mod back on starts it again. Joining and leaving servers works as before. Nothing to delete, and your saves still work.
+
+## Build 298 · 27 Nov 2026
+
+- **The EU tanker now says it needs a drawbar hitch, not a fifth wheel.** It's a drawbar trailer with its own steering front axle and a towing eye, so it hitches to a rigid truck's pintle hook or towing jaw. Before, its card under Buy new trailer told you to fit a fifth wheel, which it can't use. Its load now sits evenly on its axles instead of being pushed towards the drawbar.
+- **New trailer: the EU tanker, 2 axle**, a shorter drawbar tanker holding 16,800 L, for trucks that don't need the full 22,500 L of the 3 axle one.
+- Trucks with a drawbar, drawbeam or pintle hitch now show a green tick on drawbar trailer cards. Saves still work, and an EU tanker you already own keeps working as before.
+
+## Build 297 · 27 Nov 2026
+
+- **The Open jobs board button no longer disappears after a crash.** If your car was badly damaged, the insurance offer hid the button in the middle of the screen, even though the Town tab told you to press it and you could still take jobs. Now it shows at the pickup point whether or not you claim insurance. A garage bill or an unpaid relocation still hides it, and the Town tab now says why instead of telling you to press a button that isn't there. Saves still work.
+
+## Build 296 · 27 Nov 2026
+
+- **The live feed now follows the Shed in the Desert.** On a multiplayer server, everyone sees when a trucker sets off across the Rub' al Khali and how many dollars of precursors they took. They also see when the trucker reaches the shed and what the sheikh paid, gives up, or gets caught by a Raider's EMP. Saves still work.
+
+## Build 295 · 27 Nov 2026
+
+- **Raiders on the Shed in the Desert now fire their EMP only when you're doing 5 km/h or less**, down from 15 km/h. They only fire it at any speed in the last 5 km to the shed, down from the last 10 km. Saves still work.
+
+## Build 293 · 27 Nov 2026
+
+- **New for everyone: the Shed in the Desert.** Every jobs board now has two orange dangerous contracts carrying precursor chemicals for a sheikh, as crates or liquid. You buy the load with your own money, are moved to the Rub' al Khali with a full tank, and drive 20 km north across the dunes to the shed, which pays 6 times what you paid. Raiders hunt you all the way: you have 10 EMP charges to stop them, and if one catches you at 15 km/h or less its EMP ends the run and you lose the load. There are no repairs or insurance on the run, and you can make at most 2 successful runs a day. The help page (the **?** at the top of the HUD) has a new section on it. Saves still work.
+- **There's now a real shed at the end of the Shed in the Desert.** It's a rusty corrugated iron shed, open at the south end so you can drive in, with crates and red drums inside. It appears as you get within about 2.5 km of the finish.
+- **Delivering at the shed shows a message with a Close button**, saying what the sheikh paid. The Raiders drive off while it's open, and you're taken back to where you took the job, for free, once you press Close. Before, you were left stuck in the desert. The game saves as the message opens, so it shows again if you reload. Saves still work.
+
+## Build 292 · 27 Nov 2026
+
+- **Still hidden: the last 10 km of the precursor run are harder.** With under 10 km to the shed, a Raider within 15 m fires its EMP whatever your speed, and every Raider has one EMP to use. Above 15 km/h it doesn't end the run: your engine dies for 10 seconds, your brakes lock for a moment and your truck is shoved, and you have to deal with it. If they catch you at 15 km/h or less, the run is over as before.
+- **Still hidden: at most 2 successful precursor runs a day.** Once you have delivered 2 in the last 24 hours, the jobs board shows when the next one opens and Take job is off until then. The run's description on the jobs board says so.
+- **Still hidden: your EMP now has 10 charges for the precursor run, up from 4.** The jobs board says so in the run's description. A run already under way keeps the charges it had.
+- **Still hidden: both EMPs now hit with the EMP sound and a shove, without needing Bolides – The Cut.** When your EMP stops a Raider, its car is kicked sideways away from you and lifted a little. When a Raider's EMP gets you, you hear the EMP sound and your truck is kicked away from that Raider.
+- **Still hidden: after a Raider's EMP gets you, you now see the Raiders leave.** They no longer vanish the moment it fires. Every Raider still running speeds away from your truck and disappears once it is 500 m off, while the message stays open until you press Close. Raiders now fire their EMP when you are doing 15 km/h or less, up from 5 km/h.
+
+## Build 291 · 27 Nov 2026
+
+- **Still hidden: the precursor run's job description now warns you to expect hostile Raiders.** You see it on the jobs board and when the run starts.
+
+## Build 290 · 27 Nov 2026
+
+- **Still hidden while MadMerick tests it: the revolver is gone from the precursor run in the desert, and your EMP takes its place.** You get 4 EMP charges for the whole run and no more. Press the EMP button on the HUD, or the Fire EMP key, to hit the nearest Raider within 15 m: its engine is cut and it is out. Every press uses a charge, hit or miss, and the EMP then takes 20 seconds to charge again. The HUD shows how many charges you have left. Downed Raiders' boots no longer hold rounds, so there is no Open boot button, and the Draw revolver and Reload revolver keys are gone. The help page is unchanged while the mission stays hidden. Saves still work, and a run in progress gets its 4 charges.
+- **Still hidden: the Raiders have two new cars.** Besides the rusty and the fast Barstow, a Raider can now turn up in a black 4WD Roamer or a rusty white front-cab van, each a quarter of the time. None of them turn up in traffic. If your game lacks one of them, the Raiders use another.
+- **Still hidden: the Raiders now have EMPs of their own.** A Raider fires its EMP only if your truck is doing under 5 km/h for 2 seconds with a Raider within 15 m. That ends the run just like Give up: your engine dies and you lose the load and what you paid for it. A message tells you what happened, and you are only taken back to where you bought the load once you press Close. The game saves as the message opens, so if you quit before pressing Close it is still there when you come back.
+- **Still hidden: the precursor run in the desert is now called a dangerous contract, not a special delivery.** You see the new name on the jobs board, the HUD and its messages. It keeps its orange colour, so you can still tell it apart from the other dangerous contracts.
+- **Still hidden: no repairs or insurance on the precursor run.** Once you set off into the desert, Get quote, Repair and the insurance claim are off until you make the drop or give up. The Raiders panel says so.
+- **Still hidden: the precursor run is shorter.** The Shed in the Desert is now 20 km north of the start, down from 30 km.
+
+## Build 289 · 26 Nov 2026
+
 - **Still hidden while MadMerick tests it: the special delivery's money is now checked by MadMerick's server.** Online, the server only accepts a special delivery from its admins while the mission is hidden. It pays at most 6 times what the load cost, and it refuses a payout that comes too soon to have driven the 30 km. Without VR, the revolver now only ever hits Raiders, never another player's car or traffic in the way. Saves still work.
 
 ## Build 288 · 26 Nov 2026
