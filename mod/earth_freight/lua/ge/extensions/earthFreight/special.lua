@@ -35,7 +35,7 @@ M.GOODS = { 'precursors', 'precursors_fluid' }
 -- Online, MadMerick's server checks the special delivery's money in every save (the private trucking-server repo):
 -- why it refused one, in words for the HUD.
 M.REFUSED = {
-  special_hidden = 'the special delivery is only open to the server\'s admins for now',
+  special_hidden = 'the dangerous contract is only open to the server\'s admins for now',
   special_price = 'the precursors cost less than the sheikh\'s price',
   special_pay = 'it was paid more than ' .. M.PAY_TIMES .. ' times what the load cost',
   special_too_fast = 'the load reached the shed too soon to have driven the ' .. M.KM .. ' km',

@@ -2957,7 +2957,7 @@ do
   local gpsBefore = #a.gps
   a.pose = F.copy(special.START); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.check(c.load and c.load.started, 'started'); T.eq(#a.gps, gpsBefore, 'no GPS: there are no roads')
-  T.check(c:view().flash.title:find('SPECIAL DELIVERY'), 'told so')
+  T.check(c:view().flash.title:find('DANGEROUS CONTRACT'), 'told so')
   c:fuelReading(1, 12, 80)
   T.eq(f.sets[#f.sets].litres, 80, 'the tank is filled'); T.eq(c:view().balance, 1000000 - cost, 'for free')
   c:fuelReading(1, 12, 80); c:fuelReading(1, 80, 80)
@@ -2969,18 +2969,22 @@ do
   T.eq(c:view().desert.charges, 4, 'shown on the HUD'); T.eq(c:view().desert.totalCharges, 4, 'of four')
   local desertRun = require('earthFreight/desertRun')
   local raiderPack = require('earthFreight/raiderPack')
-  local rcar = { cars = {}, next = 500, preloaded = 0 }
-  function rcar:walker() return { id = 1, x = 0, y = 0, z = 0, dx = 0, dy = 1, speed = 0 } end
-  function rcar:player() return { id = 1, x = 0, y = 0, z = 0, dx = 0, dy = 1, speed = 0 } end
-  function rcar:preload(n) self.preloaded = n; return n end
-  function rcar:take() self.next = self.next + 1; return self.next, 'own' end
-  function rcar:place(id, x, y) self.cars[id] = { x = x, y = y, z = 0, speed = 10 }; return true end
-  function rcar:goTo() return true end
-  function rcar:ground() return 0 end
-  function rcar:state(id) return self.cars[id] end
-  function rcar:calm() end
-  function rcar:release(id) self.cars[id] = nil end
-  function rcar:removeAll() self.removed = true end
+  local function fakeRaiderCar()
+    local rcar = { cars = {}, next = 500, preloaded = 0, speed = 20 }
+    function rcar:walker() return { id = 1, x = 0, y = 0, z = 0, dx = 0, dy = 1, speed = 0 } end
+    function rcar:player() return { id = 1, x = 0, y = 0, z = 0, dx = 0, dy = 1, speed = self.speed } end
+    function rcar:preload(n) self.preloaded = n; return n end
+    function rcar:take() self.next = self.next + 1; return self.next, 'own' end
+    function rcar:place(id, x, y) self.cars[id] = { x = x, y = y, z = 0, speed = 10 }; return true end
+    function rcar:goTo() return true end
+    function rcar:ground() return 0 end
+    function rcar:state(id) return self.cars[id] end
+    function rcar:calm() end
+    function rcar:release(id) self.cars[id] = nil end
+    function rcar:removeAll() self.removed = true end
+    return rcar
+  end
+  local rcar = fakeRaiderCar()
   c.raiderCar = rcar
   c:tick(0.1)
   T.eq(rcar.preloaded, raiderPack.MAX, 'four cars loaded at the start, so none hitch the drive')
@@ -3043,6 +3047,43 @@ do
   local teleports = #da.teleports
   T.check(d:abandonJob(), 'given up'); T.eq(d.load, nil, 'no load'); T.eq(d:view().balance, 500000 - paid, 'the cost is lost, no fee')
   T.eq(#da.teleports, teleports + 1, 'Earth takes the player back'); T.near(da.teleports[#da.teleports].latitude, back.latitude, 1e-9, 'to where it was taken')
+  da.pose = F.copy(back); d:tick(0.1); d:tick(0.6); d:tick(0.6)
+  T.eq(d.stranded, nil, 'the trip back is not an unpaid relocation')
+
+  -- A Raider's EMP (MadMerick, 27 Nov): it fires only at a truck doing under 5 km/h, from within 15 m, and that ends
+  -- the run like Give up, but the player is only taken back once they close the message.
+  T.check(d:takeJob(specialRows(d)[1].id), 'bought a third time'); paid = d.load.cost
+  local balance = d:view().balance
+  back = F.copy(d.load.back)
+  da.pose = F.copy(special.START); d:tick(0.1); d:tick(0.6); d:tick(0.6)
+  local drc = fakeRaiderCar()
+  local empHit = 0
+  d.thiefCar = { empPlayer = function() empHit = empHit + 1; return true end, empPlayerEnd = function() empHit = empHit + 10 end }
+  d.raiderCar = drc
+  for _ = 1, math.ceil((desertRun.FIRST_SECONDS + 2) / 0.5) do d:tick(0.5) end
+  T.check(d.raiders:up() >= 1, 'a Raider is up next to the truck')
+  for id, car in pairs(drc.cars) do car.x, car.y = 0, 8 end
+  T.check(d.load ~= nil, 'driving at 72 km/h, no Raider fires')
+  drc.speed = 1.6
+  for _ = 1, 4 do d:tick(0.5) end
+  T.check(d.load ~= nil, 'at 5.8 km/h it still does not')
+  drc.speed = 1
+  d:tick(0.5); d:tick(0.5)
+  T.check(d.load ~= nil, 'under 5 km/h, not straight away')
+  teleports = #da.teleports
+  for _ = 1, 4 do d:tick(0.5) end
+  T.eq(d.load, nil, 'after 2 seconds a Raider fires its EMP: the load is lost')
+  T.eq(empHit, 1, 'the truck\'s engine dies')
+  T.eq(d:view().balance, balance, 'and what it cost')
+  T.eq(d:view().raiderCaught.cost, paid, 'the message says what was lost')
+  T.eq(d.raiders, nil, 'the Raiders go')
+  for _ = 1, 4 do d:tick(0.5) end
+  T.eq(#da.teleports, teleports, 'no teleport until the message is closed')
+  T.check(d:closeRaiderCaught(), 'Close')
+  T.eq(empHit, 11, 'the engine back')
+  T.eq(#da.teleports, teleports + 1, 'then Earth takes the player back')
+  T.near(da.teleports[#da.teleports].latitude, back.latitude, 1e-9, 'to where the load was taken')
+  T.eq(d:view().raiderCaught, nil, 'the message gone'); T.check(not d:closeRaiderCaught(), 'closed once')
   da.pose = F.copy(back); d:tick(0.1); d:tick(0.6); d:tick(0.6)
   T.eq(d.stranded, nil, 'the trip back is not an unpaid relocation')
 

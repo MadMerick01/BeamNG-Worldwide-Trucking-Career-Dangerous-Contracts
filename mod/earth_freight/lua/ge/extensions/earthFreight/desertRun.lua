@@ -10,6 +10,11 @@
 -- emp.RANGE metres: its engine is cut (Bolides' EMP effect when that mod is installed) and it is down. The charges
 -- left are kept with the load in the save (load.emps).
 --
+-- The Raiders' EMP (MadMerick, 27 Nov): every Raider has one too, but only fires it at a truck doing under
+-- RAIDER_EMP_KMH, from within RAIDER_EMP_METRES, once it has been that slow for RAIDER_EMP_SECONDS. That ends the run
+-- as Give up does: the load and what it cost are lost. The truck's engine dies and the HUD shows a message with a Close
+-- button; only once it is closed is the player taken back to where they took the load (raiderCaught).
+--
 -- Delivered, given up or dropped, the Raiders go and their cars are deleted. Pure Lua: the cars are handled by
 -- c.raiderCar (raiderCar.lua), which may be missing, and then there are no Raiders.
 local special = require('earthFreight/special')
@@ -25,6 +30,8 @@ M.RETRY_SECONDS = 10
 M.STEP_SECONDS = 0.5
 -- How long a Raider's line stays on the HUD.
 M.LINE_SECONDS = 6
+-- The Raiders' EMP: fired at a truck under this speed, from within this far, once it has been that slow this long.
+M.RAIDER_EMP_KMH, M.RAIDER_EMP_METRES, M.RAIDER_EMP_SECONDS = 5, 15, 2
 
 function M.attach(c)
   -- The load of a special delivery that has started, or nil.
@@ -76,6 +83,7 @@ function M.attach(c)
       self.raiderStepAt = self.clock + M.STEP_SECONDS
       local line = pack:step(self.clock)
       if line then self:raiderSays(line) end
+      if self:raiderEmpWatch(car, pack) then return end
       -- One that went down or fell behind: the next comes GAP_SECONDS later at the soonest.
       if pack:up() < raiderPack.MAX and self.raiderNextAt < self.clock then
         self.raiderNextAt = self.clock + M.GAP_SECONDS
@@ -89,6 +97,46 @@ function M.attach(c)
     else
       pack:steer(self.clock)
     end
+  end
+
+  -- The Raiders' EMP: true once a Raider fired it and the run is over.
+  function c:raiderEmpWatch(car, pack)
+    local truck = car:player()
+    local near = pack:nearestRaider()
+    local slow = truck and type(truck.speed) == 'number' and truck.speed * 3.6 < M.RAIDER_EMP_KMH
+    if not (slow and near and near.metres <= M.RAIDER_EMP_METRES) then
+      self.raiderSlowSince = nil
+      return false
+    end
+    self.raiderSlowSince = self.raiderSlowSince or self.clock
+    if self.clock - self.raiderSlowSince < M.RAIDER_EMP_SECONDS then return false end
+    self.raiderSlowSince = nil
+    local load = self.load
+    local back = load.back
+    if self.thiefCar and self.thiefCar.empPlayer then pcall(self.thiefCar.empPlayer, self.thiefCar) end
+    self.diag:event('raider_emp', string.format('Raider %d at %.0f m', near.n or 0, near.metres))
+    self:dropJob('raider_emp')
+    self.raiderCaught = { cost = load.cost, back = back }
+    self:endRaiders()
+    self:saveNowOrSoon('the dangerous contract lost to a Raider')
+    return true
+  end
+
+  -- For the HUD: the message after a Raider's EMP, until it is closed.
+  function c:raiderCaughtView()
+    local g = self.raiderCaught
+    return g and { cost = g.cost } or nil
+  end
+
+  -- Close on that message: the engine comes back and the player is taken back to where they took the load.
+  function c:closeRaiderCaught()
+    local g = self.raiderCaught
+    if not g then return false end
+    self.raiderCaught = nil
+    if self.thiefCar and self.thiefCar.empPlayerEnd then pcall(self.thiefCar.empPlayerEnd, self.thiefCar) end
+    self.tradeFeedback = 'A Raider\'s EMP ended the dangerous contract and you lost the load.'
+    self:returnFromDesert(g.back)
+    return true
   end
 
   function c:raiderSays(line)

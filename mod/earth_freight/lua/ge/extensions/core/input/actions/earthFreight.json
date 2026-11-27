@@ -5,6 +5,6 @@
     "ctx": "tlua",
     "onDown": "if earthFreight_core and earthFreight_core.empHotkey then earthFreight_core.empHotkey() end",
     "title": "Fire EMP",
-    "desc": "Fires the EMP at the base thief during a chase, or at the nearest Raider on the special delivery. It reaches 15 m."
+    "desc": "Fires the EMP at the base thief during a chase, or at the nearest Raider on the dangerous contract. It reaches 15 m."
   }
 }

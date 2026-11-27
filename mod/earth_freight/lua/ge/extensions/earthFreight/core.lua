@@ -1068,12 +1068,12 @@ function M.new(deps)
       -- reports it (fuelReading).
       if section.special then
         self.load.emps = contracts.special.EMP_CHARGES
-        self:showFlash('delivered', 'SPECIAL DELIVERY: THE SHED IN THE DESERT', section.summary
+        self:showFlash('delivered', 'DANGEROUS CONTRACT: THE SHED IN THE DESERT', section.summary
           .. ' No roads: follow the arrow on the Route tab and stop within ' .. contracts.FINISH_RADIUS
           .. ' m of the shed. Your tank is filled and your EMP has ' .. contracts.special.EMP_CHARGES
           .. ' charges for the whole run. Rival clans\' Raiders will come for you. Fail to make the drop and you lose the lot.')
         self.diag:event('special_started', section.id)
-        self:saveNowOrSoon('the special delivery')
+        self:saveNowOrSoon('the dangerous contract')
         return
       end
       local gps = self:gpsToFinish(section)
@@ -2498,28 +2498,33 @@ function M.new(deps)
     if not self.abandonArmed then
       self.abandonArmed = true
       self.tradeFeedback = load.started
-        and ('Press Confirm give up to give up the special delivery. You lose the load and the ' .. dollars(load.cost)
+        and ('Press Confirm give up to give up the dangerous contract. You lose the load and the ' .. dollars(load.cost)
           .. ' you paid for it, and you are taken back to where you took it.')
-        or ('Press Confirm give up to cancel the special delivery. Your ' .. dollars(load.cost) .. ' is paid back.')
+        or ('Press Confirm give up to cancel the dangerous contract. Your ' .. dollars(load.cost) .. ' is paid back.')
       return false
     end
     self:dropJob('abandoned')
     if not load.started then
-      self.tradeFeedback = 'Special delivery cancelled. Your ' .. dollars(load.cost) .. ' is paid back.'
-      self:saveNowOrSoon('the cancelled special delivery')
+      self.tradeFeedback = 'Dangerous contract cancelled. Your ' .. dollars(load.cost) .. ' is paid back.'
+      self:saveNowOrSoon('the cancelled dangerous contract')
       return true
     end
-    self.tradeFeedback = 'You gave up the special delivery and lost the load.'
-    if load.back and self.adapter.teleport and not self.hire then
-      local ok, why = self.adapter:teleport(load.back, 'Worldwide Trucking: back from the desert')
-      self.diag:event('special_return', ok and coordinates(load.back) or tostring(why), ok and 'I' or 'W')
-      if ok then
-        self.specialReturn = location.copy(load.back)
-        self.tradeFeedback = self.tradeFeedback .. ' Taking you back to where you took it.'
-      end
-    end
-    self:saveNowOrSoon('the special delivery')
+    self.tradeFeedback = 'You gave up the dangerous contract and lost the load.'
+    self:returnFromDesert(load.back)
+    self:saveNowOrSoon('the dangerous contract')
     return true
+  end
+
+  -- After a lost special delivery: Earth takes the player back to where they took it (back).
+  function c:returnFromDesert(back)
+    if not (back and self.adapter.teleport and not self.hire) then return false end
+    local ok, why = self.adapter:teleport(back, 'Worldwide Trucking: back from the desert')
+    self.diag:event('special_return', ok and coordinates(back) or tostring(why), ok and 'I' or 'W')
+    if ok then
+      self.specialReturn = location.copy(back)
+      self.tradeFeedback = (self.tradeFeedback or '') .. ' Taking you back to where you took it.'
+    end
+    return ok
   end
 
   -- Why the beacon's package cannot be picked up now, or nil when it can.
@@ -3356,6 +3361,7 @@ function M.new(deps)
       abandonAllowed = trade.abandonAllowed, abandonArmed = trade.abandonArmed, abandonFee = trade.abandonFee, giveUp = trade.giveUp,
       -- The special delivery's Raiders and rounds (desertRun.lua).
       desert = self:desertView(),
+      raiderCaught = self:raiderCaughtView(),
       tradeFeedback = self.tradeFeedback,
       fuelFeedback = self.fuelFeedback,
       flash = flashShown and { kind = self.flash.kind, title = self.flash.title, text = self.flash.text } or nil,
@@ -4059,6 +4065,7 @@ function M.thiefChase(index)
 end
 function M.empThief() return safely(function() return ensure():empThief() end) end
 -- The special delivery: a Raider's driver reporting a problem from inside its car.
+function M.closeRaiderCaught() return safely(function() return ensure():closeRaiderCaught() end) end
 function M.raiderProblem(vehicleId, why) return safely(function() return ensure():raiderProblem(vehicleId, why) end) end
 function M.empHotkey() return safely(function() return ensure():empHotkey() end) end
 function M.thiefLetGo() return safely(function() return ensure():thiefLetGo() end) end
