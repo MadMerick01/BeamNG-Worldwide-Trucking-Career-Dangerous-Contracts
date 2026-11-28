@@ -267,4 +267,19 @@ do
   T.check(m == nil and why == 'none', 'a changed GPS call is contained')
 end
 
+-- Earth's rocks switched off and on through its trees module, as its Rocks setting does (MadMerick, 28 Nov).
+do
+  local trees = { groupOff = {} }
+  function trees.setGroupEnabled(groups, on) for _, g in ipairs(groups) do trees.groupOff[g] = (not on) or nil end; return true end
+  local g = Adapter.new({ module = function(name) if name == 'trees' then return trees end end })
+  local ok, wasOn = g:setRocks(false)
+  T.check(ok and wasOn, 'rocks turned off, and were on')
+  T.check(trees.groupOff.rock and trees.groupOff.desert_rock, 'both rock groups')
+  ok, wasOn = g:setRocks(true)
+  T.check(ok and not wasOn and not trees.groupOff.rock, 'and back on')
+  T.eq(Adapter.new({ module = function() end }):setRocks(false), false, 'no trees module: not done')
+  trees.setGroupEnabled = function() error('changed') end
+  T.eq(g:setRocks(false), false, 'a changed call is contained')
+end
+
 T.done('Earth adapter (mocked engine)')

@@ -18,8 +18,10 @@ local M = {}
 M.OPEN = true
 -- What the shed pays, as a multiple of what the load cost.
 M.PAY_TIMES = 6
--- What the precursors cost: solid by the kg, fluid by the litre.
-M.PRICE_PER_KG, M.PRICE_PER_LITRE = 60, 45
+-- What the precursors cost, by the kg, solid or fluid alike (MadMerick, 28 Nov: $6, down from $60 a kg and $45 a
+-- litre, so MAX_COST buys 25,000 kg: a full run needs 10 XL cargo boxes). An 85 kg crate costs $510, and a liquid unit
+-- of 10 litres weighs 8.5 kg, so it costs $51.
+M.PRICE_PER_KG = 6
 -- The most a load may cost (MadMerick, 27 Nov: a cap, so no truck or tank pays a fortune). The shed pays at most
 -- PAY_TIMES this. A car that carries more takes only as many units as this buys. The server checks it too.
 M.MAX_COST = 150000
@@ -83,11 +85,10 @@ function M.recentRuns(times, now)
   return recent, opensAt
 end
 
--- What one unit of a good costs, in dollars: its weight for solid precursors, its litres for fluid.
+-- What one unit of a good costs, in whole dollars: its weight times PRICE_PER_KG.
 function M.unitPrice(good)
   if not good then return 0 end
-  if good.kind == 'fluid' then return (good.litres or 0) * M.PRICE_PER_LITRE end
-  return math.floor(good.kg * M.PRICE_PER_KG + 0.5)
+  return math.floor((good.kg or 0) * M.PRICE_PER_KG + 0.5)
 end
 
 -- The most units of a good one run may take: as many as MAX_COST buys.
