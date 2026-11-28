@@ -18,9 +18,10 @@ local M = {}
 M.OPEN = true
 -- What the shed pays, as a multiple of what the load cost.
 M.PAY_TIMES = 6
--- What the precursors cost, by the kg, solid or fluid alike (MadMerick, 28 Nov: $12, down from $60 a kg and $45 a
--- litre, as the crates got 4 times heavier). A liquid unit of 10 litres weighs 8.5 kg, so it costs $102.
-M.PRICE_PER_KG = 12
+-- What the precursors cost, by the kg, solid or fluid alike (MadMerick, 28 Nov: $6, down from $60 a kg and $45 a
+-- litre, so MAX_COST buys 25,000 kg: a full run needs 10 XL cargo boxes). An 85 kg crate costs $510, and a liquid unit
+-- of 10 litres weighs 8.5 kg, so it costs $51.
+M.PRICE_PER_KG = 6
 -- The most a load may cost (MadMerick, 27 Nov: a cap, so no truck or tank pays a fortune). The shed pays at most
 -- PAY_TIMES this. A car that carries more takes only as many units as this buys. The server checks it too.
 M.MAX_COST = 150000

@@ -101,7 +101,7 @@ The helicopter is a free mod from the BeamNG forum. The Heli tab says which one 
 # desert | The Shed in the Desert
 Every jobs board has two orange dangerous contracts: precursor chemicals for a sheikh, as crates or liquid.
 You buy the load with your own money, as much as your car carries, up to {desertMaxCost} of precursors. So a run pays at most {desertMaxPay}. You are moved to the Rub' al Khali with a full tank.
-Precursors cost {desertPerKg} a kg, crates or liquid. A crate weighs {desertCrateKg} kg and costs {desertCratePrice}; liquid is {desertLitrePrice} a litre. A full load is heavy: it needs several XL cargo boxes on your truck, or a tanker. A trailer stays behind.
+Precursors cost {desertPerKg} a kg, crates or liquid. A crate weighs {desertCrateKg} kg and costs {desertCratePrice}; liquid is {desertLitrePrice} a litre. A full load is heavy: it takes 10 XL cargo boxes on your truck, or a big tanker. A trailer stays behind.
 BeamNG.Earth's rocks are off for the run, so the Raiders don't crash into them, and come back on after.
 Drive {desertKm} km north across the dunes, following the arrow on the Route tab, and stop at the rusty shed. It pays {desertPayTimes} times what you paid.
 Once you deliver, the Raiders drive off. Press Close on the message to be taken back to where you took the job.

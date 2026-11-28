@@ -2958,9 +2958,13 @@ do
   local io = F.io({ [F.CONFIG] = cfg })
   local c, _, a, g, _, f = F.controller({ io = io })
   -- A crate weighs more than the boot holds (MadMerick, 28 Nov: 4 times heavier), so the car gets an L box.
-  T.eq(goods.get('precursors').kg, 85, 'a crate weighs 85 kg'); T.eq(special.unitPrice(goods.get('precursors')), 1020, 'and costs $1,020')
-  T.eq(special.unitPrice(goods.get('precursors_fluid')), 102, '10 litres of liquid cost $102, the same $12 a kg')
-  T.eq(special.maxUnits(goods.get('precursors')), 147, 'a full run is 147 crates')
+  T.eq(goods.get('precursors').kg, 85, 'a crate weighs 85 kg'); T.eq(special.unitPrice(goods.get('precursors')), 510, 'and costs $510')
+  T.eq(special.unitPrice(goods.get('precursors_fluid')), 51, '10 litres of liquid cost $51, the same $6 a kg')
+  T.eq(special.maxUnits(goods.get('precursors')), 294, 'a full run is 294 crates')
+  -- A full run needs 10 XL boxes (MadMerick, 28 Nov): 9 hold too little.
+  local xl = cargo.box('cargo_load_box_xl')
+  T.check(cargo.fits({ slots = 10 * xl.slots, kg = 10 * xl.kg }, goods.get('precursors')) >= 294, '10 XL boxes take a full run')
+  T.check(cargo.fits({ slots = 9 * xl.slots, kg = 9 * xl.kg }, goods.get('precursors')) < 294, '9 do not')
   T.eq(cargo.fits(cargo.capacity(nil), goods.get('precursors')), 0, 'the boot takes no crate')
   g.fitted.box = 'pickup_cargo_load_box_l'
   c:tick(0.1); c:tick(0.6); c:tick(0.6)

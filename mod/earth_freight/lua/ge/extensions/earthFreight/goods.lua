@@ -30,7 +30,7 @@ M.list = {
   { id = 'package', name = 'Package', kind = 'package', slots = 1, kg = 0 },
   -- The special delivery's precursor chemicals (special.lua), solid in cargo boxes or fluid in a tank: only on its
   -- own card, never posted on a board. A unit of crates is heavy for its slot, so a box fills by weight: 100 kg, 85
-  -- after WEIGHT_PERCENT (MadMerick, 28 Nov: 4 times the old 25 kg), so an XL box takes 29 and a full run needs a truck.
+  -- after WEIGHT_PERCENT (MadMerick, 28 Nov: 4 times the old 25 kg), so an XL box takes 29.
   { id = 'precursors', name = 'Precursor chemicals', kind = 'parcel', slots = 1, kg = 100, rate = 1, special = true },
   { id = 'precursors_fluid', name = 'Liquid precursor chemicals', kind = 'fluid', litres = 10, slots = 10, kg = 10, rate = 1, special = true },
   -- Ship Day's container cargo, from before Mayday Rescue replaced it: kept so a container still on board delivers.
