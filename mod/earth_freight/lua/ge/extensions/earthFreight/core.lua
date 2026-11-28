@@ -3512,6 +3512,9 @@ function M.new(deps)
       desertMaxPay = dollars(contracts.special.MAX_COST * contracts.special.PAY_TIMES), raiderEmpKmh = contracts.desertRun.RAIDER_EMP_KMH,
       raiderEmpMetres = contracts.desertRun.RAIDER_EMP_METRES, raiderEmpCloseKm = contracts.desertRun.RAIDER_EMP_ANY_SPEED_KM,
       raiderStallSeconds = contracts.desertRun.STALL_SECONDS,
+      desertPerKg = dollars(contracts.special.PRICE_PER_KG), desertCrateKg = goods.get('precursors').kg,
+      desertCratePrice = dollars(contracts.special.unitPrice(goods.get('precursors'))),
+      desertLitrePrice = string.format('$%.2f', contracts.special.unitPrice(goods.get('precursors_fluid')) / goods.get('precursors_fluid').litres),
     }
   end
 

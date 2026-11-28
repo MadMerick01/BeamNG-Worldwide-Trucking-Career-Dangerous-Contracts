@@ -6,6 +6,9 @@ Every change to BeamNG Worldwide Trucking Career: Dangerous Contracts (formerly 
 
 Changes that are finished but not in a download yet. They move into a numbered build as soon as it's published.
 
+- **Precursor crates for the Shed in the Desert are now 4 times heavier, at 85 kg each, and all precursors cost $12 a kg.** A crate is now $1,020, down from $1,275, and liquid precursors are $10.20 a litre, down from $45, so the same weight of either costs and pays the same. A full $150,000 run is now about 12.5 tonnes: an XL cargo box takes 29 crates, so you need a truck with several boxes, or a tanker, to fill it (a trailer still stays behind), and the heavy load really does slow you down and brake later. A small box or the boot can't take a crate any more. A run you're already on keeps what you paid for it. Saves still work.
+- **BeamNG.Earth's rocks are switched off during a Shed in the Desert run**, because the Raiders crashed into them and fell behind. They come back on when the run ends, unless you had them off already. Your BeamNG.Earth setting isn't changed.
+
 ## Build 302 · 27 Nov 2026
 
 - **The Shed in the Desert now has a cap: you can take up to $150,000 of precursors, so a run pays at most $900,000.** A car or tank that holds more only takes as much as $150,000 buys. The jobs board and the help page say so. Saves still work.

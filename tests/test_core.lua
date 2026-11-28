@@ -2947,6 +2947,8 @@ do
   special.OPEN = true
   for _, g in ipairs(goods.carried()) do T.check(not g.special, g.id .. ': precursors are never posted on a board') end
 
+  local desertRunRocks = require('earthFreight/desertRun')
+  local cargo = require('earthFreight/cargo')
   -- Open: on every board, no switch needed.
   local h = F.controller(); h:tick(0.1); h:tick(0.6); h:tick(0.6)
   T.eq(#specialRows(h), 2, 'on the board without the switch')
@@ -2954,7 +2956,13 @@ do
   -- Shown with the switch in config.json.
   local cfg = F.config(); cfg.specialDelivery = true
   local io = F.io({ [F.CONFIG] = cfg })
-  local c, _, a, _, _, f = F.controller({ io = io })
+  local c, _, a, g, _, f = F.controller({ io = io })
+  -- A crate weighs more than the boot holds (MadMerick, 28 Nov: 4 times heavier), so the car gets an L box.
+  T.eq(goods.get('precursors').kg, 85, 'a crate weighs 85 kg'); T.eq(special.unitPrice(goods.get('precursors')), 1020, 'and costs $1,020')
+  T.eq(special.unitPrice(goods.get('precursors_fluid')), 102, '10 litres of liquid cost $102, the same $12 a kg')
+  T.eq(special.maxUnits(goods.get('precursors')), 147, 'a full run is 147 crates')
+  T.eq(cargo.fits(cargo.capacity(nil), goods.get('precursors')), 0, 'the boot takes no crate')
+  g.fitted.box = 'pickup_cargo_load_box_l'
   c:tick(0.1); c:tick(0.6); c:tick(0.6)
   c.profile.progression.balance = 1000000
   local rows = specialRows(c)
@@ -2979,6 +2987,19 @@ do
   a.pose = F.copy(special.START); c:tick(0.1); c:tick(0.6); c:tick(0.6)
   T.check(c.load and c.load.started, 'started'); T.eq(#a.gps, gpsBefore, 'no GPS: there are no roads')
   T.check(c:view().flash.title:find('DANGEROUS CONTRACT'), 'told so')
+  -- Earth's rocks go while the run is on (MadMerick, 28 Nov), and come back after unless the player had them off.
+  do
+    local rocks = { on = true, calls = 0 }
+    local fake = { setRocks = function(_, on) rocks.calls = rocks.calls + 1; local was = rocks.on; rocks.on = on; return true, was end }
+    local d = { adapter = fake }; desertRunRocks.attach(d)
+    d:desertRocks(true); d:desertRocks(true)
+    T.check(not rocks.on and rocks.calls == 1, 'rocks off once for the run')
+    d:desertRocks(false); T.check(rocks.on, 'and back on after')
+    rocks.on = false; d:desertRocks(true); d:desertRocks(false)
+    T.check(not rocks.on, 'left off when the player had them off')
+    local none = { adapter = {} }; desertRunRocks.attach(none); none:desertRocks(true)
+    T.eq(none.rocksHidden, nil, 'no Earth: nothing to do')
+  end
   c:fuelReading(1, 12, 80)
   T.eq(f.sets[#f.sets].litres, 80, 'the tank is filled'); T.eq(c:view().balance, 1000000 - cost, 'for free')
   c:fuelReading(1, 12, 80); c:fuelReading(1, 80, 80)
@@ -3120,7 +3141,8 @@ do
   T.eq(c.stranded, nil, 'the trip back is not an unpaid relocation')
 
   -- Cancelled before the start: the cost is paid back.
-  local d, dio, da = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  local d, dio, da, dg = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  dg.fitted.box = 'pickup_cargo_load_box_l'
   d:tick(0.1); d:tick(0.6); d:tick(0.6)
   d.profile.progression.balance = 500000
   T.check(d:takeJob(specialRows(d)[1].id, 50), 'half a load bought')
@@ -3209,14 +3231,15 @@ do
   T.eq(d.stranded, nil, 'the trip back is not an unpaid relocation')
 
   -- Not enough money for the load.
-  local e = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  local e, _, _, eg = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  eg.fitted.box = 'pickup_cargo_load_box_xl'
   e:tick(0.1); e:tick(0.6); e:tick(0.6)
   e.profile.progression.balance = unit - 1
   T.check(not specialRows(e)[1].allowed, 'not even one unit')
   T.check(specialRows(e)[1].contract.short:find('to buy even one unit', 1, true), 'the card says why')
   e.profile.progression.balance = unit
   T.check(not e:takeJob(specialRows(e)[1].id), 'a full load is too dear'); T.check(e:view().tradeFeedback:find('Load slider'), 'told to take less')
-  T.check(e:takeJob(specialRows(e)[1].id, 10), 'a smaller load')
+  T.check(e:takeJob(specialRows(e)[1].id, 3), 'a smaller load')
 
   -- The cap (MadMerick, 27 Nov): a load costs at most $150,000, so a run pays at most $900,000, however much the car carries.
   T.eq(special.MAX_COST, 150000, 'loads up to $150,000')
@@ -3232,7 +3255,8 @@ do
 
   -- At most 2 runs delivered a day, by the real clock (MadMerick, 27 Nov).
   T.eq(special.RUNS_PER_DAY, 2, 'two a day')
-  local g = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  local g, _, _, gg = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  gg.fitted.box = 'pickup_cargo_load_box_l'
   g:tick(0.1); g:tick(0.6); g:tick(0.6)
   g.profile.progression.balance = 1000000
   local now = 5000000
@@ -3249,7 +3273,8 @@ do
 
   -- With under 5 km to go, a Raider within 15 m fires its one EMP at any speed (MadMerick, 27 Nov). Above 5 km/h
   -- it doesn't end the run: the engine dies for a while and the player has to deal with it.
-  local k, _, ka = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  local k, _, ka, kg = F.controller({ io = F.io({ [F.CONFIG] = cfg }) })
+  kg.fitted.box = 'pickup_cargo_load_box_l'
   k:tick(0.1); k:tick(0.6); k:tick(0.6)
   k.profile.progression.balance = 1000000
   T.check(k:takeJob(specialRows(k)[1].id), 'bought')

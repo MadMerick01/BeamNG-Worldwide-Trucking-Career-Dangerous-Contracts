@@ -10,6 +10,8 @@ local location = require('earthFreight/location')
 local M = {}
 -- Earth's GPS destination counts as the one asked for within this many metres.
 M.GPS_MATCH_METRES = 100
+-- Earth's rock groups, which its Rocks setting turns off (its settings.lua and trees.lua).
+M.ROCK_GROUPS = { 'rock', 'desert_rock' }
 
 local function findCore()
   local core = rawget(_G, 'beamngEarth_core')
@@ -313,6 +315,20 @@ function M.new(environment)
     if sent == false then return false, 'teleport_refused', why ~= nil and tostring(why) or nil end
     return true
   end
+  -- Shows or hides Earth's rocks and boulders, as its own Rocks switch in its settings does (its trees module's
+  -- setGroupEnabled on the rock groups), without changing the player's saved setting. Used for the Shed in the
+  -- Desert (MadMerick, 28 Nov): the Raiders' driving can't see rocks and crashed into them. Returns true when it was
+  -- done, and whether the rocks were showing before; false when Earth or its trees module is missing or changed.
+  function a:setRocks(on)
+    if not env.module then return false end
+    local okModule, trees = pcall(env.module, 'trees')
+    if not okModule or type(trees) ~= 'table' or type(trees.setGroupEnabled) ~= 'function' then return false end
+    local off = type(trees.groupOff) == 'table' and trees.groupOff or {}
+    local wasOn = not off[M.ROCK_GROUPS[1]]
+    local ok = pcall(trees.setGroupEnabled, M.ROCK_GROUPS, on == true)
+    return ok, wasOn
+  end
+
   return a
 end
 

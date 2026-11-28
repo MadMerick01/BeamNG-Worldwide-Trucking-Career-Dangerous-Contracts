@@ -69,6 +69,7 @@ function M.attach(c)
   function c:watchRaiders(dt)
     local load = self:desertLoad()
     self:shedTick(load)
+    self:desertRocks(load ~= nil)
     if not load then
       -- A Raider's EMP ended the run, or the load was delivered: the Raiders speed away, and go once far off or the
       -- message is closed.
@@ -188,6 +189,19 @@ function M.attach(c)
   end
 
   -- For the HUD: the message after a Raider's EMP, until it is closed.
+  -- Earth's rocks are off while a run is on (MadMerick, 28 Nov: the Raiders crashed into them), and back on after,
+  -- unless the player already had them off. Not saved: a reload while on a run turns them off again.
+  function c:desertRocks(running)
+    if running and not self.rocksHidden then
+      if not (self.adapter and self.adapter.setRocks) then return end
+      local ok, wasOn = self.adapter:setRocks(false)
+      if ok then self.rocksHidden = { restore = wasOn } end
+    elseif not running and self.rocksHidden then
+      if self.rocksHidden.restore and self.adapter and self.adapter.setRocks then self.adapter:setRocks(true) end
+      self.rocksHidden = nil
+    end
+  end
+
   function c:raiderCaughtView()
     local g = self.raiderCaught
     return g and { cost = g.cost } or nil
